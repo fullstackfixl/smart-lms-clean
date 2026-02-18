@@ -485,17 +485,17 @@ export const platformApi = {
     apiRequest("/platform/analytics/revenue", { token }),
   
   // Platform Admins
-  listAdmins: (params?: { page?: number; limit?: number; search?: string }) => {
+  listAdmins: (token: string, params?: { page?: number; limit?: number; search?: string }) => {
     const queryParams = new URLSearchParams()
     if (params?.page) queryParams.append('page', params.page.toString())
     if (params?.limit) queryParams.append('limit', params.limit.toString())
     if (params?.search) queryParams.append('search', params.search)
     
     const query = queryParams.toString()
-    return apiRequest(`/platform/admins${query ? `?${query}` : ""}`)
+    return apiRequest(`/platform/admins${query ? `?${query}` : ""}`, { token })
   },
   
-  createAdmin: async (data: {
+  createAdmin: async (token: string, data: {
     name: string
     email: string
     password: string
@@ -507,12 +507,13 @@ export const platformApi = {
     
     return apiRequest("/platform/admins", {
       method: "POST",
+      token,
       body: data,
       headers: { "X-CSRF-Token": csrfResponse.data.csrfToken }
     })
   },
   
-  updateAdminStatus: async (id: string, isActive: boolean) => {
+  updateAdminStatus: async (token: string, id: string, isActive: boolean) => {
     const csrfResponse = await apiRequest<{ csrfToken: string }>("/api/csrf-token")
     if (!csrfResponse.success || !csrfResponse.data) {
       return { success: false, error: "Failed to get CSRF token" }
@@ -520,6 +521,7 @@ export const platformApi = {
     
     return apiRequest(`/platform/admins/${id}/status`, {
       method: "PATCH",
+      token,
       body: { isActive },
       headers: { "X-CSRF-Token": csrfResponse.data.csrfToken }
     })

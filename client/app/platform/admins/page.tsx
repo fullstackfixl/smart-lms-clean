@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { platformApi } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
@@ -22,6 +23,7 @@ interface Admin {
 }
 
 export default function AdminsPage() {
+  const { token } = useAuth()
   const [admins, setAdmins] = useState<Admin[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -36,13 +38,17 @@ export default function AdminsPage() {
   })
 
   useEffect(() => {
-    fetchAdmins()
-  }, [page, search])
+    if (token) {
+      fetchAdmins()
+    }
+  }, [page, search, token])
 
   const fetchAdmins = async () => {
+    if (!token) return
+    
     setLoading(true)
     try {
-      const response = await platformApi.listAdmins({
+      const response = await platformApi.listAdmins(token, {
         page,
         limit: 20,
         search: search || undefined
@@ -78,7 +84,12 @@ export default function AdminsPage() {
 
     setCreating(true)
     try {
-      const response = await platformApi.createAdmin(formData)
+      if (!token) {
+        toast.error("Authentication required")
+        return
+      }
+      
+      const response = await platformApi.createAdmin(token, formData)
 
       if (response.success) {
         toast.success("Platform admin created successfully")
@@ -97,8 +108,10 @@ export default function AdminsPage() {
   }
 
   const handleToggleStatus = async (admin: Admin) => {
+    if (!token) return
+    
     try {
-      const response = await platformApi.updateAdminStatus(admin._id, !admin.isActive)
+      const response = await platformApi.updateAdminStatus(token, admin._id, !admin.isActive)
 
       if (response.success) {
         toast.success(`Admin ${!admin.isActive ? 'activated' : 'deactivated'} successfully`)
