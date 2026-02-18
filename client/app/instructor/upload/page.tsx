@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const API_URL = 'https://smart-lms-clean-1.onrender.com'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"

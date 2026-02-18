@@ -4,13 +4,13 @@
  */
 
 export const config = {
-  // API Configuration - Hardcoded for production
-  apiUrl: 'https://smart-lms-clean-1.onrender.com',
-  appUrl: 'https://smart-lms-clean.vercel.app',
+  // API Configuration
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+  appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   
   // API Endpoints
   api: {
-    baseUrl: 'https://smart-lms-clean-1.onrender.com',
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
     csrfToken: '/api/csrf-token',
     auth: {
       me: '/auth/me',

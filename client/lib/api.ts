@@ -1,4 +1,4 @@
-const API_BASE = "https://smart-lms-clean-1.onrender.com"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
 interface ApiOptions {
   method?: string
