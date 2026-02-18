@@ -6,6 +6,8 @@
     "react-hooks/exhaustive-deps": "warn",
     "react/no-unescaped-entities": "off",
     "@next/next/no-img-element": "warn",
-    "@next/next/no-assign-module-variable": "off"
+    "@next/next/no-assign-module-variable": "off",
+    "@typescript-eslint/triple-slash-reference": "off",
+    "@typescript-eslint/no-require-imports": "off"
   }
 }
