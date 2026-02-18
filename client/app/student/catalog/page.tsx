@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 import { toast } from "sonner"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -65,7 +67,7 @@ export default function StudentCatalogPage() {
       if (category !== 'all') params.append('category', category)
       if (level !== 'all') params.append('level', level)
 
-      const response = await fetch(`http://localhost:5000/student/courses?${params}`, {
+      const response = await fetch(`${API_URL}/student/courses?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

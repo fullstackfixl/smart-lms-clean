@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, Video, User } from 'lucide-react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
 interface LiveClass {
   _id: string;
   title: string;
@@ -37,7 +39,7 @@ export default function StudentLiveClassesPage() {
     try {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token');
       
-      const response = await fetch('http://localhost:5000/student/live-classes/upcoming', {
+      const response = await fetch(`${API_URL}/student/live-classes/upcoming`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

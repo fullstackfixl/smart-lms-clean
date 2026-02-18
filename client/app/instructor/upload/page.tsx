@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { toast } from "sonner"
@@ -71,7 +73,7 @@ export default function InstructorUploadPage() {
         return
       }
 
-      const response = await fetch(`http://localhost:5000/instructor/courses`, {
+      const response = await fetch(`${API_URL}/instructor/courses`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -106,7 +108,7 @@ export default function InstructorUploadPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const response = await fetch(`http://localhost:5000/instructor/courses/${courseId}/sections`, {
+      const response = await fetch(`${API_URL}/instructor/courses/${courseId}/sections`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -139,7 +141,7 @@ export default function InstructorUploadPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const response = await fetch(`http://localhost:5000/instructor/sections/${sectionId}/lessons`, {
+      const response = await fetch(`${API_URL}/instructor/sections/${sectionId}/lessons`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -218,7 +220,7 @@ export default function InstructorUploadPage() {
 
       // Get CSRF token first
       console.log('Fetching CSRF token...')
-      const csrfResponse = await fetch('http://localhost:5000/api/csrf-token', {
+      const csrfResponse = await fetch(`${API_URL}/api/csrf-token`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -260,11 +262,11 @@ export default function InstructorUploadPage() {
         })
       }, 500)
 
-      console.log('Uploading to:', `http://localhost:5000/api/instructor/lectures/${selectedLesson}/upload-video`)
+      console.log('Uploading to:', `${API_URL}/api/instructor/lectures/${selectedLesson}/upload-video`)
       console.log('With CSRF token:', csrfToken.substring(0, 10) + '...')
 
       const response = await fetch(
-        `http://localhost:5000/api/instructor/lectures/${selectedLesson}/upload-video`,
+        `${API_URL}/api/instructor/lectures/${selectedLesson}/upload-video`,
         {
           method: 'POST',
           headers: {

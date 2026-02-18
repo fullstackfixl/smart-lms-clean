@@ -78,14 +78,29 @@ app.use(helmetConfig);
 app.use(additionalSecurityHeaders);
 
 // 1. CORS Middleware - Enable cross-origin requests
+const allowedOrigins = [
+  process.env.CLIENT_URL || 'http://localhost:3000',
+  'http://localhost:3000', // Support both ports
+  'https://smart-lms-clean.vercel.app', // Production frontend
+  '' // Vercel preview deployments
+];
+
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || 'http://localhost:3000',
-    'http://localhost:3001' // Support both ports
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list or matches Vercel preview pattern
+    if (allowedOrigins.includes(origin) || origin.match(/^https:\/\/smart-lms-clean-.*\.vercel\.app$/)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  exposedHeaders: ['X-CSRF-Token']
 }));
 
 // 2. Body Parser - Parse JSON and URL-encoded bodies

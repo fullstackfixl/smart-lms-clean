@@ -57,7 +57,8 @@ export default function InstructorNotificationsPage() {
         params.append('status', statusFilter)
       }
 
-      const response = await fetch(`http://localhost:5000/instructor/notifications?${params}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/instructor/notifications?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -83,7 +84,8 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const response = await fetch(`http://localhost:5000/instructor/notifications/${notificationId}/read`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      const response = await fetch(`${API_URL}/instructor/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -105,7 +107,8 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const response = await fetch('http://localhost:5000/instructor/notifications/read-all', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      const response = await fetch(`${API_URL}/instructor/notifications/read-all`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -127,7 +130,8 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const response = await fetch(`http://localhost:5000/instructor/notifications/${notificationId}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      const response = await fetch(`${API_URL}/instructor/notifications/${notificationId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

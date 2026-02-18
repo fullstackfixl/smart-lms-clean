@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 import { 
   Play, 
   Pause, 
@@ -120,7 +122,7 @@ export default function StudentLecturePage() {
         return
       }
 
-      const response = await fetch(`http://localhost:5000/student/lectures/${lectureId}`, {
+      const response = await fetch(`${API_URL}/student/lectures/${lectureId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -153,7 +155,7 @@ export default function StudentLecturePage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      await fetch(`http://localhost:5000/student/lectures/${lectureId}/progress`, {
+      await fetch(`${API_URL}/student/lectures/${lectureId}/progress`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -256,7 +258,7 @@ export default function StudentLecturePage() {
         return
       }
 
-      const response = await fetch(`http://localhost:5000/student/lectures/${lectureId}/quiz/submit`, {
+      const response = await fetch(`${API_URL}/student/lectures/${lectureId}/quiz/submit`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
