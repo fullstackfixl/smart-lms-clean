@@ -2,7 +2,6 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const emailService = require('./emailService');
 const pushNotificationService = require('./pushNotificationService');
-const notificationQueue = require('./notificationQueue');
 const logger = require('./logger');
 const { 
   getNotificationConfig, 
@@ -234,7 +233,7 @@ class NotificationService {
   }
 
   /**
-   * Queue email notification
+   * Send email notification directly (no queue)
    */
   async queueEmailNotification(user, data, options) {
     const config = getNotificationConfig(data.type);
@@ -249,11 +248,18 @@ class NotificationService {
       notificationId: data.notificationId
     };
 
-    return await notificationQueue.addEmailJob(emailData, options);
+    // Send directly without queue
+    try {
+      const result = await emailService.sendTemplatedEmail(emailData);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      logger.error('Failed to send email notification:', error);
+      return { success: false, error: error.message };
+    }
   }
 
   /**
-   * Queue push notification
+   * Send push notification directly (no queue)
    */
   async queuePushNotification(user, data, options) {
     if (!user.push_tokens || user.push_tokens.length === 0) {
@@ -261,31 +267,47 @@ class NotificationService {
     }
 
     const notification = pushNotificationService.createNotificationPayload(data.type, data.templateData);
-    const pushData = {
-      pushTokens: user.push_tokens,
-      notification,
-      notificationId: data.notificationId
-    };
-
-    return await notificationQueue.addPushJob(pushData, options);
+    
+    // Send directly without queue
+    try {
+      const result = await pushNotificationService.sendBulkPushNotifications(user.push_tokens, notification);
+      return { success: true, result };
+    } catch (error) {
+      logger.error('Failed to send push notification:', error);
+      return { success: false, error: error.message };
+    }
   }
 
   /**
-   * Queue in-app notification
+   * Create in-app notification directly (no queue)
    */
   async queueInAppNotification(user, data, options) {
     const config = getNotificationConfig(data.type);
     const inAppData = {
-      userId: user._id,
-      organizationId: user.organization_id,
+      organization_id: user.organization_id,
+      user_id: user._id,
       type: data.type,
       title: data.title || config.name,
       message: data.message || `You have a new ${config.name.toLowerCase()}`,
       data: data.templateData || {},
-      priority: options.priority || 'normal'
+      channels: [{
+        type: 'in_app',
+        status: 'sent',
+        sentAt: new Date()
+      }],
+      priority: options.priority || 'normal',
+      read: false,
+      createdAt: new Date()
     };
 
-    return await notificationQueue.addInAppJob(inAppData, options);
+    // Create directly without queue
+    try {
+      const notification = await Notification.create(inAppData);
+      return { success: true, notificationId: notification._id };
+    } catch (error) {
+      logger.error('Failed to create in-app notification:', error);
+      return { success: false, error: error.message };
+    }
   }
 
   /**

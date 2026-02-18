@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const redisClient = require('../utils/redisClient');
 
 /**
  * TokenService - Handles JWT token generation, verification, and management
@@ -72,32 +71,9 @@ class TokenService {
       // Step 1: Verify JWT signature and expiration
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Step 2: Check Redis blacklist
-      // In test environment, use global.redisClient (mock)
-      // In production, use redisClient singleton
-      const redis = process.env.NODE_ENV === 'test' 
-        ? global.redisClient 
-        : redisClient.getClient();
-      
-      if (redis) {
-        try {
-          const blacklistKey = `blacklist:${token}`;
-          const isBlacklisted = await redis.get(blacklistKey);
-          
-          if (isBlacklisted) {
-            throw new Error('Token has been revoked');
-          }
-        } catch (error) {
-          // If it's the revoked error, rethrow it
-          if (error.message === 'Token has been revoked') {
-            throw error;
-          }
-          // Otherwise, log and continue (graceful degradation)
-          // This handles Redis connection errors
-        }
-      }
-      // If Redis is not available, we still allow the token (graceful degradation)
-      // This ensures the system continues to function even if Redis is down
+      // Step 2: Token blacklist disabled (Redis removed)
+      // Tokens remain valid until expiration
+      // For production, consider using a database-based blacklist if needed
 
       // Step 3: Return decoded payload
       return decoded;
@@ -116,47 +92,20 @@ class TokenService {
   }
 
   /**
-   * Blacklist token for logout
+   * Blacklist token for logout (No-op - Redis removed)
    * 
    * @param {string} token - JWT token to blacklist
    * @returns {Promise<void>}
    * 
    * Requirements: 5.4
    * 
-   * This method adds the token to Redis blacklist with TTL equal to token's remaining lifetime
+   * Note: Token blacklisting is disabled. Tokens remain valid until expiration.
+   * For production, consider implementing database-based blacklist if needed.
    */
   async blacklistToken(token) {
-    if (!token) {
-      throw new Error('Token is required for blacklisting');
-    }
-
-    try {
-      // Decode token to get expiration
-      const decoded = jwt.decode(token);
-      
-      if (!decoded || !decoded.exp) {
-        throw new Error('Invalid token format');
-      }
-
-      // Calculate TTL (time until token expires)
-      const now = Math.floor(Date.now() / 1000);
-      const ttl = decoded.exp - now;
-
-      // Only blacklist if token hasn't expired yet
-      if (ttl > 0) {
-        const redis = process.env.NODE_ENV === 'test' 
-          ? global.redisClient 
-          : redisClient.getClient();
-        
-        if (redis) {
-          const blacklistKey = `blacklist:${token}`;
-          await redis.set(blacklistKey, '1', 'EX', ttl);
-        }
-      }
-    } catch (error) {
-      // Log error but don't throw - graceful degradation
-      console.error('Failed to blacklist token:', error.message);
-    }
+    // No-op: Redis removed, tokens remain valid until expiration
+    // This is acceptable for most use cases as tokens have short lifetimes
+    return;
   }
 
   /**
