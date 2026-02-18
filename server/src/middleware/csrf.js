@@ -28,6 +28,26 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
+  // Skip CSRF for auth endpoints (login, register, etc.)
+  const authEndpoints = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/register/request-otp',
+    '/auth/register/verify-otp',
+    '/auth/register/resend-otp',
+    '/auth/register/student',
+    '/auth/verify-otp',
+    '/auth/resend-otp',
+    '/auth/validate-organization',
+    '/auth/forgot-password',
+    '/auth/reset-password'
+  ];
+  
+  if (authEndpoints.includes(req.path)) {
+    console.log('✅ [CSRF] Skipping CSRF for auth endpoint:', req.path);
+    return next();
+  }
+
   // Get token from header or body
   const token = req.headers['x-csrf-token'] || req.body._csrf;
 
