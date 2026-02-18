@@ -25,16 +25,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -60,9 +50,11 @@ jobs:
         run: npm test || echo "Tests not configured"
         env:
           MONGODB_URI: mongodb://localhost:27017/smart-lms-test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test-secret-key
+          JWT_SECRET: test-secret-key-minimum-32-characters-long
+          JWT_EXPIRES_IN: 7d
           NODE_ENV: test
+          PORT: 5000
+          ENABLE_NOTIFICATIONS: false
 
       - name: Upload coverage
         uses: codecov/codecov-action@v3
@@ -154,7 +146,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     environment:
       name: production
-      url: https://yourdomain.com
+      url: https://smart-lms-clean.vercel.app
 
     steps:
       - name: Checkout code
@@ -165,28 +157,27 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      # Backend Deployment
-      - name: Build Backend Docker Image
-        working-directory: ./server
-        run: |
-          docker build -t smart-lms-api:${{ github.sha }} .
-          docker tag smart-lms-api:${{ github.sha }} smart-lms-api:latest
-
       # Frontend Deployment
       - name: Deploy Frontend to Vercel
         working-directory: ./client
         run: |
           npm ci
           npm run build
-          # Add Vercel deployment command
+          echo "Frontend deployed to Vercel automatically via GitHub integration"
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+          NEXT_PUBLIC_API_URL: https://smart-lms-clean-1.onrender.com
+
+      # Backend Deployment
+      - name: Deploy Backend to Render
+        run: |
+          echo "Backend deployed to Render automatically via GitHub integration"
+          echo "Backend URL: https://smart-lms-clean-1.onrender.com"
 
       - name: Notify deployment
         run: |
           echo "Deployment completed successfully!"
-          # Add notification logic (Slack, Discord, etc.)
+          echo "Frontend: https://smart-lms-clean.vercel.app"
+          echo "Backend: https://smart-lms-clean-1.onrender.com"
 
   # Performance Tests
   performance-test:
