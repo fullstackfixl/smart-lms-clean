@@ -196,8 +196,15 @@ router.post('/register/request-otp', authLimiter, async (req, res) => {
         subject: emailSubject,
         html: emailHtml
       });
+      console.log(`✅ [AUTH] OTP email sent successfully to ${email}`);
     } catch (emailError) {
-      // Email sending failed - continue anyway for development
+      // Log the error but continue - OTP is still valid in database
+      console.error(`❌ [AUTH] Failed to send OTP email to ${email}:`, emailError.message);
+      console.error('Email config:', {
+        EMAIL_USER: process.env.EMAIL_USER ? 'SET' : 'NOT SET',
+        EMAIL_PASS: process.env.EMAIL_PASS ? 'SET' : 'NOT SET',
+        EMAIL_SERVICE: process.env.EMAIL_SERVICE
+      });
     }
 
     return res.success({
@@ -409,8 +416,10 @@ router.post('/register/resend-otp', authLimiter, async (req, res) => {
         subject: emailSubject,
         html: emailHtml
       });
+      console.log(`✅ [AUTH] Resend OTP email sent successfully to ${email}`);
     } catch (emailError) {
-      // Email sending failed - continue anyway
+      // Log the error but continue - OTP is still valid in database
+      console.error(`❌ [AUTH] Failed to resend OTP email to ${email}:`, emailError.message);
     }
 
     res.success({
