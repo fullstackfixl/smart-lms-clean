@@ -197,21 +197,30 @@ router.post('/register/request-otp', authLimiter, async (req, res) => {
         html: emailHtml
       });
       console.log(`✅ [AUTH] OTP email sent successfully to ${email}`);
+      
+      return res.success({
+        email: email.toLowerCase(),
+        organizationName,
+        message: 'Verification code sent to your email'
+      }, 'OTP sent successfully');
+      
     } catch (emailError) {
-      // Log the error but continue - OTP is still valid in database
+      // Email failed - delete the OTP record and return error
+      await VerificationOTP.deleteOne({ email: email.toLowerCase() });
+      
       console.error(`❌ [AUTH] Failed to send OTP email to ${email}:`, emailError.message);
-      console.error('Email config:', {
+      console.error('❌ [AUTH] Email config:', {
         EMAIL_USER: process.env.EMAIL_USER ? 'SET' : 'NOT SET',
         EMAIL_PASS: process.env.EMAIL_PASS ? 'SET' : 'NOT SET',
         EMAIL_SERVICE: process.env.EMAIL_SERVICE
       });
+      
+      return res.error(
+        `Failed to send verification email: ${emailError.message}. Please check your email address or try again later.`,
+        'Email sending failed',
+        500
+      );
     }
-
-    return res.success({
-      email: email.toLowerCase(),
-      organizationName,
-      message: 'Verification code sent to your email'
-    }, 'OTP sent successfully');
 
   } catch (error) {
     return res.error(error.message, 'Failed to send verification code', 400);
@@ -417,14 +426,21 @@ router.post('/register/resend-otp', authLimiter, async (req, res) => {
         html: emailHtml
       });
       console.log(`✅ [AUTH] Resend OTP email sent successfully to ${email}`);
+      
+      res.success({
+        message: 'New verification code sent to your email'
+      }, 'OTP resent successfully');
+      
     } catch (emailError) {
-      // Log the error but continue - OTP is still valid in database
+      // Email failed - return error
       console.error(`❌ [AUTH] Failed to resend OTP email to ${email}:`, emailError.message);
+      
+      return res.error(
+        `Failed to send verification email: ${emailError.message}. Please check your email address or try again later.`,
+        'Email sending failed',
+        500
+      );
     }
-
-    res.success({
-      message: 'New verification code sent to your email'
-    }, 'OTP resent successfully');
 
   } catch (error) {
     return res.error(error.message, 'Failed to resend verification code', 400);

@@ -15,10 +15,6 @@ const {
   helmetConfig,
   mongoSanitizeConfig,
   xssConfig,
-  csrfProtection,
-  attachCsrfToken,
-  csrfTokenEndpoint,
-  csrfErrorHandler,
   sanitizeInput,
   fileUploadSecurity,
   additionalSecurityHeaders
@@ -100,8 +96,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
-  exposedHeaders: ['X-CSRF-Token']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // 2. Body Parser - Parse JSON and URL-encoded bodies
@@ -139,101 +134,93 @@ app.use(limiter);
 // 6. Response Middleware - Standardize response format
 app.use(responseMiddleware);
 
-// 7. CSRF Protection - Enable for state-changing operations
-// Attach CSRF token to all requests
-app.use(attachCsrfToken);
-
-// CSRF token endpoint (public)
-app.get('/api/csrf-token', csrfTokenEndpoint);
-
-// 8. Request Timeout Middleware
+// 7. Request Timeout Middleware
 app.use(ErrorHandler.timeoutHandler(300000)); // 5 minutes timeout for large uploads
 
-// 9. File Upload Security
+// 8. File Upload Security
 app.use(fileUploadSecurity);
 
-// 10. Static Files
+// 9. Static Files
 app.use('/uploads', express.static('uploads'));
 
 // Health check routes (no auth required)
 app.use('/', healthRoutes);
 
-// 11. Routes with Middleware Pipeline
-// Authentication routes (public) - Apply CSRF to POST routes
+// 10. Routes with Middleware Pipeline
+// Authentication routes (public)
 app.use('/auth', authRoutes);
 
 // MFA routes (requires authentication)
 app.use('/api/mfa', mfaRoutes);
 
 // Organization routes
-app.use('/api/organizations', csrfProtection, organizationRoutes);
+app.use('/api/organizations', organizationRoutes);
 
 // Public routes (no auth required)
 app.use('/api', publicRoutes);
 
 // Upload routes
-app.use('/api/upload', csrfProtection, uploadRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Admin routes
-app.use('/api/admin', csrfProtection, adminRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Course management routes
-app.use('/api/courses', csrfProtection, courseRoutes);
-app.use('/api/sections', csrfProtection, sectionRoutes);
-app.use('/api/lessons', csrfProtection, lessonRoutes);
-app.use('/api/enrollments', csrfProtection, enrollmentRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/sections', sectionRoutes);
+app.use('/api/lessons', lessonRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
 
 // User management routes
-app.use('/api/users', csrfProtection, userRoutes);
-app.use('/api/parents', csrfProtection, parentRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/parents', parentRoutes);
 
 // Learning features
-app.use('/api/quizzes', csrfProtection, quizRoutes);
-app.use('/api/gamification', csrfProtection, gamificationRoutes);
-app.use('/api/certificates', csrfProtection, certificateRoutes);
-// app.use('/api/live-classes', csrfProtection, liveClassRoutes); // OLD - Replaced by liveClassesSimple
+app.use('/api/quizzes', quizRoutes);
+app.use('/api/gamification', gamificationRoutes);
+app.use('/api/certificates', certificateRoutes);
 
 // Utility routes
-app.use('/api/translate', csrfProtection, translationRoutes);
-app.use('/api/analytics', csrfProtection, analyticsRoutes);
-app.use('/api/notifications', csrfProtection, notificationRoutes);
+app.use('/api/translate', translationRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Academic management
-app.use('/api/fees', csrfProtection, feesRoutes);
-app.use('/api/attendance', csrfProtection, attendanceRoutes);
-app.use('/api/grades', csrfProtection, gradesRoutes);
-app.use('/api/timetable', csrfProtection, timetableRoutes);
-app.use('/api/events', csrfProtection, eventsRoutes);
+app.use('/api/fees', feesRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/grades', gradesRoutes);
+app.use('/api/timetable', timetableRoutes);
+app.use('/api/events', eventsRoutes);
 
 // Communication
-app.use('/api/forums', csrfProtection, forumRoutes);
-app.use('/api/messages', csrfProtection, messageRoutes);
+app.use('/api/forums', forumRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Question bank
-app.use('/api/question-banks', csrfProtection, questionBankRoutes);
+app.use('/api/question-banks', questionBankRoutes);
 
 // Admin module routes
-app.use('/api/admin/grades', csrfProtection, adminGradesRoutes);
-app.use('/api/admin/timetable', csrfProtection, adminTimetableRoutes);
-app.use('/api/admin/fees', csrfProtection, adminFeesRoutes);
+app.use('/api/admin/grades', adminGradesRoutes);
+app.use('/api/admin/timetable', adminTimetableRoutes);
+app.use('/api/admin/fees', adminFeesRoutes);
 
 // Error reporting
-app.use('/api/errors', csrfProtection, errorRoutes);
+app.use('/api/errors', errorRoutes);
 
 // Instructor routes (JWT + role-based, organization-scoped)
-app.use('/instructor', csrfProtection, instructorRoutes);
+app.use('/instructor', instructorRoutes);
 
 // Video upload routes (JWT + role-based) - mounted on /api/instructor to avoid conflict
 const videoUploadRoutes = require('./routes/videoUpload');
-app.use('/api/instructor', csrfProtection, videoUploadRoutes);
+app.use('/api/instructor', videoUploadRoutes);
 
 // Student lecture routes (JWT + role-based, organization-scoped)
 const studentLectureRoutes = require('./routes/studentLectures');
-app.use('/student', csrfProtection, studentLectureRoutes);
+app.use('/student', studentLectureRoutes);
 
 // Student enrollment routes (JWT + role-based, organization-scoped)
 const studentRoutes = require('./routes/student');
-app.use('/student', csrfProtection, studentRoutes);
+app.use('/student', studentRoutes);
 
 // Live classes and notifications routes (JWT + role-based)
 // Note: These routes are already protected by authMiddleware in the router
@@ -241,23 +228,22 @@ const liveClassesSimpleRoutes = require('./routes/liveClassesSimple');
 app.use(liveClassesSimpleRoutes);
 
 // API routes (organization-scoped, requires auth)
-// Middleware applied: Auth → Authorization → Org Isolation → CSRF
-app.use('/api', csrfProtection, apiRoutes);
+app.use('/api', apiRoutes);
 
 // Platform organization management routes (MUST BE BEFORE /platform routes)
-app.use('/platform/organizations', csrfProtection, platformOrganizationsRoutes);
+app.use('/platform/organizations', platformOrganizationsRoutes);
 
 // Platform analytics routes
-app.use('/platform/analytics', csrfProtection, platformAnalyticsRoutes);
+app.use('/platform/analytics', platformAnalyticsRoutes);
 
 // Platform admins routes
-app.use('/platform/admins', csrfProtection, platformAdminsRoutes);
+app.use('/platform/admins', platformAdminsRoutes);
 
 // Platform admin routes (requires platform_admin role)
-app.use('/platform', csrfProtection, platformRoutes);
+app.use('/platform', platformRoutes);
 
 // Payment routes (requires auth)
-app.use('/payments', csrfProtection, paymentRoutes);
+app.use('/payments', paymentRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -271,7 +257,7 @@ app.get('/api/health', (req, res) => {
         helmet: 'enabled',
         cors: 'enabled',
         rateLimit: 'enabled',
-        csrf: 'enabled',
+        csrf: 'disabled',
         xss: 'enabled',
         mongoSanitize: 'enabled'
       }
@@ -280,7 +266,6 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('*', ErrorHandler.handle404);
-app.use(csrfErrorHandler);
 app.use(ErrorHandler.handle);
 
 process.on('uncaughtException', ErrorHandler.handleUncaughtException);
