@@ -3,7 +3,9 @@
  * Handles all API calls for organization admin features
  */
 
-const API_BASE_URL = 'http://localhost:5000';
+import { API_URL } from '../config'
+
+const API_BASE_URL = API_URL;
 
 // Helper to get CSRF token
 let csrfToken: string | null = null;
