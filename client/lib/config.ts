@@ -5,12 +5,12 @@
 
 export const config = {
   // API Configuration
-  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
-  appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  apiUrl: 'https://smart-lms-clean-1.onrender.com',
+  appUrl: 'https://smart-lms-clean.vercel.app',
   
   // API Endpoints
   api: {
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000',
+    baseUrl: 'https://smart-lms-clean-1.onrender.com',
     csrfToken: '/api/csrf-token',
     auth: {
       me: '/auth/me',

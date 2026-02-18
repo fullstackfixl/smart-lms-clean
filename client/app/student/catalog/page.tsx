@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+const API_URL = 'https://smart-lms-clean-1.onrender.com'
 import { toast } from "sonner"
 import Link from "next/link"
 import { motion } from "framer-motion"
