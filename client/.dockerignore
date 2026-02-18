@@ -1,0 +1,40 @@
+# Node modules (will be installed in container)
+node_modules/
+npm-debug.log*
+
+# Environment files (should be provided at runtime)
+.env
+.env.*
+!.env.production.example
+
+# Next.js build output (will be built in container)
+.next/
+out/
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+coverage/
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# OS files
+.DS_Store
+Thumbs.db
