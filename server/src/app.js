@@ -236,8 +236,9 @@ const studentRoutes = require('./routes/student');
 app.use('/student', csrfProtection, studentRoutes);
 
 // Live classes and notifications routes (JWT + role-based)
+// Note: These routes are already protected by authMiddleware in the router
 const liveClassesSimpleRoutes = require('./routes/liveClassesSimple');
-app.use('/', csrfProtection, liveClassesSimpleRoutes);
+app.use(liveClassesSimpleRoutes);
 
 // API routes (organization-scoped, requires auth)
 // Middleware applied: Auth → Authorization → Org Isolation → CSRF

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const { csrfProtection } = require('../middleware/security');
 const liveClassController = require('../controllers/liveClassController');
 
 // Instructor routes
@@ -8,6 +9,7 @@ router.post(
   '/instructor/live-classes',
   authMiddleware,
   requireRole(['instructor']),
+  csrfProtection,
   liveClassController.scheduleClass
 );
 
@@ -22,6 +24,7 @@ router.patch(
   '/instructor/live-classes/:id',
   authMiddleware,
   requireRole(['instructor']),
+  csrfProtection,
   liveClassController.updateClass
 );
 
@@ -29,6 +32,7 @@ router.delete(
   '/instructor/live-classes/:id',
   authMiddleware,
   requireRole(['instructor']),
+  csrfProtection,
   liveClassController.cancelClass
 );
 
@@ -44,6 +48,7 @@ router.post(
   '/student/live-classes/:id/join',
   authMiddleware,
   requireRole(['student']),
+  csrfProtection,
   liveClassController.joinClass
 );
 
