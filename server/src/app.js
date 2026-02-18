@@ -82,7 +82,6 @@ const allowedOrigins = [
   'http://localhost:3000', // Local development
   process.env.CLIENT_URL || 'http://localhost:3000',
   'https://smart-lms-clean.vercel.app', // Production frontend
-  'https://nonfluent-liable-gerri.ngrok-free.dev', // ngrok tunnel
   '' // Vercel preview deployments
 ];
 

@@ -175,14 +175,18 @@ class EnvironmentValidator {
    */
   validateProduction() {
     const requiredForProduction = [
-      'MONGODB_URI',
-      'REDIS_URL'
+      'MONGODB_URI'
     ];
 
     for (const varName of requiredForProduction) {
       if (!process.env[varName]) {
         this.errors.push(`${varName} is required in production environment`);
       }
+    }
+
+    // Redis is optional if notifications are disabled
+    if (process.env.ENABLE_NOTIFICATIONS === 'true' && !process.env.REDIS_URL) {
+      this.errors.push('REDIS_URL is required when ENABLE_NOTIFICATIONS is true');
     }
 
     // Check for localhost URLs in production
