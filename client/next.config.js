@@ -3,9 +3,6 @@ const nextConfig = {
   reactStrictMode: true,
   compress: true,
   
-  // Output configuration for Docker
-  output: 'standalone',
-  
   // Image optimization
   images: {
     domains: ['res.cloudinary.com', 'localhost'],
