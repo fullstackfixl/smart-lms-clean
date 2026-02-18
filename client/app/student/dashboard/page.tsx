@@ -51,9 +51,16 @@ export default function StudentDashboardPage() {
   const fetchEnrollments = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      
+      if (!token) {
+        toast.error('Please login first')
+        router.push('/login')
+        return
+      }
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/student/enrollments`,
+        `http://localhost:5000/student/enrollments`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -91,6 +98,7 @@ export default function StudentDashboardPage() {
         toast.error(data.message || 'Failed to load enrollments')
       }
     } catch (error) {
+      console.error('Fetch enrollments error:', error)
       toast.error('Failed to load enrollments')
     } finally {
       setLoading(false)

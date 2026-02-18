@@ -91,7 +91,7 @@ export default function PlatformDashboard() {
     
     try {
       console.log('🔄 [DASHBOARD] Starting data fetch...')
-      console.log('🔄 [DASHBOARD] API Base:', 'https://smart-lms-clean-1.onrender.com')
+      console.log('🔄 [DASHBOARD] API Base:', 'http://localhost:5000')
       console.log('🔄 [DASHBOARD] Token:', token?.substring(0, 20) + '...')
       
       // Fetch dashboard stats

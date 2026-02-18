@@ -279,29 +279,60 @@ class Logger {
     ];
 
     const sanitized = { ...meta };
+    const seen = new WeakSet(); // Track visited objects to prevent circular references
 
-    const sanitizeObject = (obj, path = '') => {
-      for (const [key, value] of Object.entries(obj)) {
-        const fullPath = path ? `${path}.${key}` : key;
-        const lowerKey = key.toLowerCase();
-
-        // Check if field is sensitive
-        if (sensitiveFields.some(field => lowerKey.includes(field))) {
-          obj[key] = '[REDACTED]';
-        } else if (value && typeof value === 'object' && !Array.isArray(value)) {
-          sanitizeObject(value, fullPath);
-        } else if (Array.isArray(value)) {
-          value.forEach((item, index) => {
-            if (item && typeof item === 'object') {
-              sanitizeObject(item, `${fullPath}[${index}]`);
-            }
-          });
-        }
+    const sanitizeObject = (obj, path = '', depth = 0) => {
+      // Prevent infinite recursion - max depth of 10
+      if (depth > 10) {
+        return '[MAX_DEPTH]';
       }
+
+      // Handle null or undefined
+      if (obj === null || obj === undefined) {
+        return obj;
+      }
+
+      // Handle circular references
+      if (typeof obj === 'object') {
+        if (seen.has(obj)) {
+          return '[CIRCULAR]'; // Mark circular references
+        }
+        seen.add(obj);
+      }
+
+      // Handle arrays
+      if (Array.isArray(obj)) {
+        return obj.map((item, index) => {
+          if (item && typeof item === 'object') {
+            return sanitizeObject(item, `${path}[${index}]`, depth + 1);
+          }
+          return item;
+        });
+      }
+
+      // Handle objects
+      if (typeof obj === 'object') {
+        const result = {};
+        for (const [key, value] of Object.entries(obj)) {
+          const fullPath = path ? `${path}.${key}` : key;
+          const lowerKey = key.toLowerCase();
+
+          // Check if field is sensitive
+          if (sensitiveFields.some(field => lowerKey.includes(field))) {
+            result[key] = '[REDACTED]';
+          } else if (value && typeof value === 'object') {
+            result[key] = sanitizeObject(value, fullPath, depth + 1);
+          } else {
+            result[key] = value;
+          }
+        }
+        return result;
+      }
+
+      return obj;
     };
 
-    sanitizeObject(sanitized);
-    return sanitized;
+    return sanitizeObject(sanitized);
   }
 
   /**

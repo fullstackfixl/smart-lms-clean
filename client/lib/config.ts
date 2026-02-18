@@ -3,14 +3,28 @@
  * Centralized configuration for API endpoints and app settings
  */
 
+// Get API URL from environment variable or default to localhost
+const getApiUrlFromEnv = () => {
+  if (typeof window !== 'undefined') {
+    // Client-side: use NEXT_PUBLIC_API_URL
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  }
+  // Server-side: use NEXT_PUBLIC_API_URL
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+};
+
+const getAppUrlFromEnv = () => {
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+};
+
 export const config = {
   // API Configuration
-  apiUrl: 'https://smart-lms-clean-1.onrender.com',
-  appUrl: 'https://smart-lms-clean.vercel.app',
+  apiUrl: getApiUrlFromEnv(),
+  appUrl: getAppUrlFromEnv(),
   
   // API Endpoints
   api: {
-    baseUrl: 'https://smart-lms-clean-1.onrender.com',
+    baseUrl: getApiUrlFromEnv(),
     csrfToken: '/api/csrf-token',
     auth: {
       me: '/auth/me',

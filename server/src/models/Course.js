@@ -5,13 +5,11 @@ const courseSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',
     required: false, // Allow null for public courses
-    default: null,
-    index: true
+    default: null
   },
   is_deleted: {
     type: Boolean,
-    default: false,
-    index: true
+    default: false
   },
   deleted_at: {
     type: Date

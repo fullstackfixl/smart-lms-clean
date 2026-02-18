@@ -79,7 +79,8 @@ app.use(additionalSecurityHeaders);
 
 // 1. CORS Middleware - Enable cross-origin requests
 const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:3000', // Support both ports
+  'http://localhost:3000', // Local development
+  process.env.CLIENT_URL || 'http://localhost:3000',
   'https://smart-lms-clean.vercel.app', // Production frontend
   '' // Vercel preview deployments
 ];

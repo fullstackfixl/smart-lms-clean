@@ -8,13 +8,11 @@ const userSchema = new mongoose.Schema({
     ref: 'Organization',
     required: function() { 
       return this.role !== 'platform_admin' && this.role !== 'platformAdmin' && this.role !== 'student'; 
-    },
-    index: true
+    }
   },
   organization_code: {
     type: String,
-    trim: true,
-    index: true
+    trim: true
   },
   email: {
     type: String,
@@ -35,8 +33,7 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     enum: ['platform_admin', 'platformAdmin', 'org_admin', 'instructor', 'student', 'parent', 'support_staff'],
-    required: true,
-    index: true
+    required: true
   },
   parent_link: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -93,8 +90,7 @@ const userSchema = new mongoose.Schema({
   },
   is_deleted: {
     type: Boolean,
-    default: false,
-    index: true
+    default: false
   },
   deleted_at: {
     type: Date

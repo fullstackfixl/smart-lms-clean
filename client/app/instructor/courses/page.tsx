@@ -54,15 +54,25 @@ export default function InstructorCoursesPage() {
   const fetchCourses = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      
+      if (!token) {
+        toast.error('Please login first')
+        router.push('/login')
+        return
+      }
+
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '12',
-        status: statusFilter
+        limit: '12'
       })
 
+      if (statusFilter !== 'all') {
+        params.append('status', statusFilter)
+      }
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/instructor/courses?${params}`,
+        `http://localhost:5000/instructor/courses?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -75,12 +85,15 @@ export default function InstructorCoursesPage() {
       const result = await response.json()
 
       if (result.success) {
-        setCourses(result.data.courses)
-        setTotalPages(result.data.pagination.pages)
+        setCourses(result.data.courses || result.data || [])
+        if (result.data.pagination) {
+          setTotalPages(result.data.pagination.pages)
+        }
       } else {
         toast.error(result.message || 'Failed to load courses')
       }
     } catch (error) {
+      console.error('Fetch courses error:', error)
       toast.error('Failed to load courses')
     } finally {
       setLoading(false)

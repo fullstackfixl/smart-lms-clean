@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, Video, User } from 'lucide-react';
 
-const API_URL = 'https://smart-lms-clean-1.onrender.com';
+const API_URL = 'http://localhost:5000';
 
 interface LiveClass {
   _id: string;

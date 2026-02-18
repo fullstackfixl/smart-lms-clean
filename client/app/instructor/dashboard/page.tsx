@@ -37,9 +37,15 @@ export default function InstructorDashboardPage() {
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      if (!token) {
+        toast.error('Please login first')
+        router.push('/login')
+        return
+      }
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/instructor/dashboard/overview`,
+        'http://localhost:5000/instructor/dashboard/overview',
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -57,6 +63,7 @@ export default function InstructorDashboardPage() {
         toast.error(result.message || 'Failed to load dashboard data')
       }
     } catch (error) {
+      console.error('Dashboard error:', error)
       toast.error('Failed to load dashboard data')
     } finally {
       setLoading(false)

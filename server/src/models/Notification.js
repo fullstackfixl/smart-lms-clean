@@ -4,14 +4,12 @@ const notificationSchema = new mongoose.Schema({
   organization_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',
-    required: true,
-    index: true
+    required: true
   },
   recipient_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   sender_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -29,8 +27,7 @@ const notificationSchema = new mongoose.Schema({
       'live_class_started',
       'certificate_issued',
       'general'
-    ],
-    index: true
+    ]
   },
   title: {
     type: String,
@@ -51,14 +48,12 @@ const notificationSchema = new mongoose.Schema({
   priority: {
     type: String,
     enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium',
-    index: true
+    default: 'medium'
   },
   status: {
     type: String,
     enum: ['pending', 'sent', 'read', 'dismissed'],
-    default: 'pending',
-    index: true
+    default: 'pending'
   },
   channels: {
     email: {
@@ -98,12 +93,10 @@ const notificationSchema = new mongoose.Schema({
     }
   },
   scheduled_for: {
-    type: Date,
-    index: true
+    type: Date
   },
   expires_at: {
-    type: Date,
-    index: true
+    type: Date
   },
   action_url: {
     type: String,

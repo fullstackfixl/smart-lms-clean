@@ -57,7 +57,7 @@ export default function InstructorNotificationsPage() {
         params.append('status', statusFilter)
       }
 
-      const API_URL = 'https://smart-lms-clean-1.onrender.com';
+      const API_URL = 'http://localhost:5000';
       const response = await fetch(`${API_URL}/instructor/notifications?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -84,7 +84,7 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const API_URL = 'https://smart-lms-clean-1.onrender.com'
+      const API_URL = 'http://localhost:5000'
       const response = await fetch(`${API_URL}/instructor/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
@@ -107,7 +107,7 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const API_URL = 'https://smart-lms-clean-1.onrender.com'
+      const API_URL = 'http://localhost:5000'
       const response = await fetch(`${API_URL}/instructor/notifications/read-all`, {
         method: 'PATCH',
         headers: {
@@ -130,7 +130,7 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const API_URL = 'https://smart-lms-clean-1.onrender.com'
+      const API_URL = 'http://localhost:5000'
       const response = await fetch(`${API_URL}/instructor/notifications/${notificationId}`, {
         method: 'DELETE',
         headers: {

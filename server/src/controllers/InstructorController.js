@@ -11,132 +11,80 @@ class InstructorController extends BaseController {
   getDashboardOverview = this.asyncHandler(async (req, res) => {
     const user = req.user;
 
-    // Aggregate all dashboard data
-    const [
-      totalCourses,
-      totalStudents,
-      totalLectures,
-      upcomingClasses,
-      completionStats
-    ] = await Promise.all([
-      // Total courses by instructor
-      Course.countDocuments({
+    try {
+      // Get total courses
+      const totalCourses = await Course.countDocuments({
         instructor_id: user._id,
-        organization_id: user.organization_id,
-        is_deleted: false
-      }),
+        organization_id: user.organization_id
+      });
 
-      // Total unique students enrolled in instructor's courses
-      Enrollment.aggregate([
-        {
-          $lookup: {
-            from: 'courses',
-            localField: 'course_id',
-            foreignField: '_id',
-            as: 'course'
-          }
-        },
-        { $unwind: '$course' },
-        {
-          $match: {
-            'course.instructor_id': user._id,
-            'course.organization_id': user.organization_id,
-            status: 'active'
-          }
-        },
-        {
-          $group: {
-            _id: '$student_id'
-          }
-        },
-        { $count: 'total' }
-      ]).then(result => result[0]?.total || 0),
+      // Get instructor's courses
+      const instructorCourses = await Course.find({
+        instructor_id: user._id,
+        organization_id: user.organization_id
+      }).select('_id');
 
-      // Total lectures across all courses
-      Lesson.aggregate([
-        {
-          $lookup: {
-            from: 'sections',
-            localField: 'section_id',
-            foreignField: '_id',
-            as: 'section'
-          }
-        },
-        { $unwind: '$section' },
-        {
-          $lookup: {
-            from: 'courses',
-            localField: 'section.course_id',
-            foreignField: '_id',
-            as: 'course'
-          }
-        },
-        { $unwind: '$course' },
-        {
-          $match: {
-            'course.instructor_id': user._id,
-            'course.organization_id': user.organization_id
-          }
-        },
-        { $count: 'total' }
-      ]).then(result => result[0]?.total || 0),
+      const courseIds = instructorCourses.map(c => c._id);
 
-      // Upcoming live classes
-      LiveClass.find({
+      // Get total students (unique enrollments)
+      const enrollments = await Enrollment.find({
+        course_id: { $in: courseIds },
+        organization_id: user.organization_id
+      }).distinct('student_id');
+      const totalStudents = enrollments.length;
+
+      // Get total lectures (count modules and lessons)
+      let totalLectures = 0;
+      for (const course of instructorCourses) {
+        const courseData = await Course.findById(course._id);
+        if (courseData && courseData.modules) {
+          courseData.modules.forEach(module => {
+            if (module.lessons) {
+              totalLectures += module.lessons.length;
+            }
+          });
+        }
+      }
+
+      // Get upcoming live classes
+      const upcomingClasses = await LiveClass.find({
         instructor_id: user._id,
         organization_id: user.organization_id,
         scheduled_date: { $gte: new Date() },
-        status: { $in: ['scheduled', 'live'] },
-        is_active: true
+        status: { $in: ['scheduled', 'live'] }
       })
         .sort({ scheduled_date: 1 })
         .limit(5)
         .populate('course_id', 'title')
-        .lean(),
+        .lean();
 
-      // Completion rate
-      Enrollment.aggregate([
-        {
-          $lookup: {
-            from: 'courses',
-            localField: 'course_id',
-            foreignField: '_id',
-            as: 'course'
-          }
-        },
-        { $unwind: '$course' },
-        {
-          $match: {
-            'course.instructor_id': user._id,
-            'course.organization_id': user.organization_id,
-            status: 'active'
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            totalEnrollments: { $sum: 1 },
-            completedEnrollments: {
-              $sum: { $cond: [{ $eq: ['$completion_percentage', 100] }, 1, 0] }
-            },
-            avgCompletion: { $avg: '$completion_percentage' }
-          }
+      // Get completion stats
+      const allEnrollments = await Enrollment.find({
+        course_id: { $in: courseIds },
+        organization_id: user.organization_id
+      });
+
+      const completedEnrollments = allEnrollments.filter(e => e.status === 'completed');
+      const completionRate = allEnrollments.length > 0 
+        ? (completedEnrollments.length / allEnrollments.length) * 100 
+        : 0;
+
+      return res.success({
+        totalCourses,
+        totalStudents,
+        totalLectures,
+        upcomingClasses,
+        recentSubmissions: [],
+        completionRate,
+        completionStats: {
+          total: allEnrollments.length,
+          completed: completedEnrollments.length
         }
-      ]).then(result => result[0] || { totalEnrollments: 0, completedEnrollments: 0, avgCompletion: 0 })
-    ]);
-
-    this.sendSuccess(res, {
-      totalCourses,
-      totalStudents,
-      totalLectures,
-      upcomingClasses,
-      recentSubmissions: [], // TODO: Implement when assignment model is ready
-      completionRate: completionStats.avgCompletion || 0,
-      completionStats: {
-        total: completionStats.totalEnrollments,
-        completed: completionStats.completedEnrollments
-      }
-    }, 'Dashboard overview retrieved successfully');
+      });
+    } catch (error) {
+      console.error('Dashboard overview error:', error);
+      return res.error('Failed to load dashboard data', 500);
+    }
   });
 
   // Helper: ensure instructor owns course within their organization

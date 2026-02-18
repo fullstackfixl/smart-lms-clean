@@ -26,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
 interface Course {
@@ -43,8 +42,10 @@ interface LiveClass {
   title: string
   description?: string
   scheduled_date: string
+  start_time: string
   duration_minutes: number
   meeting_link?: string
+  meeting_url?: string
   status: "scheduled" | "live" | "completed" | "cancelled"
   is_active: boolean
   createdAt: string
@@ -52,7 +53,6 @@ interface LiveClass {
 
 export default function LiveClassesPage() {
   const router = useRouter()
-  const { token } = useAuth()
 
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
   const [courses, setCourses] = useState<Course[]>([])
@@ -64,16 +64,21 @@ export default function LiveClassesPage() {
     title: "",
     description: "",
     scheduled_date: "",
-    duration_minutes: 60,
-    meeting_link: ""
+    start_time: "",
+    duration_minutes: 60
   })
 
   useEffect(() => {
     loadData()
-  }, [token])
+  }, [])
 
   async function loadData() {
-    if (!token) return
+    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+    if (!token) {
+      toast.error('Please login first')
+      router.push('/login')
+      return
+    }
     setLoading(true)
     try {
       await Promise.all([loadLiveClasses(), loadCourses()])
@@ -85,9 +90,10 @@ export default function LiveClassesPage() {
   }
 
   async function loadLiveClasses() {
+    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
     if (!token) return
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/live-classes`, {
+      const res = await fetch(`http://localhost:5000/instructor/live-classes`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -95,7 +101,7 @@ export default function LiveClassesPage() {
       })
       const data = await res.json()
       if (data.success && data.data) {
-        setLiveClasses(data.data.liveClasses || [])
+        setLiveClasses(data.data.classes || [])
       }
     } catch (error) {
       console.error("Failed to load live classes:", error)
@@ -103,9 +109,10 @@ export default function LiveClassesPage() {
   }
 
   async function loadCourses() {
+    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
     if (!token) return
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/instructor/courses?limit=100`, {
+      const res = await fetch(`http://localhost:5000/instructor/courses?limit=100`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -121,18 +128,19 @@ export default function LiveClassesPage() {
   }
 
   async function handleCreateClass() {
-    if (!token || !classForm.course_id || !classForm.title || !classForm.scheduled_date) {
+    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+    if (!token || !classForm.course_id || !classForm.title || !classForm.scheduled_date || !classForm.start_time) {
       toast.error("Please fill in all required fields")
       return
     }
 
     try {
-      const csrfRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/csrf-token`, {
+      const csrfRes = await fetch(`http://localhost:5000/api/csrf-token`, {
         credentials: "include",
       })
       const csrfData = await csrfRes.json()
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/live-classes`, {
+      const res = await fetch(`http://localhost:5000/instructor/live-classes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -145,12 +153,12 @@ export default function LiveClassesPage() {
 
       const data = await res.json()
       if (data.success) {
-        toast.success("Live class created successfully")
+        toast.success("Live class created successfully. Notifications sent to all students!")
         setShowDialog(false)
         resetForm()
         loadLiveClasses()
       } else {
-        toast.error(data.error || "Failed to create live class")
+        toast.error(data.message || "Failed to create live class")
       }
     } catch (error) {
       toast.error("Failed to create live class")
@@ -158,19 +166,20 @@ export default function LiveClassesPage() {
   }
 
   async function handleUpdateClass() {
-    if (!token || !editingClass || !classForm.title || !classForm.scheduled_date) {
+    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+    if (!token || !editingClass || !classForm.title || !classForm.scheduled_date || !classForm.start_time) {
       toast.error("Please fill in all required fields")
       return
     }
 
     try {
-      const csrfRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/csrf-token`, {
+      const csrfRes = await fetch(`http://localhost:5000/api/csrf-token`, {
         credentials: "include",
       })
       const csrfData = await csrfRes.json()
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/live-classes/${editingClass._id}`, {
-        method: "PUT",
+      const res = await fetch(`http://localhost:5000/instructor/live-classes/${editingClass._id}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -188,7 +197,7 @@ export default function LiveClassesPage() {
         resetForm()
         loadLiveClasses()
       } else {
-        toast.error(data.error || "Failed to update live class")
+        toast.error(data.message || "Failed to update live class")
       }
     } catch (error) {
       toast.error("Failed to update live class")
@@ -196,15 +205,16 @@ export default function LiveClassesPage() {
   }
 
   async function handleDeleteClass(id: string) {
+    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
     if (!token || !confirm("Delete this live class?")) return
 
     try {
-      const csrfRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/csrf-token`, {
+      const csrfRes = await fetch(`http://localhost:5000/api/csrf-token`, {
         credentials: "include",
       })
       const csrfData = await csrfRes.json()
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/live-classes/${id}`, {
+      const res = await fetch(`http://localhost:5000/instructor/live-classes/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -218,7 +228,7 @@ export default function LiveClassesPage() {
         toast.success("Live class deleted successfully")
         loadLiveClasses()
       } else {
-        toast.error(data.error || "Failed to delete live class")
+        toast.error(data.message || "Failed to delete live class")
       }
     } catch (error) {
       toast.error("Failed to delete live class")
@@ -228,13 +238,14 @@ export default function LiveClassesPage() {
   function openDialog(liveClass?: LiveClass) {
     if (liveClass) {
       setEditingClass(liveClass)
+      const scheduledDate = new Date(liveClass.scheduled_date)
       setClassForm({
         course_id: liveClass.course_id._id,
         title: liveClass.title,
         description: liveClass.description || "",
-        scheduled_date: new Date(liveClass.scheduled_date).toISOString().slice(0, 16),
-        duration_minutes: liveClass.duration_minutes,
-        meeting_link: liveClass.meeting_link || ""
+        scheduled_date: scheduledDate.toISOString().split('T')[0],
+        start_time: liveClass.start_time || "",
+        duration_minutes: liveClass.duration_minutes
       })
     } else {
       setEditingClass(null)
@@ -249,8 +260,8 @@ export default function LiveClassesPage() {
       title: "",
       description: "",
       scheduled_date: "",
-      duration_minutes: 60,
-      meeting_link: ""
+      start_time: "",
+      duration_minutes: 60
     })
   }
 
@@ -361,15 +372,15 @@ export default function LiveClassesPage() {
                       {new Date(liveClass.scheduled_date).toLocaleTimeString()} ({liveClass.duration_minutes} min)
                     </span>
                   </div>
-                  {liveClass.meeting_link && (
+                  {(liveClass.meeting_url || liveClass.meeting_link) && (
                     <a
-                      href={liveClass.meeting_link}
+                      href={liveClass.meeting_url || liveClass.meeting_link}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 text-sm text-orange-600 hover:text-orange-700"
                     >
                       <LinkIcon className="h-4 w-4" />
-                      Join Meeting
+                      Join Meeting (Jitsi)
                     </a>
                   )}
                 </div>
@@ -486,38 +497,38 @@ export default function LiveClassesPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="scheduled_date">Date & Time *</Label>
+                <Label htmlFor="scheduled_date">Date *</Label>
                 <Input
                   id="scheduled_date"
-                  type="datetime-local"
+                  type="date"
                   value={classForm.scheduled_date}
                   onChange={(e) => setClassForm({ ...classForm, scheduled_date: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="duration">Duration (minutes) *</Label>
+                <Label htmlFor="start_time">Time *</Label>
                 <Input
-                  id="duration"
-                  type="number"
-                  min="15"
-                  step="15"
-                  value={classForm.duration_minutes}
-                  onChange={(e) =>
-                    setClassForm({ ...classForm, duration_minutes: parseInt(e.target.value) || 60 })
-                  }
+                  id="start_time"
+                  type="time"
+                  value={classForm.start_time}
+                  onChange={(e) => setClassForm({ ...classForm, start_time: e.target.value })}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="meeting_link">Meeting Link</Label>
+              <Label htmlFor="duration">Duration (minutes) *</Label>
               <Input
-                id="meeting_link"
-                placeholder="https://zoom.us/j/..."
-                value={classForm.meeting_link}
-                onChange={(e) => setClassForm({ ...classForm, meeting_link: e.target.value })}
+                id="duration"
+                type="number"
+                min="15"
+                step="15"
+                value={classForm.duration_minutes}
+                onChange={(e) =>
+                  setClassForm({ ...classForm, duration_minutes: parseInt(e.target.value) || 60 })
+                }
               />
               <p className="text-xs text-muted-foreground">
-                Zoom, Google Meet, or any video conferencing link
+                A Jitsi meeting link will be automatically generated and sent to all students via email
               </p>
             </div>
           </div>

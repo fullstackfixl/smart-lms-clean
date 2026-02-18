@@ -76,9 +76,15 @@ export default function CourseDetailsPage() {
   const fetchCourseDetails = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      if (!token) {
+        toast.error('Please login first')
+        router.push('/login')
+        return
+      }
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/student/courses/${courseId}`,
+        `http://localhost:5000/student/courses/${courseId}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -110,9 +116,15 @@ export default function CourseDetailsPage() {
   const handleEnroll = async () => {
     setEnrolling(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      if (!token) {
+        toast.error('Please login first')
+        router.push('/login')
+        return
+      }
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/student/enroll/${courseId}`,
+        `http://localhost:5000/student/enroll/${courseId}`,
         {
           method: 'POST',
           headers: {

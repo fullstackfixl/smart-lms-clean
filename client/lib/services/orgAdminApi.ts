@@ -3,7 +3,7 @@
  * Handles all API calls for organization admin features
  */
 
-const API_BASE_URL = 'https://smart-lms-clean-1.onrender.com';
+const API_BASE_URL = 'http://localhost:5000';
 
 // Helper to get CSRF token
 let csrfToken: string | null = null;

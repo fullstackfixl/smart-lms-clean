@@ -32,13 +32,11 @@ const organizationSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['active', 'suspended', 'deleted'],
-    default: 'active',
-    index: true
+    default: 'active'
   },
   is_deleted: {
     type: Boolean,
-    default: false,
-    index: true
+    default: false
   },
   deleted_at: {
     type: Date

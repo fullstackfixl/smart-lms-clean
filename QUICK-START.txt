@@ -1,0 +1,116 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                    DEMO QUICK START                           ║
+╚═══════════════════════════════════════════════════════════════╝
+
+┌───────────────────────────────────────────────────────────────┐
+│ STEP 1: START BACKEND (Terminal 1)                           │
+└───────────────────────────────────────────────────────────────┘
+cd server
+npm start
+
+✓ Wait for: "Server running on port 5000"
+✓ Wait for: "MongoDB Connected"
+
+┌───────────────────────────────────────────────────────────────┐
+│ STEP 2: START NGROK (Terminal 2)                             │
+└───────────────────────────────────────────────────────────────┘
+ngrok http 5000
+
+📋 COPY THE HTTPS URL (e.g., https://abc123.ngrok-free.app)
+
+┌───────────────────────────────────────────────────────────────┐
+│ STEP 3: UPDATE FILES                                          │
+└───────────────────────────────────────────────────────────────┘
+
+FILE: client/.env.production
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NEXT_PUBLIC_API_URL=https://YOUR-NGROK-URL.ngrok-free.app
+NEXT_PUBLIC_APP_URL=https://smart-lms-clean.vercel.app
+NODE_ENV=production
+
+FILE: server/src/app.js (line 82)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const allowedOrigins = [
+  'http://localhost:3000',
+  process.env.CLIENT_URL || 'http://localhost:3000',
+  'https://smart-lms-clean.vercel.app',
+  'https://YOUR-NGROK-URL.ngrok-free.app', // ADD THIS LINE
+  ''
+];
+
+┌───────────────────────────────────────────────────────────────┐
+│ STEP 4: RESTART BACKEND                                       │
+└───────────────────────────────────────────────────────────────┘
+Go to Terminal 1
+Press: Ctrl+C
+Run: npm start
+
+┌───────────────────────────────────────────────────────────────┐
+│ STEP 5: DEPLOY TO VERCEL (Terminal 3)                        │
+└───────────────────────────────────────────────────────────────┘
+cd client
+vercel --prod
+
+✓ Wait for deployment to complete
+✓ Note the deployment URL
+
+┌───────────────────────────────────────────────────────────────┐
+│ STEP 6: TEST                                                  │
+└───────────────────────────────────────────────────────────────┘
+1. Open: https://smart-lms-clean.vercel.app/login
+2. Login: instructor@test.com / password123
+3. Check: Dashboard shows real data
+
+╔═══════════════════════════════════════════════════════════════╗
+║                    TEST ACCOUNTS                              ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Instructor:  instructor@test.com  / password123
+Student 1:   student1@test.com    / password123
+Student 2:   student2@test.com    / password123
+Org Admin:   orgadmin@test.com    / password123
+
+╔═══════════════════════════════════════════════════════════════╗
+║                    DEMO FLOW (8 MIN)                          ║
+╚═══════════════════════════════════════════════════════════════╝
+
+1. Login & Dashboard         (1 min)
+2. Course Management          (2 min)
+3. Live Classes              (1 min)
+4. Student View              (2 min)
+5. Architecture Overview     (2 min)
+
+╔═══════════════════════════════════════════════════════════════╗
+║                    TROUBLESHOOTING                            ║
+╚═══════════════════════════════════════════════════════════════╝
+
+CORS Error?
+→ Add ngrok URL to server/src/app.js
+→ Restart backend
+
+401 Error?
+→ Clear cookies
+→ Login again
+
+Can't Connect?
+→ Check backend running
+→ Check ngrok active
+→ Verify URLs match
+
+╔═══════════════════════════════════════════════════════════════╗
+║                    KEEP THESE OPEN                            ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Terminal 1: Backend (npm start)
+Terminal 2: ngrok (ngrok http 5000)
+
+DON'T CLOSE DURING DEMO!
+
+╔═══════════════════════════════════════════════════════════════╗
+║                    YOU'RE READY! 🚀                           ║
+╚═══════════════════════════════════════════════════════════════╝
+
+For detailed instructions, see:
+- DEMO-READY.md
+- FINAL-STATUS.md
+- PRE-DEMO-CHECKLIST.txt

@@ -40,7 +40,7 @@ export default function SettingsPage() {
         setLoadingSettings(true)
         
         // Use /auth/me endpoint which already has organization data
-        const API_URL = 'https://smart-lms-clean-1.onrender.com'
+        const API_URL = 'http://localhost:5000'
         const response = await fetch(`${API_URL}/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`

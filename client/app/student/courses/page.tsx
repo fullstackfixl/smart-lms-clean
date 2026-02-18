@@ -47,7 +47,12 @@ export default function StudentCoursesPage() {
   const fetchCourses = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
+      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      if (!token) {
+        toast.error('Please login first')
+        return
+      }
+
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '12'
@@ -58,7 +63,7 @@ export default function StudentCoursesPage() {
       if (level !== 'all') params.append('level', level)
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/student/courses?${params}`,
+        `http://localhost:5000/student/courses?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,

@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const API_URL = 'https://smart-lms-clean-1.onrender.com'
+const API_URL = 'http://localhost:5000'
 import { toast } from "sonner"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -55,7 +55,10 @@ export default function StudentCatalogPage() {
     setLoading(true)
     try {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-      if (!token) return
+      if (!token) {
+        toast.error('Please login first')
+        return
+      }
 
       const params = new URLSearchParams({
         page: page.toString(),

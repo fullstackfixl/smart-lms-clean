@@ -69,6 +69,15 @@ export default function CourseDetailPage() {
   const { token } = useAuth()
   const courseId = params.id as string
 
+  // Get token directly from storage as fallback
+  const getToken = () => {
+    if (token) return token
+    if (typeof window !== 'undefined') {
+      return window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+    }
+    return null
+  }
+
   const [course, setCourse] = useState<Course | null>(null)
   const [modules, setModules] = useState<Module[]>([])
   const [loading, setLoading] = useState(true)
@@ -114,6 +123,38 @@ export default function CourseDetailPage() {
       toast.error("Failed to load course")
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handlePublishCourse() {
+    const authToken = getToken()
+    if (!authToken || !courseId) return
+
+    if (!confirm("Publish this course? Students in your organization will be able to see and enroll in it.")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`http://localhost:5000/instructor/courses/${courseId}/publish`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success("Course published successfully!")
+        loadCourseData() // Reload to update status
+      } else {
+        toast.error(data.message || "Failed to publish course")
+      }
+    } catch (error) {
+      console.error('Publish course error:', error)
+      toast.error("Failed to publish course")
     }
   }
 
@@ -180,7 +221,8 @@ export default function CourseDetailPage() {
   }
 
   async function handleCreateLesson() {
-    if (!token || !selectedModuleId || !lessonForm.title) {
+    const authToken = getToken()
+    if (!authToken || !selectedModuleId || !lessonForm.title) {
       toast.error("Lesson title is required")
       return
     }
@@ -196,7 +238,7 @@ export default function CourseDetailPage() {
         toast.info("Uploading video...")
         
         // Get CSRF token
-        const csrfRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/csrf-token`, {
+        const csrfRes = await fetch(`http://localhost:5000/api/csrf-token`, {
           credentials: 'include'
         })
         const csrfData = await csrfRes.json()
@@ -233,8 +275,8 @@ export default function CourseDetailPage() {
           xhr.addEventListener('error', () => reject(new Error('Upload failed')))
           xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')))
           
-          xhr.open('POST', `${process.env.NEXT_PUBLIC_API_URL}/api/upload/video`)
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+          xhr.open('POST', `http://localhost:5000/api/upload/video`)
+          xhr.setRequestHeader('Authorization', `Bearer ${authToken}`)
           xhr.setRequestHeader('X-CSRF-Token', csrfData.data.csrfToken)
           xhr.withCredentials = true
           xhr.send(formData)
@@ -244,7 +286,7 @@ export default function CourseDetailPage() {
           const uploadData = await uploadPromise
           
           if (!uploadData.success) {
-            toast.error(uploadData.error || "Failed to upload video")
+            toast.error(uploadData.message || uploadData.error || "Failed to upload video")
             setIsUploading(false)
             setUploadProgress(0)
             return
@@ -263,7 +305,7 @@ export default function CourseDetailPage() {
           toast.success("Video uploaded successfully!")
         } catch (error) {
           console.error('Upload error:', error)
-          toast.error("Failed to upload video")
+          toast.error(error instanceof Error ? error.message : "Failed to upload video")
           setIsUploading(false)
           setUploadProgress(0)
           return
@@ -273,7 +315,7 @@ export default function CourseDetailPage() {
         contentData = { videoUrl: lessonForm.content }
       }
 
-      const res = await instructorApi.createLesson(token, selectedModuleId, {
+      const res = await instructorApi.createLesson(authToken, selectedModuleId, {
         title: lessonForm.title,
         description: lessonForm.description,
         type: lessonForm.type,
@@ -445,14 +487,38 @@ export default function CourseDetailPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">{course.title}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">{course.title}</h1>
+              {course.status === 'draft' && (
+                <span className="px-3 py-1 text-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 rounded-full">
+                  Draft
+                </span>
+              )}
+              {course.status === 'published' && (
+                <span className="px-3 py-1 text-sm bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 rounded-full">
+                  Published
+                </span>
+              )}
+            </div>
             <p className="text-muted-foreground mt-1">Manage course content</p>
           </div>
         </div>
-        <Button onClick={() => openModuleDialog()} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Module
-        </Button>
+        <div className="flex items-center gap-2">
+          {course.status === 'draft' && (
+            <Button 
+              onClick={handlePublishCourse}
+              variant="default"
+              className="gap-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Publish Course
+            </Button>
+          )}
+          <Button onClick={() => openModuleDialog()} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Module
+          </Button>
+        </div>
       </div>
 
       {/* Modules & Lessons */}
