@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { API_URL } from "@/lib/config"
 
 interface Notification {
   _id: string
@@ -57,7 +58,7 @@ export default function InstructorNotificationsPage() {
         params.append('status', statusFilter)
       }
 
-      const API_URL = 'http://localhost:5000';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:5000';
       const response = await fetch(`${API_URL}/instructor/notifications?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
