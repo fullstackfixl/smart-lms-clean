@@ -30,8 +30,18 @@ async function testLiveClassCreation() {
     });
 
     if (!course) {
-      console.error('❌ No course found for this instructor');
-      return;
+      console.log('⚠️ No course found for this instructor. Creating a test course...');
+      course = await Course.create({
+        title: 'Test Live Class Course ' + Date.now(),
+        description: 'Auto-created course for live class test',
+        organization_id: instructor.organization_id,
+        instructor_id: instructor._id,
+        price: 0,
+        category: 'Test',
+        status: 'published',
+        isPublic: false
+      });
+      console.log('✅ Created test course:', course._id);
     }
 
     console.log('\n📚 Course:', {
@@ -44,7 +54,7 @@ async function testLiveClassCreation() {
 
     // Try to create a live class
     console.log('\n🎥 Creating live class...');
-    
+
     const liveClassData = {
       organization_id: instructor.organization_id,
       course_id: course._id,

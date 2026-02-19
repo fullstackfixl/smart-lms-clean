@@ -1,0 +1,6 @@
+Connecting to: cluster0.r9k9vap.mongodb.net/smart-lms?retryWrites=true&w=majority&appName=Cluster0
+✅ Connected to MongoDB
+Instructor found: 6996bcacba6386d8f380f01d
+Org: 6996bb80ba6386d8f380efe5
+Found 0 courses for instructor (ignoring org filter).
+No courses found for this instructor.
