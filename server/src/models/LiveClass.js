@@ -453,36 +453,82 @@ liveClassSchema.statics.findByInstructor = function(instructorId, organizationId
 liveClassSchema.pre('save', async function(next) {
   if (this.isNew || this.isModified('course_id') || this.isModified('instructor_id')) {
     try {
-      // Verify course belongs to same organization
+      // Verify course exists
       const Course = mongoose.model('Course');
       const course = await Course.findById(this.course_id);
       
       if (!course) {
+        console.error('❌ [LiveClass Pre-Save] Course not found:', this.course_id);
         return next(new Error('Course not found'));
       }
       
-      if (course.organization_id.toString() !== this.organization_id.toString()) {
-        return next(new Error('Course must belong to the same organization'));
+      console.log('🔍 [LiveClass Pre-Save] Validating organization consistency:', {
+        liveClassOrgId: this.organization_id?.toString(),
+        courseOrgId: course.organization_id?.toString(),
+        courseTitle: course.title,
+        instructorId: this.instructor_id?.toString()
+      });
+      
+      // Handle null organization_id for public courses - skip validation
+      if (!course.organization_id || !this.organization_id) {
+        console.warn('⚠️  [LiveClass Pre-Save] Null organization_id detected, skipping org validation');
+        // Continue without organization validation for public courses
+      } else {
+        // Verify course belongs to same organization
+        const courseOrgId = course.organization_id.toString();
+        const liveClassOrgId = this.organization_id.toString();
+        
+        if (courseOrgId !== liveClassOrgId) {
+          console.error('❌ [LiveClass Pre-Save] Organization mismatch:', {
+            courseOrgId,
+            liveClassOrgId,
+            courseTitle: course.title
+          });
+          return next(new Error('Course must belong to the same organization'));
+        }
       }
       
-      // Verify instructor belongs to same organization
+      // Verify instructor exists
       const User = mongoose.model('User');
       const instructor = await User.findById(this.instructor_id);
       
       if (!instructor) {
+        console.error('❌ [LiveClass Pre-Save] Instructor not found:', this.instructor_id);
         return next(new Error('Instructor not found'));
       }
       
-      if (instructor.organization_id.toString() !== this.organization_id.toString()) {
-        return next(new Error('Instructor must belong to the same organization'));
+      console.log('🔍 [LiveClass Pre-Save] Instructor details:', {
+        instructorId: instructor._id.toString(),
+        instructorOrgId: instructor.organization_id?.toString(),
+        instructorRole: instructor.role,
+        instructorName: instructor.name
+      });
+      
+      // Verify instructor belongs to same organization (if org is set)
+      if (instructor.organization_id && this.organization_id) {
+        const instructorOrgId = instructor.organization_id.toString();
+        const liveClassOrgId = this.organization_id.toString();
+        
+        if (instructorOrgId !== liveClassOrgId) {
+          console.error('❌ [LiveClass Pre-Save] Instructor organization mismatch:', {
+            instructorOrgId,
+            liveClassOrgId,
+            instructorName: instructor.name
+          });
+          return next(new Error('Instructor must belong to the same organization'));
+        }
       }
       
       // Verify instructor has instructor, org_admin, or platform_admin role
       if (!['instructor', 'org_admin', 'admin', 'platform_admin', 'platformAdmin'].includes(instructor.role)) {
+        console.error('❌ [LiveClass Pre-Save] Invalid instructor role:', instructor.role);
         return next(new Error('User must be an instructor or admin to create live classes'));
       }
       
+      console.log('✅ [LiveClass Pre-Save] Validation passed');
+      
     } catch (error) {
+      console.error('❌ [LiveClass Pre-Save] Validation error:', error);
       return next(error);
     }
   }
@@ -496,6 +542,7 @@ liveClassSchema.pre('save', async function(next) {
       const jitsiDomain = process.env.JITSI_DOMAIN || 'meet.jit.si';
       this.meeting_url = `https://${jitsiDomain}/${this.meeting_room_id}`;
     }
+    console.log('✅ [LiveClass Pre-Save] Meeting URL generated:', this.meeting_url);
   }
   
   next();

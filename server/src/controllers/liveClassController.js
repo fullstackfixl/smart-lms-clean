@@ -20,8 +20,23 @@ class LiveClassController extends BaseController {
     const { title, description, course_id, scheduled_date, start_time, duration_minutes } = req.body;
     const user = req.user;
 
+    console.log('📅 [LiveClass] Schedule request received:', {
+      title,
+      course_id,
+      scheduled_date,
+      start_time,
+      duration_minutes,
+      user: {
+        id: user._id,
+        name: user.name,
+        role: user.role,
+        organization_id: user.organization_id
+      }
+    });
+
     // Validation
     if (!title || !course_id || !scheduled_date || !start_time || !duration_minutes) {
+      console.error('❌ [LiveClass] Missing required fields');
       return res.status(400).json({
         success: false,
         message: 'Missing required fields: title, course_id, scheduled_date, start_time, duration_minutes'
@@ -36,12 +51,41 @@ class LiveClassController extends BaseController {
       is_deleted: false
     });
 
+    console.log('🔍 [LiveClass] Course lookup result:', {
+      found: !!course,
+      courseId: course_id,
+      expectedOrgId: user.organization_id,
+      expectedInstructorId: user._id
+    });
+
     if (!course) {
+      // Try to find the course without instructor filter to see if it exists
+      const anyCourse = await Course.findOne({ _id: course_id, is_deleted: false });
+      
+      if (!anyCourse) {
+        console.error('❌ [LiveClass] Course not found at all');
+        return res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+      }
+      
+      console.error('❌ [LiveClass] Course found but permission denied:', {
+        courseOrgId: anyCourse.organization_id,
+        userOrgId: user.organization_id,
+        courseInstructorId: anyCourse.instructor_id,
+        userId: user._id,
+        orgMatch: anyCourse.organization_id?.toString() === user.organization_id?.toString(),
+        instructorMatch: anyCourse.instructor_id?.toString() === user._id?.toString()
+      });
+      
       return res.status(404).json({
         success: false,
         message: 'Course not found or you do not have permission to schedule classes for this course'
       });
     }
+
+    console.log('✅ [LiveClass] Course verified, creating live class...');
 
     // Create live class
     const liveClass = await LiveClass.create({
@@ -55,6 +99,8 @@ class LiveClassController extends BaseController {
       duration_minutes: parseInt(duration_minutes),
       status: 'scheduled'
     });
+
+    console.log('✅ [LiveClass] Live class created successfully:', liveClass._id);
 
     // Fetch all students in the organization (non-blocking)
     setImmediate(async () => {
