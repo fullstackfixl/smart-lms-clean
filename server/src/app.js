@@ -4,22 +4,55 @@ const app = express();
 
 // CORS - allow Vercel frontend
 app.use(cors({
-  origin: ['https://smart-lms-clean.vercel.app', 'https://smart-lms-clean-1.onrender.com', 'http://localhost:3000', 'http://localhost:3001'],
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'https://smart-lms-clean.vercel.app',
+      'https://smart-lms-clean-1.onrender.com',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ];
+    
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('❌ [CORS] Blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Set-Cookie'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Log all requests
+app.use((req, res, next) => {
+  console.log(`📥 [${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log(`   Origin: ${req.headers.origin || 'none'}`);
+  next();
+});
+
 // Health check
 app.get('/', (req, res) => {
-  res.json({ success: true, message: 'Server running' });
+  res.json({ success: true, message: 'Server running', timestamp: new Date().toISOString() });
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'API running', timestamp: new Date().toISOString() });
+  res.json({ 
+    success: true, 
+    message: 'API running', 
+    timestamp: new Date().toISOString(),
+    cors: 'enabled',
+    env: process.env.NODE_ENV
+  });
 });
 
 // Load routes safely
