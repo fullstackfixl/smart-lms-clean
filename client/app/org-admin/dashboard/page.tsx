@@ -75,28 +75,24 @@ export default function OrgAdminDashboard() {
     { 
       title: "Total Students", 
       value: metrics.metrics.totalStudents, 
-      change: 12.5, 
       icon: Users, 
       gradient: "from-blue-500 to-cyan-500" 
     },
     { 
       title: "Total Instructors", 
       value: metrics.metrics.totalInstructors, 
-      change: 8.3, 
       icon: UserCheck, 
       gradient: "from-purple-500 to-pink-500" 
     },
     { 
       title: "Total Courses", 
       value: metrics.metrics.activeCourses, 
-      change: 15.2, 
       icon: BookOpen, 
       gradient: "from-orange-500 to-red-500" 
     },
     { 
       title: "Total Revenue", 
-      value: metrics.metrics.totalRevenue, 
-      change: 23.1, 
+      value: `$${metrics.metrics.totalRevenue.toLocaleString()}`, 
       icon: DollarSign, 
       gradient: "from-emerald-500 to-teal-500" 
     },
@@ -130,78 +126,97 @@ export default function OrgAdminDashboard() {
         ))}
       </div>
 
-      {/* Organization Overview */}
+      {/* Organization Overview - Real Data from API */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
         className="grid grid-cols-1 lg:grid-cols-3 gap-6"
       >
+        {/* Attendance Overview */}
         <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
               <Activity className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-200">Active Users</h3>
+            <h3 className="text-lg font-semibold text-slate-200">Attendance Rate</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Active</span>
-              <span className="text-2xl font-bold text-emerald-400">1,856</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Inactive</span>
-              <span className="text-2xl font-bold text-slate-500">332</span>
+              <span className="text-sm text-slate-400">Average</span>
+              <span className="text-2xl font-bold text-emerald-400">
+                {metrics.metrics.attendancePercentage || 0}%
+              </span>
             </div>
             <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500" style={{ width: "84.8%" }} />
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500" 
+                style={{ width: `${metrics.metrics.attendancePercentage || 0}%` }} 
+              />
             </div>
+            <p className="text-xs text-slate-400 mt-2">
+              {metrics.metrics.attendancePercentage > 0 
+                ? 'Based on recorded attendance' 
+                : 'No attendance data yet'}
+            </p>
           </div>
         </div>
 
+        {/* Pending Fees */}
         <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-white" />
+              <DollarSign className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-200">New Users (30d)</h3>
+            <h3 className="text-lg font-semibold text-slate-200">Pending Fees</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">This Month</span>
-              <span className="text-2xl font-bold text-blue-400">284</span>
+              <span className="text-sm text-slate-400">Amount</span>
+              <span className="text-2xl font-bold text-blue-400">
+                ${(metrics.metrics.pendingFees || 0).toLocaleString()}
+              </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Last Month</span>
-              <span className="text-2xl font-bold text-slate-500">198</span>
+              <span className="text-sm text-slate-400">Collected</span>
+              <span className="text-2xl font-bold text-emerald-400">
+                ${(metrics.metrics.totalRevenue || 0).toLocaleString()}
+              </span>
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <span className="text-emerald-400 font-medium">+43.4% growth</span>
-            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              {metrics.metrics.pendingFees > 0 
+                ? 'Outstanding payments to collect' 
+                : 'All fees collected'}
+            </p>
           </div>
         </div>
 
+        {/* Course Completion */}
         <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <UserCheck className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-200">Total Enrollments</h3>
+            <h3 className="text-lg font-semibold text-slate-200">Completion Rate</h3>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Active</span>
-              <span className="text-2xl font-bold text-purple-400">3,247</span>
+              <span className="text-sm text-slate-400">Rate</span>
+              <span className="text-2xl font-bold text-purple-400">
+                {metrics.metrics.completionRate || 0}%
+              </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Completed</span>
-              <span className="text-2xl font-bold text-slate-500">1,892</span>
+            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-purple-500 to-pink-500" 
+                style={{ width: `${metrics.metrics.completionRate || 0}%` }} 
+              />
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <span className="text-emerald-400 font-medium">+18.2% this month</span>
-            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              {metrics.metrics.completionRate > 0 
+                ? 'Students completing courses' 
+                : 'No completions yet'}
+            </p>
           </div>
         </div>
       </motion.div>
