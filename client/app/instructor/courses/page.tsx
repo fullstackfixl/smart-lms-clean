@@ -62,6 +62,8 @@ export default function InstructorCoursesPage() {
         return
       }
 
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '12'
@@ -72,7 +74,7 @@ export default function InstructorCoursesPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5000/instructor/courses?${params}`,
+        `${API_URL}/instructor/courses?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -104,9 +106,11 @@ export default function InstructorCoursesPage() {
     if (!confirm('Are you sure you want to delete this course?')) return
 
     try {
-      const token = localStorage.getItem('token')
+      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/instructor/courses/${courseId}`,
+        `${API_URL}/instructor/courses/${courseId}`,
         {
           method: 'DELETE',
           headers: {
@@ -132,9 +136,11 @@ export default function InstructorCoursesPage() {
 
   const handlePublishCourse = async (courseId: string) => {
     try {
-      const token = localStorage.getItem('token')
+      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/instructor/courses/${courseId}/publish`,
+        `${API_URL}/instructor/courses/${courseId}/publish`,
         {
           method: 'PATCH',
           headers: {

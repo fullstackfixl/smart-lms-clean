@@ -4,4 +4,4 @@ export const getApiUrl = (): string => {
   return (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').replace(/\/$/, '')
 }
 
-export const API_URL = getApiUrl()
+export const API_URL = getApiUrl();
