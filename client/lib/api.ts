@@ -260,7 +260,7 @@ export const liveClassApi = {
       method: "DELETE",
       token,
     }),
-  
+    
   // Student endpoints
   upcoming: (token: string) =>
     apiRequest("/student/live-classes/upcoming", { token }),
@@ -340,10 +340,6 @@ export const gamificationApi = {
 
 // Platform Admin APIs
 export const platformApi = {
-  // CSRF Token
-  getCsrfToken: () =>
-    apiRequest("/api/csrf-token"),
-  
   // Organizations
   createOrg: async (data: {
     name: string
@@ -358,16 +354,9 @@ export const platformApi = {
     }
     plan?: 'basic' | 'premium'
   }) => {
-    // Get CSRF token first
-    const csrfResponse = await apiRequest<{ csrfToken: string }>("/api/csrf-token")
-    if (!csrfResponse.success || !csrfResponse.data) {
-      return { success: false, error: "Failed to get CSRF token" }
-    }
-    
     return apiRequest("/platform/organizations", {
       method: "POST",
-      body: data,
-      headers: { "X-CSRF-Token": csrfResponse.data.csrfToken }
+      body: data
     })
   },
   
@@ -401,52 +390,28 @@ export const platformApi = {
     }
     plan?: 'basic' | 'premium'
   }) => {
-    const csrfResponse = await apiRequest<{ csrfToken: string }>("/api/csrf-token")
-    if (!csrfResponse.success || !csrfResponse.data) {
-      return { success: false, error: "Failed to get CSRF token" }
-    }
-    
     return apiRequest(`/platform/organizations/${id}`, {
       method: "PUT",
-      body: data,
-      headers: { "X-CSRF-Token": csrfResponse.data.csrfToken }
+      body: data
     })
   },
   
   updateOrgStatus: async (id: string, status: 'active' | 'suspended') => {
-    const csrfResponse = await apiRequest<{ csrfToken: string }>("/api/csrf-token")
-    if (!csrfResponse.success || !csrfResponse.data) {
-      return { success: false, error: "Failed to get CSRF token" }
-    }
-    
     return apiRequest(`/platform/organizations/${id}/status`, {
       method: "PATCH",
-      body: { status },
-      headers: { "X-CSRF-Token": csrfResponse.data.csrfToken }
+      body: { status }
     })
   },
   
   deleteOrg: async (id: string) => {
-    const csrfResponse = await apiRequest<{ csrfToken: string }>("/api/csrf-token")
-    if (!csrfResponse.success || !csrfResponse.data) {
-      return { success: false, error: "Failed to get CSRF token" }
-    }
-    
     return apiRequest(`/platform/organizations/${id}`, {
-      method: "DELETE",
-      headers: { "X-CSRF-Token": csrfResponse.data.csrfToken }
+      method: "DELETE"
     })
   },
   
   restoreOrg: async (id: string) => {
-    const csrfResponse = await apiRequest<{ csrfToken: string }>("/api/csrf-token")
-    if (!csrfResponse.success || !csrfResponse.data) {
-      return { success: false, error: "Failed to get CSRF token" }
-    }
-    
     return apiRequest(`/platform/organizations/${id}/restore`, {
-      method: "POST",
-      headers: { "X-CSRF-Token": csrfResponse.data.csrfToken }
+      method: "POST"
     })
   },
   
@@ -482,173 +447,108 @@ export const platformApi = {
     email: string
     password: string
   }) => {
-    const csrfResponse = await apiRequest<{ csrfToken: string }>("/api/csrf-token")
-    if (!csrfResponse.success || !csrfResponse.data) {
-      return { success: false, error: "Failed to get CSRF token" }
-    }
-    
     return apiRequest("/platform/admins", {
       method: "POST",
       token,
-      body: data,
-      headers: { "X-CSRF-Token": csrfResponse.data.csrfToken }
+      body: data
     })
   },
   
   updateAdminStatus: async (token: string, id: string, isActive: boolean) => {
-    const csrfResponse = await apiRequest<{ csrfToken: string }>("/api/csrf-token")
-    if (!csrfResponse.success || !csrfResponse.data) {
-      return { success: false, error: "Failed to get CSRF token" }
-    }
-    
     return apiRequest(`/platform/admins/${id}/status`, {
       method: "PATCH",
       token,
-      body: { isActive },
-      headers: { "X-CSRF-Token": csrfResponse.data.csrfToken }
+      body: { isActive }
     })
   },
 }
 
 // Instructor APIs
-async function getCsrfToken() {
-  console.log("🔐 Fetching CSRF token...")
-  const res = await apiRequest<{ csrfToken: string }>("/api/csrf-token")
-  console.log("🔐 CSRF token response:", res)
-  
-  if (!res.success || !res.data?.csrfToken) {
-    console.error("🔐 CSRF token fetch failed:", res.error)
-    throw new Error(res.error || "Failed to get CSRF token")
-  }
-  
-  console.log("🔐 CSRF token obtained successfully")
-  return res.data.csrfToken
-}
-
 export const instructorApi = {
   // Courses
   listCourses: (token: string, params?: string) =>
     apiRequest(`/instructor/courses${params ? `?${params}` : ""}`, { token }),
   getCourse: (token: string, id: string) =>
     apiRequest(`/instructor/courses/${id}`, { token }),
-  createCourse: async (token: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest("/instructor/courses", {
+  createCourse: (token: string, data: Record<string, unknown>) =>
+    apiRequest("/instructor/courses", {
       method: "POST",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  updateCourse: async (token: string, id: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/courses/${id}`, {
+    }),
+  updateCourse: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/instructor/courses/${id}`, {
       method: "PUT",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  deleteCourse: async (token: string, id: string) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/courses/${id}`, {
+    }),
+  deleteCourse: (token: string, id: string) =>
+    apiRequest(`/instructor/courses/${id}`, {
       method: "DELETE",
       token,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  publishCourse: async (token: string, id: string) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/courses/${id}/publish`, {
+    }),
+  publishCourse: (token: string, id: string) =>
+    apiRequest(`/instructor/courses/${id}/publish`, {
       method: "PATCH",
       token,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
+    }),
 
   // Modules
-  createModule: async (token: string, courseId: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/courses/${courseId}/modules`, {
+  createModule: (token: string, courseId: string, data: Record<string, unknown>) =>
+    apiRequest(`/instructor/courses/${courseId}/modules`, {
       method: "POST",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  updateModule: async (token: string, id: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/modules/${id}`, {
+    }),
+  updateModule: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/instructor/modules/${id}`, {
       method: "PUT",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  deleteModule: async (token: string, id: string) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/modules/${id}`, {
+    }),
+  deleteModule: (token: string, id: string) =>
+    apiRequest(`/instructor/modules/${id}`, {
       method: "DELETE",
       token,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
+    }),
 
   // Lessons
-  createLesson: async (token: string, moduleId: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/modules/${moduleId}/lessons`, {
+  createLesson: (token: string, moduleId: string, data: Record<string, unknown>) =>
+    apiRequest(`/instructor/modules/${moduleId}/lessons`, {
       method: "POST",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  updateLesson: async (token: string, id: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/lessons/${id}`, {
+    }),
+  updateLesson: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/instructor/lessons/${id}`, {
       method: "PUT",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  deleteLesson: async (token: string, id: string) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/lessons/${id}`, {
+    }),
+  deleteLesson: (token: string, id: string) =>
+    apiRequest(`/instructor/lessons/${id}`, {
       method: "DELETE",
       token,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
+    }),
 
   // Quizzes
-  createQuiz: async (token: string, courseId: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/courses/${courseId}/quizzes`, {
+  createQuiz: (token: string, courseId: string, data: Record<string, unknown>) =>
+    apiRequest(`/instructor/courses/${courseId}/quizzes`, {
       method: "POST",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  updateQuiz: async (token: string, id: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/quizzes/${id}`, {
+    }),
+  updateQuiz: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/instructor/quizzes/${id}`, {
       method: "PUT",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  deleteQuiz: async (token: string, id: string) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/quizzes/${id}`, {
+    }),
+  deleteQuiz: (token: string, id: string) =>
+    apiRequest(`/instructor/quizzes/${id}`, {
       method: "DELETE",
       token,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
+    }),
 
   // Students & analytics
   getStudents: (token: string, courseId: string) =>
@@ -659,64 +559,46 @@ export const instructorApi = {
   // Announcements
   listAnnouncements: (token: string, courseId: string) =>
     apiRequest(`/instructor/courses/${courseId}/announcements`, { token }),
-  createAnnouncement: async (token: string, courseId: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/courses/${courseId}/announcements`, {
+  createAnnouncement: (token: string, courseId: string, data: Record<string, unknown>) =>
+    apiRequest(`/instructor/courses/${courseId}/announcements`, {
       method: "POST",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  deleteAnnouncement: async (token: string, id: string) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/announcements/${id}`, {
+    }),
+  deleteAnnouncement: (token: string, id: string) =>
+    apiRequest(`/instructor/announcements/${id}`, {
       method: "DELETE",
       token,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
+    }),
 
   // Submissions
   listSubmissions: (token: string, params?: string) =>
     apiRequest(`/instructor/submissions${params ? `?${params}` : ""}`, { token }),
-  gradeSubmission: async (token: string, id: string, data: Record<string, unknown>) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/submissions/${id}/grade`, {
+  gradeSubmission: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/instructor/submissions/${id}/grade`, {
       method: "PATCH",
       token,
       body: data,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
+    }),
 
   // Notifications
   listNotifications: (token: string, params?: string) =>
     apiRequest(`/instructor/notifications${params ? `?${params}` : ""}`, { token }),
-  markNotificationRead: async (token: string, id: string) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/notifications/${id}/read`, {
+  markNotificationRead: (token: string, id: string) =>
+    apiRequest(`/instructor/notifications/${id}/read`, {
       method: "PATCH",
       token,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  markAllNotificationsRead: async (token: string) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest("/instructor/notifications/read-all", {
+    }),
+  markAllNotificationsRead: (token: string) =>
+    apiRequest("/instructor/notifications/read-all", {
       method: "PATCH",
       token,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
-  deleteNotification: async (token: string, id: string) => {
-    const csrfToken = await getCsrfToken()
-    return apiRequest(`/instructor/notifications/${id}`, {
+    }),
+  deleteNotification: (token: string, id: string) =>
+    apiRequest(`/instructor/notifications/${id}`, {
       method: "DELETE",
       token,
-      headers: { "X-CSRF-Token": csrfToken },
-    })
-  },
+    }),
 }
 
 // Student APIs
