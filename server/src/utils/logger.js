@@ -109,7 +109,7 @@ class Logger {
           collection: 'logs',
           level: 'error',
           options: {
-            useUnifiedTopology: true
+            // No deprecated options - mongoose driver handles this automatically
           },
           format: winston.format.combine(
             winston.format.timestamp(),
