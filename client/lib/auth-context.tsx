@@ -23,9 +23,9 @@ interface AuthContextType {
   token: string | null
   loading: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectUrl?: string }>
-  register: (data: { name: string; email: string; password: string; role?: string; organization_code?: string }) => Promise<{ success: boolean; requiresOTP?: boolean; error?: string }>
+  register: (data: { name: string; email: string; password: string; role?: string; organization_code?: string; organization_name?: string }) => Promise<{ success: boolean; requiresOTP?: boolean; error?: string; data?: any }>
   verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; error?: string; redirectUrl?: string; data?: any }>
-  resendOtp: (email: string) => Promise<{ success: boolean; error?: string }>
+  resendOtp: (email: string) => Promise<{ success: boolean; error?: string; data?: any }>
   logout: () => void
   isAuthenticated: boolean
 }
@@ -111,13 +111,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: false, error: res.error || "Login failed" }
   }, [])
 
-  const register = useCallback(async (data: { name: string; email: string; password: string; role?: string; organization_code?: string }) => {
+  const register = useCallback(async (data: { name: string; email: string; password: string; role?: string; organization_code?: string; organization_name?: string }) => {
     const res = await authApi.register(data)
     if (res.success) {
-      const data = res.data as any
+      const responseData = res.data as any
+      // ALWAYS require OTP verification - never skip this step
       return {
         success: true,
-        requiresOTP: data.requiresVerification || !!data.message?.includes('Verification') || !!data.message?.includes('OTP')
+        requiresOTP: true, // Always true for registration
+        data: responseData
       }
     }
     return { success: false, error: res.error || "Registration failed" }
@@ -146,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resendOtp = useCallback(async (email: string) => {
     const res = await authApi.resendOtp(email)
     if (res.success) {
-      return { success: true }
+      return { success: true, data: res.data }
     }
     return { success: false, error: res.error || "Failed to resend OTP" }
   }, [])

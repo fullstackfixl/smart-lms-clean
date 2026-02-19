@@ -85,12 +85,12 @@ async function apiRequest<T = unknown>(
 
 // Auth APIs
 export const authApi = {
-  register: (data: { name: string; email: string; password: string; role?: string; organization_code?: string }) =>
+  register: (data: { name: string; email: string; password: string; role?: string; organization_code?: string; organization_name?: string }) =>
     apiRequest("/auth/register/request-otp", { method: "POST", body: data }),
-  requestOtp: (data: { email: string; name: string; role: string; organization_code?: string }) =>
+  requestOtp: (data: { email: string; name: string; role: string; organization_code?: string; organization_name?: string }) =>
     apiRequest("/auth/register/request-otp", { method: "POST", body: data }),
   verifyOtp: (data: { email: string; otp: string }) =>
-    apiRequest("/auth/verify-otp", { method: "POST", body: data }),
+    apiRequest("/auth/register/verify-otp", { method: "POST", body: data }),
   resendOtp: (email: string) =>
     apiRequest("/auth/register/resend-otp", { method: "POST", body: { email } }),
   login: (data: { email: string; password: string }) =>

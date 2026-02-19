@@ -377,29 +377,12 @@ router.post('/register/resend-otp', authLimiter, async (req, res) => {
     verificationRecord.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await verificationRecord.save();
 
-    // Send OTP email
-    const { name } = verificationRecord.registrationData;
-    const emailSubject = 'Verify Your Email - Smart LMS';
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #3b82f6;">Email Verification</h2>
-        <p>Hello ${name},</p>
-        <p>Your new verification code is:</p>
-        <div style="background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-          ${otp}
-        </div>
-        <p>This code will expire in 10 minutes.</p>
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-        <p style="color: #6b7280; font-size: 12px;">Smart LMS - Learning Management System</p>
-      </div>
-    `;
+    // Send OTP email using email service
+    const { name, organization_name } = verificationRecord.registrationData;
+    console.log(`📧 [AUTH] Sending resend OTP email to ${email}`);
+    const emailResult = await emailService.sendOTP(email, otp, name, organization_name);
 
-    try {
-      await sendEmail({
-        to: email,
-        subject: emailSubject,
-        html: emailHtml
-      });
+    if (emailResult.success) {
       console.log(`✅ [AUTH] Resend OTP email sent successfully to ${email}`);
       
       res.success({
@@ -407,24 +390,16 @@ router.post('/register/resend-otp', authLimiter, async (req, res) => {
         otp: process.env.NODE_ENV === 'development' ? otp : undefined
       }, 'OTP resent successfully');
       
-    } catch (emailError) {
-      // Email failed - but allow in production
-      console.error(`❌ [AUTH] Failed to resend OTP email to ${email}:`, emailError.message);
+    } else {
+      // Email failed - return OTP in response (graceful degradation)
+      console.error(`❌ [AUTH] Failed to resend OTP email: ${emailResult.error}`);
+      console.log(`⚠️ [AUTH] Email service unavailable - returning OTP in response for ${email}`);
       
-      if (process.env.NODE_ENV === 'production') {
-        console.log(`⚠️ [AUTH] Email service unavailable - returning OTP in response for ${email}`);
-        return res.success({
-          message: 'Email service temporarily unavailable. Your verification code is displayed below.',
-          otp: otp,
-          emailFailed: true
-        }, 'OTP generated (email service unavailable)');
-      } else {
-        return res.error(
-          `Failed to send verification email: ${emailError.message}. Please check your email configuration.`,
-          'Email sending failed',
-          500
-        );
-      }
+      return res.success({
+        message: 'Email service temporarily unavailable. Your verification code is displayed below.',
+        otp: otp,
+        emailFailed: true
+      }, 'OTP generated (email service unavailable)');
     }
 
   } catch (error) {
