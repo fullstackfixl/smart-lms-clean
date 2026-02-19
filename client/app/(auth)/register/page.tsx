@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [orgCode, setOrgCode] = useState("")
   const [orgName, setOrgName] = useState("")
   const [otp, setOtp] = useState("")
+  const [displayedOtp, setDisplayedOtp] = useState("") // Store OTP if email fails
   const [generatedOrgCode, setGeneratedOrgCode] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -85,12 +86,25 @@ export default function RegisterPage() {
 
     if (result.success) {
       if (result.requiresOTP) {
-        toast.success("Verification code sent to your email")
+        // Check if OTP is in response (email service failed)
+        const responseData = (result as any).data
+        if (responseData?.otp) {
+          setDisplayedOtp(responseData.otp)
+          if (responseData?.emailFailed) {
+            toast.error("Email service unavailable. Your verification code is displayed below.", {
+              duration: 10000
+            })
+          } else {
+            toast.success("Verification code sent to your email")
+          }
+        } else {
+          toast.success("Verification code sent to your email")
+        }
         setStep("otp")
         setResendTimer(60)
       } else {
-        toast.success("Account created! Please login.")
-        router.push("/login")
+        toast.success("Registration complete! Redirecting to dashboard...")
+        router.push("/dashboard")
       }
     } else {
       const errorMsg = result.error || "Registration failed"
@@ -156,7 +170,20 @@ export default function RegisterPage() {
     setLoading(false)
 
     if (result.success) {
-      toast.success("New verification code sent")
+      // Check if OTP is in response (email service failed)
+      const responseData = (result as any).data
+      if (responseData?.otp) {
+        setDisplayedOtp(responseData.otp)
+        if (responseData?.emailFailed) {
+          toast.error("Email service unavailable. Your verification code is displayed below.", {
+            duration: 10000
+          })
+        } else {
+          toast.success("New verification code sent")
+        }
+      } else {
+        toast.success("New verification code sent")
+      }
       setResendTimer(60)
     } else {
       const errorMsg = result.error || "Failed to resend code"
@@ -337,6 +364,14 @@ export default function RegisterPage() {
           <p className="mt-2 text-sm text-muted-foreground max-w-[300px]">
             We've sent a 6-digit verification code to <span className="font-medium text-foreground">{email}</span>
           </p>
+
+          {displayedOtp && (
+            <div className="mt-4 rounded-lg border-2 border-orange-500 bg-orange-50 dark:bg-orange-950 p-4 text-center">
+              <p className="text-sm font-medium text-orange-900 dark:text-orange-100">Email service unavailable. Your verification code:</p>
+              <p className="mt-2 text-3xl font-bold text-orange-600 dark:text-orange-400 tracking-widest">{displayedOtp}</p>
+              <p className="mt-2 text-xs text-orange-700 dark:text-orange-300">Enter this code below to complete registration</p>
+            </div>
+          )}
 
           {generatedOrgCode && (
             <div className="mt-4 rounded-lg border-2 border-primary bg-primary/10 p-4 text-center">
