@@ -3,7 +3,7 @@ const organizationService = require('../services/organizationService');
 const jwtUtils = require('../utils/jwt');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { generateOTP } = require('../utils/otp');
-const sendEmail = require('../utils/email');
+const emailService = require('../services/emailService');
 const VerificationOTP = require('../models/VerificationOTP');
 
 const router = express.Router();
