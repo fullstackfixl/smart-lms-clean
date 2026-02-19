@@ -98,12 +98,22 @@ class EmailService {
         setTimeout(() => reject(new Error('Connection timeout')), 10000)
       );
 
-      await Promise.race([verifyPromise, timeoutPromise]);
-      
-      this.isConfigured = true;
-      this.lastError = null;
-      logger.info('✅ Email service initialized and verified successfully');
-      return true;
+      try {
+        await Promise.race([verifyPromise, timeoutPromise]);
+        this.isConfigured = true;
+        this.lastError = null;
+        logger.info('✅ Email service initialized and verified successfully');
+        return true;
+      } catch (verifyError) {
+        // Don't throw, just log and mark as not configured
+        this.isConfigured = false;
+        this.lastError = verifyError.message;
+        logger.warn('⚠️ Email service verification failed (will retry on first use):', {
+          error: verifyError.message,
+          code: verifyError.code
+        });
+        return false;
+      }
 
     } catch (error) {
       this.isConfigured = false;
@@ -124,11 +134,21 @@ class EmailService {
     const startTime = Date.now();
 
     try {
-      // Initialize if not already done
+      // Initialize on first use if not already done
       if (!this.transporter) {
+        logger.info('Email service not initialized, initializing now...');
         const initialized = await this.initialize();
         if (!initialized) {
           throw new Error('Email service not configured or initialization failed');
+        }
+      }
+
+      // Re-initialize if there was a previous error
+      if (!this.isConfigured && this.lastError) {
+        logger.info('Retrying email service initialization after previous failure...');
+        const initialized = await this.initialize();
+        if (!initialized) {
+          throw new Error(`Email service unavailable: ${this.lastError}`);
         }
       }
 
