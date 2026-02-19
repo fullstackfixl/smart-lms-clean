@@ -43,25 +43,13 @@ export default function CreateCoursePage() {
         return
       }
 
-      // Get CSRF token first
-      const csrfResponse = await fetch('http://localhost:5000/api/csrf-token', {
-        credentials: 'include'
-      })
-      const csrfData = await csrfResponse.json()
-      const csrfToken = csrfData.data?.csrfToken
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
-      if (!csrfToken) {
-        toast.error('Failed to get security token')
-        setLoading(false)
-        return
-      }
-
-      const response = await fetch('http://localhost:5000/instructor/courses', {
+      const response = await fetch(`${API_URL}/instructor/courses`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
+          'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify({

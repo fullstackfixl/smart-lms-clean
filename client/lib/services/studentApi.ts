@@ -9,35 +9,10 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Enable cookies for CSRF
+  withCredentials: true,
 })
 
-// CSRF token storage
-let csrfToken: string | null = null
-
-// Fetch CSRF token from server
-const fetchCsrfToken = async (): Promise<string> => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/api/csrf-token`, {
-      withCredentials: true,
-    })
-    csrfToken = response.data.data.csrfToken
-    if (!csrfToken) {
-      throw new Error('CSRF token not found in response')
-    }
-    return csrfToken
-  } catch (error) {
-    console.error('Failed to fetch CSRF token:', error)
-    throw error
-  }
-}
-
-// Initialize CSRF token on client side
-if (typeof window !== 'undefined') {
-  fetchCsrfToken().catch(console.error)
-}
-
-// Add JWT token and CSRF token to all requests
+// Add JWT token to all requests
 apiClient.interceptors.request.use(
   async (config) => {
     // Add JWT token
@@ -48,22 +23,6 @@ apiClient.interceptors.request.use(
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-    }
-
-    // Add CSRF token for state-changing operations
-    if (['post', 'patch', 'delete', 'put'].includes(config.method?.toLowerCase() || '')) {
-      // Fetch CSRF token if not available
-      if (!csrfToken) {
-        try {
-          await fetchCsrfToken()
-        } catch (error) {
-          console.error('Failed to fetch CSRF token for request:', error)
-        }
-      }
-      
-      if (csrfToken) {
-        config.headers['x-csrf-token'] = csrfToken
-      }
     }
 
     return config
@@ -79,19 +38,6 @@ apiClient.interceptors.response.use(
       // Unauthorized - redirect to login
       if (typeof window !== 'undefined') {
         window.location.href = '/login'
-      }
-    } else if (error.response?.status === 403 && error.response?.data?.error?.includes('CSRF')) {
-      // CSRF token expired or invalid - refetch and retry
-      console.log('CSRF token invalid, refetching...')
-      try {
-        await fetchCsrfToken()
-        // Retry the original request with new token
-        if (error.config && csrfToken) {
-          error.config.headers['x-csrf-token'] = csrfToken
-          return apiClient.request(error.config)
-        }
-      } catch (retryError) {
-        console.error('Failed to retry request after CSRF refresh:', retryError)
       }
     }
     return Promise.reject(error)

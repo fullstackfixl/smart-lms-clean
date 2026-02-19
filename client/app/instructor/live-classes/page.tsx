@@ -92,8 +92,9 @@ export default function LiveClassesPage() {
   async function loadLiveClasses() {
     const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
     if (!token) return
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
     try {
-      const res = await fetch(`http://localhost:5000/instructor/live-classes`, {
+      const res = await fetch(`${API_URL}/instructor/live-classes`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -111,8 +112,9 @@ export default function LiveClassesPage() {
   async function loadCourses() {
     const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
     if (!token) return
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
     try {
-      const res = await fetch(`http://localhost:5000/instructor/courses?limit=100`, {
+      const res = await fetch(`${API_URL}/instructor/courses?limit=100`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -134,18 +136,13 @@ export default function LiveClassesPage() {
       return
     }
 
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
     try {
-      const csrfRes = await fetch(`http://localhost:5000/api/csrf-token`, {
-        credentials: "include",
-      })
-      const csrfData = await csrfRes.json()
-
-      const res = await fetch(`http://localhost:5000/instructor/live-classes`, {
+      const res = await fetch(`${API_URL}/instructor/live-classes`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          "X-CSRF-Token": csrfData.data?.csrfToken || "",
         },
         credentials: "include",
         body: JSON.stringify(classForm),
@@ -172,18 +169,13 @@ export default function LiveClassesPage() {
       return
     }
 
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
     try {
-      const csrfRes = await fetch(`http://localhost:5000/api/csrf-token`, {
-        credentials: "include",
-      })
-      const csrfData = await csrfRes.json()
-
-      const res = await fetch(`http://localhost:5000/instructor/live-classes/${editingClass._id}`, {
+      const res = await fetch(`${API_URL}/instructor/live-classes/${editingClass._id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          "X-CSRF-Token": csrfData.data?.csrfToken || "",
         },
         credentials: "include",
         body: JSON.stringify(classForm),
@@ -208,17 +200,12 @@ export default function LiveClassesPage() {
     const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
     if (!token || !confirm("Delete this live class?")) return
 
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
     try {
-      const csrfRes = await fetch(`http://localhost:5000/api/csrf-token`, {
-        credentials: "include",
-      })
-      const csrfData = await csrfRes.json()
-
-      const res = await fetch(`http://localhost:5000/instructor/live-classes/${id}`, {
+      const res = await fetch(`${API_URL}/instructor/live-classes/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
-          "X-CSRF-Token": csrfData.data?.csrfToken || "",
         },
         credentials: "include",
       })

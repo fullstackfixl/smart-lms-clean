@@ -237,17 +237,7 @@ export default function CourseDetailPage() {
         setUploadProgress(0)
         toast.info("Uploading video...")
         
-        // Get CSRF token
-        const csrfRes = await fetch(`http://localhost:5000/api/csrf-token`, {
-          credentials: 'include'
-        })
-        const csrfData = await csrfRes.json()
-        
-        if (!csrfData.success || !csrfData.data?.csrfToken) {
-          toast.error("Failed to get security token")
-          setIsUploading(false)
-          return
-        }
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
         const formData = new FormData()
         formData.append('video', lessonForm.uploadFile)
@@ -275,9 +265,8 @@ export default function CourseDetailPage() {
           xhr.addEventListener('error', () => reject(new Error('Upload failed')))
           xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')))
           
-          xhr.open('POST', `http://localhost:5000/api/upload/video`)
+          xhr.open('POST', `${API_URL}/api/upload/video`)
           xhr.setRequestHeader('Authorization', `Bearer ${authToken}`)
-          xhr.setRequestHeader('X-CSRF-Token', csrfData.data.csrfToken)
           xhr.withCredentials = true
           xhr.send(formData)
         })

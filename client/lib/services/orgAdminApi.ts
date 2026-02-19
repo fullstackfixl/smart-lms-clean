@@ -7,28 +7,6 @@ import { API_URL } from '../config'
 
 const API_BASE_URL = API_URL;
 
-// Helper to get CSRF token
-let csrfToken: string | null = null;
-
-async function getCsrfToken(): Promise<string> {
-  if (csrfToken) return csrfToken;
-  
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/csrf-token`, {
-      credentials: 'include'
-    });
-    const data = await response.json();
-    csrfToken = data.token;
-    if (!csrfToken) {
-      throw new Error('CSRF token not found in response')
-    }
-    return csrfToken;
-  } catch (error) {
-    console.error('Failed to get CSRF token:', error);
-    throw error;
-  }
-}
-
 // Helper to make authenticated requests
 async function apiRequest(
   endpoint: string,
@@ -46,36 +24,11 @@ async function apiRequest(
     ...(options.headers as Record<string, string> || {})
   };
 
-  // Add CSRF token for state-changing operations
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method || 'GET')) {
-    const csrf = await getCsrfToken();
-    headers['X-CSRF-Token'] = csrf;
-  }
-
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
     credentials: 'include'
   });
-
-  // Handle 403 CSRF errors - retry once with new token
-  if (response.status === 403) {
-    csrfToken = null; // Clear cached token
-    const newCsrf = await getCsrfToken();
-    headers['X-CSRF-Token'] = newCsrf;
-    
-    const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-      credentials: 'include'
-    });
-    
-    if (!retryResponse.ok) {
-      throw new Error(`API request failed: ${retryResponse.statusText}`);
-    }
-    
-    return retryResponse.json();
-  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }));
