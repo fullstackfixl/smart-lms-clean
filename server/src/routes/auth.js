@@ -4,7 +4,7 @@ const organizationService = require('../services/organizationService');
 const jwtUtils = require('../utils/jwt');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { generateOTP } = require('../utils/otp');
-const sendEmail = require('../utils/email');
+const emailService = require('../services/emailService');
 const VerificationOTP = require('../models/VerificationOTP');
 
 const { authLimiter, otpLimiter } = require('../middleware/rateLimiter');
@@ -171,69 +171,30 @@ router.post('/register/request-otp', authLimiter, async (req, res) => {
 
     await verificationRecord.save();
 
-    // Send OTP email
-    const emailSubject = 'Verify Your Email - Smart LMS';
-    const emailHtml = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #3b82f6;">Email Verification</h2>
-        <p>Hello ${name},</p>
-        <p>Thank you for registering with Smart LMS${organizationName ? ` at <strong>${organizationName}</strong>` : ''}.</p>
-        <p>Your verification code is:</p>
-        <div style="background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-          ${otp}
-        </div>
-        <p>This code will expire in 10 minutes.</p>
-        ${organizationName ? `<p style="color: #64748b; font-size: 14px;">Organization Code: <strong>${organizationCode}</strong></p>` : ''}
-        <p>If you didn't request this, please ignore this email.</p>
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-        <p style="color: #6b7280; font-size: 12px;">Smart LMS - Learning Management System</p>
-      </div>
-    `;
+    // Send OTP email using email service
+    console.log(`📧 [AUTH] Sending OTP email to ${email}`);
+    const emailResult = await emailService.sendOTP(email, otp, name, organizationName);
 
-    try {
-      await sendEmail({
-        to: email,
-        subject: emailSubject,
-        html: emailHtml
-      });
+    if (emailResult.success) {
       console.log(`✅ [AUTH] OTP email sent successfully to ${email}`);
-      
       return res.success({
         email: email.toLowerCase(),
         organizationName,
         message: 'Verification code sent to your email',
-        otp: process.env.NODE_ENV === 'development' ? otp : undefined // Include OTP in dev mode
+        otp: process.env.NODE_ENV === 'development' ? otp : undefined
       }, 'OTP sent successfully');
+    } else {
+      // Email failed - return OTP in response (graceful degradation)
+      console.error(`❌ [AUTH] Failed to send OTP email: ${emailResult.error}`);
+      console.log(`⚠️ [AUTH] Email service unavailable - returning OTP in response for ${email}`);
       
-    } catch (emailError) {
-      // Email failed - but allow registration to continue in production
-      console.error(`❌ [AUTH] Failed to send OTP email to ${email}:`, emailError.message);
-      console.error('❌ [AUTH] Email config:', {
-        EMAIL_USER: process.env.EMAIL_USER ? 'SET' : 'NOT SET',
-        EMAIL_PASS: process.env.EMAIL_PASS ? 'SET' : 'NOT SET',
-        EMAIL_SERVICE: process.env.EMAIL_SERVICE
-      });
-      
-      // In production, if email fails, return OTP in response (temporary workaround)
-      // In development, always return OTP
-      if (process.env.NODE_ENV === 'production') {
-        console.log(`⚠️ [AUTH] Email service unavailable - returning OTP in response for ${email}`);
-        return res.success({
-          email: email.toLowerCase(),
-          organizationName,
-          message: 'Email service temporarily unavailable. Your verification code is displayed below.',
-          otp: otp, // Return OTP in response when email fails
-          emailFailed: true
-        }, 'OTP generated (email service unavailable)');
-      } else {
-        // In development, delete OTP and return error
-        await VerificationOTP.deleteOne({ email: email.toLowerCase() });
-        return res.error(
-          `Failed to send verification email: ${emailError.message}. Please check your email configuration.`,
-          'Email sending failed',
-          500
-        );
-      }
+      return res.success({
+        email: email.toLowerCase(),
+        organizationName,
+        message: 'Email service temporarily unavailable. Your verification code is displayed below.',
+        otp: otp,
+        emailFailed: true
+      }, 'OTP generated (email service unavailable)');
     }
 
   } catch (error) {
