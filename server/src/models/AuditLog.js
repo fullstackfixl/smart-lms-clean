@@ -9,8 +9,7 @@ const auditLogSchema = new mongoose.Schema({
   user_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   user_email: {
     type: String,
@@ -18,8 +17,7 @@ const auditLogSchema = new mongoose.Schema({
   },
   user_role: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   action: {
     type: String,
@@ -30,8 +28,7 @@ const auditLogSchema = new mongoose.Schema({
       'LOGIN', 'LOGOUT', 'PASSWORD_RESET',
       'ROLE_CHANGE', 'PERMISSION_CHANGE',
       'EXPORT', 'IMPORT', 'BULK_UPDATE'
-    ],
-    index: true
+    ]
   },
   resource: {
     type: String,
@@ -40,12 +37,10 @@ const auditLogSchema = new mongoose.Schema({
       'organization', 'user', 'course', 'enrollment',
       'subscription', 'payment', 'config', 'admin',
       'report', 'analytics'
-    ],
-    index: true
+    ]
   },
   resource_id: {
-    type: String,
-    index: true
+    type: String
   },
   details: {
     method: String,
@@ -57,8 +52,7 @@ const auditLogSchema = new mongoose.Schema({
   },
   timestamp: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   }
 }, {
   timestamps: false // We use custom timestamp field

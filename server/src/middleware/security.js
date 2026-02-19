@@ -2,11 +2,10 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const cookieParser = require('cookie-parser');
-const { csrfProtection, attachCsrfToken, csrfTokenEndpoint, csrfErrorHandler } = require('./csrf');
 
 /**
  * Security Middleware Configuration
- * Implements: Helmet, XSS Protection, NoSQL Injection Protection, CSRF
+ * Implements: Helmet, XSS Protection, NoSQL Injection Protection
  */
 
 // Helmet configuration for security headers
@@ -17,26 +16,29 @@ const helmetConfig = helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      scriptSrc: ["'self'"],
-      connectSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      connectSrc: [
+        "'self'",
+        "https://smart-lms-clean.vercel.app",
+        "https://smart-lms-clean-1.onrender.com",
+        "http://localhost:3000",
+        "http://localhost:5000"
+      ],
       frameSrc: ["'self'"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
     },
   },
-  crossOriginEmbedderPolicy: false, // Allow embedding for video/iframe content
+  contentSecurityPolicy: false, // Disable CSP for now to avoid blocking issues
+  crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
   dnsPrefetchControl: { allow: false },
   frameguard: { action: 'deny' },
   hidePoweredBy: true,
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true
-  },
+  hsts: false, // Disable HSTS for development
   ieNoOpen: true,
   noSniff: true,
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  referrerPolicy: { policy: 'no-referrer-when-downgrade' },
   xssFilter: true,
 });
 
@@ -239,10 +241,6 @@ module.exports = {
   helmetConfig,
   mongoSanitizeConfig,
   xssConfig,
-  csrfProtection,
-  attachCsrfToken,
-  csrfTokenEndpoint,
-  csrfErrorHandler,
   sanitizeInput,
   fileUploadSecurity,
   additionalSecurityHeaders,

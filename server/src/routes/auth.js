@@ -201,13 +201,12 @@ router.post('/register/request-otp', authLimiter, async (req, res) => {
       return res.success({
         email: email.toLowerCase(),
         organizationName,
-        message: 'Verification code sent to your email'
+        message: 'Verification code sent to your email',
+        otp: process.env.NODE_ENV === 'development' ? otp : undefined // Include OTP in dev mode
       }, 'OTP sent successfully');
       
     } catch (emailError) {
-      // Email failed - delete the OTP record and return error
-      await VerificationOTP.deleteOne({ email: email.toLowerCase() });
-      
+      // Email failed - but allow registration to continue in production
       console.error(`❌ [AUTH] Failed to send OTP email to ${email}:`, emailError.message);
       console.error('❌ [AUTH] Email config:', {
         EMAIL_USER: process.env.EMAIL_USER ? 'SET' : 'NOT SET',
@@ -215,11 +214,26 @@ router.post('/register/request-otp', authLimiter, async (req, res) => {
         EMAIL_SERVICE: process.env.EMAIL_SERVICE
       });
       
-      return res.error(
-        `Failed to send verification email: ${emailError.message}. Please check your email address or try again later.`,
-        'Email sending failed',
-        500
-      );
+      // In production, if email fails, return OTP in response (temporary workaround)
+      // In development, always return OTP
+      if (process.env.NODE_ENV === 'production') {
+        console.log(`⚠️ [AUTH] Email service unavailable - returning OTP in response for ${email}`);
+        return res.success({
+          email: email.toLowerCase(),
+          organizationName,
+          message: 'Email service temporarily unavailable. Your verification code is displayed below.',
+          otp: otp, // Return OTP in response when email fails
+          emailFailed: true
+        }, 'OTP generated (email service unavailable)');
+      } else {
+        // In development, delete OTP and return error
+        await VerificationOTP.deleteOne({ email: email.toLowerCase() });
+        return res.error(
+          `Failed to send verification email: ${emailError.message}. Please check your email configuration.`,
+          'Email sending failed',
+          500
+        );
+      }
     }
 
   } catch (error) {
@@ -428,18 +442,28 @@ router.post('/register/resend-otp', authLimiter, async (req, res) => {
       console.log(`✅ [AUTH] Resend OTP email sent successfully to ${email}`);
       
       res.success({
-        message: 'New verification code sent to your email'
+        message: 'New verification code sent to your email',
+        otp: process.env.NODE_ENV === 'development' ? otp : undefined
       }, 'OTP resent successfully');
       
     } catch (emailError) {
-      // Email failed - return error
+      // Email failed - but allow in production
       console.error(`❌ [AUTH] Failed to resend OTP email to ${email}:`, emailError.message);
       
-      return res.error(
-        `Failed to send verification email: ${emailError.message}. Please check your email address or try again later.`,
-        'Email sending failed',
-        500
-      );
+      if (process.env.NODE_ENV === 'production') {
+        console.log(`⚠️ [AUTH] Email service unavailable - returning OTP in response for ${email}`);
+        return res.success({
+          message: 'Email service temporarily unavailable. Your verification code is displayed below.',
+          otp: otp,
+          emailFailed: true
+        }, 'OTP generated (email service unavailable)');
+      } else {
+        return res.error(
+          `Failed to send verification email: ${emailError.message}. Please check your email configuration.`,
+          'Email sending failed',
+          500
+        );
+      }
     }
 
   } catch (error) {

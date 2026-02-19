@@ -34,7 +34,10 @@ const sendEmail = async (options) => {
     },
     tls: {
       rejectUnauthorized: false
-    }
+    },
+    connectionTimeout: 10000, // 10 seconds timeout
+    greetingTimeout: 10000,
+    socketTimeout: 10000
   });
 
   // Verify transporter configuration

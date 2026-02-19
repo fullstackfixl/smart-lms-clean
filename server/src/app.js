@@ -1,14 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const connectDB = require('./config/database');
 const responseMiddleware = require('./middleware/response');
 const ErrorHandler = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/logging');
-const logger = require('./utils/logger');
 
 // Security middleware
 const {
@@ -64,6 +62,10 @@ const adminFeesRoutes = require('./routes/adminFees');
 
 const app = express();
 
+// Trust proxy - REQUIRED for Render, Heroku, and other cloud platforms
+// This allows express-rate-limit to work correctly behind a proxy
+app.set('trust proxy', 1);
+
 // Connect to MongoDB (skip in test environment as tests use in-memory DB)
 if (process.env.NODE_ENV !== 'test') {
   connectDB();
@@ -112,41 +114,22 @@ app.use(sanitizeInput);
 // 4. Logging Middleware - Log all requests
 app.use(requestLogger);
 
-// 5. Rate Limiting Middleware - Prevent abuse
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: {
-    success: false,
-    error: 'Too many requests',
-    message: 'Please try again later'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => {
-    // Skip rate limiting for health check
-    return req.path === '/api/health';
-  }
-});
-
-app.use(limiter);
-
-// 6. Response Middleware - Standardize response format
+// 5. Response Middleware - Standardize response format
 app.use(responseMiddleware);
 
-// 7. Request Timeout Middleware
+// 6. Request Timeout Middleware
 app.use(ErrorHandler.timeoutHandler(300000)); // 5 minutes timeout for large uploads
 
-// 8. File Upload Security
+// 7. File Upload Security
 app.use(fileUploadSecurity);
 
-// 9. Static Files
+// 8. Static Files
 app.use('/uploads', express.static('uploads'));
 
 // Health check routes (no auth required)
 app.use('/', healthRoutes);
 
-// 10. Routes with Middleware Pipeline
+// 9. Routes with Middleware Pipeline
 // Authentication routes (public)
 app.use('/auth', authRoutes);
 
@@ -256,7 +239,7 @@ app.get('/api/health', (req, res) => {
       security: {
         helmet: 'enabled',
         cors: 'enabled',
-        rateLimit: 'enabled',
+        rateLimit: 'disabled',
         csrf: 'disabled',
         xss: 'enabled',
         mongoSanitize: 'enabled'

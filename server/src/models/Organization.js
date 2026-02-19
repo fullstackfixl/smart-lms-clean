@@ -9,14 +9,12 @@ const organizationSchema = new mongoose.Schema({
   slug: {
     type: String,
     required: true,
-    unique: true,
     lowercase: true,
     trim: true
   },
   code: {
     type: String,
     required: true,
-    unique: true,
     uppercase: true,
     trim: true
   },
@@ -103,6 +101,7 @@ const organizationSchema = new mongoose.Schema({
 
 // Indexes
 organizationSchema.index({ slug: 1 }, { unique: true });
+organizationSchema.index({ code: 1 }, { unique: true });
 organizationSchema.index({ status: 1 });
 organizationSchema.index({ is_deleted: 1 });
 organizationSchema.index({ is_deleted: 1, status: 1 });

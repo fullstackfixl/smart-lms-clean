@@ -15,7 +15,6 @@ const platformOrganizationSchema = new mongoose.Schema({
   email: {
     type: String,
     required: [true, 'Organization email is required'],
-    unique: true,
     trim: true,
     lowercase: true,
     match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address']
@@ -66,13 +65,11 @@ const platformOrganizationSchema = new mongoose.Schema({
   // Additional metadata
   slug: {
     type: String,
-    unique: true,
     lowercase: true,
     trim: true
   },
   code: {
     type: String,
-    unique: true,
     uppercase: true,
     trim: true
   },
