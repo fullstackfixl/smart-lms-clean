@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend-Backend Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Frontend-Backend Connection Test</h1>
+    <button onclick="testHealth()">Test Health</button>
+    <button onclick="testRegistration()">Test Registration OTP</button>
+    <button onclick="testPublicCourses()">Test Public Courses</button>
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        
+        function addResult(name, success, message) {
+            const div = document.createElement('div');
+            div.className = 'test ' + (success ? 'success' : 'error');
+            div.innerHTML = `<strong>${name}:</strong> ${message}`;
+            document.getElementById('results').appendChild(div);
+        }
+
+        async function testHealth() {
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                const data = await response.json();
+                addResult('Health Check', data.success, JSON.stringify(data));
+            } catch (error) {
+                addResult('Health Check', false, error.message);
+            }
+        }
+
+        async function testRegistration() {
+            try {
+                const response = await fetch(`${API_URL}/auth/register/request-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'Test1234',
+                        name: 'Test User',
+                        role: 'public_student'
+                    })
+                });
+                const data = await response.json();
+                addResult('Registration OTP', data.success, `OTP: ${data.data?.otp || 'N/A'}`);
+            } catch (error) {
+                addResult('Registration OTP', false, error.message);
+            }
+        }
+
+        async function testPublicCourses() {
+            try {
+                const response = await fetch(`${API_URL}/api/public/courses`);
+                const data = await response.json();
+                addResult('Public Courses', data.success, `Found ${data.data?.length || 0} courses`);
+            } catch (error) {
+                addResult('Public Courses', false, error.message);
+            }
+        }
+    </script>
+</body>
+</html>
