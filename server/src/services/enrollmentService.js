@@ -24,6 +24,11 @@ class EnrollmentService extends BaseService {
       throw new ConflictError('Already enrolled in this course');
     }
 
+    // STRICT: Cross-org enrollment check (Service Layer)
+    if (course.organization_id.toString() !== organizationId.toString()) {
+      throw new AuthorizationError('You cannot enroll in a course from another organization');
+    }
+
     return await this.repository.create({
       course_id: courseId,
       student_id: userId,

@@ -22,6 +22,11 @@ router.post('/:courseId/enroll', authMiddleware, async (req, res) => {
       return res.error('Course not found', 'Course does not exist or is not available for enrollment', 404);
     }
 
+    // STRICT: Cross-org enrollment check
+    if (course.organization_id.toString() !== req.user.organization_id.toString()) {
+      return res.error('Unauthorized', 'You cannot enroll in a course from another organization', 403);
+    }
+
     if (course.price > 0) {
       return res.error('Payment required', 'This course requires payment. Please use the payment flow.', 400);
     }
@@ -106,6 +111,11 @@ router.post('/:courseId/payment/create-order', authMiddleware, async (req, res) 
       return res.error('Course not found', 'Course does not exist or is not available for enrollment', 404);
     }
 
+    // STRICT: Cross-org enrollment check
+    if (course.organization_id.toString() !== req.user.organization_id.toString()) {
+      return res.error('Unauthorized', 'You cannot enroll in a course from another organization', 403);
+    }
+
     if (course.price <= 0) {
       return res.error('Free course', 'This course is free. Use the free enrollment endpoint.', 400);
     }
@@ -124,7 +134,7 @@ router.post('/:courseId/payment/create-order', authMiddleware, async (req, res) 
     // Create Razorpay order
     const amount = course.price * 100; // Convert to paise
     const receipt = `course_${courseId}_${req.user._id}_${Date.now()}`;
-    
+
     const order = await createOrder(amount, 'INR', receipt, {
       organization_id: course.organization_id.toString(),
       user_id: req.user._id.toString(),
@@ -171,8 +181,8 @@ router.post('/payment/verify', authMiddleware, async (req, res) => {
     const payment = await getPayment(paymentId);
 
     // Verify payment belongs to the user and course
-    if (payment.notes.user_id !== req.user._id.toString() || 
-        payment.notes.course_id !== courseId) {
+    if (payment.notes.user_id !== req.user._id.toString() ||
+      payment.notes.course_id !== courseId) {
       return res.error('Payment mismatch', 'Payment does not match the request', 400);
     }
 
@@ -404,8 +414,8 @@ router.get('/:enrollmentId/progress', authMiddleware, async (req, res) => {
 
     // Check if user has permission to view this enrollment
     const canView = enrollment.student_id._id.toString() === req.user._id.toString() ||
-                   (enrollment.course_id.organization_id.toString() === req.user.organization_id.toString() &&
-                    (req.user.role === 'admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
+      (enrollment.course_id.organization_id.toString() === req.user.organization_id.toString() &&
+        (req.user.role === 'admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
 
     if (!canView) {
       return res.error('Access denied', 'You do not have permission to view this enrollment progress', 403);
@@ -448,8 +458,8 @@ router.post('/:enrollmentId/check-completion', authMiddleware, async (req, res) 
 
     // Check if user has permission to check this enrollment
     const canCheck = enrollment.student_id._id.toString() === req.user._id.toString() ||
-                    (enrollment.course_id.organization_id.toString() === req.user.organization_id.toString() &&
-                     (req.user.role === 'admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
+      (enrollment.course_id.organization_id.toString() === req.user.organization_id.toString() &&
+        (req.user.role === 'admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
 
     if (!canCheck) {
       return res.error('Access denied', 'You do not have permission to check this enrollment', 403);
@@ -534,8 +544,8 @@ router.get('/:enrollmentId/certificate', authMiddleware, async (req, res) => {
 
     // Check if user has permission to access this certificate
     const canAccess = enrollment.student_id._id.toString() === req.user._id.toString() ||
-                     (enrollment.course_id.organization_id.toString() === req.user.organization_id.toString() &&
-                      (req.user.role === 'admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
+      (enrollment.course_id.organization_id.toString() === req.user.organization_id.toString() &&
+        (req.user.role === 'admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
 
     if (!canAccess) {
       return res.error('Access denied', 'You do not have permission to access this certificate', 403);

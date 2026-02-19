@@ -98,7 +98,7 @@ export function CreateLiveClassModal({ open, onClose, onSuccess }: CreateLiveCla
       newErrors.start_time = 'Time is required'
     }
 
-    if (formData.duration <= 0 || formData.duration > 480) {
+    if (!formData.duration || formData.duration <= 0 || formData.duration > 480) {
       newErrors.duration = 'Duration must be between 1 and 480 minutes'
     }
 
@@ -110,7 +110,8 @@ export function CreateLiveClassModal({ open, onClose, onSuccess }: CreateLiveCla
     e.preventDefault()
 
     if (!validate()) {
-      toast.error('Please fix the errors in the form')
+      const errorMessages = Object.values(errors).join(', ')
+      toast.error(`Please fix the errors: ${errorMessages}`)
       return
     }
 
@@ -120,23 +121,30 @@ export function CreateLiveClassModal({ open, onClose, onSuccess }: CreateLiveCla
       // Combine date and time into ISO string
       const scheduledDateTime = new Date(`${formData.scheduled_date}T${formData.start_time}`)
       
-      const response = await scheduleLiveClass({
+      const payload = {
         title: formData.title,
         description: formData.description,
         course_id: formData.course_id,
         scheduled_date: scheduledDateTime.toISOString(),
         start_time: formData.start_time,
         duration_minutes: Number(formData.duration),
-      })
+      }
+
+      console.log('📤 Sending live class schedule request:', payload)
+      
+      const response = await scheduleLiveClass(payload)
+
+      console.log('📥 Response:', response)
 
       if (response.success) {
         toast.success('Live class scheduled successfully!')
         onSuccess()
         handleClose()
       } else {
-        throw new Error('Failed to schedule class')
+        throw new Error(response.message || 'Failed to schedule class')
       }
     } catch (err) {
+      console.error('❌ Error scheduling live class:', err)
       const message = err instanceof Error ? err.message : 'Failed to schedule class'
       toast.error(message)
     } finally {

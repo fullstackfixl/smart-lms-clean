@@ -49,13 +49,13 @@ router.post('/', authMiddleware, requireRole(['teacher', 'admin']), async (req, 
 // Get all courses (public access with optional auth and filters)
 router.get('/', optionalAuth, async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 12, 
-      search, 
-      category, 
+    const {
+      page = 1,
+      limit = 12,
+      search,
+      category,
       level,
-      organization, 
+      organization,
       status = 'published',
       instructor,
       minPrice,
@@ -63,9 +63,9 @@ router.get('/', optionalAuth, async (req, res) => {
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
-    
+
     const filter = { isActive: true };
-    
+
     // Status filter - only published courses for public access
     if (req.user && (req.user.role === 'teacher' || req.user.role === 'admin')) {
       // Instructors can see their own courses in any status
@@ -80,42 +80,68 @@ router.get('/', optionalAuth, async (req, res) => {
     } else {
       filter.status = 'published';
     }
-    
+
     // Organization-based access control
     if (req.user) {
       if (req.user.organization_id) {
-        filter.$or = [
-          { isPublic: true, status: 'published' },
-          { organization_id: req.user.organization_id }
-        ];
+        // STRICT: Org users ONLY see their org's courses
+        // No access to global public courses unless they are IN their org
+        filter.organization_id = req.user.organization_id;
+
+        // They can see published courses, OR their own draft courses if they are instructors
+        if (req.user.role === 'teacher' || req.user.role === 'admin') {
+          if (status !== 'published') {
+            // For non-published, ensure they are the instructor or admin
+            // (Already handled by the status filter block above, but implicit here)
+          }
+        } else {
+          // Students/others only see published
+          filter.status = 'published';
+        }
       } else {
-        filter.isPublic = true;
+        // Platform admins or users without org (if any)
+        // Platform admins might want to see everything, but standard users without org see public
+        if (req.user.role === 'platform_admin' || req.user.role === 'platformAdmin') {
+          // No org filter needed, can see all
+        } else {
+          filter.isPublic = true;
+          filter.status = 'published';
+        }
       }
     } else {
+      // Unauthenticated users see public published courses
       filter.isPublic = true;
+      filter.status = 'published';
     }
-    
+
     // Apply additional filters
     if (search) {
       filter.$text = { $search: search };
     }
-    
+
     if (category) {
       filter.category = category;
     }
-    
+
     if (level) {
       filter.level = level;
     }
-    
+
+    // Explicit organization filter from query (admin use only or drill-down)
+    // If user already has organization_id, we ignore this or ensure it matches
     if (organization) {
-      filter.organization_id = organization;
+      if (req.user && req.user.organization_id && req.user.organization_id.toString() !== organization) {
+        // effective no-op or error, but let's just let the override above take precedence
+        // The line `filter.organization_id = req.user.organization_id` above handles it
+      } else {
+        filter.organization_id = organization;
+      }
     }
-    
+
     if (instructor) {
       filter.instructor_id = instructor;
     }
-    
+
     if (minPrice !== undefined || maxPrice !== undefined) {
       filter.price = {};
       if (minPrice !== undefined) filter.price.$gte = parseFloat(minPrice);
@@ -158,14 +184,20 @@ router.get('/:id', optionalAuth, async (req, res) => {
     const { id } = req.params;
 
     let filter = { _id: id, isActive: true };
-    
+
     // Access control based on user authentication
     if (req.user && req.user.organization_id) {
-      filter.$or = [
-        { isPublic: true, status: 'published' },
-        { organization_id: req.user.organization_id }
-      ];
+      // STRICT: Must match organization
+      filter.organization_id = req.user.organization_id;
+
+      // If student, must be published
+      if (req.user.role !== 'teacher' && req.user.role !== 'admin' && req.user.role !== 'org_admin') {
+        filter.status = 'published';
+      }
+    } else if (req.user && (req.user.role === 'platform_admin' || req.user.role === 'platformAdmin')) {
+      // Platform admin can see all
     } else {
+      // Public/Unauthenticated
       filter.isPublic = true;
       filter.status = 'published';
     }
@@ -179,18 +211,18 @@ router.get('/:id', optionalAuth, async (req, res) => {
     }
 
     // Get course sections with lessons
-    const sections = await Section.find({ 
-      course_id: course._id, 
-      isActive: true 
+    const sections = await Section.find({
+      course_id: course._id,
+      isActive: true
     }).sort({ order: 1 });
 
     const sectionsWithLessons = await Promise.all(
       sections.map(async (section) => {
-        const lessons = await Lesson.find({ 
-          section_id: section._id, 
-          isActive: true 
+        const lessons = await Lesson.find({
+          section_id: section._id,
+          isActive: true
         }).sort({ order: 1 }).select('title description type duration order isPreview');
-        
+
         return {
           ...section.toObject(),
           lessons
@@ -216,7 +248,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
       await Course.findByIdAndUpdate(course._id, { totalLessons });
     }
 
-    res.success({ 
+    res.success({
       course: {
         ...course.toObject(),
         totalLessons
@@ -407,12 +439,12 @@ router.post('/:id/purchase', authMiddleware, async (req, res) => {
     // Update user's enrolled organizations
     const user = await User.findById(req.user._id);
     user.addOrganizationEnrollment(course.organization_id._id);
-    
+
     // If user has no primary organization, set this as primary
     if (!user.organization_id) {
       user.organization_id = course.organization_id._id;
     }
-    
+
     await user.save();
 
     // Add student to course and increment enrollment count
@@ -445,7 +477,7 @@ router.post('/:id/purchase', authMiddleware, async (req, res) => {
 router.get('/my/enrollments', authMiddleware, async (req, res) => {
   try {
     const { status = 'active' } = req.query;
-    
+
     const filter = { student_id: req.user._id };
     if (status !== 'all') {
       filter.status = status;
@@ -488,19 +520,19 @@ router.get('/organization/:orgId', authMiddleware, orgAccessMiddleware, async (r
     const { page = 1, limit = 12, status = 'published' } = req.query;
 
     // Check if user can access this organization
-    const canAccess = req.user.role === 'platform_admin' || 
-                     req.user.organization_id?.toString() === orgId ||
-                     req.user.enrolledOrganizations?.includes(orgId);
+    const canAccess = req.user.role === 'platform_admin' ||
+      req.user.organization_id?.toString() === orgId ||
+      req.user.enrolledOrganizations?.includes(orgId);
 
     if (!canAccess) {
       return res.error('Access denied', 'You cannot access courses from this organization', 403);
     }
 
-    const filter = { 
+    const filter = {
       organization_id: orgId,
-      isActive: true 
+      isActive: true
     };
-    
+
     if (status !== 'all') {
       filter.status = status;
     }
@@ -565,24 +597,24 @@ router.get('/:courseId/analytics', authMiddleware, requireRole(['teacher', 'admi
     const totalEnrollments = await Enrollment.countDocuments({ course_id: courseId });
 
     // Get completion rate
-    const completedEnrollments = await Enrollment.countDocuments({ 
-      course_id: courseId, 
-      status: 'completed' 
+    const completedEnrollments = await Enrollment.countDocuments({
+      course_id: courseId,
+      status: 'completed'
     });
     const completionRate = totalEnrollments > 0 ? (completedEnrollments / totalEnrollments) * 100 : 0;
 
     // Get lesson analytics
     const { Lesson } = require('../models');
     const lessons = await Lesson.find({ course_id: courseId, isActive: true });
-    
+
     const lessonAnalytics = await Promise.all(lessons.map(async (lesson) => {
       const completions = await Enrollment.countDocuments({
         course_id: courseId,
         'progress.completed_lessons.lesson_id': lesson._id
       });
-      
+
       const completionRate = totalEnrollments > 0 ? (completions / totalEnrollments) * 100 : 0;
-      
+
       return {
         lesson_id: lesson._id,
         title: lesson.title,

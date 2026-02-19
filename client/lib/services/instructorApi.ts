@@ -164,8 +164,26 @@ export const deleteQuiz = async (quizId: string): Promise<ApiResponse> => {
 // LIVE CLASSES
 // ============================================
 export const scheduleLiveClass = async (data: any): Promise<ApiResponse> => {
-  const response = await apiClient.post('/instructor/live-classes', data)
-  return response.data
+  try {
+    const response = await apiClient.post('/instructor/live-classes', data)
+    return response.data
+  } catch (error: any) {
+    console.error('❌ scheduleLiveClass error:', error)
+    
+    // Return error in consistent format
+    if (error.response?.data) {
+      return {
+        success: false,
+        message: error.response.data.message || error.response.data.error || 'Failed to schedule live class',
+        data: error.response.data
+      }
+    }
+    
+    return {
+      success: false,
+      message: error.message || 'Failed to schedule live class'
+    }
+  }
 }
 
 export const getLiveClasses = async (): Promise<ApiResponse> => {
