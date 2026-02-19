@@ -2,28 +2,33 @@
 const nextConfig = {
   reactStrictMode: true,
   compress: true,
-  
+
   // Image optimization
   images: {
-    domains: ['res.cloudinary.com', 'localhost'],
+    remotePatterns: [
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: '**.onrender.com' },
+      { protocol: 'https', hostname: '**.vercel.app' },
+      { protocol: 'http', hostname: 'localhost' },
+    ],
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60,
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  
+
   // Production optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn'],
     } : false,
   },
-  
+
   // Experimental features
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
   },
-  
+
   // Security headers
   async headers() {
     return [
@@ -62,7 +67,7 @@ const nextConfig = {
       }
     ]
   },
-  
+
   // Redirects
   async redirects() {
     return [
@@ -73,7 +78,7 @@ const nextConfig = {
       },
     ]
   },
-  
+
   // Webpack configuration
   webpack: (config, { isServer }) => {
     if (!isServer) {
