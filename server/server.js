@@ -20,8 +20,16 @@ const ErrorHandler = require('./src/middleware/errorHandler');
 
 console.log('Loading Express app...');
 // Import the security-enhanced app
-const app = require('./src/app');
-console.log('Express app loaded successfully');
+let app;
+try {
+  app = require('./src/app');
+  console.log('Express app loaded successfully');
+} catch (error) {
+  console.error('❌ Failed to load main app, using safe mode:', error.message);
+  console.error(error.stack);
+  app = require('./src/app-safe');
+  console.log('✅ Safe mode app loaded');
+}
 
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
