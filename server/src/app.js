@@ -3,10 +3,13 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
+console.log('Loading app.js...');
+
 const responseMiddleware = require('./middleware/response');
 const ErrorHandler = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/logging');
 
+console.log('Loading security middleware...');
 // Security middleware
 const {
   helmetConfig,
@@ -17,6 +20,7 @@ const {
   additionalSecurityHeaders
 } = require('./middleware/security');
 
+console.log('Loading routes...');
 const authRoutes = require('./routes/auth');
 const mfaRoutes = require('./routes/mfa');
 const apiRoutes = require('./api/routes/index');
@@ -40,7 +44,6 @@ const parentRoutes = require('./routes/parents');
 const quizRoutes = require('./routes/quizzes');
 const gamificationRoutes = require('./routes/gamification');
 const certificateRoutes = require('./routes/certificates');
-// const liveClassRoutes = require('./routes/liveClasses'); // OLD - Replaced by liveClassesSimple
 const translationRoutes = require('./routes/translation');
 const analyticsRoutes = require('./routes/analytics');
 const notificationRoutes = require('./routes/notifications');
@@ -59,7 +62,10 @@ const adminGradesRoutes = require('./routes/adminGrades');
 const adminTimetableRoutes = require('./routes/adminTimetable');
 const adminFeesRoutes = require('./routes/adminFees');
 
+console.log('All routes loaded successfully');
+
 const app = express();
+console.log('Express app created');
 
 // Trust proxy - REQUIRED for Render, Heroku, and other cloud platforms
 // This allows express-rate-limit to work correctly behind a proxy
@@ -245,7 +251,6 @@ app.get('/api/health', (req, res) => {
 app.use('*', ErrorHandler.handle404);
 app.use(ErrorHandler.handle);
 
-process.on('uncaughtException', ErrorHandler.handleUncaughtException);
-process.on('unhandledRejection', ErrorHandler.handleUnhandledRejection);
+console.log('App configuration complete, exporting...');
 
 module.exports = app;
