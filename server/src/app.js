@@ -79,7 +79,6 @@ app.use(additionalSecurityHeaders);
 const allowedOrigins = [
   'http://localhost:3000', // Local development
   process.env.CLIENT_URL || 'http://localhost:3000',
-  'https://smart-lms-clean.vercel.app', // Production frontend
   'https://smart-lms-clean-1.onrender.com', // Backend URL
   '' // Vercel preview deployments
 ];
