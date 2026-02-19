@@ -17,29 +17,57 @@ const app = require('./src/app');
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB
-connectDB();
-
-// Initialize Socket.IO
-socketService.initialize(server);
-
-server.listen(PORT, () => {
-  console.log(`Smart LMS Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-  console.log(`Socket.IO enabled for real-time features`);
-
-  // Start notification worker
+// Async startup function
+async function startServer() {
   try {
-    notificationWorker.start();
-    logger.info('Notification worker started successfully');
+    // Connect to MongoDB
+    await connectDB();
+
+    // Initialize Socket.IO
+    socketService.initialize(server);
+
+    // Start HTTP server
+    server.listen(PORT, () => {
+      console.log(`Smart LMS Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV}`);
+      console.log(`Socket.IO enabled for real-time features`);
+
+      // Start notification worker
+      try {
+        notificationWorker.start();
+        logger.info('Notification worker started successfully');
+      } catch (error) {
+        logger.error('Failed to start notification worker:', error);
+      }
+    });
+
+    // Handle server errors
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+        process.exit(1);
+      } else {
+        console.error('Server error:', error);
+        process.exit(1);
+      }
+    });
+
   } catch (error) {
-    logger.error('Failed to start notification worker:', error);
+    console.error('Failed to start server:', error);
+    process.exit(1);
   }
-});
+}
+
+// Start the server
+startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM received, shutting down gracefully');
+
+  server.close(() => {
+    logger.info('HTTP server closed');
+  });
 
   try {
     await notificationWorker.stop();
@@ -53,6 +81,10 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   logger.info('SIGINT received, shutting down gracefully');
+
+  server.close(() => {
+    logger.info('HTTP server closed');
+  });
 
   try {
     await notificationWorker.stop();

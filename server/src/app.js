@@ -3,7 +3,6 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
-const connectDB = require('./config/database');
 const responseMiddleware = require('./middleware/response');
 const ErrorHandler = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/logging');
@@ -65,11 +64,6 @@ const app = express();
 // Trust proxy - REQUIRED for Render, Heroku, and other cloud platforms
 // This allows express-rate-limit to work correctly behind a proxy
 app.set('trust proxy', 1);
-
-// Connect to MongoDB (skip in test environment as tests use in-memory DB)
-if (process.env.NODE_ENV !== 'test') {
-  connectDB();
-}
 
 // 0. Security Headers - Helmet.js (MUST BE FIRST)
 app.use(helmetConfig);
