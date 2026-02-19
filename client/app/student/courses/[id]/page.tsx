@@ -84,7 +84,7 @@ export default function CourseDetailsPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5000/student/courses/${courseId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/student/courses/${courseId}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -124,7 +124,7 @@ export default function CourseDetailsPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5000/student/enroll/${courseId}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/student/enroll/${courseId}`,
         {
           method: 'POST',
           headers: {

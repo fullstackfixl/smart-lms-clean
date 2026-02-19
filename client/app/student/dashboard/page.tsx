@@ -60,7 +60,7 @@ export default function StudentDashboardPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5000/student/enrollments`,
+        `${process.env.NEXT_PUBLIC_API_URL}/student/enrollments`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,

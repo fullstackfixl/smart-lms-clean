@@ -135,7 +135,7 @@ export default function CourseDetailPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/instructor/courses/${courseId}/publish`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/instructor/courses/${courseId}/publish`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${authToken}`,

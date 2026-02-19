@@ -85,7 +85,7 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const API_URL = 'http://localhost:5000'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
       const response = await fetch(`${API_URL}/instructor/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
@@ -108,7 +108,7 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const API_URL = 'http://localhost:5000'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
       const response = await fetch(`${API_URL}/instructor/notifications/read-all`, {
         method: 'PATCH',
         headers: {
@@ -131,7 +131,7 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const API_URL = 'http://localhost:5000'
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
       const response = await fetch(`${API_URL}/instructor/notifications/${notificationId}`, {
         method: 'DELETE',
         headers: {

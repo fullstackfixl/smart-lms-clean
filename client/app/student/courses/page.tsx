@@ -63,7 +63,7 @@ export default function StudentCoursesPage() {
       if (level !== 'all') params.append('level', level)
 
       const response = await fetch(
-        `http://localhost:5000/student/courses?${params}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/student/courses?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,

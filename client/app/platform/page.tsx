@@ -91,7 +91,7 @@ export default function PlatformDashboard() {
     
     try {
       console.log('🔄 [DASHBOARD] Starting data fetch...')
-      console.log('🔄 [DASHBOARD] API Base:', 'http://localhost:5000')
+      console.log('🔄 [DASHBOARD] API Base:', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
       console.log('🔄 [DASHBOARD] Token:', token?.substring(0, 20) + '...')
       
       // Fetch dashboard stats
