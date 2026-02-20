@@ -1,93 +1,367 @@
 const express = require('express');
-const { Course, Section, Lesson, Enrollment, User } = require('../models');
+const { Course, Section, Lesson, Enrollment, User, Organization } = require('../models');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Get published courses from student's organization
-router.get('/courses', authMiddleware, requireRole(['student']), async (req, res) => {
+// ─────────────────────────────────────────────────────────────
+// GET /student/profile  — returns name, email + enrollment stats
+// ─────────────────────────────────────────────────────────────
+router.get('/profile', authMiddleware, requireRole(['student']), async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 12,
-      search,
-      category,
-      level
-    } = req.query;
+    const user = await User.findById(req.user._id).select('name email profile createdAt');
+    if (!user) return res.error('User not found', 'User not found', 404);
 
-    // Build filter for organization-scoped published courses
+    const [enrollments, completed] = await Promise.all([
+      Enrollment.countDocuments({ student_id: req.user._id, organization_id: req.user.organization_id }),
+      Enrollment.countDocuments({ student_id: req.user._id, organization_id: req.user.organization_id, status: 'completed' })
+    ]);
+
+    res.success({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.profile?.phone || '',
+      location: user.profile?.location || '',
+      bio: user.profile?.bio || '',
+      avatar: user.profile?.avatar || '',
+      created_at: user.createdAt,
+      enrollments_count: enrollments,
+      completed_courses: completed
+    }, 'Profile retrieved successfully');
+
+  } catch (error) {
+    console.error('student profile error:', error);
+    res.error(error.message, 'Failed to get profile', 500);
+  }
+});
+
+// PATCH /student/profile
+router.patch('/profile', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { name, phone, location, bio } = req.body;
+    const update = {};
+    if (name) update.name = name;
+    if (phone !== undefined) update['profile.phone'] = phone;
+    if (location !== undefined) update['profile.location'] = location;
+    if (bio !== undefined) update['profile.bio'] = bio;
+
+    const user = await User.findByIdAndUpdate(req.user._id, update, { new: true })
+      .select('name email profile createdAt');
+
+    res.success({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.profile?.phone || '',
+      location: user.profile?.location || '',
+      bio: user.profile?.bio || '',
+      avatar: user.profile?.avatar || '',
+      created_at: user.createdAt
+    }, 'Profile updated successfully');
+
+  } catch (error) {
+    console.error('student profile update error:', error);
+    res.error(error.message, 'Failed to update profile', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /student/available-courses
+// Courses in same org, published, NOT yet enrolled by this student
+// ─────────────────────────────────────────────────────────────
+router.get('/available-courses', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { page = 1, limit = 12, search, category, level } = req.query;
+
+    // Find all courseIds this student is already enrolled in
+    const myEnrollments = await Enrollment.find({
+      student_id: req.user._id,
+      organization_id: req.user.organization_id
+    }).select('course_id');
+    const enrolledCourseIds = myEnrollments.map(e => e.course_id.toString());
+
+    // Build filter: org-scoped, published, NOT already enrolled
     const filter = {
       organization_id: req.user.organization_id,
       status: 'published',
-      isActive: true
+      isActive: true,
+      _id: { $nin: enrolledCourseIds }
     };
 
-    // Apply additional filters
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } }
       ];
     }
+    if (category) filter.category = category;
+    if (level) filter.level = level;
 
-    if (category) {
-      filter.category = category;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [courses, total] = await Promise.all([
+      Course.find(filter)
+        .populate('instructor_id', 'name profile')
+        .select('title description thumbnail instructor_id duration rating category level price enrollmentCount')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Course.countDocuments(filter)
+    ]);
+
+    res.success({
+      courses,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit)),
+        total,
+        limit: parseInt(limit)
+      }
+    }, 'Available courses retrieved successfully');
+
+  } catch (error) {
+    console.error('available-courses error:', error);
+    res.error(error.message, 'Failed to get available courses', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /student/courses  (browse all - includes enrolled flag)
+// ─────────────────────────────────────────────────────────────
+router.get('/courses', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { page = 1, limit = 12, search, category, level } = req.query;
+
+    const filter = {
+      organization_id: req.user.organization_id,
+      status: 'published',
+      isActive: true
+    };
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
+    if (category) filter.category = category;
+    if (level) filter.level = level;
 
-    if (level) {
-      filter.level = level;
-    }
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [courses, total] = await Promise.all([
+      Course.find(filter)
+        .populate('instructor_id', 'name profile')
+        .select('title description thumbnail instructor_id duration rating category level price enrollmentCount')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Course.countDocuments(filter)
+    ]);
 
-    // Get courses
-    const courses = await Course.find(filter)
-      .populate('instructor_id', 'name profile')
-      .select('title description thumbnail instructor_id duration rating category level price')
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .sort({ createdAt: -1 });
+    const myEnrollments = await Enrollment.find({
+      student_id: req.user._id,
+      course_id: { $in: courses.map(c => c._id) }
+    }).select('course_id progress status');
 
-    const total = await Course.countDocuments(filter);
+    const enrollmentMap = {};
+    myEnrollments.forEach(e => { enrollmentMap[e.course_id.toString()] = e; });
 
-    // Check enrollment status for each course
-    const coursesWithEnrollment = await Promise.all(
-      courses.map(async (course) => {
-        const enrollment = await Enrollment.findOne({
-          student_id: req.user._id,
-          course_id: course._id,
-          status: { $in: ['active', 'completed'] }
-        });
-
-        return {
-          ...course.toObject(),
-          isEnrolled: !!enrollment,
-          enrollmentId: enrollment?._id,
-          progress: enrollment?.progress?.completionPercentage || 0
-        };
-      })
-    );
+    const coursesWithEnrollment = courses.map(course => {
+      const enrollment = enrollmentMap[course._id.toString()];
+      return {
+        ...course.toObject(),
+        isEnrolled: !!enrollment,
+        enrollmentId: enrollment?._id,
+        progress: enrollment?.progress?.completionPercentage || 0,
+        enrollmentStatus: enrollment?.status || null
+      };
+    });
 
     res.success({
       courses: coursesWithEnrollment,
       pagination: {
         current: parseInt(page),
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil(total / parseInt(limit)),
         total,
         limit: parseInt(limit)
       }
     }, 'Courses retrieved successfully');
 
   } catch (error) {
-    console.error('Get student courses error:', error);
+    console.error('get-courses error:', error);
     res.error(error.message, 'Failed to get courses', 500);
   }
 });
 
-// Get course details
+// ─────────────────────────────────────────────────────────────
+// GET /student/my-courses  — enrolled courses with progress
+// ─────────────────────────────────────────────────────────────
+router.get('/my-courses', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({
+      student_id: req.user._id,
+      organization_id: req.user.organization_id
+    })
+      .populate({
+        path: 'course_id',
+        select: 'title description thumbnail instructor_id duration rating category level',
+        populate: { path: 'instructor_id', select: 'name profile' }
+      })
+      .sort({ updatedAt: -1 });
+
+    const courses = enrollments.map(e => ({
+      enrollmentId: e._id,
+      course: e.course_id,
+      progress: e.progress?.completionPercentage || 0,
+      completedLessons: e.progress?.completedLessons?.length || 0,
+      totalLessons: e.progress?.totalLessons || 0,
+      status: e.status,
+      enrolledAt: e.enrolledAt,
+      completedAt: e.completedAt,
+      lastAccessedAt: e.lastAccessedAt
+    }));
+
+    res.success({ courses }, 'My courses retrieved successfully');
+
+  } catch (error) {
+    console.error('my-courses error:', error);
+    res.error(error.message, 'Failed to get my courses', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /student/enrollments  — alias (dashboard compatibility)
+// ─────────────────────────────────────────────────────────────
+router.get('/enrollments', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { status = 'all' } = req.query;
+
+    const filter = {
+      student_id: req.user._id,
+      organization_id: req.user.organization_id
+    };
+    if (status !== 'all') filter.status = status;
+
+    const enrollments = await Enrollment.find(filter)
+      .populate({
+        path: 'course_id',
+        select: 'title description thumbnail instructor_id duration rating',
+        populate: { path: 'instructor_id', select: 'name' }
+      })
+      .sort({ enrolledAt: -1 });
+
+    const enrollmentsData = enrollments.map(e => ({
+      _id: e._id,
+      course: e.course_id,
+      progress: e.progress,
+      enrolledAt: e.enrolledAt,
+      lastAccessedAt: e.lastAccessedAt,
+      status: e.status,
+      completedAt: e.completedAt
+    }));
+
+    res.success({ enrollments: enrollmentsData }, 'Enrollments retrieved successfully');
+
+  } catch (error) {
+    console.error('enrollments error:', error);
+    res.error(error.message, 'Failed to get enrollments', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /student/course/:courseId  — full course detail with video URLs
+// Requires enrollment (except preview lessons)
+// ─────────────────────────────────────────────────────────────
+router.get('/course/:courseId', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findOne({
+      _id: courseId,
+      organization_id: req.user.organization_id,
+      status: 'published',
+      isActive: true
+    })
+      .populate('instructor_id', 'name profile email')
+      .populate('organization_id', 'name');
+
+    if (!course) {
+      return res.error('Course not found', 'Course does not exist or is not available', 404);
+    }
+
+    // Check enrollment
+    const enrollment = await Enrollment.findOne({
+      student_id: req.user._id,
+      course_id: courseId,
+      status: { $in: ['active', 'completed'] }
+    });
+
+    const isEnrolled = !!enrollment;
+    const completedLessonIds = enrollment
+      ? enrollment.progress.completedLessons.map(cl => cl.lessonId.toString())
+      : [];
+
+    // Fetch sections with lessons (include video URLs if enrolled)
+    const sections = await Section.find({
+      course_id: courseId,
+      isActive: true
+    }).sort({ order: 1 });
+
+    const sectionsWithLessons = await Promise.all(
+      sections.map(async section => {
+        const lessonQuery = { section_id: section._id, isActive: true };
+        // If enrolled: return full content (incl video URL). Otherwise preview only.
+        const selectFields = isEnrolled
+          ? 'title description type duration order isPreview content'
+          : 'title description type duration order isPreview';
+
+        const lessons = await Lesson.find(lessonQuery)
+          .sort({ order: 1 })
+          .select(selectFields);
+
+        return {
+          ...section.toObject(),
+          lessons: lessons.map(l => ({
+            ...l.toObject(),
+            isCompleted: completedLessonIds.includes(l._id.toString())
+          }))
+        };
+      })
+    );
+
+    const totalLessons = sectionsWithLessons.reduce(
+      (sum, s) => sum + s.lessons.length, 0
+    );
+
+    res.success({
+      course: { ...course.toObject(), totalLessons },
+      sections: sectionsWithLessons,
+      isEnrolled,
+      enrollment: enrollment
+        ? {
+          _id: enrollment._id,
+          status: enrollment.status,
+          progress: enrollment.progress,
+          enrolledAt: enrollment.enrolledAt,
+          completedAt: enrollment.completedAt
+        }
+        : null
+    }, 'Course details retrieved successfully');
+
+  } catch (error) {
+    console.error('course-detail error:', error);
+    res.error(error.message, 'Failed to get course details', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /student/courses/:id  — backward compat alias
+// ─────────────────────────────────────────────────────────────
 router.get('/courses/:id', authMiddleware, requireRole(['student']), async (req, res) => {
+  req.params.courseId = req.params.id;
+  // delegate to /course/:courseId logic inline
   try {
     const { id } = req.params;
 
-    // Verify course exists, belongs to student's organization, and is published
     const course = await Course.findOne({
       _id: id,
       organization_id: req.user.organization_id,
@@ -101,58 +375,68 @@ router.get('/courses/:id', authMiddleware, requireRole(['student']), async (req,
       return res.error('Course not found', 'Course does not exist or is not available', 404);
     }
 
-    // Get course sections with lessons
-    const sections = await Section.find({
-      course_id: course._id,
-      isActive: true
-    }).sort({ order: 1 });
+    const enrollment = await Enrollment.findOne({
+      student_id: req.user._id,
+      course_id: id,
+      status: { $in: ['active', 'completed'] }
+    });
+
+    const isEnrolled = !!enrollment;
+    const completedLessonIds = enrollment
+      ? enrollment.progress.completedLessons.map(cl => cl.lessonId.toString())
+      : [];
+
+    const sections = await Section.find({ course_id: id, isActive: true }).sort({ order: 1 });
 
     const sectionsWithLessons = await Promise.all(
-      sections.map(async (section) => {
-        const lessons = await Lesson.find({
-          section_id: section._id,
-          isActive: true
-        }).sort({ order: 1 }).select('title description type duration order isPreview');
-
+      sections.map(async section => {
+        const selectFields = isEnrolled
+          ? 'title description type duration order isPreview content'
+          : 'title description type duration order isPreview';
+        const lessons = await Lesson.find({ section_id: section._id, isActive: true })
+          .sort({ order: 1 })
+          .select(selectFields);
         return {
           ...section.toObject(),
-          lessons
+          lessons: lessons.map(l => ({
+            ...l.toObject(),
+            isCompleted: completedLessonIds.includes(l._id.toString())
+          }))
         };
       })
     );
 
-    // Check enrollment status
-    const enrollment = await Enrollment.findOne({
-      student_id: req.user._id,
-      course_id: course._id,
-      status: { $in: ['active', 'completed'] }
-    });
-
-    // Calculate total lessons
-    const totalLessons = sectionsWithLessons.reduce((sum, section) => sum + section.lessons.length, 0);
+    const totalLessons = sectionsWithLessons.reduce((sum, s) => sum + s.lessons.length, 0);
 
     res.success({
-      course: {
-        ...course.toObject(),
-        totalLessons
-      },
+      course: { ...course.toObject(), totalLessons },
       sections: sectionsWithLessons,
-      isEnrolled: !!enrollment,
-      progress: enrollment?.progress || null
+      isEnrolled,
+      progress: enrollment?.progress || null,
+      enrollment: enrollment
+        ? {
+          _id: enrollment._id,
+          status: enrollment.status,
+          progress: enrollment.progress,
+          enrolledAt: enrollment.enrolledAt,
+          completedAt: enrollment.completedAt
+        }
+        : null
     }, 'Course details retrieved successfully');
 
   } catch (error) {
-    console.error('Get course details error:', error);
+    console.error('courses/:id error:', error);
     res.error(error.message, 'Failed to get course details', 500);
   }
 });
 
-// Enroll in a course
+// ─────────────────────────────────────────────────────────────
+// POST /student/enroll/:courseId
+// ─────────────────────────────────────────────────────────────
 router.post('/enroll/:courseId', authMiddleware, requireRole(['student']), async (req, res) => {
   try {
     const { courseId } = req.params;
 
-    // Verify course exists, belongs to student's organization, and is published
     const course = await Course.findOne({
       _id: courseId,
       organization_id: req.user.organization_id,
@@ -164,25 +448,29 @@ router.post('/enroll/:courseId', authMiddleware, requireRole(['student']), async
       return res.error('Course not found', 'Course does not exist or is not available for enrollment', 404);
     }
 
-    // Check if already enrolled
     const existingEnrollment = await Enrollment.findOne({
       student_id: req.user._id,
       course_id: courseId
     });
 
     if (existingEnrollment) {
-      return res.error('Already enrolled', 'You are already enrolled in this course', 400);
+      return res.success({
+        enrollment: {
+          _id: existingEnrollment._id,
+          course_id: courseId,
+          status: existingEnrollment.status,
+          progress: existingEnrollment.progress
+        }
+      }, 'Already enrolled in this course');
     }
 
-    // Get total lessons count
+    // Count total lessons
     const sections = await Section.find({ course_id: courseId, isActive: true });
     let totalLessons = 0;
     for (const section of sections) {
-      const lessonCount = await Lesson.countDocuments({ section_id: section._id, isActive: true });
-      totalLessons += lessonCount;
+      totalLessons += await Lesson.countDocuments({ section_id: section._id, isActive: true });
     }
 
-    // Create enrollment
     const enrollment = new Enrollment({
       organization_id: req.user.organization_id,
       student_id: req.user._id,
@@ -191,7 +479,7 @@ router.post('/enroll/:courseId', authMiddleware, requireRole(['student']), async
       status: 'active',
       progress: {
         completedLessons: [],
-        totalLessons: totalLessons,
+        totalLessons,
         completionPercentage: 0,
         totalTimeSpent: 0
       },
@@ -200,7 +488,6 @@ router.post('/enroll/:courseId', authMiddleware, requireRole(['student']), async
 
     await enrollment.save();
 
-    // Update course enrollment count
     await Course.findByIdAndUpdate(courseId, {
       $inc: { enrollmentCount: 1 },
       $addToSet: { students: req.user._id }
@@ -216,77 +503,36 @@ router.post('/enroll/:courseId', authMiddleware, requireRole(['student']), async
     }, 'Enrollment successful');
 
   } catch (error) {
-    console.error('Enroll in course error:', error);
+    console.error('enroll error:', error);
     res.error(error.message, 'Failed to enroll in course', 500);
   }
 });
 
-// Get student's enrollments
-router.get('/enrollments', authMiddleware, requireRole(['student']), async (req, res) => {
+// ─────────────────────────────────────────────────────────────
+// POST /student/complete-lesson
+// Body: { courseId, lessonId, timeSpent? }
+// ─────────────────────────────────────────────────────────────
+router.post('/complete-lesson', authMiddleware, requireRole(['student']), async (req, res) => {
   try {
-    const { status = 'active' } = req.query;
+    const { courseId, lessonId, timeSpent = 0 } = req.body;
 
-    const filter = {
-      student_id: req.user._id,
-      organization_id: req.user.organization_id
-    };
-
-    if (status !== 'all') {
-      filter.status = status;
+    if (!courseId || !lessonId) {
+      return res.error('Missing fields', 'courseId and lessonId are required', 400);
     }
 
-    const enrollments = await Enrollment.find(filter)
-      .populate({
-        path: 'course_id',
-        select: 'title description thumbnail instructor_id duration rating',
-        populate: {
-          path: 'instructor_id',
-          select: 'name'
-        }
-      })
-      .sort({ enrolledAt: -1 });
-
-    const enrollmentsData = enrollments.map(enrollment => ({
-      _id: enrollment._id,
-      course: enrollment.course_id,
-      progress: enrollment.progress,
-      enrolledAt: enrollment.enrolledAt,
-      lastAccessedAt: enrollment.lastAccessedAt,
-      status: enrollment.status,
-      completedAt: enrollment.completedAt
-    }));
-
-    res.success({
-      enrollments: enrollmentsData
-    }, 'Enrollments retrieved successfully');
-
-  } catch (error) {
-    console.error('Get enrollments error:', error);
-    res.error(error.message, 'Failed to get enrollments', 500);
-  }
-});
-
-// Mark lecture as complete and update progress
-router.patch('/progress/lecture/:lectureId', authMiddleware, requireRole(['student']), async (req, res) => {
-  try {
-    const { lectureId } = req.params;
-    const { timeSpent = 0 } = req.body;
-
-    // Find the lesson and its course
-    const lesson = await Lesson.findById(lectureId);
+    const lesson = await Lesson.findOne({
+      _id: lessonId,
+      course_id: courseId,
+      isActive: true
+    });
     if (!lesson) {
       return res.error('Lesson not found', 'Lesson does not exist', 404);
     }
 
-    const section = await Section.findById(lesson.section_id);
-    if (!section) {
-      return res.error('Section not found', 'Section does not exist', 404);
-    }
-
-    // Find enrollment
     const enrollment = await Enrollment.findOne({
       student_id: req.user._id,
-      course_id: section.course_id,
+      course_id: courseId,
+      organization_id: req.user.organization_id,
       status: { $in: ['active', 'completed'] }
     });
 
@@ -294,39 +540,90 @@ router.patch('/progress/lecture/:lectureId', authMiddleware, requireRole(['stude
       return res.error('Not enrolled', 'You are not enrolled in this course', 403);
     }
 
-    // Check if lesson already completed
+    const alreadyCompleted = enrollment.progress.completedLessons.some(
+      cl => cl.lessonId.toString() === lessonId
+    );
+
+    if (!alreadyCompleted) {
+      enrollment.progress.completedLessons.push({
+        lessonId,
+        completedAt: new Date(),
+        timeSpent
+      });
+    }
+
+    enrollment.progress.totalTimeSpent = (enrollment.progress.totalTimeSpent || 0) + timeSpent;
+    enrollment.progress.lastAccessedLesson = lessonId;
+    enrollment.lastAccessedAt = new Date();
+
+    // Recalculate percentage
+    const total = enrollment.progress.totalLessons || 1;
+    const completed = enrollment.progress.completedLessons.length;
+    enrollment.progress.completionPercentage = Math.min(100, Math.round((completed / total) * 100));
+
+    // Auto-complete
+    if (enrollment.progress.completionPercentage >= 100 && enrollment.status === 'active') {
+      enrollment.status = 'completed';
+      enrollment.completedAt = new Date();
+    }
+
+    await enrollment.save();
+
+    res.success({
+      progress: enrollment.progress,
+      status: enrollment.status,
+      isCompleted: enrollment.status === 'completed',
+      completedAt: enrollment.completedAt || null
+    }, 'Lesson marked as complete');
+
+  } catch (error) {
+    console.error('complete-lesson error:', error);
+    res.error(error.message, 'Failed to complete lesson', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// PATCH /student/progress/lecture/:lectureId  (backward compat)
+// ─────────────────────────────────────────────────────────────
+router.patch('/progress/lecture/:lectureId', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { lectureId } = req.params;
+    const { timeSpent = 0 } = req.body;
+
+    const lesson = await Lesson.findById(lectureId);
+    if (!lesson) return res.error('Lesson not found', 'Lesson does not exist', 404);
+
+    const section = await Section.findById(lesson.section_id);
+    if (!section) return res.error('Section not found', 'Section does not exist', 404);
+
+    const enrollment = await Enrollment.findOne({
+      student_id: req.user._id,
+      course_id: section.course_id,
+      status: { $in: ['active', 'completed'] }
+    });
+
+    if (!enrollment) return res.error('Not enrolled', 'You are not enrolled in this course', 403);
+
     const alreadyCompleted = enrollment.progress.completedLessons.some(
       cl => cl.lessonId.toString() === lectureId
     );
 
     if (!alreadyCompleted) {
-      // Add lesson to completed lessons
-      enrollment.progress.completedLessons.push({
-        lessonId: lectureId,
-        completedAt: new Date(),
-        timeSpent: timeSpent
-      });
+      enrollment.progress.completedLessons.push({ lessonId: lectureId, completedAt: new Date(), timeSpent });
     }
 
-    // Update total time spent
     enrollment.progress.totalTimeSpent = (enrollment.progress.totalTimeSpent || 0) + timeSpent;
-
-    // Update last accessed lesson
     enrollment.progress.lastAccessedLesson = lectureId;
+    enrollment.lastAccessedAt = new Date();
 
-    // Calculate progress percentage
-    const totalLessons = enrollment.progress.totalLessons || 1;
-    const completedCount = enrollment.progress.completedLessons.length;
-    enrollment.progress.completionPercentage = Math.round((completedCount / totalLessons) * 100);
+    const total = enrollment.progress.totalLessons || 1;
+    const completed = enrollment.progress.completedLessons.length;
+    enrollment.progress.completionPercentage = Math.min(100, Math.round((completed / total) * 100));
 
-    // Check if course is completed
-    if (enrollment.progress.completionPercentage >= 100) {
+    if (enrollment.progress.completionPercentage >= 100 && enrollment.status === 'active') {
       enrollment.status = 'completed';
       enrollment.completedAt = new Date();
     }
-
-    // Update last accessed timestamp
-    enrollment.lastAccessedAt = new Date();
 
     await enrollment.save();
 
@@ -337,8 +634,56 @@ router.patch('/progress/lecture/:lectureId', authMiddleware, requireRole(['stude
     }, 'Progress updated successfully');
 
   } catch (error) {
-    console.error('Update progress error:', error);
+    console.error('progress/lecture error:', error);
     res.error(error.message, 'Failed to update progress', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /student/certificate/:courseId
+// Returns certificate data (only if course completed)
+// ─────────────────────────────────────────────────────────────
+router.get('/certificate/:courseId', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const enrollment = await Enrollment.findOne({
+      student_id: req.user._id,
+      course_id: courseId,
+      organization_id: req.user.organization_id,
+      status: 'completed'
+    });
+
+    if (!enrollment) {
+      return res.error('Certificate not available', 'You have not completed this course yet', 403);
+    }
+
+    const [course, student, organization] = await Promise.all([
+      Course.findById(courseId)
+        .populate('instructor_id', 'name')
+        .select('title instructor_id'),
+      User.findById(req.user._id).select('name email'),
+      Organization.findById(req.user.organization_id).select('name')
+    ]);
+
+    if (!course) return res.error('Course not found', 'Course does not exist', 404);
+
+    res.success({
+      certificate: {
+        studentName: student.name,
+        studentEmail: student.email,
+        courseTitle: course.title,
+        instructorName: course.instructor_id?.name || 'N/A',
+        organizationName: organization?.name || 'N/A',
+        completionDate: enrollment.completedAt,
+        enrollmentId: enrollment._id,
+        progress: enrollment.progress?.completionPercentage || 100
+      }
+    }, 'Certificate retrieved successfully');
+
+  } catch (error) {
+    console.error('certificate error:', error);
+    res.error(error.message, 'Failed to get certificate', 500);
   }
 });
 
