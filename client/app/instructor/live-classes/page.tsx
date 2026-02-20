@@ -1,535 +1,363 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import {
-  Video, Plus, Calendar, Clock, Users, Link as LinkIcon,
-  Edit, Trash2, Play, CheckCircle, XCircle
+  Video, Calendar, Clock, Link, BookOpen, Plus, Trash2,
+  Loader2, CheckCircle, AlertCircle, ChevronLeft, Users
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+
+const API = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "")
+const getToken = () =>
+  typeof window !== "undefined"
+    ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
+    : null
+
+interface LiveClass {
+  _id: string
+  title: string
+  description: string
+  course_id?: { _id: string; title: string }
+  scheduled_date: string
+  start_time: string
+  duration_minutes: number
+  meeting_url: string
+  status: "scheduled" | "live" | "completed" | "cancelled"
+}
 
 interface Course {
   _id: string
   title: string
 }
 
-interface LiveClass {
-  _id: string
-  course_id: {
-    _id: string
-    title: string
-  }
-  title: string
-  description?: string
-  scheduled_date: string
-  start_time: string
-  duration_minutes: number
-  meeting_link?: string
-  meeting_url?: string
-  status: "scheduled" | "live" | "completed" | "cancelled"
-  is_active: boolean
-  createdAt: string
-}
-
-export default function LiveClassesPage() {
+export default function InstructorLiveClassesPage() {
   const router = useRouter()
 
-  const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
+  // list state
+  const [classes, setClasses] = useState<LiveClass[]>([])
+  const [loadingList, setLoadingList] = useState(true)
   const [courses, setCourses] = useState<Course[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showDialog, setShowDialog] = useState(false)
-  const [editingClass, setEditingClass] = useState<LiveClass | null>(null)
-  const [classForm, setClassForm] = useState({
-    course_id: "",
+
+  // form state
+  const [showForm, setShowForm] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState({
     title: "",
     description: "",
-    scheduled_date: "",
-    start_time: "",
-    duration_minutes: 60
+    courseId: "",
+    meetingLink: "",
+    scheduledAt: "",
+    duration: "60"
   })
 
-  useEffect(() => {
-    loadData()
+  const fetchClasses = useCallback(async () => {
+    setLoadingList(true)
+    try {
+      const r = await fetch(`${API()}/instructor/live-classes`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: "include"
+      })
+      const data = await r.json()
+      if (data.success) setClasses(data.data?.classes || [])
+    } catch { toast.error("Failed to load live classes") }
+    finally { setLoadingList(false) }
   }, [])
 
-  async function loadData() {
-    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-    if (!token) {
-      toast.error('Please login first')
-      router.push('/login')
-      return
-    }
-    setLoading(true)
+  const fetchCourses = useCallback(async () => {
     try {
-      await Promise.all([loadLiveClasses(), loadCourses()])
-    } catch (error) {
-      toast.error("Failed to load data")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function loadLiveClasses() {
-    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-    if (!token) return
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-    try {
-      const res = await fetch(`${API_URL}/instructor/live-classes`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
+      const r = await fetch(`${API()}/instructor/courses`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: "include"
       })
-      const data = await res.json()
-      if (data.success && data.data) {
-        setLiveClasses(data.data.classes || [])
-      }
-    } catch (error) {
-      console.error("Failed to load live classes:", error)
-    }
-  }
+      const data = await r.json()
+      if (data.success) setCourses(data.data?.courses || data.data || [])
+    } catch { /* non-critical */ }
+  }, [])
 
-  async function loadCourses() {
-    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-    if (!token) return
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-    try {
-      const res = await fetch(`${API_URL}/instructor/courses?limit=100`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-      })
-      const data = await res.json()
-      if (data.success && data.data) {
-        setCourses(data.data.courses || [])
-      }
-    } catch (error) {
-      console.error("Failed to load courses:", error)
-    }
-  }
+  useEffect(() => {
+    fetchClasses()
+    fetchCourses()
+  }, [fetchClasses, fetchCourses])
 
-  async function handleCreateClass() {
-    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-    if (!token || !classForm.course_id || !classForm.title || !classForm.scheduled_date || !classForm.start_time) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.title.trim() || !form.scheduledAt || !form.duration) {
       toast.error("Please fill in all required fields")
       return
     }
-
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+    const scheduled = new Date(form.scheduledAt)
+    if (scheduled <= new Date()) {
+      toast.error("Scheduled date must be in the future")
+      return
+    }
+    if (form.meetingLink && !/^https?:\/\//.test(form.meetingLink)) {
+      toast.error("Meeting link must start with http:// or https://")
+      return
+    }
+    setSubmitting(true)
     try {
-      const res = await fetch(`${API_URL}/instructor/live-classes`, {
+      const r = await fetch(`${API()}/instructor/live-classes`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(classForm),
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          courseId: form.courseId || undefined,
+          meetingLink: form.meetingLink || undefined,
+          scheduledAt: form.scheduledAt,
+          duration: parseInt(form.duration)
+        })
       })
-
-      const data = await res.json()
+      const data = await r.json()
       if (data.success) {
-        toast.success("Live class created successfully. Notifications sent to all students!")
-        setShowDialog(false)
-        resetForm()
-        loadLiveClasses()
+        toast.success("Live class scheduled! Students will be notified via email.")
+        setShowForm(false)
+        setForm({ title: "", description: "", courseId: "", meetingLink: "", scheduledAt: "", duration: "60" })
+        fetchClasses()
       } else {
-        toast.error(data.message || "Failed to create live class")
+        toast.error(data.message || "Failed to schedule live class")
       }
-    } catch (error) {
-      toast.error("Failed to create live class")
-    }
+    } catch { toast.error("Network error") }
+    finally { setSubmitting(false) }
   }
 
-  async function handleUpdateClass() {
-    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-    if (!token || !editingClass || !classForm.title || !classForm.scheduled_date || !classForm.start_time) {
-      toast.error("Please fill in all required fields")
-      return
-    }
-
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+  const handleCancel = async (id: string) => {
+    if (!confirm("Cancel this live class?")) return
     try {
-      const res = await fetch(`${API_URL}/instructor/live-classes/${editingClass._id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-        body: JSON.stringify(classForm),
-      })
-
-      const data = await res.json()
-      if (data.success) {
-        toast.success("Live class updated successfully")
-        setShowDialog(false)
-        setEditingClass(null)
-        resetForm()
-        loadLiveClasses()
-      } else {
-        toast.error(data.message || "Failed to update live class")
-      }
-    } catch (error) {
-      toast.error("Failed to update live class")
-    }
-  }
-
-  async function handleDeleteClass(id: string) {
-    const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-    if (!token || !confirm("Delete this live class?")) return
-
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-    try {
-      const res = await fetch(`${API_URL}/instructor/live-classes/${id}`, {
+      const r = await fetch(`${API()}/instructor/live-classes/${id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
+        headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: "include"
       })
-
-      const data = await res.json()
+      const data = await r.json()
       if (data.success) {
-        toast.success("Live class deleted successfully")
-        loadLiveClasses()
-      } else {
-        toast.error(data.message || "Failed to delete live class")
-      }
-    } catch (error) {
-      toast.error("Failed to delete live class")
+        toast.success("Live class cancelled")
+        fetchClasses()
+      } else toast.error(data.message)
+    } catch { toast.error("Failed to cancel") }
+  }
+
+  const statusBadge = (status: string) => {
+    const map: Record<string, string> = {
+      scheduled: "bg-blue-100 text-blue-700 border-blue-200",
+      live: "bg-green-100 text-green-700 border-green-200 animate-pulse",
+      completed: "bg-gray-100 text-gray-600 border-gray-200",
+      cancelled: "bg-red-100 text-red-600 border-red-200"
     }
+    return map[status] || map.scheduled
   }
 
-  function openDialog(liveClass?: LiveClass) {
-    if (liveClass) {
-      setEditingClass(liveClass)
-      const scheduledDate = new Date(liveClass.scheduled_date)
-      setClassForm({
-        course_id: liveClass.course_id._id,
-        title: liveClass.title,
-        description: liveClass.description || "",
-        scheduled_date: scheduledDate.toISOString().split('T')[0],
-        start_time: liveClass.start_time || "",
-        duration_minutes: liveClass.duration_minutes
-      })
-    } else {
-      setEditingClass(null)
-      resetForm()
-    }
-    setShowDialog(true)
-  }
-
-  function resetForm() {
-    setClassForm({
-      course_id: "",
-      title: "",
-      description: "",
-      scheduled_date: "",
-      start_time: "",
-      duration_minutes: 60
-    })
-  }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "scheduled":
-        return (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 text-xs font-medium">
-            <Calendar className="h-3 w-3" />
-            Scheduled
-          </div>
-        )
-      case "live":
-        return (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 text-green-600 text-xs font-medium">
-            <Play className="h-3 w-3" />
-            Live
-          </div>
-        )
-      case "completed":
-        return (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-500/10 text-gray-600 text-xs font-medium">
-            <CheckCircle className="h-3 w-3" />
-            Completed
-          </div>
-        )
-      case "cancelled":
-        return (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/10 text-red-600 text-xs font-medium">
-            <XCircle className="h-3 w-3" />
-            Cancelled
-          </div>
-        )
-      default:
-        return null
-    }
-  }
-
-  const upcomingClasses = liveClasses.filter(
-    c => c.status === "scheduled" || c.status === "live"
-  )
-  const pastClasses = liveClasses.filter(
-    c => c.status === "completed" || c.status === "cancelled"
-  )
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading live classes...</p>
-        </div>
-      </div>
-    )
-  }
+  const minDateTime = new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Live Classes</h1>
-          <p className="text-muted-foreground mt-1">Schedule and manage live sessions</p>
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Video className="h-8 w-8 text-purple-600" />
+            Live Classes
+          </h1>
+          <p className="text-muted-foreground mt-1">Schedule sessions — all org students get notified</p>
         </div>
-        <Button onClick={() => openDialog()} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Schedule Class
+        <Button
+          onClick={() => setShowForm(v => !v)}
+          className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white gap-2"
+        >
+          <Plus className="h-4 w-4" /> Schedule Class
         </Button>
       </div>
 
-      {/* Upcoming Classes */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Upcoming Classes</h2>
-        {upcomingClasses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 rounded-2xl border border-dashed border-border bg-muted/20">
-            <Video className="h-12 w-12 text-muted-foreground/50 mb-3" />
-            <p className="text-sm text-muted-foreground">No upcoming classes scheduled</p>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {upcomingClasses.map((liveClass) => (
-              <motion.div
-                key={liveClass._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-border/50 bg-card p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1">{liveClass.title}</h3>
-                    <p className="text-sm text-muted-foreground">{liveClass.course_id.title}</p>
+      {/* Schedule Form */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, y: -16, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -16, height: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <Card className="border-purple-200 dark:border-purple-800">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 rounded-t-lg">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-purple-600" /> Schedule a New Live Class
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="md:col-span-2">
+                      <Label>Class Title <span className="text-red-500">*</span></Label>
+                      <Input
+                        className="mt-1"
+                        placeholder="e.g. Introduction to React Hooks"
+                        value={form.title}
+                        onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label>Description</Label>
+                      <Textarea
+                        className="mt-1"
+                        placeholder="What will be covered in this session..."
+                        value={form.description}
+                        onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <Label>Date & Time <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="datetime-local"
+                        className="mt-1"
+                        min={minDateTime}
+                        value={form.scheduledAt}
+                        onChange={e => setForm(f => ({ ...f, scheduledAt: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>Duration (minutes) <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="number"
+                        className="mt-1"
+                        min={15}
+                        max={480}
+                        value={form.duration}
+                        onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>
+                        <Link className="inline h-3.5 w-3.5 mr-1" />
+                        Meeting Link
+                      </Label>
+                      <Input
+                        className="mt-1"
+                        placeholder="https://meet.google.com/..."
+                        value={form.meetingLink}
+                        onChange={e => setForm(f => ({ ...f, meetingLink: e.target.value }))}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Leave blank to auto-generate a Jitsi room</p>
+                    </div>
+                    <div>
+                      <Label>
+                        <BookOpen className="inline h-3.5 w-3.5 mr-1" />
+                        Course (optional)
+                      </Label>
+                      <select
+                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={form.courseId}
+                        onChange={e => setForm(f => ({ ...f, courseId: e.target.value }))}
+                      >
+                        <option value="">— Select a course —</option>
+                        {courses.map(c => (
+                          <option key={c._id} value={c._id}>{c.title}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  {getStatusBadge(liveClass.status)}
-                </div>
 
-                {liveClass.description && (
-                  <p className="text-sm text-muted-foreground mb-4">{liveClass.description}</p>
-                )}
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>{new Date(liveClass.scheduled_date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      {new Date(liveClass.scheduled_date).toLocaleTimeString()} ({liveClass.duration_minutes} min)
-                    </span>
-                  </div>
-                  {(liveClass.meeting_url || liveClass.meeting_link) && (
-                    <a
-                      href={liveClass.meeting_url || liveClass.meeting_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-orange-600 hover:text-orange-700"
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
                     >
-                      <LinkIcon className="h-4 w-4" />
-                      Join Meeting (Jitsi)
-                    </a>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 pt-4 border-t">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openDialog(liveClass)}
-                    className="flex-1"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDeleteClass(liveClass._id)}
-                    className="flex-1"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                      {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                      {submitting ? "Scheduling..." : "Schedule & Notify Students"}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
-      {/* Past Classes */}
-      {pastClasses.length > 0 && (
+      {/* Classes List */}
+      {loadingList ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-purple-600" /></div>
+      ) : classes.length === 0 ? (
+        <div className="text-center py-16">
+          <Video className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-xl font-semibold mb-2">No live classes yet</h3>
+          <p className="text-muted-foreground mb-6">Schedule your first live class and notify all students instantly</p>
+          <Button onClick={() => setShowForm(true)} className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+            <Plus className="h-4 w-4 mr-2" /> Schedule First Class
+          </Button>
+        </div>
+      ) : (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Past Classes</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            {pastClasses.map((liveClass) => (
-              <motion.div
-                key={liveClass._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-border/50 bg-card p-6 opacity-75"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1">{liveClass.title}</h3>
-                    <p className="text-sm text-muted-foreground">{liveClass.course_id.title}</p>
-                  </div>
-                  {getStatusBadge(liveClass.status)}
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>{new Date(liveClass.scheduled_date).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{liveClass.duration_minutes} minutes</span>
-                  </div>
-                </div>
+          <h2 className="text-lg font-semibold text-muted-foreground uppercase tracking-wide text-xs">Scheduled Sessions ({classes.length})</h2>
+          {classes.map(lc => {
+            const d = new Date(lc.scheduled_date)
+            const [h, m] = lc.start_time.split(":")
+            d.setHours(Number(h), Number(m))
+            const isUpcoming = d > new Date()
+            return (
+              <motion.div key={lc._id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                <Card className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-5">
+                    <div className="flex flex-col sm:flex-row justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className={`inline-flex text-xs font-medium px-2.5 py-0.5 rounded-full border ${statusBadge(lc.status)}`}>
+                            {lc.status === "live" ? "🔴 LIVE" : lc.status.charAt(0).toUpperCase() + lc.status.slice(1)}
+                          </span>
+                          {lc.course_id && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <BookOpen className="h-3 w-3" /> {lc.course_id.title}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-bold text-lg">{lc.title}</h3>
+                        {lc.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{lc.description}</p>}
+                        <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            {lc.start_time} · {lc.duration_minutes} min
+                          </span>
+                          {lc.meeting_url && (
+                            <a href={lc.meeting_url} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-purple-600 hover:underline">
+                              <Link className="h-3.5 w-3.5" /> Join Link
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      {lc.status === "scheduled" && isUpcoming && (
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleCancel(lc._id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </motion.div>
-            ))}
-          </div>
+            )
+          })}
         </div>
       )}
-
-      {/* Create/Edit Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editingClass ? "Edit Live Class" : "Schedule Live Class"}</DialogTitle>
-            <DialogDescription>
-              {editingClass ? "Update live class details" : "Create a new live class session"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="course">Course *</Label>
-              <Select
-                value={classForm.course_id}
-                onValueChange={(value) => setClassForm({ ...classForm, course_id: value })}
-                disabled={!!editingClass}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a course" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course._id} value={course._id}>
-                      {course.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="title">Class Title *</Label>
-              <Input
-                id="title"
-                placeholder="e.g., Week 1 - Introduction"
-                value={classForm.title}
-                onChange={(e) => setClassForm({ ...classForm, title: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="What will be covered in this session?"
-                value={classForm.description}
-                onChange={(e) => setClassForm({ ...classForm, description: e.target.value })}
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="scheduled_date">Date *</Label>
-                <Input
-                  id="scheduled_date"
-                  type="date"
-                  value={classForm.scheduled_date}
-                  onChange={(e) => setClassForm({ ...classForm, scheduled_date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="start_time">Time *</Label>
-                <Input
-                  id="start_time"
-                  type="time"
-                  value={classForm.start_time}
-                  onChange={(e) => setClassForm({ ...classForm, start_time: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="duration">Duration (minutes) *</Label>
-              <Input
-                id="duration"
-                type="number"
-                min="15"
-                step="15"
-                value={classForm.duration_minutes}
-                onChange={(e) =>
-                  setClassForm({ ...classForm, duration_minutes: parseInt(e.target.value) || 60 })
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                A Jitsi meeting link will be automatically generated and sent to all students via email
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={editingClass ? handleUpdateClass : handleCreateClass}>
-              <Calendar className="h-4 w-4 mr-2" />
-              {editingClass ? "Update" : "Schedule"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

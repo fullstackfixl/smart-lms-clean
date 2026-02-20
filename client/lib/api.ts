@@ -1,5 +1,5 @@
 // Remove trailing slash from API_BASE if present
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, '')
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, '')
 
 interface ApiOptions {
   method?: string
@@ -48,7 +48,7 @@ async function apiRequest<T = unknown>(
 
   try {
     const response = await fetch(fullUrl, config)
-    
+
     // Try to parse JSON response
     let data
     try {
@@ -260,7 +260,7 @@ export const liveClassApi = {
       method: "DELETE",
       token,
     }),
-    
+
   // Student endpoints
   upcoming: (token: string) =>
     apiRequest("/student/live-classes/upcoming", { token }),
@@ -359,7 +359,7 @@ export const platformApi = {
       body: data
     })
   },
-  
+
   listOrgs: (token?: string, params?: { page?: number; limit?: number; status?: string; plan?: string; search?: string; sortBy?: string; sortOrder?: string }) => {
     const queryParams = new URLSearchParams()
     if (params?.page) queryParams.append('page', params.page.toString())
@@ -369,14 +369,14 @@ export const platformApi = {
     if (params?.search) queryParams.append('search', params.search)
     if (params?.sortBy) queryParams.append('sortBy', params.sortBy)
     if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder)
-    
+
     const query = queryParams.toString()
     return apiRequest(`/platform/organizations${query ? `?${query}` : ""}`, { token })
   },
-  
+
   getOrg: (token: string, id: string) =>
     apiRequest(`/platform/organizations/${id}`, { token }),
-  
+
   updateOrg: async (id: string, data: {
     name?: string
     email?: string
@@ -395,34 +395,34 @@ export const platformApi = {
       body: data
     })
   },
-  
+
   updateOrgStatus: async (id: string, status: 'active' | 'suspended') => {
     return apiRequest(`/platform/organizations/${id}/status`, {
       method: "PATCH",
       body: { status }
     })
   },
-  
+
   deleteOrg: async (id: string) => {
     return apiRequest(`/platform/organizations/${id}`, {
       method: "DELETE"
     })
   },
-  
+
   restoreOrg: async (id: string) => {
     return apiRequest(`/platform/organizations/${id}/restore`, {
       method: "POST"
     })
   },
-  
+
   getOrgStats: (token?: string) =>
     apiRequest("/platform/organizations/stats", { token }),
-  
+
   analytics: (token: string) =>
     apiRequest("/platform/analytics", { token }),
   revenue: (token: string) =>
     apiRequest("/platform/revenue", { token }),
-  
+
   // Dashboard
   getDashboardStats: (token?: string) =>
     apiRequest("/platform/dashboard/stats", { token }),
@@ -430,18 +430,18 @@ export const platformApi = {
     apiRequest(`/platform/analytics/global${period ? `?period=${period}` : ""}`, { token }),
   getRevenueAnalytics: (token?: string) =>
     apiRequest("/platform/analytics/revenue", { token }),
-  
+
   // Platform Admins
   listAdmins: (token: string, params?: { page?: number; limit?: number; search?: string }) => {
     const queryParams = new URLSearchParams()
     if (params?.page) queryParams.append('page', params.page.toString())
     if (params?.limit) queryParams.append('limit', params.limit.toString())
     if (params?.search) queryParams.append('search', params.search)
-    
+
     const query = queryParams.toString()
     return apiRequest(`/platform/admins${query ? `?${query}` : ""}`, { token })
   },
-  
+
   createAdmin: async (token: string, data: {
     name: string
     email: string
@@ -453,7 +453,7 @@ export const platformApi = {
       body: data
     })
   },
-  
+
   updateAdminStatus: async (token: string, id: string, isActive: boolean) => {
     return apiRequest(`/platform/admins/${id}/status`, {
       method: "PATCH",
@@ -608,25 +608,25 @@ export const studentApi = {
     apiRequest(`/student/courses${params ? `?${params}` : ""}`, { token }),
   getCourseDetail: (token: string, id: string) =>
     apiRequest(`/student/courses/${id}`, { token }),
-  
+
   // Enrollment
   enrollInCourse: (token: string, courseId: string) =>
     apiRequest(`/student/enroll/${courseId}`, { method: "POST", token }),
   getMyEnrollments: (token: string, params?: string) =>
     apiRequest(`/student/enrollments${params ? `?${params}` : ""}`, { token }),
-  
+
   // Progress
   markLectureComplete: (token: string, lectureId: string, data: { timeSpent?: number; score?: number }) =>
     apiRequest(`/student/progress/lecture/${lectureId}`, { method: "PATCH", token, body: data }),
   getResumeLesson: (token: string, courseId: string) =>
     apiRequest(`/student/resume/${courseId}`, { token }),
-  
+
   // Reviews
   createOrUpdateReview: (token: string, courseId: string, data: { rating: number; comment?: string }) =>
     apiRequest(`/student/reviews/${courseId}`, { method: "POST", token, body: data }),
   getCourseReviews: (token: string, courseId: string, params?: string) =>
     apiRequest(`/student/reviews/${courseId}${params ? `?${params}` : ""}`, { token }),
-  
+
   // Dashboard
   getDashboard: (token: string) =>
     apiRequest("/student/dashboard", { token }),
@@ -639,7 +639,7 @@ export const adminApi = {
     apiRequest("/api/admin/dashboard/metrics", { token }),
   activities: (token: string, limit?: number) =>
     apiRequest(`/api/admin/dashboard/activities${limit ? `?limit=${limit}` : ""}`, { token }),
-  
+
   // User Management
   listUsers: (token: string, params?: string) =>
     apiRequest(`/api/admin/users${params ? `?${params}` : ""}`, { token }),
@@ -655,7 +655,7 @@ export const adminApi = {
     apiRequest(`/api/admin/users/${id}/status`, { method: "PATCH", token, body: { isActive } }),
   deleteUser: (token: string, id: string) =>
     apiRequest(`/api/admin/users/${id}`, { method: "DELETE", token }),
-  
+
   // Course Management
   listCourses: (token: string, params?: string) =>
     apiRequest(`/api/admin/courses${params ? `?${params}` : ""}`, { token }),
@@ -665,7 +665,7 @@ export const adminApi = {
     apiRequest(`/api/admin/courses/${id}/publish`, { method: "PUT", token, body: { isPublished } }),
   assignInstructor: (token: string, id: string, instructorId: string) =>
     apiRequest(`/api/admin/courses/${id}/assign-instructor`, { method: "PUT", token, body: { instructorId } }),
-  
+
   // Attendance
   attendanceSummary: (token: string) =>
     apiRequest("/api/admin/attendance/summary", { token }),
@@ -673,7 +673,7 @@ export const adminApi = {
     apiRequest(`/api/admin/attendance/student/${studentId}`, { token }),
   instructorAttendance: (token: string, instructorId: string) =>
     apiRequest(`/api/admin/attendance/instructor/${instructorId}`, { token }),
-  
+
   // Grades
   listGrades: (token: string, params?: string) =>
     apiRequest(`/api/admin/grades${params ? `?${params}` : ""}`, { token }),

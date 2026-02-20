@@ -1,168 +1,230 @@
-'use client';
+"use client"
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Video, User } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react"
+import { motion } from "framer-motion"
+import {
+  Video, Calendar, Clock, Link as LinkIcon, User,
+  Loader2, ExternalLink, Radio, BookOpen, Bell
+} from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "")
+const getToken = () =>
+  typeof window !== "undefined"
+    ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
+    : null
 
 interface LiveClass {
-  _id: string;
-  title: string;
-  description: string;
-  scheduled_date: string;
-  start_time: string;
-  duration_minutes: number;
-  meeting_url: string;
-  status: string;
-  course_id: {
-    _id: string;
-    title: string;
-  };
-  instructor_id: {
-    _id: string;
-    name: string;
-  };
+  _id: string
+  title: string
+  description?: string
+  course_id?: { _id: string; title: string }
+  instructor_id?: { _id: string; name: string; email: string }
+  scheduled_date: string
+  start_time: string
+  duration_minutes: number
+  meeting_url: string
+  status: "scheduled" | "live" | "completed" | "cancelled"
+  canJoin: boolean
+  isLive: boolean
 }
 
 export default function StudentLiveClassesPage() {
-  const [classes, setClasses] = useState<LiveClass[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [classes, setClasses] = useState<LiveClass[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchClasses = useCallback(async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`${API()}/student/live-classes`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: "include"
+      })
+      const data = await r.json()
+      if (data.success) {
+        setClasses(data.data?.classes || [])
+      } else {
+        toast.error(data.message || "Failed to load live classes")
+      }
+    } catch {
+      toast.error("Network error loading live classes")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    fetchLiveClasses();
-  }, []);
+    fetchClasses()
+    // Refresh every 60s to update canJoin state
+    const interval = setInterval(fetchClasses, 60_000)
+    return () => clearInterval(interval)
+  }, [fetchClasses])
 
-  const fetchLiveClasses = async () => {
-    try {
-      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token');
-      
-      const response = await fetch(`${API_URL}/student/live-classes/upcoming`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  const formatDateTime = (dateStr: string, startTime: string) => {
+    const d = new Date(dateStr)
+    const [h, m] = startTime.split(":")
+    d.setHours(Number(h), Number(m))
+    return d.toLocaleString("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    })
+  }
 
-      if (response.ok) {
-        const data = await response.json();
-        setClasses(data.data?.classes || []);
-      }
-    } catch (error) {
-      // Error handled silently
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const joinClass = (meetingUrl: string) => {
-    window.open(meetingUrl, '_blank');
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusColors = {
-      scheduled: 'bg-blue-500',
-      live: 'bg-green-500',
-      completed: 'bg-gray-500',
-      cancelled: 'bg-red-500'
-    };
-
-    return (
-      <Badge className={statusColors[status as keyof typeof statusColors] || 'bg-gray-500'}>
-        {status.toUpperCase()}
-      </Badge>
-    );
-  };
+  const timeUntil = (dateStr: string, startTime: string) => {
+    const d = new Date(dateStr)
+    const [h, m] = startTime.split(":")
+    d.setHours(Number(h), Number(m))
+    const diff = d.getTime() - Date.now()
+    if (diff < 0) return null
+    const hrs = Math.floor(diff / 3_600_000)
+    const mins = Math.floor((diff % 3_600_000) / 60_000)
+    if (hrs > 24) return `in ${Math.floor(hrs / 24)} day${Math.floor(hrs / 24) !== 1 ? "s" : ""}`
+    if (hrs > 0) return `in ${hrs}h ${mins}m`
+    return `in ${mins} minute${mins !== 1 ? "s" : ""}`
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading live classes...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[40vh] p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
       </div>
-    );
+    )
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Live Classes</h1>
-        <p className="text-gray-600 mt-2">Join your upcoming live classes</p>
-      </div>
+    <div className="space-y-8 p-6 max-w-3xl mx-auto">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Video className="h-8 w-8 text-purple-600" />
+              Live Classes
+            </h1>
+            <p className="text-muted-foreground mt-1">Upcoming sessions from your instructors</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={fetchClasses} className="gap-1">
+            Refresh
+          </Button>
+        </div>
+      </motion.div>
 
+      {/* Classes */}
       {classes.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Video className="h-16 w-16 text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Upcoming Classes</h3>
-            <p className="text-gray-600 text-center">
-              You don't have any upcoming live classes scheduled.
-            </p>
-          </CardContent>
-        </Card>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+          <div className="relative inline-block mb-6">
+            <Video className="h-20 w-20 mx-auto text-muted-foreground/30" />
+          </div>
+          <h3 className="text-2xl font-bold mb-2">No upcoming live classes</h3>
+          <p className="text-muted-foreground max-w-sm mx-auto">
+            Your instructor hasn't scheduled any sessions yet. You'll receive an email when one is scheduled.
+          </p>
+          <div className="flex items-center justify-center gap-2 mt-6 text-sm text-muted-foreground">
+            <Bell className="h-4 w-4" />
+            <span>Email notifications are enabled for your account</span>
+          </div>
+        </motion.div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {classes.map((liveClass) => (
-            <Card key={liveClass._id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-xl">{liveClass.title}</CardTitle>
-                  {getStatusBadge(liveClass.status)}
-                </div>
-                <CardDescription className="mt-2">
-                  {liveClass.course_id?.title || 'Unknown Course'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {liveClass.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {liveClass.description}
-                    </p>
+        <div className="space-y-4">
+          {classes.map((lc, idx) => {
+            const until = timeUntil(lc.scheduled_date, lc.start_time)
+            return (
+              <motion.div
+                key={lc._id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.07 }}
+              >
+                <Card className={`overflow-hidden transition-shadow hover:shadow-lg ${lc.isLive ? "border-green-400 shadow-green-100 dark:shadow-green-950/20" : ""}`}>
+                  {/* Live indicator bar */}
+                  {lc.isLive && (
+                    <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-1.5 flex items-center gap-2">
+                      <Radio className="h-3.5 w-3.5 text-white animate-pulse" />
+                      <span className="text-white text-xs font-bold tracking-wider uppercase">Live Now</span>
+                    </div>
                   )}
 
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    {formatDate(liveClass.scheduled_date)}
-                  </div>
+                  <CardContent className="p-6">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      {/* Left: Content */}
+                      <div className="flex-1 min-w-0">
+                        {/* Badge row */}
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {lc.status === "live" || lc.isLive ? (
+                            <Badge className="bg-green-100 text-green-700 border-green-200 border animate-pulse text-xs">🔴 Live</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">Scheduled</Badge>
+                          )}
+                          {until && !lc.isLive && (
+                            <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">⏰ {until}</Badge>
+                          )}
+                          {lc.course_id && (
+                            <Badge variant="outline" className="text-xs flex items-center gap-1">
+                              <BookOpen className="h-2.5 w-2.5" />
+                              {lc.course_id.title}
+                            </Badge>
+                          )}
+                        </div>
 
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Clock className="h-4 w-4 mr-2" />
-                    {liveClass.start_time} ({liveClass.duration_minutes} minutes)
-                  </div>
+                        <h3 className="text-xl font-bold leading-tight mb-1">{lc.title}</h3>
+                        {lc.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{lc.description}</p>
+                        )}
 
-                  <div className="flex items-center text-sm text-gray-600">
-                    <User className="h-4 w-4 mr-2" />
-                    {liveClass.instructor_id?.name || 'Unknown Instructor'}
-                  </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 shrink-0" />
+                            <span>{lc.instructor_id?.name || "Instructor"}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 shrink-0" />
+                            <span>{lc.duration_minutes} minutes</span>
+                          </div>
+                          <div className="flex items-center gap-2 sm:col-span-2">
+                            <Calendar className="h-4 w-4 shrink-0" />
+                            <span>{formatDateTime(lc.scheduled_date, lc.start_time)}</span>
+                          </div>
+                        </div>
+                      </div>
 
-                  <Button
-                    onClick={() => joinClass(liveClass.meeting_url)}
-                    className="w-full mt-4 bg-orange-600 hover:bg-orange-700"
-                    disabled={liveClass.status === 'cancelled' || liveClass.status === 'completed'}
-                  >
-                    <Video className="h-4 w-4 mr-2" />
-                    Join Live Class
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                      {/* Right: Join button */}
+                      <div className="flex sm:flex-col items-center sm:justify-center gap-3 sm:gap-2 shrink-0">
+                        {lc.meeting_url ? (
+                          <a href={lc.meeting_url} target="_blank" rel="noopener noreferrer">
+                            <Button
+                              className={`gap-2 ${lc.canJoin
+                                ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-md shadow-green-200 dark:shadow-green-900/30"
+                                : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"}`}
+                            >
+                              {lc.canJoin ? (
+                                <><Radio className="h-4 w-4 animate-pulse" /> Join Now</>
+                              ) : (
+                                <><ExternalLink className="h-4 w-4" /> Meeting Link</>
+                              )}
+                            </Button>
+                          </a>
+                        ) : (
+                          <div className="text-xs text-muted-foreground">Link TBA</div>
+                        )}
+                        {!lc.canJoin && !lc.isLive && until && (
+                          <span className="text-xs text-muted-foreground text-center">Opens 10 min before</span>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )
+          })}
         </div>
       )}
     </div>
-  );
+  )
 }

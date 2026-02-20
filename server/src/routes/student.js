@@ -686,5 +686,47 @@ router.get('/certificate/:courseId', authMiddleware, requireRole(['student']), a
     res.error(error.message, 'Failed to get certificate', 500);
   }
 });
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /student/live-classes
+// Upcoming live classes for this student's organization
+// ─────────────────────────────────────────────────────────────────────────────
+const LiveClass = require('../models/LiveClass');
+router.get('/live-classes', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    if (!req.user.organization_id) {
+      return res.success({ classes: [] }, 'No organization assigned');
+    }
+
+    const now = new Date();
+    const classes = await LiveClass.find({
+      organization_id: req.user.organization_id,
+      scheduled_date: { $gte: new Date(now.getTime() - 60 * 60 * 1000) }, // include last 1h (may be live)
+      status: { $in: ['scheduled', 'live'] },
+      is_active: true
+    })
+      .sort({ scheduled_date: 1 })
+      .populate('course_id', 'title thumbnail')
+      .populate('instructor_id', 'name email')
+      .lean();
+
+    // Compute canJoin (10 min before until end)
+    const enriched = classes.map(lc => {
+      const startMs = new Date(lc.scheduled_date).getTime();
+      const joinWindowMs = startMs - 10 * 60 * 1000;
+      const endMs = startMs + lc.duration_minutes * 60 * 1000;
+      const nowMs = now.getTime();
+      return {
+        ...lc,
+        canJoin: nowMs >= joinWindowMs && nowMs <= endMs,
+        isLive: nowMs >= startMs && nowMs <= endMs
+      };
+    });
+
+    return res.success({ classes: enriched }, 'Live classes retrieved');
+  } catch (err) {
+    console.error('[student/live-classes] Error:', err.message);
+    res.error(err.message, 'Failed to fetch live classes', 500);
+  }
+});
 
 module.exports = router;

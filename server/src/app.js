@@ -156,6 +156,9 @@ try {
   const instructorRoutes = require('./routes/instructor');
   app.use('/instructor', instructorRoutes);
 
+  const instructorLiveClassRoutes = require('./routes/instructorLiveClasses');
+  app.use('/instructor/live-classes', instructorLiveClassRoutes);
+
   const adminRoutes = require('./routes/admin');
   app.use('/api/admin', adminRoutes);
 

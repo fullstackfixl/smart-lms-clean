@@ -35,7 +35,8 @@ interface StudentSidebarProps {
 
 const navItems = [
   { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
-  { label: 'My Courses', href: '/student/courses', icon: BookOpen },
+  { label: 'Browse Courses', href: '/student/available-courses', icon: GraduationCap },
+  { label: 'My Courses', href: '/student/my-courses', icon: BookOpen },
   { label: 'Quizzes', href: '/student/quizzes', icon: FileQuestion },
   { label: 'Certificates', href: '/student/certificates', icon: Award },
   { label: 'Leaderboard', href: '/student/leaderboard', icon: Trophy },
@@ -55,12 +56,12 @@ export function StudentSidebar({ user }: StudentSidebarProps) {
       {/* Logo */}
       <div className="p-6 border-b border-slate-700/50">
         <div className="flex items-center gap-2">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-            <span className="text-white font-bold text-xl">I</span>
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <span className="text-white font-bold text-xl">S</span>
           </div>
           <div>
             <span className="text-lg font-bold text-white block leading-tight">
-              Instatute
+              Smart LMS
             </span>
             <span className="text-xs text-slate-400">
               Learning Platform
@@ -72,9 +73,9 @@ export function StudentSidebar({ user }: StudentSidebarProps) {
       {/* User Card */}
       <div className="p-4 border-b border-slate-700/50">
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-900/70 backdrop-blur-sm border border-slate-700/50">
-          <Avatar className="h-12 w-12 border-2 border-orange-500">
+          <Avatar className="h-12 w-12 border-2 border-purple-500">
             <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback className="bg-gradient-to-br from-orange-500 to-orange-600 text-white font-bold text-base">
+            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white font-bold text-base">
               {getInitials(user.name)}
             </AvatarFallback>
           </Avatar>
@@ -89,8 +90,8 @@ export function StudentSidebar({ user }: StudentSidebarProps) {
               </Badge>
             </div>
             <div className="flex items-center gap-1 mt-1">
-              <Flame className="h-3.5 w-3.5 text-orange-500" />
-              <span className="text-xs font-semibold text-orange-400">
+              <Flame className="h-3.5 w-3.5 text-purple-500" />
+              <span className="text-xs font-semibold text-purple-400">
                 {user.streak} day streak
               </span>
             </div>
@@ -111,15 +112,15 @@ export function StudentSidebar({ user }: StudentSidebarProps) {
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative",
                 isActive
-                  ? "bg-orange-500/10 text-orange-400"
-                  : "text-slate-300 hover:bg-slate-800/50 hover:text-orange-400"
+                  ? "bg-purple-500/10 text-purple-400"
+                  : "text-slate-300 hover:bg-slate-800/50 hover:text-purple-400"
               )}
               onClick={() => setIsMobileOpen(false)}
             >
               {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-orange-500 rounded-r-full" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-purple-500 rounded-r-full" />
               )}
-              <Icon className={cn("h-5 w-5", isActive && "text-orange-500")} strokeWidth={1.5} />
+              <Icon className={cn("h-5 w-5", isActive && "text-purple-500")} strokeWidth={1.5} />
               <span>{item.label}</span>
             </Link>
           )
