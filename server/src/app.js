@@ -2,31 +2,26 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
-// CORS - allow Vercel frontend and dynamic preview URLs
-const buildAllowedOrigins = () => {
-  const origins = new Set([
-    'http://localhost:3000',
-    'http://localhost:3001'
-  ]);
-  if (process.env.CLIENT_URL) origins.add(process.env.CLIENT_URL);
-  if (process.env.VERCEL_URL) origins.add(`https://${process.env.VERCEL_URL}`);
-  // Always keep production URLs
-  origins.add('https://smart-lms-clean.vercel.app');
-  origins.add('https://smart-lms-clean-1.onrender.com');
-  return origins;
-};
-
+// CORS - allow Vercel frontend and any CLIENT_URL in env
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
+    // Build allowed list dynamically from env + hardcoded fallbacks
+    const allowedOrigins = [
+      'https://smart-lms-clean.vercel.app',
+      'https://smart-lms-clean-1.onrender.com',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ];
+
+    // Allow any additional origin from CLIENT_URL env (comma-separated)
+    if (process.env.CLIENT_URL) {
+      process.env.CLIENT_URL.split(',').forEach(u => allowedOrigins.push(u.trim()));
+    }
+
+    // Allow requests with no origin (mobile apps, Postman, curl, etc.)
     if (!origin) return callback(null, true);
 
-    const allowed = buildAllowedOrigins();
-
-    // Also allow any *.vercel.app subdomain (Vercel preview deployments)
-    const isVercelPreview = /\.vercel\.app$/.test(origin);
-
-    if (allowed.has(origin) || isVercelPreview) {
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log('❌ [CORS] Blocked origin:', origin);
