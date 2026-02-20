@@ -126,6 +126,11 @@ router.post('/', authMiddleware, requireRole(['instructor']), async (req, res) =
         let course = null;
         let resolvedCourseId = courseId;
         if (courseId) {
+            // Validate if courseId is a valid ObjectId to prevent 500 casting error
+            const mongoose = require('mongoose');
+            if (!mongoose.Types.ObjectId.isValid(courseId)) {
+                return res.error('Invalid Course ID', 'The provided Course ID is not a valid identifier', 400);
+            }
             course = await Course.findOne({ _id: courseId, organization_id: instructor.organization_id });
             if (!course) {
                 return res.error('Course not found', 'Course not found in your organization', 404);

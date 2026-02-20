@@ -320,10 +320,15 @@ router.get('/course/:courseId', authMiddleware, requireRole(['student']), async 
 
         return {
           ...section.toObject(),
-          lessons: lessons.map(l => ({
-            ...l.toObject(),
-            isCompleted: completedLessonIds.includes(l._id.toString())
-          }))
+          lessons: lessons.map(l => {
+            const lessonObj = l.toObject();
+            return {
+              ...lessonObj,
+              isCompleted: completedLessonIds.includes(l._id.toString()),
+              videoUrl: lessonObj.content?.videoUrl,
+              content: lessonObj.content?.textContent || lessonObj.content?.pdfUrl || lessonObj.content?.videoUrl
+            };
+          })
         };
       })
     );
