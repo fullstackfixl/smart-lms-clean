@@ -96,6 +96,15 @@ router.get('/parent/grades/:student_id', authMiddleware, enforceOrgIsolation, pa
 router.get('/parent/fees/:student_id', authMiddleware, enforceOrgIsolation, parentController.getChildFees);
 
 // AI & Gamification APIs
+const aiRateLimit = require('express-rate-limit')({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 10, // Limit each IP to 10 requests per windowMs
+    message: { success: false, message: 'Too many requests to AI tutor, please try again in a minute.' }
+});
+
+router.post('/ai/lesson-chat', authMiddleware, requireRole(['student']), enforceOrgIsolation, aiRateLimit, aiController.askLessonQuestion);
+router.get('/ai/lesson-chat/:lessonId', authMiddleware, requireRole(['student']), enforceOrgIsolation, aiController.getLessonChatHistory);
+
 router.post('/ai/generate-quiz', authMiddleware, aiController.generateQuiz);
 router.post('/ai/explain-topic', authMiddleware, aiController.explainTopic);
 router.get('/analytics/predict/:user_id', authMiddleware, enforceOrgIsolation, aiController.predictPerformance);

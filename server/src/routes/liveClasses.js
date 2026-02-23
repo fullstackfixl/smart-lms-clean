@@ -4,6 +4,7 @@ const { authMiddleware: auth } = require('../middleware/auth');
 const LiveClass = require('../models/LiveClass');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
+const emailService = require('../utils/emailService');
 const router = express.Router();
 
 // Validation middleware
@@ -167,13 +168,108 @@ router.post('/', auth, checkInstructorPermission, validateLiveClassCreation, asy
     // Populate course and instructor details
     await liveClass.populate([
       { path: 'course_id', select: 'title' },
-      { path: 'instructor_id', select: 'full_name email' }
+      { path: 'instructor_id', select: 'name email' }
     ]);
 
+    // Send response FIRST — email runs in background (non-blocking)
     res.status(201).json({
       success: true,
       data: liveClass,
       message: 'Live class created successfully'
+    });
+
+    // --- Background: notify enrolled students --- //
+    setImmediate(async () => {
+      try {
+        const User = require('../models/User');
+
+        // Get all active enrollments for this course in the same org
+        const enrollments = await Enrollment.find({
+          course_id: course_id,
+          organization_id: req.user.organization_id,
+          status: 'active'
+        }).select('student_id').lean();
+
+        if (!enrollments.length) {
+          console.log(`[LiveClass] No enrolled students to notify for course ${course_id}`);
+          return;
+        }
+
+        const studentIds = enrollments.map(e => e.student_id);
+
+        // Fetch student email + name
+        const students = await User.find({
+          _id: { $in: studentIds },
+          isActive: true,
+          is_deleted: { $ne: true }
+        }).select('email name').lean();
+
+        if (!students.length) return;
+
+        // Build readable date/time string
+        const classDate = new Date(scheduled_date);
+        const dateStr = classDate.toLocaleDateString('en-IN', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        const instructorName = liveClass.instructor_id?.name || req.user.name || 'Your Instructor';
+        const courseTitle = liveClass.course_id?.title || 'Your enrolled course';
+
+        // Compose HTML email
+        const makeHtml = (studentName) => `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><style>
+  body { font-family: Arial, sans-serif; background: #f4f4f7; margin: 0; padding: 0; }
+  .container { max-width: 560px; margin: 32px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .header { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 32px 32px 24px; }
+  .header h1 { color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; }
+  .header p { color: #c7d2fe; margin: 6px 0 0; font-size: 14px; }
+  .body { padding: 28px 32px; }
+  .body p { color: #374151; font-size: 15px; line-height: 1.6; margin: 0 0 16px; }
+  .info-card { background: #f0f4ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 18px 20px; margin: 20px 0; }
+  .info-row { display: flex; margin-bottom: 10px; font-size: 14px; }
+  .info-row:last-child { margin-bottom: 0; }
+  .info-label { color: #6366f1; font-weight: 700; min-width: 110px; }
+  .info-value { color: #111827; }
+  .cta { display: inline-block; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff; text-decoration: none; padding: 13px 28px; border-radius: 8px; font-weight: 700; font-size: 15px; margin: 8px 0 20px; }
+  .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 18px 32px; text-align: center; color: #9ca3af; font-size: 12px; }
+</style></head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>📹 Live Class Scheduled!</h1>
+    <p>${courseTitle}</p>
+  </div>
+  <div class="body">
+    <p>Hi <strong>${studentName}</strong>,</p>
+    <p>A new live session has been scheduled for your course. Make sure to join on time!</p>
+    <div class="info-card">
+      <div class="info-row"><span class="info-label">📚 Class:</span><span class="info-value">${title}</span></div>
+      <div class="info-row"><span class="info-label">📖 Course:</span><span class="info-value">${courseTitle}</span></div>
+      <div class="info-row"><span class="info-label">👨‍🏫 Instructor:</span><span class="info-value">${instructorName}</span></div>
+      <div class="info-row"><span class="info-label">📅 Date:</span><span class="info-value">${dateStr}</span></div>
+      <div class="info-row"><span class="info-label">⏰ Time:</span><span class="info-value">${start_time} (${timezone})</span></div>
+      <div class="info-row"><span class="info-label">⏱️ Duration:</span><span class="info-value">${duration_minutes} minutes</span></div>
+    </div>
+    <p style="color:#6b7280;font-size:13px;">Log in to the LMS to join the class when it goes live.</p>
+  </div>
+  <div class="footer">© ${new Date().getFullYear()} Smart LMS. You're receiving this because you're enrolled in the course.</div>
+</div>
+</body></html>`;
+
+        const emailPayloads = students.map(student => ({
+          to: student.email,
+          subject: `📹 Live Class Scheduled: ${title} — ${dateStr} at ${start_time}`,
+          html: makeHtml(student.name || 'Student'),
+          text: `Hi ${student.name || 'Student'},\n\nA live class has been scheduled:\n\nClass: ${title}\nCourse: ${courseTitle}\nInstructor: ${instructorName}\nDate: ${dateStr}\nTime: ${start_time} (${timezone})\nDuration: ${duration_minutes} minutes\n\nLog in to join when the class goes live.\n\nSmart LMS`
+        }));
+
+        const result = await emailService.sendBulkEmails(emailPayloads, 20, 500);
+        console.log(`[LiveClass] Notified ${result.successful}/${result.total} students for live class "${title}"`);
+      } catch (emailErr) {
+        // Never crash the app over email failures
+        console.error('[LiveClass] Failed to send student notifications:', emailErr.message);
+      }
     });
 
   } catch (error) {
@@ -232,7 +328,7 @@ router.get('/', auth, async (req, res) => {
         organization_id: req.user.organization_id,
         status: 'active'
       }).select('course_id');
-      
+
       const enrolledCourseIds = enrollments.map(e => e.course_id);
       query.course_id = { $in: enrolledCourseIds };
     }
@@ -289,8 +385,8 @@ router.get('/:id', auth, [
       organization_id: req.user.organization_id,
       is_active: true
     })
-    .populate('course_id', 'title description')
-    .populate('instructor_id', 'full_name email');
+      .populate('course_id', 'title description')
+      .populate('instructor_id', 'full_name email');
 
     if (!liveClass) {
       return res.status(404).json({
@@ -382,7 +478,7 @@ router.put('/:id', auth, checkInstructorPermission, validateLiveClassUpdate, asy
     // Update live class
     const updateFields = {};
     const allowedFields = ['title', 'description', 'scheduled_date', 'start_time', 'duration_minutes', 'recording_enabled', 'max_participants'];
-    
+
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
         updateFields[field] = req.body[field];
@@ -658,7 +754,7 @@ router.post('/:id/attendance', auth, [
     let result;
     if (action === 'join') {
       result = liveClass.addAttendance(req.user._id, eventTime);
-      
+
       // Update class status to live if it's the first participant
       if (result.success && liveClass.status === 'scheduled') {
         liveClass.status = 'live';

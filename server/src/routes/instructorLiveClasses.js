@@ -18,7 +18,7 @@ async function notifyOrgStudents(liveClass, instructor, course) {
         const students = await User.find({
             organization_id: liveClass.organization_id,
             role: 'student',
-            is_active: { $ne: false }
+            isActive: { $ne: false }
         }).select('name email');
 
         if (!students.length) return;

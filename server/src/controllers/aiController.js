@@ -7,6 +7,38 @@ class AIController extends BaseController {
     super(aiService);
   }
 
+  askLessonQuestion = this.asyncHandler(async (req, res) => {
+    const { lessonId, message } = req.body;
+    const userId = req.user._id;
+    const organizationId = req.user.organization_id;
+
+    if (!lessonId || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lesson ID and message are required'
+      });
+    }
+
+    const result = await aiService.askLessonQuestion(userId, lessonId, message, organizationId);
+    this.sendSuccess(res, result, 'AI response generated successfully');
+  });
+
+  getLessonChatHistory = this.asyncHandler(async (req, res) => {
+    const { lessonId } = req.params;
+    const userId = req.user._id;
+    const organizationId = req.user.organization_id;
+
+    if (!lessonId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lesson ID is required'
+      });
+    }
+
+    const history = await aiService.getLessonChatHistory(userId, lessonId, organizationId);
+    this.sendSuccess(res, history, 'Chat history retrieved successfully');
+  });
+
   generateQuiz = this.asyncHandler(async (req, res) => {
     const quiz = await aiService.generateQuiz(req.body);
     this.sendSuccess(res, quiz, 'Quiz generated successfully');

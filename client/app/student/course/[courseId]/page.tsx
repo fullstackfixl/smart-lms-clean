@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
     ChevronLeft, ChevronRight, CheckCircle, Circle, PlayCircle,
     FileText, ChevronDown, ChevronUp, Menu, X, Award, Loader2,
-    ArrowLeft
+    ArrowLeft, Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -15,12 +15,17 @@ import { toast } from "sonner"
 import CompletionModal from "@/components/student/CompletionModal"
 import { ProgressRing } from "@/components/student/ProgressRing"
 import { SkeletonCard } from "@/components/student/SkeletonCard"
+import AIChatSidebar from "@/components/student/AIChatSidebar"
 
-// Dynamic import for react-player to avoid SSR issues
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ReactPlayer = dynamic(() => import("react-player"), { ssr: false }) as any
+// Video player is now using native HTML5 <video> tag for better reliability
 
-const API = () => (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
+const API = () => {
+    const url = (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
+    if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+        console.log("ℹ️ [CoursePlayer] Using API URL:", url);
+    }
+    return url;
+}
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -66,6 +71,9 @@ export default function CourseDetailPage() {
     const [completionPct, setCompletionPct] = useState(0)
     const [showCompletion, setShowCompletion] = useState(false)
     const [sidebarOpen, setSidebarOpen] = useState(false)
+    const [chatOpen, setChatOpen] = useState(false)
+    const [duration, setDuration] = useState(0)
+    const [currentTime, setCurrentTime] = useState(0)
     const autoCompleteRef = useRef(false)
 
     const allLessons = course?.sections?.flatMap(s => s.lessons) ?? []
@@ -126,7 +134,7 @@ export default function CourseDetailPage() {
     const selectLesson = (section: Section, lesson: Lesson) => {
         setActiveLesson(lesson)
         setActiveSection(section)
-        autoCompleteRef.current = false
+        autoCompleteRef.current = false   // always reset so video progress tracking works on rewatch
         setSidebarOpen(false)
     }
 
@@ -140,10 +148,8 @@ export default function CourseDetailPage() {
 
     const markComplete = useCallback(async () => {
         if (!activeLesson || !course || completing) return
-        if (activeLesson.isCompleted) {
-            toast("Lesson already completed")
-            return
-        }
+        // Already completed — silently ignore (allows video to play freely without blocking)
+        if (activeLesson.isCompleted) return
         setCompleting(true)
         try {
             const r = await fetch(`${API()}/student/complete-lesson`, {
@@ -187,12 +193,18 @@ export default function CourseDetailPage() {
         finally { setCompleting(false) }
     }, [activeLesson, course, completing, completionPct])
 
-    // Video auto-complete at 90%
+    // Video auto-complete at 90% — only fires once per lesson load, only for not-yet-completed lessons
     const handleVideoProgress = (state: { played: number; playedSeconds: number; loaded: number; loadedSeconds: number }) => {
+        setCurrentTime(state.playedSeconds)
         if (state.played >= 0.9 && !autoCompleteRef.current && !activeLesson?.isCompleted) {
             autoCompleteRef.current = true
-            markComplete()
+            // Removing auto-mark-complete to give student control, but keeping the ref logic if needed
+            // markComplete()
         }
+    }
+
+    const handleVideoDuration = (dur: number) => {
+        setDuration(dur)
     }
 
     const navigateLesson = (dir: "prev" | "next") => {
@@ -372,11 +384,18 @@ export default function CourseDetailPage() {
                         {completionPct >= 100 && (
                             <Button size="sm"
                                 onClick={() => router.push(`/student/certificates/${course._id}`)}
-                                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white gap-1 shrink-0"
+                                className="bg-gradient-to-r from-amber-500 to-orange-500 text-white gap-2 shrink-0 shadow-lg shadow-amber-500/20"
                             >
                                 <Award className="h-4 w-4" /> Certificate
                             </Button>
                         )}
+                        <Button
+                            size="sm"
+                            onClick={() => setChatOpen(!chatOpen)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white gap-2 shrink-0 shadow-lg shadow-blue-500/20"
+                        >
+                            <Sparkles className="h-4 w-4" /> AI Tutor
+                        </Button>
                     </div>
 
                     {/* Video / Content area */}
@@ -385,15 +404,71 @@ export default function CourseDetailPage() {
                             <>
                                 {activeLesson.videoUrl ? (
                                     <div className="relative aspect-video bg-black">
-                                        <ReactPlayer
-                                            url={activeLesson.videoUrl}
-                                            width="100%"
-                                            height="100%"
-                                            controls
-                                            onProgress={handleVideoProgress}
-                                            onError={() => toast.error("Video failed to load")}
-                                            config={{ file: { attributes: { controlsList: "nodownload" } } }}
-                                        />
+                                        {(() => {
+                                            if (!activeLesson?.videoUrl) return null;
+
+                                            const url = (() => {
+                                                let u = activeLesson.videoUrl;
+                                                if (!u.startsWith('http')) u = `${API()}${u.startsWith('/') ? '' : '/'}${u}`;
+
+                                                try {
+                                                    const urlObj = new URL(u);
+                                                    const parts = urlObj.pathname.split('/');
+                                                    const lastPart = parts[parts.length - 1];
+                                                    if (u.includes('cloudinary.com') && !lastPart.includes('.')) {
+                                                        u += '.mp4';
+                                                    }
+                                                } catch (e) {
+                                                    if (u.includes('cloudinary.com') && !u.split('/').pop()?.includes('.')) {
+                                                        u += '.mp4';
+                                                    }
+                                                }
+                                                return u;
+                                            })();
+
+                                            if (typeof window !== "undefined") {
+                                                console.log("🎬 [VideoPlayer] Native Mode URL:", url);
+                                            }
+
+                                            return (
+                                                <div className="w-full h-full relative group">
+                                                    <video
+                                                        key={activeLesson._id}
+                                                        src={url}
+                                                        className="w-full h-full object-contain"
+                                                        controls
+                                                        controlsList="nodownload"
+                                                        onLoadedMetadata={(e) => {
+                                                            setDuration(e.currentTarget.duration);
+                                                        }}
+                                                        onTimeUpdate={(e) => {
+                                                            const current = e.currentTarget.currentTime;
+                                                            const total = e.currentTarget.duration;
+                                                            setCurrentTime(current);
+                                                            if (total > 0 && current / total >= 0.9 && !autoCompleteRef.current && !activeLesson?.isCompleted) {
+                                                                autoCompleteRef.current = true;
+                                                            }
+                                                        }}
+                                                        onError={(e) => {
+                                                            console.error("❌ Native Video Error:", e);
+                                                            toast.error("Video failed to play. Click 'Troubleshoot' to open directly.");
+                                                        }}
+                                                    >
+                                                        Your browser does not support the video tag.
+                                                    </video>
+                                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                        <a
+                                                            href={url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-[10px] text-white flex items-center gap-1 bg-black/50 px-2 py-1 rounded hover:bg-black/80"
+                                                        >
+                                                            Troubleshoot
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 ) : (
                                     <div className="p-8 min-h-[300px] flex items-start">
@@ -435,11 +510,11 @@ export default function CourseDetailPage() {
                                         </Button>
                                         <Button
                                             size="sm"
-                                            onClick={markComplete}
-                                            disabled={completing || activeLesson.isCompleted}
+                                            onClick={activeLesson.isCompleted ? undefined : markComplete}
+                                            disabled={completing || (!activeLesson.isCompleted && (duration === 0 || currentTime < duration - 5))}
                                             className={`gap-2 ${activeLesson.isCompleted
-                                                ? "bg-green-600/30 text-green-400 border border-green-500/30 cursor-default"
-                                                : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white"}`}
+                                                ? "bg-green-600/30 text-green-400 border border-green-500/30 cursor-default pointer-events-none"
+                                                : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"}`}
                                             aria-label={activeLesson.isCompleted ? "Lesson completed" : "Mark lesson complete"}
                                         >
                                             {completing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
@@ -472,7 +547,18 @@ export default function CourseDetailPage() {
                         </div>
                     )}
                 </div>
-            </div>
+
+                {/* AI Chat Sidebar */}
+                {activeLesson && (
+                    <AIChatSidebar
+                        lessonId={activeLesson._id}
+                        courseId={course._id}
+                        lessonTitle={activeLesson.title}
+                        isOpen={chatOpen}
+                        onClose={() => setChatOpen(false)}
+                    />
+                )}
+            </div >
         </>
     )
 }
