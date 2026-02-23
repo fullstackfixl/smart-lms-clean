@@ -8,12 +8,14 @@ import {
   BarChart3,
   Shield,
   Settings,
-  GraduationCap
+  GraduationCap,
+  BookOpen,
 } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/platform", icon: LayoutDashboard },
   { name: "Organizations", href: "/platform/organizations", icon: Building2 },
+  { name: "Courses", href: "/platform/courses", icon: BookOpen },
   { name: "Analytics", href: "/platform/analytics", icon: BarChart3 },
   { name: "Platform Admins", href: "/platform/admins", icon: Shield },
   { name: "Settings", href: "/platform/settings", icon: Settings },
@@ -46,18 +48,17 @@ export function PlatformSidebar() {
           {navigation.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/platform" && pathname.startsWith(item.href))
             const Icon = item.icon
-            
+
             return (
               <motion.button
                 key={item.name}
                 onClick={() => router.push(item.href)}
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all relative ${
-                  isActive
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all relative ${isActive
                     ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400"
                     : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                }`}
+                  }`}
               >
                 {isActive && (
                   <motion.div

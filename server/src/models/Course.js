@@ -62,11 +62,25 @@ const courseSchema = new mongoose.Schema({
   tags: [String],
   isPublic: {
     type: Boolean,
-    default: true
+    default: false   // only platform_admin manually sets this for legacy compat
   },
   isActive: {
     type: Boolean,
     default: true
+  },
+  // Set by platform admin to show this course on the public landing page
+  isGloballyPublished: {
+    type: Boolean,
+    default: false
+  },
+  globallyPublishedAt: {
+    type: Date,
+    default: null
+  },
+  globallyPublishedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   },
   enrollmentCount: {
     type: Number,
@@ -96,18 +110,19 @@ const courseSchema = new mongoose.Schema({
 courseSchema.index({ organization_id: 1, status: 1 });
 courseSchema.index({ organization_id: 1, title: 1 }, { unique: true });
 courseSchema.index({ status: 1, isPublic: 1, isActive: 1 });
+courseSchema.index({ isGloballyPublished: 1, status: 1, isActive: 1 });
 courseSchema.index({ category: 1, level: 1 });
 courseSchema.index({ instructor_id: 1 });
 
 // Text index for search functionality
-courseSchema.index({ 
-  title: 'text', 
-  description: 'text', 
-  tags: 'text' 
+courseSchema.index({
+  title: 'text',
+  description: 'text',
+  tags: 'text'
 });
 
 // Query middleware to exclude soft-deleted courses by default
-courseSchema.pre(/^find/, function(next) {
+courseSchema.pre(/^find/, function (next) {
   // Only apply if not explicitly including deleted
   if (!this.getOptions().includeDeleted) {
     this.where({ is_deleted: { $ne: true } });
@@ -116,7 +131,7 @@ courseSchema.pre(/^find/, function(next) {
 });
 
 // Instance method to soft delete
-courseSchema.methods.softDelete = function(userId) {
+courseSchema.methods.softDelete = function (userId) {
   this.is_deleted = true;
   this.status = 'archived';
   this.deleted_at = new Date();
@@ -125,7 +140,7 @@ courseSchema.methods.softDelete = function(userId) {
 };
 
 // Instance method to restore
-courseSchema.methods.restore = function() {
+courseSchema.methods.restore = function () {
   this.is_deleted = false;
   this.status = 'draft';
   this.deleted_at = null;
@@ -154,14 +169,14 @@ courseSchema.set('toJSON', { virtuals: true });
 courseSchema.set('toObject', { virtuals: true });
 
 // Pre-save validation for duplicate titles within organization
-courseSchema.pre('save', async function(next) {
+courseSchema.pre('save', async function (next) {
   if (this.isNew || this.isModified('title')) {
     const existingCourse = await this.constructor.findOne({
       organization_id: this.organization_id,
       title: this.title,
       _id: { $ne: this._id }
     });
-    
+
     if (existingCourse) {
       const error = new Error('Course title already exists in this organization');
       error.code = 'DUPLICATE_TITLE';
@@ -172,24 +187,24 @@ courseSchema.pre('save', async function(next) {
 });
 
 // Method to check if user can access this course
-courseSchema.methods.canUserAccess = function(user) {
+courseSchema.methods.canUserAccess = function (user) {
   // Platform admin can access everything
   if (user.role === 'platform_admin') {
     return true;
   }
-  
+
   // Organization members can access their org courses
   if (user.organization_id && user.organization_id.toString() === this.organization_id.toString()) {
     return true;
   }
-  
+
   // Students can access if enrolled in the organization
   if (user.role === 'student' && user.enrolledOrganizations) {
     return user.enrolledOrganizations.some(
       enrollment => enrollment.organizationId.toString() === this.organization_id.toString()
     );
   }
-  
+
   // Public courses are accessible to everyone
   return this.isPublic && this.status === 'published';
 };

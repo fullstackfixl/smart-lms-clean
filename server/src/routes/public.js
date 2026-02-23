@@ -21,11 +21,10 @@ router.get('/courses/public', async (req, res) => {
       sortOption = { 'rating.average': -1 };
     }
 
-    // Query for public courses only (organization_id = null)
+    // Query for courses that platform admin has globally published
     const query = {
-      organization_id: null,
       status: 'published',
-      isPublic: true,
+      isGloballyPublished: true,
       isActive: true
     };
 
@@ -134,7 +133,7 @@ router.get('/leaderboard/global', async (req, res) => {
     const leaderboard = pointsData.map((entry, index) => {
       const userId = entry._id.toString();
       const student = studentMap[userId];
-      
+
       return {
         rank: index + 1,
         user: {
@@ -163,8 +162,16 @@ router.get('/leaderboard/global', async (req, res) => {
   }
 });
 
-// Get platform statistics
+// Get platform statistics (alias: /api/public/stats)
+router.get('/public/stats', async (req, res) => {
+  return handleStats(req, res);
+});
+
 router.get('/stats/public', async (req, res) => {
+  return handleStats(req, res);
+});
+
+async function handleStats(req, res) {
   try {
     const [
       totalPublicCourses,
@@ -173,9 +180,9 @@ router.get('/stats/public', async (req, res) => {
       completedEnrollments
     ] = await Promise.all([
       Course.countDocuments({
-        organization_id: null,
         status: 'published',
-        isPublic: true
+        isGloballyPublished: true,
+        isActive: true
       }),
       User.countDocuments({
         role: 'public_student',
@@ -202,6 +209,6 @@ router.get('/stats/public', async (req, res) => {
       message: 'Failed to fetch platform statistics'
     });
   }
-});
+}
 
 module.exports = router;

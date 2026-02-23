@@ -165,3 +165,69 @@ html {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ─── Landing Page Design Tokens ──────────────────────────────────── */
+:root {
+  --lp-bg:        #0A0F1E;
+  --lp-bg2:       #0D1426;
+  --lp-card:      #111827;
+  --lp-accent:    #FF9900;
+  --lp-accent2:   #FFB347;
+  --lp-border:    rgba(255,153,0,0.18);
+  --lp-text:      #FFFFFF;
+  --lp-muted:     rgba(255,255,255,0.6);
+  --lp-glow:      0 0 60px -15px rgba(255,153,0,0.45);
+}
+
+.lp-gradient-text {
+  background: linear-gradient(120deg, #FF9900 0%, #FFB347 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.lp-glow-orange {
+  box-shadow: var(--lp-glow);
+}
+
+.lp-card {
+  background: var(--lp-card);
+  border: 1px solid var(--lp-border);
+  border-radius: 1rem;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.lp-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px -20px rgba(255,153,0,0.25);
+  border-color: rgba(255,153,0,0.4);
+}
+
+.lp-section {
+  background: var(--lp-bg);
+}
+
+.lp-section-alt {
+  background: var(--lp-bg2);
+}
+
+@keyframes lp-fade-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.lp-fade-up {
+  animation: lp-fade-up 0.7s ease both;
+}
+
+.lp-skeleton {
+  background: linear-gradient(90deg, #1a2030 25%, #1f2840 50%, #1a2030 75%);
+  background-size: 200% 100%;
+  animation: lp-shimmer 1.4s infinite;
+  border-radius: 0.5rem;
+}
+
+@keyframes lp-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

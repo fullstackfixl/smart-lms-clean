@@ -93,6 +93,9 @@ try {
   const platformAdminsRoutes = require('./routes/platformAdmins');
   app.use('/platform/admins', platformAdminsRoutes);
 
+  const platformCoursesRoutes = require('./routes/platformCourses');
+  app.use('/platform/courses', platformCoursesRoutes);
+
   const paymentRoutes = require('./api/routes/payment.routes');
   app.use('/payments', paymentRoutes);
 

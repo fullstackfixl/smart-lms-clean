@@ -11,20 +11,20 @@ const videos = [
 
 export function VideoBackground() {
     const [currentIndex, setCurrentIndex] = useState(0)
+    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
+        setMounted(true)
         const timer = setInterval(() => {
             setCurrentIndex((prev) => (prev + 1) % videos.length)
-        }, 10000) // Change video every 10 seconds
-
+        }, 10000) // rotate every 10 seconds
         return () => clearInterval(timer)
     }, [])
 
+    if (!mounted) return null
+
     return (
         <div className="absolute inset-0 z-0 overflow-hidden">
-            {/* Dark Overlay for Readability */}
-            <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-[2px]" />
-
             <AnimatePresence mode="wait">
                 <motion.div
                     key={currentIndex}
@@ -40,14 +40,13 @@ export function VideoBackground() {
                         loop
                         playsInline
                         className="h-full w-full object-cover"
+                        key={videos[currentIndex]}
                     >
                         <source src={videos[currentIndex]} type="video/mp4" />
                     </video>
                 </motion.div>
             </AnimatePresence>
-
-            {/* Grid Pattern Overlay */}
-            <div className="absolute inset-0 z-20 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
         </div>
     )
 }
+
