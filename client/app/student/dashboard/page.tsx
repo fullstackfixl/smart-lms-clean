@@ -1,20 +1,23 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import {
-  BookOpen, CheckCircle, Award, TrendingUp, ChevronRight,
-  Bell, LogOut, User, Video, Sparkles, GraduationCap
+  BookOpen,
+  Search,
+  Video,
+  FileQuestion,
+  ChevronRight,
+  Clock,
+  ArrowRight,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { toast } from "sonner"
+import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/lib/auth-context"
-import CourseCard, { type CourseCardData } from "@/components/student/CourseCard"
-import { SkeletonCard } from "@/components/student/SkeletonCard"
 import Link from "next/link"
+import { toast } from "sonner"
 
 const API = () => (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
 const getToken = () =>
@@ -31,86 +34,25 @@ async function apiFetch(path: string) {
   return r.json()
 }
 
-const STAT_CONFIG = [
-  { key: "enrolled", label: "Enrolled", icon: BookOpen, gradient: "from-purple-600 to-indigo-600" },
-  { key: "inProgress", label: "In Progress", icon: TrendingUp, gradient: "from-blue-600 to-cyan-600" },
-  { key: "completed", label: "Completed", icon: CheckCircle, gradient: "from-green-600 to-emerald-600" },
-  { key: "badges", label: "Badges", icon: Award, gradient: "from-amber-500 to-orange-600" },
-]
-
-interface LiveClass {
-  _id: string
-  title: string
-  scheduled_date: string
-  start_time: string
-  meeting_url?: string
-  canJoin?: boolean
-}
-
 export default function StudentDashboard() {
-  const { user, logout } = useAuth()
-  const router = useRouter()
-
-  const [enrolled, setEnrolled] = useState<CourseCardData[]>([])
-  const [available, setAvailable] = useState<CourseCardData[]>([])
-  const [liveClasses, setLiveClasses] = useState<LiveClass[]>([])
+  const { user } = useAuth()
+  const [enrolled, setEnrolled] = useState<any[]>([])
+  const [liveClasses, setLiveClasses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [enrollingId, setEnrollingId] = useState<string | null>(null)
-  const carouselRef = useRef<HTMLDivElement>(null)
 
-  const name = user?.name || "Student"
-
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"
-
-  const stats = {
-    enrolled: enrolled.length,
-    inProgress: enrolled.filter(c => (c.completionPercentage ?? c.progress ?? 0) > 0 && (c.completionPercentage ?? c.progress ?? 0) < 100).length,
-    completed: enrolled.filter(c => (c.completionPercentage ?? c.progress ?? 0) >= 100).length,
-    badges: enrolled.filter(c => (c.completionPercentage ?? c.progress ?? 0) >= 100).length,
-  }
-
-  const fetchAll = useCallback(async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true)
     try {
-      const [myCourses, avail, live] = await Promise.allSettled([
+      const [myCourses, live] = await Promise.allSettled([
         apiFetch("/student/my-courses"),
-        apiFetch("/student/available-courses"),
         apiFetch("/student/live-classes")
       ])
 
       if (myCourses.status === "fulfilled" && myCourses.value.success) {
-        const rawList = myCourses.value.data?.courses || myCourses.value.data || []
-        // Backend: [{enrollmentId, course:{_id,title,...}, progress(number), status, enrolledAt}]
-        const flattened = Array.isArray(rawList) && rawList.length > 0 && rawList[0]?.course
-          ? rawList.map((e: {
-            enrollmentId: string;
-            course: Record<string, unknown>;
-            progress: number;
-            status: string;
-            enrolledAt: string;
-          }) => ({
-            ...e.course,
-            _id: e.course?._id ?? e.enrollmentId,
-            completionPercentage: typeof e.progress === "number" ? e.progress : 0,
-            progress: typeof e.progress === "number" ? e.progress : 0,
-            enrolledAt: e.enrolledAt,
-            enrollmentStatus: e.status,
-          }))
-          : rawList
-        setEnrolled(flattened)
-      }
-      if (avail.status === "fulfilled" && avail.value.success) {
-        const data = avail.value.data
-        setAvailable((Array.isArray(data) ? data : data?.courses || []).slice(0, 6))
+        setEnrolled(myCourses.value.data?.courses || [])
       }
       if (live.status === "fulfilled" && live.value.success) {
-        const now = Date.now()
-        const upcoming = (live.value.data?.classes || []).filter((lc: LiveClass) => {
-          const d = new Date(lc.scheduled_date)
-          return d.getTime() - now < 24 * 3600 * 1000
-        })
-        setLiveClasses(upcoming)
+        setLiveClasses(live.value.data?.classes || [])
       }
     } catch (e) {
       toast.error("Failed to load dashboard data")
@@ -119,185 +61,228 @@ export default function StudentDashboard() {
     }
   }, [])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  useEffect(() => {
+    fetchDashboardData()
+  }, [fetchDashboardData])
 
-  const handleEnroll = async (courseId: string) => {
-    setEnrollingId(courseId)
-    try {
-      const r = await fetch(`${API()}/student/enroll/${courseId}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${getToken()}` },
-        credentials: "include"
-      })
-      const data = await r.json()
-      if (data.success) {
-        toast.success("Enrolled! Redirecting to course...")
-        router.push(`/student/course/${courseId}`)
-      } else toast.error(data.message || "Enrollment failed")
-    } catch { toast.error("Network error") }
-    finally { setEnrollingId(null) }
-  }
+  const guideCards = [
+    {
+      number: 1,
+      title: "Browse Courses",
+      description: "Start your journey by exploring impactful courses.",
+      icon: Search,
+      href: "/student/available-courses",
+      color: "bg-[#FFC107]"
+    },
+    {
+      number: 2,
+      title: "Enroll in Course",
+      description: "Join classes from top instructors.",
+      icon: BookOpen,
+      href: "/student/available-courses",
+      color: "bg-[#FFC107]"
+    },
+    {
+      number: 3,
+      title: "Watch Lessons",
+      description: "Learn at your pace with videos and materials.",
+      icon: Video,
+      href: "/student/my-courses",
+      color: "bg-[#FFC107]"
+    },
+    {
+      number: 4,
+      title: "Take Quizzes",
+      description: "Test your knowledge and earn certificates.",
+      icon: FileQuestion,
+      href: "/student/quizzes",
+      color: "bg-[#FFC107]"
+    }
+  ]
 
   return (
-    <div className="space-y-10">
-      {/* ── Header ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-start justify-between gap-4"
-      >
-        <div>
-          <p className="text-slate-400 text-sm mb-1">{greeting} 👋</p>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">
-            Welcome back, <span className="bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">{name}</span>
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">Pick up where you left off or explore something new.</p>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-500">
+      {/* Main Content */}
+      <div className="lg:col-span-8 space-y-8">
+        {/* Welcome Section */}
+        <div className="mb-2">
+          {/* Greeting handled by StudentHeader, but we can add a subtle subtext here if needed */}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link href="/student/live-classes">
-            <Button variant="ghost" size="icon" className="relative text-slate-400 hover:text-white"
-              aria-label="Live classes notifications">
-              <Bell className="h-5 w-5" />
-              {liveClasses.length > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
-                  {liveClasses.length}
-                </span>
-              )}
-            </Button>
-          </Link>
-          <Link href="/student/profile">
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white" aria-label="Profile">
-              <User className="h-5 w-5" />
-            </Button>
-          </Link>
-          <Button
-            variant="ghost" size="icon"
-            className="text-slate-400 hover:text-red-400"
-            onClick={logout}
-            aria-label="Logout"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
-      </motion.div>
 
-      {/* ── Live Class Banner ── */}
-      {liveClasses.length > 0 && (
-        <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}>
-          <div className="rounded-2xl bg-gradient-to-r from-green-950/80 to-emerald-950/80 border border-green-500/30 p-4 flex items-center gap-4">
-            <div className="h-10 w-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-              <Video className="h-5 w-5 text-green-400 animate-pulse" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-green-400 text-xs font-semibold uppercase tracking-wide">Upcoming Live Class</p>
-              <p className="text-white font-semibold truncate">{liveClasses[0].title}</p>
-            </div>
-            <Link href="/student/live-classes">
-              <Button size="sm" className="bg-green-600 hover:bg-green-500 text-white shrink-0 gap-1">
-                View <ChevronRight className="h-3.5 w-3.5" />
+        {/* Guided Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {guideCards.map((card, i) => (
+            <Link href={card.href} key={i}>
+              <motion.div
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                className="bg-white rounded-xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 group cursor-pointer hover:shadow-md transition-all"
+              >
+                <div className={`h-12 w-12 rounded-full ${card.color} flex items-center justify-center shrink-0`}>
+                  <card.icon className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                    {card.number}. {card.title}
+                  </h3>
+                  <p className="text-sm text-slate-500 line-clamp-1">{card.description}</p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-slate-300 group-hover:text-[#4CAF50] transition-colors" />
+              </motion.div>
+            </Link>
+          ))}
+        </div>
+
+        {/* My Courses Section (Mini) */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-800">Continue Learning</h2>
+            <Link href="/student/my-courses">
+              <Button variant="ghost" size="sm" className="text-[#4CAF50] hover:text-[#388E3C] hover:bg-green-50">
+                View All
               </Button>
             </Link>
           </div>
-        </motion.div>
-      )}
 
-      {/* ── Stats Row ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {STAT_CONFIG.map((s, i) => {
-          const Icon = s.icon
-          const val = stats[s.key as keyof typeof stats]
-          return (
-            <motion.div key={s.key} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
-              <Card className="border border-slate-800 bg-slate-900/80 overflow-hidden group hover:border-purple-500/40 transition-colors">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${s.gradient} flex items-center justify-center shrink-0 shadow-lg`}>
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-white">
-                      {loading ? <span className="inline-block h-6 w-8 bg-slate-700 rounded animate-pulse" /> : val}
-                    </p>
-                    <p className="text-xs text-slate-400">{s.label}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )
-        })}
+          <div className="space-y-3">
+            {loading ? (
+              [1, 2].map(i => <div key={i} className="h-24 bg-slate-50 rounded-xl animate-pulse" />)
+            ) : enrolled.length === 0 ? (
+              <div className="p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                <p className="text-slate-500">You haven&apos;t enrolled in any courses yet.</p>
+              </div>
+            ) : (
+              enrolled.slice(0, 2).map((item, i) => (
+                <Link href={`/student/course/${item.course?._id || item._id}`} key={i}>
+                  <Card className="hover:shadow-md transition-all border-slate-100 cursor-pointer overflow-hidden group">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="h-16 w-24 rounded-lg bg-slate-200 overflow-hidden shrink-0">
+                        {item.course?.thumbnail ? (
+                          <img src={item.course.thumbnail} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-green-50">
+                            <BookOpen className="h-6 w-6 text-[#4CAF50]" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-slate-800 truncate group-hover:text-[#4CAF50] transition-colors">
+                          {item.course?.title || "Untitled Course"}
+                        </h4>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <div className="flex-1">
+                            <Progress value={item.progress || 0} className="h-1.5 bg-slate-100" />
+                          </div>
+                          <span className="text-xs font-bold text-slate-500">{item.progress || 0}%</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-slate-300" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))
+            )}
+          </div>
+        </section>
       </div>
 
-      {/* ── My Learning Carousel ── */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-purple-400" /> My Learning
+      {/* Right Sidebar */}
+      <div className="lg:col-span-4 space-y-8">
+        {/* Recent Activity */}
+        <section className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Clock className="h-5 w-5 text-[#FFC107]" /> Recent Activity
           </h2>
-          <Link href="/student/my-courses">
-            <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300 gap-1">
-              View all <ChevronRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
+          <div className="space-y-4">
+            {loading ? (
+              [1, 2, 3].map(i => <div key={i} className="h-12 bg-slate-50 rounded-lg animate-pulse" />)
+            ) : enrolled.length === 0 ? (
+              <p className="text-sm text-slate-500 italic">No recent activity</p>
+            ) : (
+              enrolled.slice(0, 3).map((item, i) => (
+                <div key={i} className="flex items-start gap-3 pb-4 border-b border-slate-50 last:border-0 last:pb-0">
+                  <div className="h-2 w-2 rounded-full bg-[#4CAF50] mt-2 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 leading-tight">
+                      Enrolled in <span className="font-bold">{item.course?.title}</span>
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {new Date(item.enrolledAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
 
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <SkeletonCard count={3} />
-          </div>
-        ) : enrolled.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/30 p-10 text-center">
-            <BookOpen className="h-12 w-12 text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-400 mb-4">You haven't enrolled in any courses yet.</p>
-            <Link href="/student/available-courses">
-              <Button className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-                Browse Available Courses
-              </Button>
-            </Link>
-          </div>
-        ) : (
-          <div
-            ref={carouselRef}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-          >
-            {enrolled.map(c => (
-              <CourseCard key={c._id} course={c} variant="enrolled" />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ── Recommended ── */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-amber-400" /> Recommended Courses
+        {/* Upcoming Events / Timetable */}
+        <section className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-[#FFC107]" /> Upcoming Live Classes
           </h2>
-          <Link href="/student/available-courses">
-            <Button variant="ghost" size="sm" className="text-amber-400 hover:text-amber-300 gap-1">
-              See all <ChevronRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
+          <div className="space-y-4">
+            {loading ? (
+              [1, 2].map(i => <div key={i} className="h-20 bg-slate-50 rounded-lg animate-pulse" />)
+            ) : liveClasses.length === 0 ? (
+              <p className="text-sm text-slate-500 italic">No upcoming classes</p>
+            ) : (
+              liveClasses.slice(0, 2).map((lc, i) => (
+                <div key={i} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <p className="text-sm font-bold text-slate-800 truncate">{lc.title}</p>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                    <Clock className="h-3 w-3" />
+                    <span>{new Date(lc.scheduled_date).toLocaleDateString()} at {lc.start_time}</span>
+                  </div>
+                  {lc.canJoin && (
+                    <Button size="sm" className="w-full mt-3 bg-[#4CAF50] hover:bg-[#388E3C] h-8 text-xs">
+                      Join Now
+                    </Button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </section>
 
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <SkeletonCard count={3} />
+        {/* Share Progress */}
+        <section className="bg-gradient-to-br from-[#E0F7FA] to-[#B2EBF2] rounded-2xl p-6 text-center">
+          <h3 className="font-bold text-[#006064] mb-2">Share Your Progress</h3>
+          <p className="text-xs text-[#006064]/70 mb-4">Inspire others with your learning journey!</p>
+          <div className="flex items-center justify-center gap-3">
+            <button className="h-8 w-8 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-600 hover:scale-110 transition-transform">f</button>
+            <button className="h-8 w-8 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-400 hover:scale-110 transition-transform">t</button>
+            <button className="h-8 w-8 rounded-full bg-white flex items-center justify-center shadow-sm text-pink-600 hover:scale-110 transition-transform">i</button>
           </div>
-        ) : available.length === 0 ? (
-          <p className="text-slate-500 text-sm py-8 text-center">No new courses available in your organization.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {available.slice(0, 4).map(c => (
-              <CourseCard
-                key={c._id}
-                course={c}
-                variant="available"
-                onEnroll={handleEnroll}
-                enrolling={enrollingId === c._id}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+        </section>
+      </div>
     </div>
+  )
+}
+
+function CalendarDays(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M8 14h.01" />
+      <path d="M12 14h.01" />
+      <path d="M16 14h.01" />
+      <path d="M8 18h.01" />
+      <path d="M12 18h.01" />
+      <path d="M16 18h.01" />
+    </svg>
   )
 }

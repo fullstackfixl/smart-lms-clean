@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { useParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { Download, Share2, ArrowLeft, Award, Loader2, Copy, Check } from "lucide-react"
+import { Download, Share2, Printer, Award, ArrowLeft, ShieldCheck, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 const API = () => (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
 const getToken = () =>
@@ -13,264 +14,181 @@ const getToken = () =>
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
         : null
 
-interface CertificateData {
-    studentName: string
-    courseName: string
-    instructorName?: string
-    organizationName?: string
-    completionDate: string
-    certificateId: string
-    courseId: string
-}
-
-export default function CertificatePage() {
-    const { courseId } = useParams<{ courseId: string }>()
-    const router = useRouter()
-    const certRef = useRef<HTMLDivElement>(null)
-    const confettiDone = useRef(false)
-
-    const [cert, setCert] = useState<CertificateData | null>(null)
+export default function CertificateDetail({ params }: { params: { courseId: string } }) {
+    const [cert, setCert] = useState<any>(null)
     const [loading, setLoading] = useState(true)
-    const [downloading, setDownloading] = useState(false)
-    const [copied, setCopied] = useState(false)
+    const certRef = useRef<HTMLDivElement>(null)
 
     const fetchCert = useCallback(async () => {
-        setLoading(true)
         try {
-            const r = await fetch(`${API()}/student/certificate/${courseId}`, {
+            const r = await fetch(`${API()}/student/certificate/${params.courseId}`, {
                 headers: { Authorization: `Bearer ${getToken()}` },
                 credentials: "include"
             })
             const data = await r.json()
             if (data.success) {
-                // Backend returns: { certificate: { studentName, courseTitle, instructorName, organizationName, completionDate, enrollmentId } }
-                const raw = data.data?.certificate || data.data || {}
-                setCert({
-                    studentName: raw.studentName || "Student",
-                    courseName: raw.courseTitle || raw.courseName || "Course",
-                    instructorName: raw.instructorName,
-                    organizationName: raw.organizationName,
-                    completionDate: raw.completionDate || new Date().toISOString(),
-                    certificateId: raw.enrollmentId || raw.certificateId || raw._id || "N/A",
-                    courseId,
-                })
+                setCert(data.data.certificate)
             } else {
-                toast.error(data.message || "Certificate not available yet. Complete the course first.")
+                toast.error(data.message || "Failed to load certificate")
             }
-        } catch { toast.error("Network error") }
-        finally { setLoading(false) }
-    }, [courseId])
-
-    useEffect(() => { fetchCert() }, [fetchCert])
-
-    // Confetti on first certificate load
-    useEffect(() => {
-        if (!cert || confettiDone.current) return
-        confettiDone.current = true
-        const fire = async () => {
-            try {
-                const confetti = (await import("canvas-confetti")).default
-                confetti({ particleCount: 120, spread: 80, origin: { y: 0.4 }, colors: ["#f59e0b", "#7c3aed", "#22c55e", "#fff"] })
-                setTimeout(() => confetti({ particleCount: 60, spread: 100, origin: { y: 0.5 } }), 400)
-            } catch { }
-        }
-        fire()
-    }, [cert])
-
-    const handleDownload = async () => {
-        if (!certRef.current || !cert) return
-        setDownloading(true)
-        try {
-            const html2canvas = (await import("html2canvas")).default
-            const { jsPDF } = await import("jspdf")
-
-            const canvas = await html2canvas(certRef.current, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: "#0f172a"
-            })
-            const imgData = canvas.toDataURL("image/png")
-            const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
-            const w = pdf.internal.pageSize.getWidth()
-            const h = pdf.internal.pageSize.getHeight()
-            pdf.addImage(imgData, "PNG", 0, 0, w, h)
-            pdf.save(`Certificate_${cert.courseName.replace(/\s+/g, "_")}.pdf`)
-            toast.success("Certificate downloaded!")
         } catch (e) {
-            toast.error("Download failed. Try again.")
-            console.error(e)
-        } finally { setDownloading(false) }
+            toast.error("Network error while loading certificate")
+        } finally {
+            setLoading(false)
+        }
+    }, [params.courseId])
+
+    useEffect(() => {
+        fetchCert()
+    }, [fetchCert])
+
+    const handlePrint = () => {
+        window.print()
     }
 
-    const handleCopyLink = async () => {
-        await navigator.clipboard.writeText(window.location.href)
-        setCopied(true)
-        toast.success("Certificate link copied!")
-        setTimeout(() => setCopied(false), 2000)
-    }
+    if (loading) return (
+        <div className="flex h-[80vh] items-center justify-center">
+            <div className="h-10 w-10 border-4 border-[#4CAF50] border-t-transparent rounded-full animate-spin" />
+        </div>
+    )
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="h-8 w-8 text-purple-500 animate-spin" />
-            </div>
-        )
-    }
-
-    if (!cert) {
-        return (
-            <div className="text-center py-20 space-y-4">
-                <Award className="h-16 w-16 text-slate-600 mx-auto" />
-                <h3 className="text-xl font-semibold text-white">Certificate not available</h3>
-                <p className="text-slate-400">Complete all lessons in the course to earn your certificate.</p>
-                <Button onClick={() => router.push(`/student/course/${courseId}`)}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
-                    Continue Course
+    if (!cert) return (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+            <Award className="h-16 w-16 text-slate-200 mb-4" />
+            <h1 className="text-2xl font-bold text-slate-800">Certificate not found</h1>
+            <p className="text-slate-500 mt-2">You may need to complete the course first.</p>
+            <Link href="/student/my-courses">
+                <Button className="mt-6 bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-11 px-8 rounded-full">
+                    Back to My Courses
                 </Button>
-            </div>
-        )
-    }
-
-    const date = new Date(cert.completionDate).toLocaleDateString("en-US", {
-        day: "numeric", month: "long", year: "numeric"
-    })
+            </Link>
+        </div>
+    )
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
-            {/* Nav */}
-            <div className="flex items-center justify-between">
-                <button onClick={() => router.back()} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition-colors" aria-label="Go back">
-                    <ArrowLeft className="h-4 w-4" /> Back
-                </button>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleCopyLink}
-                        className="border-slate-700 text-slate-300 hover:text-white gap-2"
-                        aria-label="Copy shareable link">
-                        {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-                        {copied ? "Copied!" : "Share Link"}
+        <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700">
+            <div className="flex items-center justify-between no-print">
+                <Link href="/student/certificates" className="text-slate-500 hover:text-[#4CAF50] transition-colors flex items-center gap-2 font-bold">
+                    <ArrowLeft className="h-4 w-4" /> Back to Certificates
+                </Link>
+                <div className="flex items-center gap-3">
+                    <Button variant="outline" onClick={handlePrint} className="rounded-full border-slate-200 text-slate-600 font-bold h-10 px-6 gap-2">
+                        <Printer className="h-4 w-4" /> Print
                     </Button>
-                    <Button size="sm" onClick={handleDownload} disabled={downloading}
-                        className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white gap-2"
-                        aria-label="Download certificate as PDF">
-                        {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                        {downloading ? "Downloading..." : "Download PDF"}
+                    <Button onClick={handlePrint} className="rounded-full bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-10 px-8 gap-2 shadow-md">
+                        <Download className="h-4 w-4" /> Download PDF
                     </Button>
                 </div>
             </div>
 
-            {/* Certificate */}
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4 }}
+            {/* Certificate Frame */}
+            <div
+                ref={certRef}
+                className="certificate-container bg-white shadow-2xl rounded-sm overflow-hidden relative border-[12px] border-double border-slate-100 p-1 md:p-2"
+                style={{ aspectRatio: "1.414/1" }} // A4 Landscape ratio
             >
-                {/* Printable area */}
-                <div
-                    ref={certRef}
-                    className="relative overflow-hidden rounded-2xl"
-                    style={{
-                        background: "linear-gradient(135deg, #0f0a1e 0%, #0f172a 50%, #0a0f1e 100%)",
-                        padding: "clamp(24px, 6vw, 64px)",
-                        minHeight: "520px",
-                        printColorAdjust: "exact",
-                        WebkitPrintColorAdjust: "exact",
-                    }}
-                >
-                    {/* Gold border */}
-                    <div className="absolute inset-2 rounded-xl border-2 border-amber-500/40 pointer-events-none" />
-                    <div className="absolute inset-3 rounded-xl border border-amber-500/20 pointer-events-none" />
+                <div className="h-full w-full border-2 border-slate-800 p-8 md:p-16 flex flex-col items-center text-center relative overflow-hidden">
+                    {/* Decorative Corner Ornaments */}
+                    <div className="absolute top-4 left-4 h-24 w-24 border-t-4 border-l-4 border-slate-300 opacity-30 rounded-tl-3xl" />
+                    <div className="absolute top-4 right-4 h-24 w-24 border-t-4 border-r-4 border-slate-300 opacity-30 rounded-tr-3xl" />
+                    <div className="absolute bottom-4 left-4 h-24 w-24 border-b-4 border-l-4 border-slate-300 opacity-30 rounded-bl-3xl" />
+                    <div className="absolute bottom-4 right-4 h-24 w-24 border-b-4 border-r-4 border-slate-300 opacity-30 rounded-br-3xl" />
 
-                    {/* Decorative corner orbs */}
-                    <div className="absolute top-0 left-0 w-48 h-48 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
-                    <div className="absolute bottom-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+                    {/* Background Watermark Icon */}
+                    <Award className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[400px] text-slate-50 opacity-[0.03] pointer-events-none" />
 
-                    {/* Content */}
-                    <div className="relative text-center space-y-6" style={{ zIndex: 1 }}>
-                        {/* Badge icon */}
-                        <div className="flex justify-center">
-                            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-2xl shadow-amber-500/30">
-                                <Award className="h-10 w-10 text-white" />
+                    {/* Header */}
+                    <div className="mb-10 w-full flex flex-col items-center">
+                        <div className="h-16 w-16 bg-[#4CAF50] rounded-full flex items-center justify-center mb-6 shadow-lg rotate-12">
+                            <Award className="h-10 w-10 text-white" />
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-serif font-black text-slate-800 tracking-tight uppercase mb-2">
+                            Certificate of Completion
+                        </h1>
+                        <div className="h-1 w-40 bg-[#4CAF50]/30 mx-auto rounded-full" />
+                    </div>
+
+                    <p className="text-lg md:text-xl text-slate-500 font-medium italic mb-10">This is to certify that</p>
+
+                    <h2 className="text-4xl md:text-6xl font-bold text-slate-900 border-b-2 border-slate-800 pb-4 mb-10 min-w-[300px]">
+                        {cert.studentName}
+                    </h2>
+
+                    <p className="text-lg md:text-xl text-slate-500 font-medium mb-10 max-w-2xl">
+                        has successfully completed the requirements for the course
+                        <span className="block text-2xl md:text-3xl text-slate-800 font-bold mt-4">
+                            &quot;{cert.courseTitle}&quot;
+                        </span>
+                    </p>
+
+                    <div className="flex-1" />
+
+                    {/* Footer Signatures */}
+                    <div className="flex flex-col md:flex-row items-end justify-between w-full mt-10 md:px-12 gap-10">
+                        <div className="text-left">
+                            <div className="h-px w-48 bg-slate-400 mb-2" />
+                            <p className="font-bold text-slate-800">{cert.instructorName}</p>
+                            <p className="text-xs text-slate-500 uppercase tracking-widest">Lead Instructor</p>
+                        </div>
+
+                        <div className="flex flex-col items-center">
+                            <div className="relative h-24 w-24 mb-2">
+                                <div className="absolute inset-0 bg-[#FFC107] opacity-10 rounded-full animate-pulse" />
+                                <ShieldCheck className="h-24 w-24 text-[#FFC107]" strokeWidth={1} />
+                                <CheckCircle2 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-[#4CAF50]" />
                             </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Verified Achievement</p>
                         </div>
 
-                        {/* Header text */}
-                        <div>
-                            <p className="text-amber-400 text-xs uppercase tracking-[0.25em] font-semibold mb-2">
-                                Certificate of Completion
-                            </p>
-                            <p className="text-slate-400 text-sm">This is to certify that</p>
-                        </div>
-
-                        {/* Student name */}
-                        <div>
-                            <h1
-                                className="font-bold text-white"
-                                style={{
-                                    fontSize: "clamp(28px, 6vw, 48px)",
-                                    textShadow: "0 0 40px rgba(251,191,36,0.3)",
-                                    background: "linear-gradient(135deg, #ffffff, #e2d5f8)",
-                                    WebkitBackgroundClip: "text",
-                                    WebkitTextFillColor: "transparent",
-                                    backgroundClip: "text",
-                                }}
-                            >
-                                {cert.studentName}
-                            </h1>
-                            <div className="mx-auto mt-3 h-0.5 w-32 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
-                        </div>
-
-                        {/* Completion text */}
-                        <div className="space-y-2">
-                            <p className="text-slate-400 text-sm">has successfully completed</p>
-                            <h2
-                                className="font-bold text-white"
-                                style={{ fontSize: "clamp(18px, 3vw, 28px)" }}
-                            >
-                                {cert.courseName}
-                            </h2>
-                        </div>
-
-                        {/* Meta info */}
-                        <div className="flex flex-wrap justify-center gap-6 text-sm">
-                            {cert.instructorName && (
-                                <div className="text-center">
-                                    <p className="text-amber-400 text-xs uppercase tracking-wide mb-1">Instructor</p>
-                                    <p className="text-white font-medium">{cert.instructorName}</p>
-                                </div>
-                            )}
-                            {cert.organizationName && (
-                                <div className="text-center">
-                                    <p className="text-amber-400 text-xs uppercase tracking-wide mb-1">Issued by</p>
-                                    <p className="text-white font-medium">{cert.organizationName}</p>
-                                </div>
-                            )}
-                            <div className="text-center">
-                                <p className="text-amber-400 text-xs uppercase tracking-wide mb-1">Date</p>
-                                <p className="text-white font-medium">{date}</p>
-                            </div>
-                        </div>
-
-                        {/* Certificate ID */}
-                        <div className="pt-4 border-t border-slate-700/50">
-                            <p className="text-slate-500 text-xs">Certificate ID: <span className="font-mono text-slate-400">{cert.certificateId}</span></p>
-                        </div>
-
-                        {/* Org logo placeholder */}
-                        <div className="flex items-center justify-center gap-2 mt-2">
-                            <div className="h-6 w-6 rounded bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center">
-                                <span className="text-white text-xs font-bold">S</span>
-                            </div>
-                            <span className="text-slate-400 text-xs">Smart LMS</span>
+                        <div className="text-right">
+                            <div className="h-px w-48 bg-slate-400 mb-2" />
+                            <p className="font-bold text-slate-800">{new Date(cert.completionDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
+                            <p className="text-xs text-slate-500 uppercase tracking-widest">Date of Issue</p>
                         </div>
                     </div>
-                </div>
-            </motion.div>
 
-            {/* Print styles */}
-            <style>{`
+                    {/* Verification Details */}
+                    <div className="mt-12 text-[10px] text-slate-300 font-mono flex gap-6">
+                        <span>CERT ID: {cert.enrollmentId.toString().toUpperCase()}</span>
+                        <span>VERIFY AT: LMS.PLATFORM/VERIFY</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Share Section (No Print) */}
+            <div className="no-print bg-slate-50 rounded-3xl p-8 border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div>
+                    <h3 className="font-bold text-slate-800 text-lg">Share your achievement</h3>
+                    <p className="text-slate-500 text-sm">Let your network know about your new skill.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Button variant="outline" className="rounded-full h-11 px-6 border-slate-200 text-slate-600 font-bold gap-2">
+                        <Share2 className="h-4 w-4" /> Share on LinkedIn
+                    </Button>
+                    <Button variant="outline" className="rounded-full h-11 px-6 border-slate-200 text-slate-600 font-bold gap-2">
+                        Twitter
+                    </Button>
+                </div>
+            </div>
+
+            {/* Styles for print */}
+            <style jsx global>{`
         @media print {
-          body * { visibility: hidden; }
-          [data-cert-print], [data-cert-print] * { visibility: visible; }
+          .no-print { display: none !important; }
+          body { background: white !important; margin: 0; padding: 0; }
+          .certificate-container { 
+            box-shadow: none !important; 
+            border-color: #f1f5f9 !important;
+            width: 100% !important;
+            height: auto !important;
+            position: fixed !important;
+            top: 0;
+            left: 0;
+          }
+          @page {
+            size: landscape;
+            margin: 0;
+          }
         }
       `}</style>
         </div>

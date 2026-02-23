@@ -1,26 +1,31 @@
 "use client"
 
 import { StudentSidebar } from "@/components/student/StudentSidebar"
+import { StudentHeader } from "@/components/student/StudentHeader"
 import { useAuth } from "@/lib/auth-context"
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
 
-  const sidebarUser = {
-    name: user?.name || "Student",
-    email: user?.email || "",
-    avatar: user?.profile?.avatar || "",
-    streak: 0,
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4CAF50]" />
+      </div>
+    )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#020617] transition-colors duration-400">
-      <StudentSidebar user={sidebarUser} />
-      <main className="flex-1 overflow-y-auto ml-0 md:ml-[280px]">
-        <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-8 md:py-10">
-          {children}
-        </div>
-      </main>
+    <div className="flex h-screen overflow-hidden bg-white">
+      <StudentSidebar />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative md:ml-[240px]">
+        <StudentHeader />
+        <main className="flex-1 overflow-y-auto mt-16">
+          <div className="max-w-[1200px] mx-auto p-4 md:p-8">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
