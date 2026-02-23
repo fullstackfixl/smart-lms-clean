@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, use } from "react"
 import { useParams } from "next/navigation"
 import { motion } from "framer-motion"
 import {
@@ -44,8 +44,9 @@ const courseSections = [
   },
 ]
 
-export default function CourseDetailPage() {
-  const { id } = useParams()
+export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params)
+  const { id } = unwrappedParams
   const [expandedSections, setExpandedSections] = useState<number[]>([0, 1])
   const [activeLesson, setActiveLesson] = useState<string | null>("5")
 
@@ -54,8 +55,8 @@ export default function CourseDetailPage() {
   const progress = Math.round((completedLessons / totalLessons) * 100)
 
   const toggleSection = (index: number) => {
-    setExpandedSections((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    setExpandedSections((prev: number[]) =>
+      prev.includes(index) ? prev.filter((i: number) => i !== index) : [...prev, index]
     )
   }
 
@@ -130,11 +131,10 @@ export default function CourseDetailPage() {
                             key={lesson.id}
                             type="button"
                             onClick={() => setActiveLesson(lesson.id)}
-                            className={`flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                              activeLesson === lesson.id
-                                ? "bg-primary/5 border-l-2 border-primary"
-                                : "hover:bg-secondary/30"
-                            }`}
+                            className={`flex items-center gap-3 px-4 py-3 text-left transition-colors ${activeLesson === lesson.id
+                              ? "bg-primary/5 border-l-2 border-primary"
+                              : "hover:bg-secondary/30"
+                              }`}
                           >
                             {getLessonIcon(lesson.type, lesson.completed)}
                             <span className={`flex-1 text-sm ${lesson.completed ? "text-muted-foreground" : "text-foreground"}`}>
@@ -154,8 +154,8 @@ export default function CourseDetailPage() {
               <div className="rounded-lg border border-border bg-card p-6">
                 <h3 className="mb-3 text-lg font-semibold text-foreground">About This Course</h3>
                 <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                  This comprehensive course covers everything you need to know from beginner to advanced levels. 
-                  You will learn through hands-on projects, real-world examples, and interactive quizzes designed 
+                  This comprehensive course covers everything you need to know from beginner to advanced levels.
+                  You will learn through hands-on projects, real-world examples, and interactive quizzes designed
                   to reinforce your understanding.
                 </p>
                 <h4 className="mb-2 text-sm font-semibold text-foreground">What you will learn</h4>

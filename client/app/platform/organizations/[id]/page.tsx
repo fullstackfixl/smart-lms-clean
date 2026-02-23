@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, Edit, Trash2, CheckCircle, XCircle, Building2, Mail, Phone, MapPin, Calendar, Users, RefreshCw } from "lucide-react"
 import { platformApi } from "@/lib/api"
@@ -37,11 +37,11 @@ interface Organization {
   }
 }
 
-export default function OrganizationDetailPage() {
+export default function OrganizationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params)
   const router = useRouter()
-  const params = useParams()
   const { token } = useAuth()
-  const id = params.id as string
+  const id = unwrappedParams.id
 
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [loading, setLoading] = useState(true)
@@ -69,12 +69,12 @@ export default function OrganizationDetailPage() {
 
   const handleStatusToggle = async () => {
     if (!organization) return
-    
+
     setActionLoading(true)
     try {
       const newStatus = organization.status === 'active' ? 'suspended' : 'active'
       const response = await platformApi.updateOrgStatus(id, newStatus)
-      
+
       if (response.success) {
         await loadOrganization()
       } else {
@@ -92,7 +92,7 @@ export default function OrganizationDetailPage() {
     setActionLoading(true)
     try {
       const response = await platformApi.deleteOrg(id)
-      
+
       if (response.success) {
         router.push('/platform/organizations')
       } else {
@@ -155,11 +155,10 @@ export default function OrganizationDetailPage() {
           <button
             onClick={handleStatusToggle}
             disabled={actionLoading}
-            className={`flex h-11 items-center gap-2 rounded-xl px-6 text-sm font-medium shadow-lg transition-all hover:scale-105 ${
-              organization.status === 'active'
+            className={`flex h-11 items-center gap-2 rounded-xl px-6 text-sm font-medium shadow-lg transition-all hover:scale-105 ${organization.status === 'active'
                 ? 'bg-red-600 text-white shadow-red-500/20 hover:bg-red-500'
                 : 'bg-green-600 text-white shadow-green-500/20 hover:bg-green-500'
-            }`}
+              }`}
           >
             {organization.status === 'active' ? (
               <>
@@ -196,11 +195,10 @@ export default function OrganizationDetailPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${
-          organization.status === 'active'
+        <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${organization.status === 'active'
             ? 'bg-green-500/10 text-green-400 border border-green-500/20'
             : 'bg-red-500/10 text-red-400 border border-red-500/20'
-        }`}>
+          }`}>
           {organization.status === 'active' ? (
             <CheckCircle className="h-4 w-4" />
           ) : (
@@ -271,11 +269,10 @@ export default function OrganizationDetailPage() {
           <div className="space-y-4">
             <div>
               <div className="text-sm text-gray-400 mb-2">Plan</div>
-              <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium ${
-                organization.plan === 'premium'
+              <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium ${organization.plan === 'premium'
                   ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
                   : 'bg-slate-800/50 text-gray-400 border border-slate-700/50'
-              }`}>
+                }`}>
                 {organization.plan.charAt(0).toUpperCase() + organization.plan.slice(1)}
               </span>
             </div>

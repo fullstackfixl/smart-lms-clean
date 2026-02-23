@@ -1,5 +1,5 @@
-// Remove trailing slash from API_BASE if present
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, '')
+import { API_URL } from './config'
+const API_BASE = API_URL
 
 interface ApiOptions {
   method?: string
@@ -85,14 +85,22 @@ async function apiRequest<T = unknown>(
 
 // Auth APIs
 export const authApi = {
-  register: (data: { name: string; email: string; password: string; role?: string; organization_code?: string; organization_name?: string }) =>
-    apiRequest("/auth/register/request-otp", { method: "POST", body: data }),
-  requestOtp: (data: { email: string; name: string; role: string; organization_code?: string; organization_name?: string }) =>
+  register: (data: any) =>
+    apiRequest("/auth/register", { method: "POST", body: data }),
+  applyOrganization: (data: any) =>
+    apiRequest("/auth/apply-organization", { method: "POST", body: data }),
+  completeOrganizationRegistration: (data: { token: string; password: string }) =>
+    apiRequest("/auth/complete-organization-registration", { method: "POST", body: data }),
+  acceptInvite: (data: any) =>
+    apiRequest("/auth/accept-invite", { method: "POST", body: data }),
+  registerRequestOtp: (data: { email: string; name: string; role: string; organization_code?: string; organization_name?: string }) =>
     apiRequest("/auth/register/request-otp", { method: "POST", body: data }),
   verifyOtp: (data: { email: string; otp: string }) =>
     apiRequest("/auth/register/verify-otp", { method: "POST", body: data }),
   resendOtp: (email: string) =>
     apiRequest("/auth/register/resend-otp", { method: "POST", body: { email } }),
+  createSuperAdmin: (data: any) =>
+    apiRequest("/platform/create-super-admin", { method: "POST", body: data }),
   login: (data: { email: string; password: string }) =>
     apiRequest("/auth/login", { method: "POST", body: data }),
   logout: (token: string) =>
@@ -105,6 +113,8 @@ export const authApi = {
     apiRequest("/auth/me", { token }),
   updateMe: (token: string, data: Record<string, unknown>) =>
     apiRequest("/auth/me", { method: "PUT", token, body: data }),
+  refresh: (token: string) =>
+    apiRequest("/auth/refresh", { method: "POST", token }),
 }
 
 // Course APIs
@@ -461,6 +471,14 @@ export const platformApi = {
       body: { isActive }
     })
   },
+
+  // Organization Applications
+  listApplications: (token: string, status: string = 'pending') =>
+    apiRequest(`/platform/applications?status=${status}`, { token }),
+  approveApplication: (token: string, id: string) =>
+    apiRequest(`/platform/applications/${id}/approve`, { method: "PUT", token }),
+  rejectApplication: (token: string, id: string) =>
+    apiRequest(`/platform/applications/${id}/reject`, { method: "PUT", token }),
 }
 
 // Instructor APIs

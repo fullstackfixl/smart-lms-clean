@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, use } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { ArrowLeft, Clock, Star, BookOpen, User, CheckCircle, Loader2, PlayCircle } from "lucide-react"
@@ -57,10 +57,10 @@ interface CourseProgress {
   totalLessons: number
 }
 
-export default function CourseDetailsPage() {
-  const params = useParams()
+export default function CourseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params)
   const router = useRouter()
-  const courseId = params.id as string
+  const courseId = unwrappedParams.id
 
   const [course, setCourse] = useState<Course | null>(null)
   const [sections, setSections] = useState<Section[]>([])
@@ -242,8 +242,8 @@ export default function CourseDetailsPage() {
                       </Button>
                     </div>
                   ) : (
-                    <Button 
-                      className="w-full" 
+                    <Button
+                      className="w-full"
                       size="lg"
                       onClick={handleEnroll}
                       disabled={enrolling}

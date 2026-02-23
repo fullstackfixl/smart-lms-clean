@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import {
   LayoutDashboard,
   Building2,
+  ClipboardList,
   BarChart3,
   Shield,
   Settings,
@@ -13,8 +14,9 @@ import {
 } from "lucide-react"
 
 const navigation = [
-  { name: "Dashboard", href: "/platform", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/platform/dashboard", icon: LayoutDashboard },
   { name: "Organizations", href: "/platform/organizations", icon: Building2 },
+  { name: "Applications", href: "/platform/applications", icon: ClipboardList },
   { name: "Courses", href: "/platform/courses", icon: BookOpen },
   { name: "Analytics", href: "/platform/analytics", icon: BarChart3 },
   { name: "Platform Admins", href: "/platform/admins", icon: Shield },
@@ -56,8 +58,8 @@ export function PlatformSidebar() {
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all relative ${isActive
-                    ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                  ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                   }`}
               >
                 {isActive && (

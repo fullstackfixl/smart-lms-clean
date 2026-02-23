@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, use } from "react"
 import { motion } from "framer-motion"
 import { Download, Share2, Printer, Award, ArrowLeft, ShieldCheck, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,14 +14,16 @@ const getToken = () =>
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
         : null
 
-export default function CertificateDetail({ params }: { params: { courseId: string } }) {
+export default function CertificateDetail({ params }: { params: Promise<{ courseId: string }> }) {
+    const { courseId } = use(params)
     const [cert, setCert] = useState<any>(null)
     const [loading, setLoading] = useState(true)
+    const [generating, setGenerating] = useState(false)
     const certRef = useRef<HTMLDivElement>(null)
 
     const fetchCert = useCallback(async () => {
         try {
-            const r = await fetch(`${API()}/student/certificate/${params.courseId}`, {
+            const r = await fetch(`${API()}/student/certificate/${courseId}`, {
                 headers: { Authorization: `Bearer ${getToken()}` },
                 credentials: "include"
             })
@@ -36,7 +38,7 @@ export default function CertificateDetail({ params }: { params: { courseId: stri
         } finally {
             setLoading(false)
         }
-    }, [params.courseId])
+    }, [courseId])
 
     useEffect(() => {
         fetchCert()
@@ -44,6 +46,40 @@ export default function CertificateDetail({ params }: { params: { courseId: stri
 
     const handlePrint = () => {
         window.print()
+    }
+
+    const handleDownload = async () => {
+        if (!cert || !cert.id) return
+
+        if (!cert.pdfGenerated) {
+            setGenerating(true)
+            try {
+                const r = await fetch(`${API()}/api/certificates/generate/${cert.enrollmentId}`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${getToken()}` },
+                    credentials: "include"
+                })
+                const data = await r.json()
+                if (data.success) {
+                    toast.success("Certificate PDF generated!")
+                    setCert((prev: any) => ({ ...prev, pdfGenerated: true, id: data.data._id }))
+                    // Proceed to download
+                    window.open(`${API()}/api/certificates/${data.data._id}/download?token=${getToken()}`, "_blank")
+                } else {
+                    toast.error(data.message || "Failed to generate PDF")
+                }
+            } catch (e) {
+                toast.error("Network error while generating PDF")
+            } finally {
+                setGenerating(false)
+            }
+        } else {
+            // Direct download
+            // Note: For download endpoints that require auth, we sometimes pass the token in query if clicking a link, 
+            // or we use a blob fetch if we want to stay in the same tab.
+            // Given the backend implementation uses res.sendFile, a window.open or a link is easiest.
+            window.open(`${API()}/api/certificates/${cert.id}/download?token=${getToken()}`, "_blank")
+        }
     }
 
     if (loading) return (
@@ -75,8 +111,17 @@ export default function CertificateDetail({ params }: { params: { courseId: stri
                     <Button variant="outline" onClick={handlePrint} className="rounded-full border-slate-200 text-slate-600 font-bold h-10 px-6 gap-2">
                         <Printer className="h-4 w-4" /> Print
                     </Button>
-                    <Button onClick={handlePrint} className="rounded-full bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-10 px-8 gap-2 shadow-md">
-                        <Download className="h-4 w-4" /> Download PDF
+                    <Button
+                        onClick={handleDownload}
+                        disabled={generating}
+                        className="rounded-full bg-[#4CAF50] hover:bg-[#388E3C] text-white font-bold h-10 px-8 gap-2 shadow-md disabled:opacity-50"
+                    >
+                        {generating ? (
+                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <Download className="h-4 w-4" />
+                        )}
+                        {generating ? "Generating..." : "Download PDF"}
                     </Button>
                 </div>
             </div>

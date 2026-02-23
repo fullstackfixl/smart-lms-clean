@@ -6,8 +6,8 @@ const userSchema = new mongoose.Schema({
   organization_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',
-    required: function() { 
-      return this.role !== 'platform_admin' && this.role !== 'platformAdmin' && this.role !== 'student'; 
+    required: function () {
+      return this.role !== 'platform_admin' && this.role !== 'platformAdmin' && this.role !== 'student';
     }
   },
   organization_code: {
@@ -32,7 +32,13 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['platform_admin', 'platformAdmin', 'org_admin', 'instructor', 'student', 'parent', 'support_staff'],
+    enum: ['platform_admin', 'org_admin', 'instructor', 'student', 'parent', 'support_staff'],
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['active', 'suspended', 'pending', 'inactive'],
+    default: 'active',
     required: true
   },
   parent_link: [{
@@ -124,11 +130,11 @@ const userSchema = new mongoose.Schema({
 // Indexes
 // For platform admins (no organization), email must be unique
 // For org users, email + organization_id must be unique
-userSchema.index({ email: 1 }, { 
-  unique: true, 
-  partialFilterExpression: { organization_id: { $eq: null } } 
+userSchema.index({ email: 1 }, {
+  unique: true,
+  partialFilterExpression: { organization_id: { $eq: null } }
 });
-userSchema.index({ email: 1, organization_id: 1 }, { 
+userSchema.index({ email: 1, organization_id: 1 }, {
   unique: true,
   partialFilterExpression: { organization_id: { $ne: null } }
 });
@@ -138,7 +144,7 @@ userSchema.index({ is_deleted: 1 });
 userSchema.index({ isActive: 1 });
 
 // Query middleware to exclude soft-deleted records by default
-userSchema.pre(/^find/, function(next) {
+userSchema.pre(/^find/, function (next) {
   // Only apply if not explicitly including deleted
   if (!this.getOptions().includeDeleted) {
     this.where({ is_deleted: { $ne: true } });
@@ -147,7 +153,7 @@ userSchema.pre(/^find/, function(next) {
 });
 
 // Instance method to soft delete
-userSchema.methods.softDelete = function(userId) {
+userSchema.methods.softDelete = function (userId) {
   this.is_deleted = true;
   this.isActive = false;
   this.deleted_at = new Date();
@@ -156,7 +162,7 @@ userSchema.methods.softDelete = function(userId) {
 };
 
 // Instance method to restore
-userSchema.methods.restore = function() {
+userSchema.methods.restore = function () {
   this.is_deleted = false;
   this.isActive = true;
   this.deleted_at = null;
@@ -165,7 +171,7 @@ userSchema.methods.restore = function() {
 };
 
 // Update updated_at timestamp before saving
-userSchema.pre('save', function(next) {
+userSchema.pre('save', function (next) {
   this.updated_at = Date.now();
   next();
 });

@@ -19,16 +19,15 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [role, setRole] = useState("student")
-  const [orgCode, setOrgCode] = useState("")
-  const [orgName, setOrgName] = useState("")
-  const [otp, setOtp] = useState("")
-  const [displayedOtp, setDisplayedOtp] = useState("") // Store OTP if email fails
-  const [generatedOrgCode, setGeneratedOrgCode] = useState("")
+  const [role, setRole] = useState<"student" | "parent">("student")
+  const [orgSubdomain, setOrgSubdomain] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
+  const [otp, setOtp] = useState("")
+  const [displayedOtp, setDisplayedOtp] = useState<string | null>(null)
+  const [generatedOrgCode, setGeneratedOrgCode] = useState<string | null>(null)
   const { register, verifyOtp, resendOtp } = useAuth()
   const router = useRouter()
 
@@ -55,69 +54,29 @@ export default function RegisterPage() {
       return
     }
 
-    // Org Admin needs organization name
-    if (role === "org_admin" && !orgName) {
-      toast.error("Organization name is required for Org Admin")
-      return
-    }
-
-    // Other roles need organization code
-    if (role !== "public_student" && role !== "org_admin" && !orgCode) {
-      toast.error("Organization code is required")
+    if (!orgSubdomain.trim()) {
+      toast.error("School subdomain is required")
       return
     }
 
     setLoading(true)
-    const requestData: any = {
+    const result = await register({
       name,
       email,
       password,
-      role
-    }
-
-    if (role === "org_admin") {
-      requestData.organization_name = orgName
-    } else if (role !== "public_student") {
-      requestData.organization_code = orgCode
-    }
-
-    const result = await register(requestData)
-    setLoading(false)
+      role,
+      orgSubdomain
+    })
+    setLoading(true)
 
     if (result.success) {
-      if (result.requiresOTP) {
-        // Check if OTP is in response (email service failed)
-        const responseData = (result as any).data
-        if (responseData?.otp) {
-          setDisplayedOtp(responseData.otp)
-          if (responseData?.emailFailed) {
-            toast.error("Email service unavailable. Your verification code is displayed below.", {
-              duration: 10000
-            })
-          } else {
-            toast.success("Verification code sent to your email")
-          }
-        } else {
-          toast.success("Verification code sent to your email")
-        }
-        setStep("otp")
-        setResendTimer(60)
-      } else {
-        toast.success("Registration complete! Redirecting to dashboard...")
-        router.push("/dashboard")
-      }
+      toast.success("Verification code sent. Check your email")
+      setStep("otp")
+      setResendTimer(60)
+      setLoading(false)
     } else {
-      const errorMsg = result.error || "Registration failed"
-      
-      // Check if email already registered
-      if (errorMsg.toLowerCase().includes("already registered") || errorMsg.toLowerCase().includes("already exists")) {
-        toast.error("Email already registered. Redirecting to login...")
-        setTimeout(() => {
-          router.push("/login")
-        }, 2000)
-      } else {
-        toast.error(errorMsg)
-      }
+      toast.error(result.error || "Registration failed")
+      setLoading(false)
     }
   }
 
@@ -149,7 +108,7 @@ export default function RegisterPage() {
       }
     } else {
       const errorMsg = result.error || "Verification failed"
-      
+
       // Check if it's a "no verification found" or "already verified" error
       if (errorMsg.toLowerCase().includes("no verification") || errorMsg.toLowerCase().includes("already verified")) {
         toast.error("Verification expired or already completed. Please login instead.")
@@ -187,7 +146,7 @@ export default function RegisterPage() {
       setResendTimer(60)
     } else {
       const errorMsg = result.error || "Failed to resend code"
-      
+
       // Check if email already registered
       if (errorMsg.toLowerCase().includes("already registered")) {
         toast.error("Email already registered. Redirecting to login...")
@@ -245,50 +204,31 @@ export default function RegisterPage() {
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={setRole}>
+              <Select value={role} onValueChange={(v: any) => setRole(v)}>
                 <SelectTrigger className="bg-secondary">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="student">Student</SelectItem>
-                  <SelectItem value="instructor">Instructor</SelectItem>
-                  <SelectItem value="org_admin">Org Admin</SelectItem>
-                  <SelectItem value="public_student">Public Student</SelectItem>
+                  <SelectItem value="parent">Parent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {role === "org_admin" ? (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="orgName">Organization Name</Label>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="orgSubdomain">School Subdomain</Label>
+              <div className="flex items-center gap-2">
                 <Input
-                  id="orgName"
-                  placeholder="My School"
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
+                  id="orgSubdomain"
+                  placeholder="myschool"
+                  value={orgSubdomain}
+                  onChange={(e) => setOrgSubdomain(e.target.value.toLowerCase().trim())}
                   required
                   className="bg-secondary"
                 />
-                <p className="text-xs text-muted-foreground">
-                  You'll receive an organization code after registration
-                </p>
+                <span className="text-sm text-muted-foreground">.smartlms.com</span>
               </div>
-            ) : role !== "public_student" ? (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="orgCode">Organization Code</Label>
-                <Input
-                  id="orgCode"
-                  placeholder="IYUHBH or 698d6fc6515b2f503e65574d"
-                  value={orgCode}
-                  onChange={(e) => setOrgCode(e.target.value.trim())}
-                  required
-                  className="bg-secondary"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Get this code from your organization admin (6 or 24 characters)
-                </p>
-              </div>
-            ) : null}
+            </div>
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="password">Password</Label>

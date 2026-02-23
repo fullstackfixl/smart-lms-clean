@@ -8,7 +8,7 @@ export function getDashboardRoute(role: string): string {
     case 'instructor':
       return '/instructor/dashboard'
     case 'org_admin':
-      return '/admin/dashboard'
+      return '/organization/dashboard'
     case 'platform_admin':
       return '/platform'
     case 'parent':

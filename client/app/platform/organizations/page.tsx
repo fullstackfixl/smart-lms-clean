@@ -269,7 +269,7 @@ export default function OrganizationsPage() {
                           ? 'bg-indigo-500/10 text-indigo-400' 
                           : 'bg-slate-800/50 text-gray-400'
                       }`}>
-                        {org.plan.charAt(0).toUpperCase() + org.plan.slice(1)}
+                        {(org.plan ? org.plan.charAt(0).toUpperCase() + org.plan.slice(1) : 'Standard')}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -287,7 +287,7 @@ export default function OrganizationsPage() {
                         ) : (
                           <XCircle className="h-3 w-3" />
                         )}
-                        {org.status.charAt(0).toUpperCase() + org.status.slice(1)}
+                        {(org.status ? org.status.charAt(0).toUpperCase() + org.status.slice(1) : 'Pending')}
                       </button>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-400">

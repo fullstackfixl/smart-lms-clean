@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { Menu, X, ChevronDown, GraduationCap } from "lucide-react"
@@ -25,6 +26,8 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
+  const [ctaLoading, setCtaLoading] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -140,11 +143,20 @@ export function Navbar() {
             Log in
           </Link>
           <Link
-            href="/register"
+            href="/apply"
             className="rounded-lg px-5 py-2 text-sm font-semibold text-white transition-all"
             style={{
               background: "linear-gradient(135deg, #FF9900, #e68a00)",
               boxShadow: "0 4px 20px rgba(255,153,0,0.35)",
+            }}
+            onClick={(e) => {
+              e.preventDefault()
+              if (ctaLoading) return
+              setCtaLoading(true)
+              setTimeout(() => {
+                setCtaLoading(false)
+                router.push("/apply")
+              }, 2000)
             }}
             onMouseEnter={(e) =>
             ((e.currentTarget as HTMLElement).style.boxShadow =
@@ -155,7 +167,7 @@ export function Navbar() {
               "0 4px 20px rgba(255,153,0,0.35)")
             }
           >
-            Get Started Free
+            {ctaLoading ? "Loading..." : "Get Started Free"}
           </Link>
         </div>
 
@@ -211,12 +223,21 @@ export function Navbar() {
                     Log in
                   </button>
                 </Link>
-                <Link href="/register" onClick={() => setMobileOpen(false)}>
+                <Link href="/apply" onClick={(e) => {
+                  e.preventDefault()
+                  setMobileOpen(false)
+                  if (ctaLoading) return
+                  setCtaLoading(true)
+                  setTimeout(() => {
+                    setCtaLoading(false)
+                    router.push("/apply")
+                  }, 2000)
+                }}>
                   <button
                     className="w-full rounded-lg py-2.5 text-sm font-semibold text-white"
                     style={{ background: "linear-gradient(135deg, #FF9900, #e68a00)" }}
                   >
-                    Get Started Free
+                    {ctaLoading ? "Loading..." : "Get Started Free"}
                   </button>
                 </Link>
               </div>

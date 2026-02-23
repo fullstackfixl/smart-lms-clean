@@ -12,51 +12,52 @@ const requireInstructor = [
 ];
 
 // Dashboard Overview
-router.get('/dashboard/overview', ...requireInstructor, InstructorController.getDashboardOverview);
+router.get('/dashboard/overview', ...requireInstructor, (req, res, next) => InstructorController.getDashboardOverview(req, res, next));
 
 // Courses
-router.post('/courses', ...requireInstructor, InstructorController.createCourse);
-router.get('/courses', ...requireInstructor, InstructorController.getCourses);
-router.get('/courses/:id', ...requireInstructor, InstructorController.getCourseById);
-router.put('/courses/:id', ...requireInstructor, InstructorController.updateCourse);
-router.delete('/courses/:id', ...requireInstructor, InstructorController.deleteCourse);
-router.patch('/courses/:id/publish', ...requireInstructor, InstructorController.publishCourse);
+router.post('/courses', ...requireInstructor, (req, res, next) => InstructorController.createCourse(req, res, next));
+router.get('/courses', ...requireInstructor, (req, res, next) => InstructorController.getCourses(req, res, next));
+router.get('/courses/:id', ...requireInstructor, (req, res, next) => InstructorController.getCourseById(req, res, next));
+router.put('/courses/:id', ...requireInstructor, (req, res, next) => InstructorController.updateCourse(req, res, next));
+router.delete('/courses/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteCourse(req, res, next));
+router.patch('/courses/:id/publish', ...requireInstructor, (req, res, next) => InstructorController.publishCourse(req, res, next));
 
 // Modules (Sections)
-router.post('/courses/:courseId/modules', ...requireInstructor, InstructorController.createModule);
-router.get('/courses/:courseId/sections', ...requireInstructor, InstructorController.getCourseSections);
-router.put('/modules/:id', ...requireInstructor, InstructorController.updateModule);
-router.delete('/modules/:id', ...requireInstructor, InstructorController.deleteModule);
+router.post('/courses/:courseId/modules', ...requireInstructor, (req, res, next) => InstructorController.createModule(req, res, next));
+router.get('/courses/:courseId/sections', ...requireInstructor, (req, res, next) => InstructorController.getCourseSections(req, res, next));
+router.put('/modules/:id', ...requireInstructor, (req, res, next) => InstructorController.updateModule(req, res, next));
+router.delete('/modules/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteModule(req, res, next));
 
 // Lessons
-router.post('/modules/:moduleId/lessons', ...requireInstructor, InstructorController.createLesson);
-router.get('/sections/:sectionId/lessons', ...requireInstructor, InstructorController.getSectionLessons);
-router.put('/lessons/:id', ...requireInstructor, InstructorController.updateLesson);
-router.delete('/lessons/:id', ...requireInstructor, InstructorController.deleteLesson);
+router.post('/modules/:moduleId/lessons', ...requireInstructor, (req, res, next) => InstructorController.createLesson(req, res, next));
+router.get('/sections/:sectionId/lessons', ...requireInstructor, (req, res, next) => InstructorController.getSectionLessons(req, res, next));
+router.put('/lessons/:id', ...requireInstructor, (req, res, next) => InstructorController.updateLesson(req, res, next));
+router.delete('/lessons/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteLesson(req, res, next));
 
 // Quizzes
-router.post('/courses/:courseId/quizzes', ...requireInstructor, InstructorController.createQuiz);
-router.put('/quizzes/:id', ...requireInstructor, InstructorController.updateQuiz);
-router.delete('/quizzes/:id', ...requireInstructor, InstructorController.deleteQuiz);
+router.post('/courses/:courseId/quizzes', ...requireInstructor, (req, res, next) => InstructorController.createQuiz(req, res, next));
+router.put('/quizzes/:id', ...requireInstructor, (req, res, next) => InstructorController.updateQuiz(req, res, next));
+router.delete('/quizzes/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteQuiz(req, res, next));
 
 // Students & Analytics
-router.get('/courses/:id/students', ...requireInstructor, InstructorController.getCourseStudents);
-router.get('/courses/:id/analytics', ...requireInstructor, InstructorController.getCourseAnalytics);
+router.get('/courses/:id/students', ...requireInstructor, (req, res, next) => InstructorController.getCourseStudents(req, res, next));
+router.get('/courses/:id/analytics', ...requireInstructor, (req, res, next) => InstructorController.getCourseAnalytics(req, res, next));
 
 // Announcements
-router.post('/courses/:id/announcements', ...requireInstructor, InstructorController.createAnnouncement);
-router.get('/courses/:id/announcements', ...requireInstructor, InstructorController.getAnnouncements);
-router.delete('/announcements/:id', ...requireInstructor, InstructorController.deleteAnnouncement);
+router.post('/courses/:id/announcements', ...requireInstructor, (req, res, next) => InstructorController.createAnnouncement(req, res, next));
+router.get('/courses/:id/announcements', ...requireInstructor, (req, res, next) => InstructorController.getAnnouncements(req, res, next));
+router.delete('/announcements/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteAnnouncement(req, res, next));
 
 // Submissions Review
-router.get('/submissions', ...requireInstructor, InstructorController.getSubmissions);
-router.patch('/submissions/:id/grade', ...requireInstructor, InstructorController.gradeSubmission);
+router.get('/submissions', ...requireInstructor, (req, res, next) => InstructorController.getSubmissions(req, res, next));
+router.patch('/submissions/:id/grade', ...requireInstructor, (req, res, next) => InstructorController.gradeSubmission(req, res, next));
 
 // Notifications
-router.get('/notifications', ...requireInstructor, InstructorController.getNotifications);
-router.patch('/notifications/:id/read', ...requireInstructor, InstructorController.markNotificationRead);
-router.patch('/notifications/read-all', ...requireInstructor, InstructorController.markAllNotificationsRead);
-router.delete('/notifications/:id', ...requireInstructor, InstructorController.deleteNotification);
+router.get('/notifications', ...requireInstructor, (req, res, next) => InstructorController.getNotifications(req, res, next));
+router.patch('/notifications/:id/read', ...requireInstructor, (req, res, next) => InstructorController.markNotificationRead(req, res, next));
+router.patch('/notifications/read-all', ...requireInstructor, (req, res, next) => InstructorController.markAllNotificationsRead(req, res, next));
+router.delete('/notifications/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteNotification(req, res, next));
+
 
 module.exports = router;
 

@@ -1,19 +1,19 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, use } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-import { 
-  Play, 
-  Pause, 
-  Volume2, 
-  VolumeX, 
-  Maximize, 
-  CheckCircle2, 
-  Clock, 
-  FileText, 
+import {
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
+  CheckCircle2,
+  Clock,
+  FileText,
   Award,
   ChevronRight,
   ChevronLeft,
@@ -66,10 +66,10 @@ interface Lecture {
   previous_lecture: { _id: string; title: string; type: string } | null
 }
 
-export default function StudentLecturePage() {
-  const params = useParams()
+export default function StudentLecturePage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params)
   const router = useRouter()
-  const lectureId = params.id as string
+  const lectureId = unwrappedParams.id
 
   const [lecture, setLecture] = useState<Lecture | null>(null)
   const [loading, setLoading] = useState(true)
@@ -82,7 +82,7 @@ export default function StudentLecturePage() {
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([])
   const [quizSubmitting, setQuizSubmitting] = useState(false)
   const [quizResult, setQuizResult] = useState<any>(null)
-  
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -341,8 +341,8 @@ export default function StudentLecturePage() {
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
                 {/* Progress Bar */}
                 <div className="mb-4">
-                  <Progress 
-                    value={(currentTime / duration) * 100} 
+                  <Progress
+                    value={(currentTime / duration) * 100}
                     className="h-1 cursor-pointer"
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect()
@@ -523,11 +523,10 @@ export default function StudentLecturePage() {
                               <button
                                 key={oIdx}
                                 onClick={() => handleAnswerSelect(qIdx, oIdx)}
-                                className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                                  selectedAnswers[qIdx] === oIdx
+                                className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedAnswers[qIdx] === oIdx
                                     ? 'border-indigo-500 bg-indigo-500/10'
                                     : 'border-slate-700 hover:border-slate-600'
-                                }`}
+                                  }`}
                               >
                                 {option}
                               </button>
@@ -559,12 +558,10 @@ export default function StudentLecturePage() {
                 {quizResult && (
                   <>
                     <div className="text-center mb-6">
-                      <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-                        quizResult.passed ? 'bg-emerald-500/10' : 'bg-red-500/10'
-                      }`}>
-                        <span className={`text-3xl font-bold ${
-                          quizResult.passed ? 'text-emerald-400' : 'text-red-400'
+                      <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${quizResult.passed ? 'bg-emerald-500/10' : 'bg-red-500/10'
                         }`}>
+                        <span className={`text-3xl font-bold ${quizResult.passed ? 'text-emerald-400' : 'text-red-400'
+                          }`}>
                           {quizResult.score}%
                         </span>
                       </div>
@@ -581,9 +578,8 @@ export default function StudentLecturePage() {
 
                     <div className="space-y-4 mb-6">
                       {quizResult.answers.map((answer: any, idx: number) => (
-                        <div key={idx} className={`p-4 rounded-lg border ${
-                          answer.is_correct ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'
-                        }`}>
+                        <div key={idx} className={`p-4 rounded-lg border ${answer.is_correct ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'
+                          }`}>
                           <div className="flex items-start justify-between mb-2">
                             <p className="font-medium">Question {idx + 1}</p>
                             {answer.is_correct ? (

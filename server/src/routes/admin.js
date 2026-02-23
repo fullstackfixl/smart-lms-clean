@@ -249,15 +249,15 @@ router.get('/users', async (req, res) => {
 
     // Build query
     const query = { organization_id: orgId };
-    
+
     if (role) {
       query.role = role;
     }
-    
+
     if (status) {
       query.isActive = status === 'active';
     }
-    
+
     if (search) {
       query.$or = [
         { email: { $regex: search, $options: 'i' } },
@@ -311,6 +311,18 @@ router.get('/users/:id', async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.error(error.message, 'Failed to fetch user', 500);
+  }
+});
+
+// Invite staff
+router.post('/users/invite', async (req, res) => {
+  try {
+    const authService = require('../services/authService');
+    const invite = await authService.inviteStaff(req.user.organization_id, req.body);
+    res.success({ invite }, 'Invitation sent successfully');
+  } catch (error) {
+    console.error('Invite staff error:', error);
+    res.error(error.message, 'Failed to send invitation', error.statusCode || 500);
   }
 });
 
@@ -506,13 +518,13 @@ router.get('/courses', async (req, res) => {
 
     // Build query
     const query = { organization_id: orgId };
-    
+
     if (status === 'published') {
       query.isPublished = true;
     } else if (status === 'draft') {
       query.isPublished = false;
     }
-    
+
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -682,7 +694,7 @@ router.get('/attendance/summary', async (req, res) => {
     const absentCount = overallStats.find(s => s._id === 'absent')?.count || 0;
     const lateCount = overallStats.find(s => s._id === 'late')?.count || 0;
 
-    const attendancePercentage = totalRecords > 0 
+    const attendancePercentage = totalRecords > 0
       ? ((presentCount / totalRecords) * 100).toFixed(1)
       : 0;
 
@@ -798,7 +810,7 @@ router.get('/attendance/student/:id', async (req, res) => {
 
     const totalRecords = stats.reduce((sum, stat) => sum + stat.count, 0);
     const presentCount = stats.find(s => s._id === 'present')?.count || 0;
-    const attendanceRate = totalRecords > 0 
+    const attendanceRate = totalRecords > 0
       ? ((presentCount / totalRecords) * 100).toFixed(1)
       : 0;
 
@@ -896,7 +908,7 @@ router.get('/attendance/instructor/:id', async (req, res) => {
 
     const totalRecords = attendanceStats.reduce((sum, stat) => sum + stat.totalRecords, 0);
     const totalPresent = attendanceStats.reduce((sum, stat) => sum + stat.presentCount, 0);
-    const overallRate = totalRecords > 0 
+    const overallRate = totalRecords > 0
       ? ((totalPresent / totalRecords) * 100).toFixed(1)
       : 0;
 
@@ -1115,8 +1127,8 @@ router.post('/grades/export', async (req, res) => {
     if (format === 'csv') {
       // Convert to CSV format
       const headers = Object.keys(exportData[0] || {}).join(',');
-      const rows = exportData.map(row => 
-        Object.values(row).map(val => 
+      const rows = exportData.map(row =>
+        Object.values(row).map(val =>
           typeof val === 'string' && val.includes(',') ? `"${val}"` : val
         ).join(',')
       );

@@ -1,324 +1,306 @@
-const BaseService = require('../core/BaseService');
-const UserRepository = require('../repositories/UserRepository');
-const User = require('../models/User');
-const domainValidation = require('./domainValidation');
+const { User, Organization, Invite, OrganizationApplication, OrganizationApprovalToken } = require('../models');
 const jwtUtils = require('../utils/jwt');
-const sendEmail = require('../utils/email');
-const generateOTP = require('../utils/otp').generateOTP;
 const bcrypt = require('bcryptjs');
-const { ValidationError, AuthenticationError, NotFoundError } = require('../core/errors');
+const crypto = require('crypto');
+const { AuthenticationError, ValidationError, NotFoundError } = require('../core/errors');
 
-class AuthService extends BaseService {
-  constructor() {
-    super(UserRepository);
-  }
+class AuthService {
   /**
-   * Validate email format
-   * @param {string} email
-   * @returns {boolean}
+   * Redirect logic based on role
    */
-  validateEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
-  /**
-   * Validate required fields
-   * @param {Object} data
-   * @param {string[]} requiredFields
-   * @throws {ValidationError}
-   */
-  validateRequiredFields(data, requiredFields) {
-    const missingFields = {};
-    for (const field of requiredFields) {
-      if (!data[field] || (typeof data[field] === 'string' && !data[field].trim())) {
-        missingFields[field] = `${field} is required`;
-      }
-    }
-    if (Object.keys(missingFields).length > 0) {
-      throw new ValidationError('Validation failed', missingFields);
-    }
+  getRedirectUrl(role) {
+    const redirects = {
+      'platform_admin': '/platform/dashboard',
+      'org_admin': '/organization/dashboard',
+      'instructor': '/instructor/dashboard',
+      'student': '/student/dashboard',
+      'parent': '/parent/dashboard',
+      'support_staff': '/support/dashboard'
+    };
+    return redirects[role] || '/dashboard';
   }
 
   /**
-   * Register a new user
-   * @param {Object} userData - User registration data
-   * @returns {Promise<{user, token}>}
+   * Unified login
    */
-  async register(userData) {
-    const { email, password, fullName, role, registrationType, organization_id: passedOrgId } = userData;
-
-    // Validate required fields
-    this.validateRequiredFields({ email, password, fullName }, ['email', 'password', 'fullName']);
-
-    // Validate email format
-    if (!this.validateEmail(email)) {
-      throw new ValidationError('Invalid email format', { email: 'Invalid email format' });
-    }
-
-    // Validate password length
-    if (password.length < 8) {
-      throw new ValidationError('Password must be at least 8 characters long', { password: 'Password must be at least 8 characters long' });
-    }
-
-    // Check if email already exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      throw new ValidationError('Email is already registered', { email: 'Email is already registered' });
-    }
-
-    let organization_id = null;
-    let userRole = 'public_student';
-
-    // Handle organization registration
-    if (registrationType === 'organization') {
-      // Extract domain from email
-      const domain = domainValidation.extractDomain(email);
-
-      if (passedOrgId) {
-        // Use pre-validated organization ID from controller
-        organization_id = passedOrgId;
-
-        // Additional validation: ensure organization exists and is active
-        const Organization = require('../models/Organization');
-        const organization = await Organization.findById(organization_id);
-
-        if (!organization || !organization.isActive) {
-          throw new Error('Organization not found or not active');
-        }
-
-        // Domain validation removed per user request ("remove .edu compulsory")
-        // We trust the Organization Code validation from the controller or passedOrgId.
-      } else {
-        // Fallback: Find organization by domain
-        const organization = await domainValidation.findOrganizationByDomain(domain);
-
-        if (!organization) {
-          throw new Error('Email domain is not registered with any organization. Please use an organization email or register as a public student.');
-        }
-
-        organization_id = organization._id;
-      }
-
-      // Validate role for organization users
-      const validOrgRoles = ['student', 'instructor', 'org_admin', 'parent'];
-      if (role && !validOrgRoles.includes(role)) {
-        throw new Error('Invalid role for organization registration');
-      }
-
-      userRole = role || 'student';
-    } else {
-      // Public registration
-      if (role && role !== 'public_student') {
-        throw new Error('Public registration only allows public_student role');
-      }
-      userRole = 'public_student';
-    }
-
-    // Create user
-    const user = new User({
-      email: email.toLowerCase(),
-      password,
-      profile: { fullName },
-      role: userRole,
-      organization_id,
-      isActive: true, // Account is active, but might need email verification
-      email_verified: false // Default to false
-    });
-
-    // OTP is required for: Organization Admin, Instructor, Org Student
-    // NOT required for: Public Student
-    const requiresOTP = registrationType === 'organization';
-
-    if (requiresOTP) {
-      // Generate OTP
-      const otp = generateOTP();
-
-      // Hash OTP
-      const salt = await bcrypt.genSalt(10);
-      user.otp_hash = await bcrypt.hash(otp, salt);
-      user.otp_expires_at = Date.now() + 5 * 60 * 1000; // 5 minutes
-
-      await user.save();
-
-      // Send OTP Email
-      try {
-        await sendEmail({
-          to: user.email,
-          subject: 'Your Verification Code - Smart LMS',
-          text: `Your verification code is: ${otp}. It expires in 5 minutes.`,
-          html: `<p>Your verification code is: <strong>${otp}</strong></p><p>It expires in 5 minutes.</p>`
-        });
-      } catch (emailError) {
-        console.error('Failed to send OTP email:', emailError);
-        // Consider rollback or proceed with warning
-      }
-
-      return {
-        requiresVerification: true,
-        email: user.email,
-        message: 'Verification code sent to your email'
-      };
-
-    } else {
-      // Public student - auto verify
-      user.email_verified = true;
-      await user.save();
-
-      // Generate JWT token
-      const token = jwtUtils.generateToken({
-        userId: user._id,
-        email: user.email,
-        role: user.role,
-        organization_id: user.organization_id
-      });
-
-      return {
-        user: user.toPublicJSON(),
-        token
-      };
-    }
-  }
-
-  /**
-   * Authenticate user and generate token
-   * @param {string} email
-   * @param {string} password
-   * @returns {Promise<{user, token}>}
-   */
-  async login(email, password) {
-    // Validate inputs
-    if (!email || !password) {
-      throw new ValidationError('Email and password are required', {
-        email: !email ? 'Email is required' : undefined,
-        password: !password ? 'Password is required' : undefined
-      });
-    }
-
-    // Find user by email (include password_hash field)
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password_hash');
-
+  async login(email, password, mfaCode) {
+    // Find user with password
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+password_hash +mfa_secret');
     if (!user) {
       throw new AuthenticationError('Invalid email or password');
-    }
-
-    // Check if user is active
-    if (!user.isActive) {
-      throw new AuthenticationError('Account is deactivated');
     }
 
     // Verify password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
       throw new AuthenticationError('Invalid email or password');
     }
 
-    // Check email verification for Organization Users (admin, instructor, org_student)
-    // Platform admins and public students are allowed without email verification
-    if (user.organization_id && !user.email_verified && user.role !== 'platform_admin') {
-      throw new AuthenticationError('Email not verified. Please verify your email.');
+    // Check user status
+    if (user.status !== 'active') {
+      throw new AuthenticationError(`Account is ${user.status}. Please contact support.`);
     }
 
-    // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    // Check organization status (if not platform admin)
+    if (user.role !== 'platform_admin' && user.organization_id) {
+      const org = await Organization.findById(user.organization_id);
+      if (!org || org.status !== 'active') {
+        throw new AuthenticationError('Organization is suspended or inactive. Please contact your administrator.');
+      }
+    }
 
-    // Generate JWT token
+    // MFA check (if enabled)
+    if (user.mfa_enabled) {
+      if (!mfaCode) {
+        throw new AuthenticationError('MFA code required');
+      }
+      // Simple MFA verification logic (placeholder for actual implementation)
+    }
+
+    // Generate token
     const token = jwtUtils.generateToken({
-      userId: user._id,
-      email: user.email,
+      user_id: user._id,
       role: user.role,
-      organization_id: user.organization_id
+      organization_id: user.organization_id,
+      subdomain: user.role !== 'platform_admin' ? (await Organization.findById(user.organization_id))?.subdomain : null
     });
 
     return {
-      user: user.toPublicJSON(),
-      token
+      token,
+      role: user.role,
+      redirectUrl: this.getRedirectUrl(user.role),
+      user: user.toPublicJSON()
     };
   }
 
   /**
-   * Verify JWT token
-   * @param {string} token
-   * @returns {Object} Decoded token payload
+   * Submit Organization Application
    */
-  verifyToken(token) {
-    return jwtUtils.verifyToken(token);
+  async applyOrganization(data) {
+    const { organizationName, subdomain, adminName, adminEmail, selectedPlan } = data;
+
+    // Check if organization already exists
+    const existingOrg = await Organization.findOne({ subdomain: subdomain.toLowerCase() });
+    if (existingOrg) {
+      const { ConflictError } = require('../core/errors');
+      throw new ConflictError('Subdomain already exists');
+    }
+
+    // Check if application already exists
+    const existingApp = await OrganizationApplication.findOne({
+      $or: [
+        { subdomain: subdomain.toLowerCase() },
+        { admin_email: adminEmail.toLowerCase(), status: 'pending' }
+      ]
+    });
+    if (existingApp) {
+      throw new ValidationError('An application for this subdomain or email is already pending');
+    }
+
+    // Create Application
+    const application = new OrganizationApplication({
+      organization_name: organizationName,
+      subdomain: subdomain.toLowerCase(),
+      admin_name: adminName,
+      admin_email: adminEmail.toLowerCase(),
+      selected_plan: selectedPlan
+    });
+    await application.save();
+
+    return application;
   }
 
   /**
-   * Verify OTP code
-   * @param {string} email
-   * @param {string} otp
-   * @returns {Promise<{user, token}>}
+   * Complete Organization Registration (Set Password)
    */
-  async verifyOtp(email, otp) {
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+otp_hash');
+  async completeOrganizationRegistration(data) {
+    const { token, password } = data;
 
-    if (!user) {
-      throw new NotFoundError('User');
-    }
-
-    if (user.email_verified) {
-      throw new ValidationError('Email already verified');
-    }
-
-    if (!user.otp_hash || !user.otp_expires_at) {
-      throw new ValidationError('No OTP request found');
-    }
-
-    if (user.otp_expires_at < Date.now()) {
-      throw new ValidationError('OTP expired');
-    }
-
-    const isMatch = await bcrypt.compare(otp, user.otp_hash);
-    if (!isMatch) {
-      throw new ValidationError('Invalid OTP');
-    }
-
-    // Verify user
-    user.email_verified = true;
-    user.otp_hash = undefined;
-    user.otp_expires_at = undefined;
-    await user.save();
-
-    // Generate Token
-    const token = jwtUtils.generateToken({
-      userId: user._id,
-      email: user.email,
-      role: user.role,
-      organization_id: user.organization_id
+    // Find and validate token
+    const approvalToken = await OrganizationApprovalToken.findOne({
+      token,
+      used: false,
+      expires_at: { $gt: new Date() }
     });
+    if (!approvalToken) {
+      const foundToken = await OrganizationApprovalToken.findOne({ token });
+      if (foundToken && foundToken.expires_at <= new Date()) {
+        const { AppError } = require('../core/errors');
+        throw new AppError('Registration token expired', 410, 'TOKEN_EXPIRED');
+      }
+      throw new ValidationError('Invalid or expired registration token');
+    }
 
-    return {
-      user: user.toPublicJSON(),
-      token
-    };
+    // Get Application data
+    const application = await OrganizationApplication.findById(approvalToken.application_id);
+    if (!application || application.status !== 'approved') {
+      throw new ValidationError('Application not found or not approved');
+    }
+
+    // Check if organization was already created (safety)
+    const existingOrg = await Organization.findOne({ subdomain: application.subdomain });
+    if (existingOrg) {
+      throw new ValidationError('Organization already created');
+    }
+
+    // Hash password securely
+    const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // 1. Create Organization
+    const organization = new Organization({
+      name: application.organization_name,
+      subdomain: application.subdomain,
+      plan: application.selected_plan,
+      status: 'active'
+    });
+    await organization.save();
+
+    // 2. Create Org Admin User
+    const admin = new User({
+      name: application.admin_name,
+      email: application.admin_email,
+      password_hash: passwordHash,
+      role: 'org_admin',
+      organization_id: organization._id,
+      status: 'active',
+      email_verified: true
+    });
+    await admin.save();
+
+    // 3. Link Admin to Organization
+    organization.admin_user_id = admin._id;
+    await organization.save();
+
+    // 4. Mark token as used
+    approvalToken.used = true;
+    await approvalToken.save();
+
+    // Generate login response
+    return this.login(admin.email, password);
   }
 
   /**
-   * Resend OTP
-   * @param {string} email
+   * Register Student/Parent via Subdomain
    */
-  async resendOtp(email) {
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) throw new NotFoundError('User');
-    if (user.email_verified) throw new ValidationError('Email already verified');
+  async registerUser(data) {
+    const { role, name, email, password, orgSubdomain } = data;
 
-    const otp = generateOTP();
-    const salt = await bcrypt.genSalt(10);
-    user.otp_hash = await bcrypt.hash(otp, salt);
-    user.otp_expires_at = Date.now() + 5 * 60 * 1000; // 5 minutes
+    if (!['student', 'parent'].includes(role)) {
+      throw new ValidationError('Invalid role for self-signup');
+    }
+
+    // Find organization
+    const org = await Organization.findOne({ subdomain: orgSubdomain.toLowerCase() });
+    if (!org) {
+      throw new NotFoundError('Organization not found');
+    }
+
+    // Check email uniqueness within org
+    const existingUser = await User.findOne({ email: email.toLowerCase(), organization_id: org._id });
+    if (existingUser) {
+      throw new ValidationError('Email already registered in this organization');
+    }
+
+    // Hash password securely
+    const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    const user = new User({
+      name,
+      email: email.toLowerCase(),
+      password_hash: passwordHash,
+      role,
+      organization_id: org._id,
+      status: 'active',
+      email_verified: false
+    });
     await user.save();
 
-    await sendEmail({
-      to: user.email,
-      subject: 'Your Verification Code - Smart LMS',
-      text: `Your new verification code is: ${otp}`,
-      html: `<p>Your new verification code is: <strong>${otp}</strong></p>`
+    return user.toPublicJSON();
+  }
+
+  /**
+   * Invite Staff/Instructor (Org Admin only)
+   */
+  async inviteStaff(orgId, inviteData) {
+    const { email, role } = inviteData;
+
+    if (!['instructor', 'support_staff'].includes(role)) {
+      throw new ValidationError('Invalid role for staff invitation');
+    }
+
+    // Check if user already exists in this org
+    const existingUser = await User.findOne({ email: email.toLowerCase(), organization_id: orgId });
+    if (existingUser) {
+      throw new ValidationError('User already exists in this organization');
+    }
+
+    // Check if active invite already exists
+    const existingInvite = await Invite.findOne({
+      email: email.toLowerCase(),
+      organization_id: orgId,
+      used: false,
+      expires_at: { $gt: new Date() }
     });
 
-    return { message: 'OTP resent successfully' };
+    if (existingInvite) {
+      return existingInvite; // Return existing invite if still valid
+    }
+
+    // Create new invite
+    const token = crypto.randomBytes(32).toString('hex');
+    const invite = new Invite({
+      email: email.toLowerCase(),
+      role,
+      organization_id: orgId,
+      token,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    });
+    await invite.save();
+
+    return invite;
+  }
+
+  /**
+   * Accept Invite (Staff/Instructor)
+   */
+  async acceptInvite(data) {
+    const { token, name, password } = data;
+
+    // Find invite
+    const invite = await Invite.findOne({ token, used: false, expires_at: { $gt: new Date() } });
+    if (!invite) {
+      throw new ValidationError('Invalid or expired invitation token');
+    }
+
+    // Check if user already exists
+    let user = await User.findOne({ email: invite.email, organization_id: invite.organization_id });
+    if (user) {
+      throw new ValidationError('User already exists');
+    }
+
+    // Hash password securely
+    const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // Create user
+    user = new User({
+      name,
+      email: invite.email,
+      password_hash: passwordHash,
+      role: invite.role,
+      organization_id: invite.organization_id,
+      status: 'active',
+      email_verified: true
+    });
+    await user.save();
+
+    // Mark invite as used
+    invite.used = true;
+    await invite.save();
+
+    return user.toPublicJSON();
   }
 }
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useParams, useRouter } from "next/navigation"
 import {
   BookOpen, Plus, Edit, Trash2, GripVertical, Video,
@@ -63,11 +63,11 @@ interface Course {
   level: string
 }
 
-export default function CourseDetailPage() {
-  const params = useParams()
+export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = use(params)
   const router = useRouter()
   const { token } = useAuth()
-  const courseId = params.id as string
+  const courseId = unwrappedParams.id
 
   // Get token directly from storage as fallback
   const getToken = () => {
@@ -81,12 +81,12 @@ export default function CourseDetailPage() {
   const [course, setCourse] = useState<Course | null>(null)
   const [modules, setModules] = useState<Module[]>([])
   const [loading, setLoading] = useState(true)
-  
+
   // Module dialog
   const [showModuleDialog, setShowModuleDialog] = useState(false)
   const [editingModule, setEditingModule] = useState<Module | null>(null)
   const [moduleForm, setModuleForm] = useState({ title: "", description: "" })
-  
+
   // Lesson dialog
   const [showLessonDialog, setShowLessonDialog] = useState(false)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
@@ -236,7 +236,7 @@ export default function CourseDetailPage() {
         setIsUploading(true)
         setUploadProgress(0)
         toast.info("Uploading video...")
-        
+
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
         const formData = new FormData()
@@ -244,7 +244,7 @@ export default function CourseDetailPage() {
 
         // Use XMLHttpRequest for progress tracking
         const xhr = new XMLHttpRequest()
-        
+
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
             const percentComplete = Math.round((e.loaded / e.total) * 100)
@@ -261,10 +261,10 @@ export default function CourseDetailPage() {
               reject(new Error(`Upload failed with status ${xhr.status}`))
             }
           })
-          
+
           xhr.addEventListener('error', () => reject(new Error('Upload failed')))
           xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')))
-          
+
           xhr.open('POST', `${API_URL}/api/upload/video`)
           xhr.setRequestHeader('Authorization', `Bearer ${authToken}`)
           xhr.withCredentials = true
@@ -273,7 +273,7 @@ export default function CourseDetailPage() {
 
         try {
           const uploadData = await uploadPromise
-          
+
           if (!uploadData.success) {
             toast.error(uploadData.message || uploadData.error || "Failed to upload video")
             setIsUploading(false)
@@ -288,7 +288,7 @@ export default function CourseDetailPage() {
             videoDuration: uploadData.data.duration,
             videoSize: uploadData.data.size
           }
-          
+
           setIsUploading(false)
           setUploadProgress(0)
           toast.success("Video uploaded successfully!")
@@ -313,7 +313,7 @@ export default function CourseDetailPage() {
         duration: lessonForm.duration,
         isPreview: lessonForm.isPreview
       })
-      
+
       if (res.success) {
         toast.success("Lesson created successfully")
         setShowLessonDialog(false)
@@ -494,7 +494,7 @@ export default function CourseDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           {course.status === 'draft' && (
-            <Button 
+            <Button
               onClick={handlePublishCourse}
               variant="default"
               className="gap-2"
@@ -749,33 +749,30 @@ export default function CourseDetailPage() {
                 <div className="flex gap-2 p-1 bg-muted rounded-lg">
                   <button
                     type="button"
-                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                      lessonForm.uploadMethod === 'url' 
-                        ? 'bg-background shadow-sm' 
+                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${lessonForm.uploadMethod === 'url'
+                        ? 'bg-background shadow-sm'
                         : 'hover:bg-background/50'
-                    }`}
+                      }`}
                     onClick={() => setLessonForm({ ...lessonForm, uploadMethod: 'url' })}
                   >
                     URL Link
                   </button>
                   <button
                     type="button"
-                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                      lessonForm.uploadMethod === 'file' 
-                        ? 'bg-background shadow-sm' 
+                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${lessonForm.uploadMethod === 'file'
+                        ? 'bg-background shadow-sm'
                         : 'hover:bg-background/50'
-                    }`}
+                      }`}
                     onClick={() => setLessonForm({ ...lessonForm, uploadMethod: 'file' })}
                   >
                     File Upload
                   </button>
                   <button
                     type="button"
-                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                      lessonForm.uploadMethod === 'drag' 
-                        ? 'bg-background shadow-sm' 
+                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${lessonForm.uploadMethod === 'drag'
+                        ? 'bg-background shadow-sm'
                         : 'hover:bg-background/50'
-                    }`}
+                      }`}
                     onClick={() => setLessonForm({ ...lessonForm, uploadMethod: 'drag' })}
                   >
                     Drag & Drop
@@ -833,11 +830,10 @@ export default function CourseDetailPage() {
                 {/* Drag and Drop */}
                 {lessonForm.uploadMethod === 'drag' && (
                   <div
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                      lessonForm.isDragging 
-                        ? 'border-primary bg-primary/5' 
+                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${lessonForm.isDragging
+                        ? 'border-primary bg-primary/5'
                         : 'border-border hover:border-primary/50'
-                    }`}
+                      }`}
                     onDragOver={(e) => {
                       e.preventDefault()
                       setLessonForm({ ...lessonForm, isDragging: true })
@@ -942,7 +938,7 @@ export default function CourseDetailPage() {
                 </Select>
               </div>
             </div>
-            
+
             {/* Upload Progress */}
             {isUploading && (
               <div className="space-y-2">
@@ -951,7 +947,7 @@ export default function CourseDetailPage() {
                   <span className="font-medium text-orange-500">{uploadProgress}%</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-orange-500 to-orange-600 transition-all duration-300 ease-out"
                     style={{ width: `${uploadProgress}%` }}
                   />

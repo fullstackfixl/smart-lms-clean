@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, use } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     ChevronLeft,
@@ -11,7 +11,8 @@ import {
     Menu,
     X,
     Trophy,
-    ArrowLeft
+    ArrowLeft,
+    Sparkles
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion"
+import AIChatSidebar from "@/components/student/AIChatSidebar"
 
 const API = () => (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
 const getToken = () =>
@@ -31,20 +33,22 @@ const getToken = () =>
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
         : null
 
-export default function CoursePlayerPage({ params }: { params: { courseId: string } }) {
+export default function CoursePlayerPage({ params }: { params: Promise<{ courseId: string }> }) {
+    const { courseId } = use(params)
     const [course, setCourse] = useState<any>(null)
     const [sections, setSections] = useState<any[]>([])
     const [currentLesson, setCurrentLesson] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [completing, setCompleting] = useState(false)
+    const [aiChatOpen, setAiChatOpen] = useState(false)
 
     const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
         const fetchDetail = async () => {
             try {
-                const r = await fetch(`${API()}/student/course/${params.courseId}`, {
+                const r = await fetch(`${API()}/student/course/${courseId}`, {
                     headers: { Authorization: `Bearer ${getToken()}` },
                     credentials: "include"
                 })
@@ -80,7 +84,7 @@ export default function CoursePlayerPage({ params }: { params: { courseId: strin
             }
         }
         fetchDetail()
-    }, [params.courseId])
+    }, [courseId])
 
     const handleMarkComplete = async () => {
         if (!currentLesson || completing) return
@@ -93,7 +97,7 @@ export default function CoursePlayerPage({ params }: { params: { courseId: strin
                     Authorization: `Bearer ${getToken()}`
                 },
                 body: JSON.stringify({
-                    courseId: params.courseId,
+                    courseId: courseId,
                     lessonId: currentLesson._id,
                     timeSpent: videoRef.current ? Math.floor(videoRef.current.currentTime) : 0
                 }),
@@ -281,6 +285,14 @@ export default function CoursePlayerPage({ params }: { params: { courseId: strin
                             Next <ChevronRight className="h-4 w-4 ml-1" />
                         </Button>
                         <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAiChatOpen(true)}
+                            className="h-9 px-4 rounded-full border-blue-100 bg-blue-50 text-blue-600 font-bold hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                        >
+                            <Sparkles className="h-4 w-4 mr-1.5" /> Ask AI Tutor
+                        </Button>
+                        <Button
                             onClick={handleMarkComplete}
                             disabled={completing || currentLesson?.isCompleted}
                             className={cn(
@@ -339,15 +351,45 @@ export default function CoursePlayerPage({ params }: { params: { courseId: strin
                                     <p className="text-sm text-slate-500">Complete all lessons and quizzes to unlock your achievement.</p>
                                 </div>
                             </div>
-                            <Link href={`/student/certificate/${params.courseId}`}>
+                            <Link href={`/student/certificate/${courseId}`}>
                                 <Button variant="outline" className="rounded-full border-[#4CAF50] text-[#4CAF50] hover:bg-green-50 font-bold h-12 px-8">
                                     View Progress Detail
                                 </Button>
                             </Link>
                         </div>
                     </div>
+
+                    {/* Floating AI Tutor Button */}
+                    <AnimatePresence>
+                        {!aiChatOpen && (
+                            <motion.div
+                                initial={{ scale: 0, opacity: 0, y: 20 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                exit={{ scale: 0, opacity: 0, y: 20 }}
+                                className="fixed bottom-8 right-8 z-40"
+                            >
+                                <Button
+                                    onClick={() => setAiChatOpen(true)}
+                                    className="h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 flex items-center justify-center group transition-all hover:scale-110"
+                                >
+                                    <Sparkles className="h-6 w-6 group-hover:rotate-12 transition-transform" />
+                                </Button>
+                                <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none uppercase tracking-wider">
+                                    Ask AI Tutor
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </main>
+
+            <AIChatSidebar
+                isOpen={aiChatOpen}
+                onClose={() => setAiChatOpen(false)}
+                lessonId={currentLesson?._id}
+                courseId={courseId}
+                lessonTitle={currentLesson?.title || "this lesson"}
+            />
         </div>
     )
 }

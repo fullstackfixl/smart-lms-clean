@@ -11,8 +11,14 @@ class ParentController extends BaseController {
     this.sendSuccess(res, children, 'Linked children retrieved successfully');
   });
 
-  linkChild = this.asyncHandler(async (req, res) => {
-    const result = await parentService.linkChild(req.user._id, req.body, req.user.organization_id);
+  generateCode = this.asyncHandler(async (req, res) => {
+    const result = await parentService.generateVerificationCode(req.user._id, req.user.organization_id);
+    this.sendSuccess(res, result, 'Verification code generated successfully');
+  });
+
+  linkChildByCode = this.asyncHandler(async (req, res) => {
+    const { verificationCode } = req.body;
+    const result = await parentService.linkChildByCode(req.user._id, verificationCode, req.user.organization_id);
     this.sendSuccess(res, result, 'Child linked successfully');
   });
 

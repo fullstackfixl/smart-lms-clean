@@ -1,54 +1,28 @@
+const { AuthenticationError, ForbiddenError } = require('../core/errors');
+
 /**
- * Tenant Isolation Middleware
- * Automatically filters queries by organization context
+ * Middleware to enforce organization isolation.
+ * Ensures that all queries for organization-specific roles include organization_id filter.
  */
-
-const tenantMiddleware = (req, res, next) => {
+const tenantIsolation = (req, res, next) => {
   if (!req.user) {
-    return res.error('Authentication required', 'Access denied', 401);
+    return res.status(401).json({ success: false, message: 'Authentication required' });
   }
 
-  // Extract organization from user
-  const organizationId = req.user.organization_id;
-  const isPublic = req.user.role === 'public_student';
-
-  // Create tenant filter object
-  req.tenantFilter = {
-    organizationId: organizationId || null,
-    isPublic: isPublic
-  };
-
-  // For organization users, set organization filter
-  if (organizationId) {
-    req.organizationFilter = { organization_id: organizationId };
+  // Platform Admin has global access
+  if (req.user.role === 'platform_admin') {
+    return next();
   }
 
-  // For public students, set public filter
-  if (isPublic) {
-    req.publicFilter = { organization_id: null };
+  // Ensure organization_id is present for other roles
+  if (!req.user.organization_id) {
+    return res.status(403).json({ success: false, message: 'Organization affiliation required' });
   }
+
+  // Add organization filter to req for controllers to use
+  req.orgFilter = { organization_id: req.user.organization_id };
 
   next();
 };
 
-/**
- * Helper function to apply tenant filter to query
- * @param {Object} query - Mongoose query object
- * @param {Object} tenantFilter - Tenant filter from request
- * @returns {Object} Modified query
- */
-const applyTenantFilter = (query, tenantFilter) => {
-  if (tenantFilter.isPublic) {
-    // Public students can only access public content
-    query.organization_id = null;
-  } else if (tenantFilter.organizationId) {
-    // Organization users can only access their organization's content
-    query.organization_id = tenantFilter.organizationId;
-  }
-  return query;
-};
-
-module.exports = {
-  tenantMiddleware,
-  applyTenantFilter
-};
+module.exports = tenantIsolation;

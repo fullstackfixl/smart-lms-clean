@@ -1,6 +1,10 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const app = express();
+
+// Trust proxy for secure cookies behind Render/Proxies
+app.set('trust proxy', 1);
 
 // CORS - allow Vercel frontend and any CLIENT_URL in env
 app.use(cors({
@@ -21,7 +25,9 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, Postman, curl, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Allow exact matches, or *.vercel.app domains
+    const vercelMatch = /\.vercel\.app$/i.test(origin);
+    if (allowedOrigins.indexOf(origin) !== -1 || vercelMatch) {
       callback(null, true);
     } else {
       console.log('❌ [CORS] Blocked origin:', origin);
@@ -38,6 +44,7 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Log all requests
 app.use((req, res, next) => {
@@ -66,139 +73,170 @@ try {
   const responseMiddleware = require('./middleware/response');
   app.use(responseMiddleware);
 
+  console.log('📦 Loading routes...');
+
+  console.log('  - auth');
   const authRoutes = require('./routes/auth');
   app.use('/auth', authRoutes);
 
+  console.log('  - health');
   const healthRoutes = require('./routes/health');
   app.use('/', healthRoutes);
 
+  console.log('  - public');
   const publicRoutes = require('./routes/public');
   app.use('/api', publicRoutes);
 
+  console.log('  - organizations');
   const organizationRoutes = require('./routes/organizations');
   app.use('/api/organizations', organizationRoutes);
 
+  console.log('  - api');
   const apiRoutes = require('./api/routes/index');
   app.use('/api', apiRoutes);
 
-  const platformRoutes = require('./api/routes/platform.routes');
+  console.log('  - platform');
+  const platformRoutes = require('./routes/platform');
   app.use('/platform', platformRoutes);
 
-  const platformOrganizationsRoutes = require('./routes/platformOrganizations');
-  app.use('/platform/organizations', platformOrganizationsRoutes);
-
-  const platformAnalyticsRoutes = require('./routes/platformAnalytics');
-  app.use('/platform/analytics', platformAnalyticsRoutes);
-
-  const platformAdminsRoutes = require('./routes/platformAdmins');
-  app.use('/platform/admins', platformAdminsRoutes);
-
-  const platformCoursesRoutes = require('./routes/platformCourses');
-  app.use('/platform/courses', platformCoursesRoutes);
-
+  console.log('  - payments');
   const paymentRoutes = require('./api/routes/payment.routes');
   app.use('/payments', paymentRoutes);
 
+  console.log('  - upload');
   const uploadRoutes = require('./routes/upload');
   app.use('/api/upload', uploadRoutes);
 
+  console.log('  - courses');
   const courseRoutes = require('./routes/courses');
   app.use('/api/courses', courseRoutes);
 
+  console.log('  - sections');
   const sectionRoutes = require('./routes/sections');
   app.use('/api/sections', sectionRoutes);
 
+  console.log('  - lessons');
   const lessonRoutes = require('./routes/lessons');
   app.use('/api/lessons', lessonRoutes);
 
+  console.log('  - enrollments');
   const enrollmentRoutes = require('./routes/enrollments');
   app.use('/api/enrollments', enrollmentRoutes);
 
+  console.log('  - users');
   const userRoutes = require('./routes/users');
   app.use('/api/users', userRoutes);
 
+  console.log('  - parent');
   const parentRoutes = require('./routes/parents');
-  app.use('/api/parents', parentRoutes);
+  app.use('/api/parent', parentRoutes);
 
+  console.log('  - quizzes');
   const quizRoutes = require('./routes/quizzes');
   app.use('/api/quizzes', quizRoutes);
 
+  console.log('  - gamification');
   const gamificationRoutes = require('./routes/gamification');
   app.use('/api/gamification', gamificationRoutes);
 
+  console.log('  - certificates');
   const certificateRoutes = require('./routes/certificates');
   app.use('/api/certificates', certificateRoutes);
 
+  console.log('  - translate');
   const translationRoutes = require('./routes/translation');
   app.use('/api/translate', translationRoutes);
 
+  console.log('  - analytics');
   const analyticsRoutes = require('./routes/analytics');
   app.use('/api/analytics', analyticsRoutes);
 
+  console.log('  - notifications');
   const notificationRoutes = require('./routes/notifications');
   app.use('/api/notifications', notificationRoutes);
 
+  console.log('  - fees');
   const feesRoutes = require('./routes/fees');
   app.use('/api/fees', feesRoutes);
 
+  console.log('  - attendance');
   const attendanceRoutes = require('./routes/attendance');
   app.use('/api/attendance', attendanceRoutes);
 
+  console.log('  - grades');
   const gradesRoutes = require('./routes/grades');
   app.use('/api/grades', gradesRoutes);
 
+  console.log('  - timetable');
   const timetableRoutes = require('./routes/timetable');
   app.use('/api/timetable', timetableRoutes);
 
+  console.log('  - events');
   const eventsRoutes = require('./routes/events');
   app.use('/api/events', eventsRoutes);
 
+  console.log('  - errors');
   const errorRoutes = require('./routes/errors');
   app.use('/api/errors', errorRoutes);
 
+  console.log('  - instructor');
   const instructorRoutes = require('./routes/instructor');
   app.use('/instructor', instructorRoutes);
 
+  console.log('  - instructor-live-classes');
   const instructorLiveClassRoutes = require('./routes/instructorLiveClasses');
   app.use('/instructor/live-classes', instructorLiveClassRoutes);
 
+  console.log('  - admin');
   const adminRoutes = require('./routes/admin');
   app.use('/api/admin', adminRoutes);
 
+  console.log('  - forums');
   const forumRoutes = require('./routes/forums');
   app.use('/api/forums', forumRoutes);
 
+  console.log('  - messages');
   const messageRoutes = require('./routes/messages');
   app.use('/api/messages', messageRoutes);
 
+  console.log('  - question-banks');
   const questionBankRoutes = require('./routes/questionBank');
   app.use('/api/question-banks', questionBankRoutes);
 
+  console.log('  - admin-grades');
   const adminGradesRoutes = require('./routes/adminGrades');
   app.use('/api/admin/grades', adminGradesRoutes);
 
+  console.log('  - admin-timetable');
   const adminTimetableRoutes = require('./routes/adminTimetable');
   app.use('/api/admin/timetable', adminTimetableRoutes);
 
+  console.log('  - admin-fees');
   const adminFeesRoutes = require('./routes/adminFees');
   app.use('/api/admin/fees', adminFeesRoutes);
 
+  console.log('  - instructor-video');
   const videoUploadRoutes = require('./routes/videoUpload');
   app.use('/api/instructor', videoUploadRoutes);
 
+  console.log('  - student-lectures');
   const studentLectureRoutes = require('./routes/studentLectures');
   app.use('/student', studentLectureRoutes);
 
+  console.log('  - student');
   const studentRoutes = require('./routes/student');
   app.use('/student', studentRoutes);
 
+  console.log('  - live-classes-simple');
   const liveClassesSimpleRoutes = require('./routes/liveClassesSimple');
   app.use(liveClassesSimpleRoutes);
 
-  console.log('All routes loaded');
+  console.log('✨ All routes loaded successfully');
 } catch (error) {
-  console.error('Route loading error:', error.message);
+  console.error('❌ Route loading error:', error.message);
+  console.error(error.stack);
 }
+
 
 app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: 'Not found' });

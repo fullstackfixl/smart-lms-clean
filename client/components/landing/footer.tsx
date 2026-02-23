@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { GraduationCap, Twitter, Linkedin, Github, ArrowRight } from "lucide-react"
 
@@ -12,6 +14,8 @@ const footerLinks = {
 }
 
 export function CTASection() {
+  const router = useRouter()
+  const [ctaLoading, setCtaLoading] = useState(false)
   return (
     <section
       className="relative py-24 lg:py-32 overflow-hidden"
@@ -45,11 +49,20 @@ export function CTASection() {
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/register"
+              href="/apply"
               className="inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-base font-semibold text-white transition-all"
               style={{
                 background: "linear-gradient(135deg, #FF9900, #e68a00)",
                 boxShadow: "0 8px 32px rgba(255,153,0,0.4)",
+              }}
+              onClick={(e) => {
+                e.preventDefault()
+                if (ctaLoading) return
+                setCtaLoading(true)
+                setTimeout(() => {
+                  setCtaLoading(false)
+                  router.push("/apply")
+                }, 2000)
               }}
               onMouseEnter={(e) => {
                 ; (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 40px rgba(255,153,0,0.6)"
@@ -60,7 +73,7 @@ export function CTASection() {
                   ; (e.currentTarget as HTMLElement).style.transform = "translateY(0)"
               }}
             >
-              Start Free Trial
+              {ctaLoading ? "Loading..." : "Start Free Trial"}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link

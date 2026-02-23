@@ -4,20 +4,26 @@ const User = require('../models/User');
 const authMiddleware = async (req, res, next) => {
   try {
     console.log(`🔐 [Auth] ${req.method} ${req.path}`);
-    
+
     // Try to get token from Authorization header first, then fall back to cookies
     let token = null;
-    
+
     // Check Authorization header (Bearer token)
     const authHeader = req.headers.authorization;
     console.log('🔐 [Auth] Authorization header:', authHeader ? authHeader.substring(0, 20) + '...' : 'MISSING');
-    
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7); // Remove 'Bearer ' prefix
       console.log('🔐 [Auth] Token from header:', token.substring(0, 20) + '...');
     }
-    
-    // Fall back to cookie if no Authorization header
+
+    // Check query parameter (useful for direct downloads/window.open)
+    if (!token && req.query.token) {
+      token = req.query.token;
+      console.log('🔐 [Auth] Token from query:', token.substring(0, 20) + '...');
+    }
+
+    // Fall back to cookie if no Authorization header or query token
     if (!token) {
       token = req.cookies.token;
       console.log('🔐 [Auth] Token from cookie:', token ? token.substring(0, 20) + '...' : 'MISSING');
@@ -29,12 +35,13 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('🔐 [Auth] Token decoded, userId:', decoded.userId);
-    
-    const user = await User.findById(decoded.userId).select('-password').populate('organization_id');
+    const userId = decoded.userId || decoded.user_id;
+    console.log('🔐 [Auth] Token decoded, userId:', userId);
+
+    const user = await User.findById(userId).select('-password').populate('organization_id');
 
     if (!user) {
-      console.log('❌ [Auth] User not found:', decoded.userId);
+      console.log('❌ [Auth] User not found:', userId);
       return res.error('User not found', 'Authentication failed', 401);
     }
 
@@ -175,44 +182,33 @@ const optionalAuth = async (req, res, next) => {
   try {
     // Try to get token from Authorization header first, then fall back to cookies
     let token = null;
-    
+
     // Check Authorization header (Bearer token)
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7); // Remove 'Bearer ' prefix
     }
-    
+
     // Fall back to cookie if no Authorization header
     if (!token) {
       token = req.cookies.token;
     }
-    
+
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findById(decoded.userId).select('-password');
-      
+
       if (user && user.isActive) {
         req.user = user;
       }
     }
-    
+
     next();
   } catch (error) {
     // Ignore auth errors for optional auth
     next();
   }
 };
-
-module.exports = { 
-  authMiddleware, 
-  requireRole, 
-  requirePermission,
-  orgAccessMiddleware, 
-  parentAccessMiddleware,
-  multiTenantMiddleware,
-  optionalAuth 
-};
-
 
 /**
  * Middleware to require platform admin role
@@ -230,13 +226,13 @@ const requirePlatformAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { 
-  authMiddleware, 
-  requireRole, 
+module.exports = {
+  authMiddleware,
+  requireRole,
   requirePermission,
   requirePlatformAdmin,
-  orgAccessMiddleware, 
+  orgAccessMiddleware,
   parentAccessMiddleware,
   multiTenantMiddleware,
-  optionalAuth 
+  optionalAuth
 };

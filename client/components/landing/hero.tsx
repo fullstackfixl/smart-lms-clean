@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { ArrowRight, BookOpen, Building2, GraduationCap, Trophy } from "lucide-react"
 import { VideoBackground } from "./video-background"
@@ -61,6 +62,8 @@ function formatNumber(n: number): string {
 
 export function Hero() {
   const [stats, setStats] = useState<Stats | null>(null)
+  const [ctaLoading, setCtaLoading] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     fetch(`${API_URL}/api/public/stats`)
@@ -176,11 +179,20 @@ export function Hero() {
           className="mt-10 flex flex-col gap-3 sm:flex-row"
         >
           <Link
-            href="/register"
+            href="/apply"
             className="inline-flex items-center justify-center gap-2 rounded-xl px-7 py-3.5 text-base font-semibold text-white transition-all"
             style={{
               background: "linear-gradient(135deg, #FF9900, #e68a00)",
               boxShadow: "0 8px 32px rgba(255,153,0,0.4)",
+            }}
+            onClick={(e) => {
+              e.preventDefault()
+              if (ctaLoading) return
+              setCtaLoading(true)
+              setTimeout(() => {
+                setCtaLoading(false)
+                router.push("/apply")
+              }, 2000)
             }}
             onMouseEnter={(e) => {
               ; (e.currentTarget as HTMLElement).style.boxShadow =
@@ -193,7 +205,7 @@ export function Hero() {
                 ; (e.currentTarget as HTMLElement).style.transform = "translateY(0)"
             }}
           >
-            Start Free Trial
+            {ctaLoading ? "Loading..." : "Start Free Trial"}
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link

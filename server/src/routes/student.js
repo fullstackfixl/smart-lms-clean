@@ -1,5 +1,5 @@
 const express = require('express');
-const { Course, Section, Lesson, Enrollment, User, Organization } = require('../models');
+const { Course, Section, Lesson, Enrollment, User, Organization, Certificate } = require('../models');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -663,18 +663,27 @@ router.get('/certificate/:courseId', authMiddleware, requireRole(['student']), a
       return res.error('Certificate not available', 'You have not completed this course yet', 403);
     }
 
-    const [course, student, organization] = await Promise.all([
+    const [course, student, organization, certRecord] = await Promise.all([
       Course.findById(courseId)
         .populate('instructor_id', 'name')
         .select('title instructor_id'),
       User.findById(req.user._id).select('name email'),
-      Organization.findById(req.user.organization_id).select('name')
+      Organization.findById(req.user.organization_id).select('name'),
+      Certificate.findOne({
+        student_id: req.user._id,
+        course_id: courseId,
+        organization_id: req.user.organization_id
+      })
     ]);
 
     if (!course) return res.error('Course not found', 'Course does not exist', 404);
 
     res.success({
       certificate: {
+        id: certRecord?._id || null,
+        certificateId: certRecord?.certificate_id || null,
+        pdfGenerated: certRecord?.pdf_generated || false,
+        pdfUrl: certRecord?.pdf_file_url || null,
         studentName: student.name,
         studentEmail: student.email,
         courseTitle: course.title,

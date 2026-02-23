@@ -7,6 +7,9 @@ const Enrollment = require('./Enrollment');
 const Quiz = require('./Quiz');
 const QuizAttempt = require('./QuizAttempt');
 const Certificate = require('./Certificate');
+const Invite = require('./Invite');
+const OrganizationApplication = require('./OrganizationApplication');
+const OrganizationApprovalToken = require('./OrganizationApprovalToken');
 const GamificationPoints = require('./GamificationPoints');
 const UserBadge = require('./UserBadge');
 const LiveClass = require('./LiveClass');
@@ -36,6 +39,9 @@ module.exports = {
   Quiz,
   QuizAttempt,
   Certificate,
+  Invite,
+  OrganizationApplication,
+  OrganizationApprovalToken,
   GamificationPoints,
   UserBadge,
   LiveClass,

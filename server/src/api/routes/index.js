@@ -18,82 +18,74 @@ const aiController = require('../../controllers/aiController');
 const router = express.Router();
 
 // Course Management APIs
-router.post('/courses', authMiddleware, requireRole(['teacher', 'admin']), enforceOrgIsolation, courseController.createCourse);
-router.get('/courses', courseController.getCourses);
-router.get('/courses/:id', courseController.getCourseById);
-router.put('/courses/:id', authMiddleware, enforceOrgIsolation, courseController.updateCourse);
-router.delete('/courses/:id', authMiddleware, enforceOrgIsolation, courseController.deleteCourse);
-router.post('/courses/:id/publish', authMiddleware, enforceOrgIsolation, courseController.publishCourse);
-router.get('/courses/:id/students', authMiddleware, enforceOrgIsolation, enrollmentController.getCourseStudents);
+router.post('/courses', authMiddleware, requireRole(['teacher', 'admin']), enforceOrgIsolation, (req, res, next) => courseController.createCourse(req, res, next));
+router.get('/courses', (req, res, next) => courseController.getCourses(req, res, next));
+router.get('/courses/:id', (req, res, next) => courseController.getCourseById(req, res, next));
+router.put('/courses/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => courseController.updateCourse(req, res, next));
+router.delete('/courses/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => courseController.deleteCourse(req, res, next));
+router.post('/courses/:id/publish', authMiddleware, enforceOrgIsolation, (req, res, next) => courseController.publishCourse(req, res, next));
+router.get('/courses/:id/students', authMiddleware, enforceOrgIsolation, (req, res, next) => enrollmentController.getCourseStudents(req, res, next));
 
 // Enrollment APIs
-router.post('/enrollments', authMiddleware, enforceOrgIsolation, enrollmentController.enrollInCourse);
-router.get('/enrollments', authMiddleware, enforceOrgIsolation, enrollmentController.getStudentEnrollments);
-router.get('/my-courses', authMiddleware, enforceOrgIsolation, enrollmentController.getStudentEnrollments);
-router.delete('/enrollments/:id', authMiddleware, enforceOrgIsolation, enrollmentController.unenroll);
+router.post('/enrollments', authMiddleware, enforceOrgIsolation, (req, res, next) => enrollmentController.enrollInCourse(req, res, next));
+router.get('/enrollments', authMiddleware, enforceOrgIsolation, (req, res, next) => enrollmentController.getStudentEnrollments(req, res, next));
+router.get('/my-courses', authMiddleware, enforceOrgIsolation, (req, res, next) => enrollmentController.getStudentEnrollments(req, res, next));
+router.delete('/enrollments/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => enrollmentController.unenroll(req, res, next));
 
 // Assessment APIs
-router.post('/quizzes', authMiddleware, enforceOrgIsolation, assessmentController.createQuiz);
-router.get('/quizzes/:id', authMiddleware, enforceOrgIsolation, assessmentController.getQuizById);
-router.put('/quizzes/:id', authMiddleware, enforceOrgIsolation, assessmentController.updateQuiz);
-router.delete('/quizzes/:id', authMiddleware, enforceOrgIsolation, assessmentController.deleteQuiz);
-router.post('/quizzes/:id/submit', authMiddleware, enforceOrgIsolation, assessmentController.submitQuiz);
-router.get('/quizzes/:id/attempts', authMiddleware, enforceOrgIsolation, assessmentController.getQuizAttempts);
-router.get('/attempts/:id', authMiddleware, enforceOrgIsolation, assessmentController.getAttemptById);
+router.post('/quizzes', authMiddleware, enforceOrgIsolation, (req, res, next) => assessmentController.createQuiz(req, res, next));
+router.get('/quizzes/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => assessmentController.getQuizById(req, res, next));
+router.put('/quizzes/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => assessmentController.updateQuiz(req, res, next));
+router.delete('/quizzes/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => assessmentController.deleteQuiz(req, res, next));
+router.post('/quizzes/:id/submit', authMiddleware, enforceOrgIsolation, (req, res, next) => assessmentController.submitQuiz(req, res, next));
+router.get('/quizzes/:id/attempts', authMiddleware, enforceOrgIsolation, (req, res, next) => assessmentController.getQuizAttempts(req, res, next));
+router.get('/attempts/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => assessmentController.getAttemptById(req, res, next));
 
 // Progress & Certificate APIs
-router.post('/progress', authMiddleware, enforceOrgIsolation, progressController.updateProgress);
-router.get('/progress/:course_id', authMiddleware, enforceOrgIsolation, progressController.getCourseProgress);
-router.get('/certificates', authMiddleware, enforceOrgIsolation, progressController.getCertificates);
-router.get('/certificates/:id', authMiddleware, enforceOrgIsolation, progressController.getCertificateById);
-router.post('/certificates/:id/download', authMiddleware, enforceOrgIsolation, progressController.downloadCertificate);
-router.get('/certificates/verify/:unique_id', progressController.verifyCertificate);
+router.post('/progress', authMiddleware, enforceOrgIsolation, (req, res, next) => progressController.updateProgress(req, res, next));
+router.get('/progress/:course_id', authMiddleware, enforceOrgIsolation, (req, res, next) => progressController.getCourseProgress(req, res, next));
+router.get('/certificates', authMiddleware, enforceOrgIsolation, (req, res, next) => progressController.getCertificates(req, res, next));
+router.get('/certificates/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => progressController.getCertificateById(req, res, next));
+router.post('/certificates/:id/download', authMiddleware, enforceOrgIsolation, (req, res, next) => progressController.downloadCertificate(req, res, next));
+router.get('/certificates/verify/:unique_id', (req, res, next) => progressController.verifyCertificate(req, res, next));
 
 // Attendance APIs
-router.post('/attendance/mark', authMiddleware, enforceOrgIsolation, attendanceController.markAttendance);
-router.post('/attendance/bulk', authMiddleware, enforceOrgIsolation, attendanceController.bulkMarkAttendance);
-router.get('/attendance/report/:user_id', authMiddleware, enforceOrgIsolation, attendanceController.getAttendanceReport);
-router.get('/attendance/class/:class_id', authMiddleware, enforceOrgIsolation, attendanceController.getClassAttendance);
-router.get('/attendance/summary/:user_id', authMiddleware, enforceOrgIsolation, attendanceController.getAttendanceSummary);
+router.post('/attendance/mark', authMiddleware, enforceOrgIsolation, (req, res, next) => attendanceController.markAttendance(req, res, next));
+router.post('/attendance/bulk', authMiddleware, enforceOrgIsolation, (req, res, next) => attendanceController.bulkMarkAttendance(req, res, next));
+router.get('/attendance/report/:user_id', authMiddleware, enforceOrgIsolation, (req, res, next) => attendanceController.getAttendanceReport(req, res, next));
+router.get('/attendance/class/:class_id', authMiddleware, enforceOrgIsolation, (req, res, next) => attendanceController.getClassAttendance(req, res, next));
+router.get('/attendance/summary/:user_id', authMiddleware, enforceOrgIsolation, (req, res, next) => attendanceController.getAttendanceSummary(req, res, next));
 
 // Gradebook APIs
-router.post('/grades/update', authMiddleware, enforceOrgIsolation, gradeController.updateGrade);
-router.get('/grades/:user_id', authMiddleware, enforceOrgIsolation, gradeController.getStudentGrades);
-router.get('/grades/course/:course_id', authMiddleware, enforceOrgIsolation, gradeController.getCourseGrades);
-router.post('/grades/export', authMiddleware, enforceOrgIsolation, gradeController.exportGrades);
-router.get('/grades/analytics/:course_id', authMiddleware, enforceOrgIsolation, gradeController.getGradeAnalytics);
+router.post('/grades/update', authMiddleware, enforceOrgIsolation, (req, res, next) => gradeController.updateGrade(req, res, next));
+router.get('/grades/:user_id', authMiddleware, enforceOrgIsolation, (req, res, next) => gradeController.getStudentGrades(req, res, next));
+router.get('/grades/course/:course_id', authMiddleware, enforceOrgIsolation, (req, res, next) => gradeController.getCourseGrades(req, res, next));
+router.post('/grades/export', authMiddleware, enforceOrgIsolation, (req, res, next) => gradeController.exportGrades(req, res, next));
+router.get('/grades/analytics/:course_id', authMiddleware, enforceOrgIsolation, (req, res, next) => gradeController.getGradeAnalytics(req, res, next));
 
 // Timetable APIs
-router.post('/timetable/create', authMiddleware, enforceOrgIsolation, timetableController.createEntry);
-router.get('/timetable/:org_id', authMiddleware, timetableController.getOrgTimetable);
-router.get('/timetable/user/:user_id', authMiddleware, enforceOrgIsolation, timetableController.getUserTimetable);
-router.put('/timetable/:id', authMiddleware, enforceOrgIsolation, timetableController.updateEntry);
-router.delete('/timetable/:id', authMiddleware, enforceOrgIsolation, timetableController.deleteEntry);
-router.get('/timetable/conflicts', authMiddleware, enforceOrgIsolation, timetableController.checkConflicts);
-
-// Live Class APIs - DISABLED (Using new routes in liveClassesSimple.js)
-// router.post('/live-classes/schedule', authMiddleware, enforceOrgIsolation, liveClassController.scheduleClass);
-// router.get('/live-classes/:id/join', authMiddleware, enforceOrgIsolation, liveClassController.getJoinLink);
-// router.put('/live-classes/:id', authMiddleware, enforceOrgIsolation, liveClassController.updateClass);
-// router.delete('/live-classes/:id', authMiddleware, enforceOrgIsolation, liveClassController.cancelClass);
-// router.get('/live-classes/upcoming', authMiddleware, enforceOrgIsolation, liveClassController.getUpcomingClasses);
-// router.post('/live-classes/:id/recording', authMiddleware, enforceOrgIsolation, liveClassController.uploadRecording);
+router.post('/timetable/create', authMiddleware, enforceOrgIsolation, (req, res, next) => timetableController.createEntry(req, res, next));
+router.get('/timetable/:org_id', authMiddleware, (req, res, next) => timetableController.getOrgTimetable(req, res, next));
+router.get('/timetable/user/:user_id', authMiddleware, enforceOrgIsolation, (req, res, next) => timetableController.getUserTimetable(req, res, next));
+router.put('/timetable/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => timetableController.updateEntry(req, res, next));
+router.delete('/timetable/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => timetableController.deleteEntry(req, res, next));
+router.get('/timetable/conflicts', authMiddleware, enforceOrgIsolation, (req, res, next) => timetableController.checkConflicts(req, res, next));
 
 // Fees Management APIs
-router.post('/fees/set', authMiddleware, enforceOrgIsolation, feeController.setFees);
-router.get('/fees/:student_id', authMiddleware, enforceOrgIsolation, feeController.getFeeDetails);
-router.post('/fees/pay', authMiddleware, enforceOrgIsolation, feeController.recordPayment);
-router.get('/fees/pending', authMiddleware, enforceOrgIsolation, feeController.getPendingFees);
-router.get('/fees/history/:student_id', authMiddleware, enforceOrgIsolation, feeController.getPaymentHistory);
-router.post('/fees/reminder', authMiddleware, enforceOrgIsolation, feeController.sendReminder);
+router.post('/fees/set', authMiddleware, enforceOrgIsolation, (req, res, next) => feeController.setFees(req, res, next));
+router.get('/fees/:student_id', authMiddleware, enforceOrgIsolation, (req, res, next) => feeController.getFeeDetails(req, res, next));
+router.post('/fees/pay', authMiddleware, enforceOrgIsolation, (req, res, next) => feeController.recordPayment(req, res, next));
+router.get('/fees/pending', authMiddleware, enforceOrgIsolation, (req, res, next) => feeController.getPendingFees(req, res, next));
+router.get('/fees/history/:student_id', authMiddleware, enforceOrgIsolation, (req, res, next) => feeController.getPaymentHistory(req, res, next));
+router.post('/fees/reminder', authMiddleware, enforceOrgIsolation, (req, res, next) => feeController.sendReminder(req, res, next));
 
 // Parent Portal APIs
-router.get('/parent/children', authMiddleware, enforceOrgIsolation, parentController.getLinkedChildren);
-router.post('/parent/link-child', authMiddleware, enforceOrgIsolation, parentController.linkChild);
-router.get('/parent/progress/:student_id', authMiddleware, enforceOrgIsolation, parentController.getChildProgress);
-router.get('/parent/attendance/:student_id', authMiddleware, enforceOrgIsolation, parentController.getChildAttendance);
-router.get('/parent/grades/:student_id', authMiddleware, enforceOrgIsolation, parentController.getChildGrades);
-router.get('/parent/fees/:student_id', authMiddleware, enforceOrgIsolation, parentController.getChildFees);
+router.get('/parent/children', authMiddleware, enforceOrgIsolation, (req, res, next) => parentController.getLinkedChildren(req, res, next));
+router.post('/parent/link-child', authMiddleware, enforceOrgIsolation, (req, res, next) => parentController.linkChild(req, res, next));
+router.get('/parent/progress/:student_id', authMiddleware, enforceOrgIsolation, (req, res, next) => parentController.getChildProgress(req, res, next));
+router.get('/parent/attendance/:student_id', authMiddleware, enforceOrgIsolation, (req, res, next) => parentController.getChildAttendance(req, res, next));
+router.get('/parent/grades/:student_id', authMiddleware, enforceOrgIsolation, (req, res, next) => parentController.getChildGrades(req, res, next));
+router.get('/parent/fees/:student_id', authMiddleware, enforceOrgIsolation, (req, res, next) => parentController.getChildFees(req, res, next));
 
 // AI & Gamification APIs
 const aiRateLimit = require('express-rate-limit')({
@@ -102,14 +94,15 @@ const aiRateLimit = require('express-rate-limit')({
     message: { success: false, message: 'Too many requests to AI tutor, please try again in a minute.' }
 });
 
-router.post('/ai/lesson-chat', authMiddleware, requireRole(['student']), enforceOrgIsolation, aiRateLimit, aiController.askLessonQuestion);
-router.get('/ai/lesson-chat/:lessonId', authMiddleware, requireRole(['student']), enforceOrgIsolation, aiController.getLessonChatHistory);
+router.post('/ai/lesson-chat', authMiddleware, requireRole(['student']), enforceOrgIsolation, aiRateLimit, (req, res, next) => aiController.askLessonQuestion(req, res, next));
+router.get('/ai/lesson-chat/:lessonId', authMiddleware, requireRole(['student']), enforceOrgIsolation, (req, res, next) => aiController.getLessonChatHistory(req, res, next));
 
-router.post('/ai/generate-quiz', authMiddleware, aiController.generateQuiz);
-router.post('/ai/explain-topic', authMiddleware, aiController.explainTopic);
-router.get('/analytics/predict/:user_id', authMiddleware, enforceOrgIsolation, aiController.predictPerformance);
-router.post('/gamification/update-points', authMiddleware, enforceOrgIsolation, aiController.updatePoints);
-router.get('/gamification/leaderboard/:course_id', authMiddleware, enforceOrgIsolation, aiController.getLeaderboard);
-router.get('/gamification/badges/:user_id', authMiddleware, enforceOrgIsolation, aiController.getUserBadges);
+router.post('/ai/generate-quiz', authMiddleware, (req, res, next) => aiController.generateQuiz(req, res, next));
+router.post('/ai/explain-topic', authMiddleware, (req, res, next) => aiController.explainTopic(req, res, next));
+router.get('/analytics/predict/:user_id', authMiddleware, enforceOrgIsolation, (req, res, next) => aiController.predictPerformance(req, res, next));
+router.post('/gamification/update-points', authMiddleware, enforceOrgIsolation, (req, res, next) => aiController.updatePoints(req, res, next));
+router.get('/gamification/leaderboard/:course_id', authMiddleware, enforceOrgIsolation, (req, res, next) => aiController.getLeaderboard(req, res, next));
+router.get('/gamification/badges/:user_id', authMiddleware, enforceOrgIsolation, (req, res, next) => aiController.getUserBadges(req, res, next));
+
 
 module.exports = router;

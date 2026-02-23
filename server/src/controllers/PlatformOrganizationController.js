@@ -1,25 +1,64 @@
-const PlatformOrganization = require('../models/PlatformOrganization');
-const User = require('../models/User');
-const Course = require('../models/Course');
+const { Organization, User, Course } = require('../models');
 const BaseController = require('../core/BaseController');
 
 class PlatformOrganizationController extends BaseController {
   async createOrganization(req, res) {
     try {
-      const organization = await PlatformOrganization.create(req.body);
-      return res.success(organization, 'Organization created successfully', 201);
+      const { name, subdomain, adminEmail, adminName, password, plan = 'basic' } = req.body;
+
+      // Check if organization exists
+      const existingOrg = await Organization.findOne({ subdomain: subdomain.toLowerCase() });
+      if (existingOrg) {
+        return res.error('Subdomain already in use', 'Validation Error', 400);
+      }
+
+      // Check if admin user exists
+      const existingUser = await User.findOne({ email: adminEmail.toLowerCase() });
+      if (existingUser) {
+        return res.error('Admin email already registered', 'Validation Error', 400);
+      }
+
+      // 1. Create Organization
+      const organization = new Organization({
+        name,
+        subdomain: subdomain.toLowerCase(),
+        plan,
+        status: 'active'
+      });
+      await organization.save();
+
+      // 2. Create First Org Admin
+      const admin = new User({
+        name: adminName,
+        email: adminEmail.toLowerCase(),
+        password_hash: password, // Will be hashed by pre-save hook
+        role: 'org_admin',
+        organization_id: organization._id,
+        status: 'active',
+        email_verified: true
+      });
+      await admin.save();
+
+      // 3. Link Admin to Organization
+      organization.admin_user_id = admin._id;
+      await organization.save();
+
+      return res.success({
+        organization,
+        admin: admin.toPublicJSON()
+      }, 'Organization and Admin created successfully', 201);
     } catch (error) {
       console.error('Create organization error:', error);
       return res.error(error.message, 'Failed to create organization', 400);
     }
   }
 
-  async getOrganizations(req, res) {
+  async listOrganizations(req, res) {
     try {
       const { page = 1, limit = 10, search, status, plan, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
 
       const query = {};
-      
+
       // Search filter
       if (search) {
         query.$or = [
@@ -28,12 +67,12 @@ class PlatformOrganizationController extends BaseController {
           { email: { $regex: search, $options: 'i' } }
         ];
       }
-      
+
       // Status filter
       if (status) {
         query.status = status;
       }
-      
+
       // Plan filter
       if (plan) {
         query.plan = plan;
@@ -43,13 +82,13 @@ class PlatformOrganizationController extends BaseController {
       const sort = {};
       sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-      const organizations = await PlatformOrganization.find(query)
+      const organizations = await Organization.find(query)
         .sort(sort)
         .limit(parseInt(limit))
         .skip((parseInt(page) - 1) * parseInt(limit))
         .lean();
 
-      const total = await PlatformOrganization.countDocuments(query);
+      const total = await Organization.countDocuments(query);
 
       // Get user counts for each organization
       const orgsWithCounts = await Promise.all(
@@ -80,10 +119,10 @@ class PlatformOrganizationController extends BaseController {
     }
   }
 
-  async getOrganization(req, res) {
+  async getOrganizationDetails(req, res) {
     try {
-      const organization = await PlatformOrganization.findById(req.params.id).lean();
-      
+      const organization = await Organization.findById(req.params.id).lean();
+
       if (!organization) {
         return res.error('Organization not found', 'Not found', 404);
       }
@@ -105,7 +144,7 @@ class PlatformOrganizationController extends BaseController {
 
   async updateOrganization(req, res) {
     try {
-      const organization = await PlatformOrganization.findByIdAndUpdate(
+      const organization = await Organization.findByIdAndUpdate(
         req.params.id,
         { ...req.body, updated_at: new Date() },
         { new: true, runValidators: true }
@@ -124,7 +163,7 @@ class PlatformOrganizationController extends BaseController {
 
   async suspendOrganization(req, res) {
     try {
-      const organization = await PlatformOrganization.findByIdAndUpdate(
+      const organization = await Organization.findByIdAndUpdate(
         req.params.id,
         { status: 'suspended', updated_at: new Date() },
         { new: true }
@@ -143,7 +182,7 @@ class PlatformOrganizationController extends BaseController {
 
   async activateOrganization(req, res) {
     try {
-      const organization = await PlatformOrganization.findByIdAndUpdate(
+      const organization = await Organization.findByIdAndUpdate(
         req.params.id,
         { status: 'active', updated_at: new Date() },
         { new: true }
@@ -162,7 +201,7 @@ class PlatformOrganizationController extends BaseController {
 
   async deleteOrganization(req, res) {
     try {
-      const organization = await PlatformOrganization.findById(req.params.id);
+      const organization = await Organization.findById(req.params.id);
 
       if (!organization) {
         return res.error('Organization not found', 'Not found', 404);
