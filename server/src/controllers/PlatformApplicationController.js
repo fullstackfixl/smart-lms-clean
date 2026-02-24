@@ -67,8 +67,12 @@ class PlatformApplicationController extends BaseController {
             await application.save();
 
             // Send approval email with link
-            const setupLink = `${process.env.CLIENT_URL || 'http://localhost:3000'}/complete-registration?token=${token}`;
-            await emailService.sendApprovalEmail(application.admin_email, setupLink);
+            const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+            const setupLink = `${clientUrl}/complete-registration?token=${token}`;
+            const sent = await emailService.sendApprovalEmail(application.admin_email, setupLink);
+            if (!sent) {
+                console.warn('⚠️ [PlatformApplicationController] Approval email could not be sent. Check SMTP/EMAIL env config.');
+            }
 
             return res.success({ application, token, setupLink }, 'Application approved successfully');
         } catch (error) {

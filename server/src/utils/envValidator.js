@@ -59,6 +59,26 @@ class EnvironmentValidator {
       validator: (value) => !value || value.length > 0,
       message: 'EMAIL_USER must not be empty'
     });
+    this.optionalVars.set('EMAIL_PASS', {
+      validator: (value) => !value || value.length > 0,
+      message: 'EMAIL_PASS must not be empty'
+    });
+    this.optionalVars.set('EMAIL_FROM', {
+      validator: (value) => !value || value.length > 0,
+      message: 'EMAIL_FROM must not be empty'
+    });
+    this.optionalVars.set('SMTP_HOST', {
+      validator: (value) => !value || value.length > 0,
+      message: 'SMTP_HOST enables SMTP transport when provided'
+    });
+    this.optionalVars.set('SMTP_PORT', {
+      validator: (value) => !value || (!isNaN(value) && parseInt(value) > 0),
+      message: 'SMTP_PORT must be a valid port number'
+    });
+    this.optionalVars.set('SMTP_SECURE', {
+      validator: (value) => !value || ['true', 'false'].includes(value.toLowerCase()),
+      message: 'SMTP_SECURE must be "true" or "false"'
+    });
 
     this.optionalVars.set('RAZORPAY_KEY_ID', {
       validator: (value) => !value || value.startsWith('rzp_'),
