@@ -1,5 +1,7 @@
 "use client"
 
+export const dynamic = 'force-dynamic'
+
 import React, { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
@@ -23,11 +25,10 @@ export default function AcceptInvitePage() {
     const router = useRouter()
 
     useEffect(() => {
-        if (!token) {
+        if (!token && typeof window !== 'undefined') {
             toast.error("Invalid invitation link")
-            router.push("/login")
         }
-    }, [token, router])
+    }, [token])
 
     const handleAccept = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -79,6 +80,11 @@ export default function AcceptInvitePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
         >
+            {!token && (
+                <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-600">
+                    Invitation token is missing or invalid. Please open the link from your email.
+                </div>
+            )}
             <div className="mb-8">
                 <h1 className="text-2xl font-bold text-foreground">Complete your Setup</h1>
                 <p className="mt-2 text-sm text-muted-foreground">

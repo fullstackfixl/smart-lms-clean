@@ -22,6 +22,7 @@ interface AuthContextType {
   user: User | null
   token: string | null
   loading: boolean
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectUrl?: string }>
   register: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
   registerOrganization: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
   acceptInvite: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
@@ -121,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const registerOrganization = useCallback(async (data: any) => {
-    const res = await authApi.registerOrganization(data)
+    const res = await authApi.applyOrganization(data)
     if (res.success) {
       return { success: true, data: res.data }
     }
