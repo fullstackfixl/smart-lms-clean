@@ -40,7 +40,11 @@ const csrfProtection = (req, res, next) => {
     '/auth/resend-otp',
     '/auth/validate-organization',
     '/auth/forgot-password',
-    '/auth/reset-password'
+    '/auth/reset-password',
+    // Student registration routes
+    '/api/student/validate-organization',
+    '/api/student/send-verification',
+    '/api/student/complete-registration'
   ];
   
   if (authEndpoints.includes(req.path)) {

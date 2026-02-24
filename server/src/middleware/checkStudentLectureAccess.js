@@ -67,7 +67,9 @@ const checkStudentLectureAccess = async (req, res, next) => {
     }
 
     // 6. Check organization match
-    if (course.organization_id.toString() !== user.organization_id.toString()) {
+    const userOrgId = (user.organization_id && user.organization_id._id) ? user.organization_id._id.toString() : user.organization_id.toString();
+    const courseOrgId = (course.organization_id && course.organization_id._id) ? course.organization_id._id.toString() : course.organization_id.toString();
+    if (courseOrgId !== userOrgId) {
       return res.status(403).json({
         success: false,
         error: 'Forbidden',

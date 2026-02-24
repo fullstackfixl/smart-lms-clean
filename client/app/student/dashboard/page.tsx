@@ -16,10 +16,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/lib/auth-context"
+import { API_URL } from "@/lib/config"
 import Link from "next/link"
 import { toast } from "sonner"
 
-const API = () => (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
+const API = () => API_URL
 const getToken = () =>
   typeof window !== "undefined"
     ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -38,21 +39,26 @@ export default function StudentDashboard() {
   const { user } = useAuth()
   const [enrolled, setEnrolled] = useState<any[]>([])
   const [liveClasses, setLiveClasses] = useState<any[]>([])
+  const [orgCourses, setOrgCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true)
     try {
-      const [myCourses, live] = await Promise.allSettled([
-        apiFetch("/student/my-courses"),
-        apiFetch("/student/live-classes")
+      const [myCourses, live, available] = await Promise.allSettled([
+        apiFetch("/api/courses/my-courses"),
+        apiFetch("/student/live-classes"),
+        apiFetch("/api/courses/student?limit=4")
       ])
 
       if (myCourses.status === "fulfilled" && myCourses.value.success) {
-        setEnrolled(myCourses.value.data?.courses || [])
+        setEnrolled(myCourses.value.data?.courses || myCourses.value.data || [])
       }
       if (live.status === "fulfilled" && live.value.success) {
         setLiveClasses(live.value.data?.classes || [])
+      }
+      if (available.status === "fulfilled" && available.value.success) {
+        setOrgCourses(available.value.data?.courses || available.value.data || [])
       }
     } catch (e) {
       toast.error("Failed to load dashboard data")
@@ -174,6 +180,53 @@ export default function StudentDashboard() {
                           </div>
                           <span className="text-xs font-bold text-slate-500">{item.progress || 0}%</span>
                         </div>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-slate-300" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* New Courses from Your Organization */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-800">New Courses from Your Organization</h2>
+            <Link href="/student/available-courses">
+              <Button variant="ghost" size="sm" className="text-[#4CAF50] hover:text-[#388E3C] hover:bg-green-50">
+                Browse
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {loading ? (
+              [1, 2, 3, 4].map(i => <div key={i} className="h-28 bg-slate-50 rounded-xl animate-pulse" />)
+            ) : orgCourses.length === 0 ? (
+              <div className="p-6 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center md:col-span-2">
+                <p className="text-slate-500">No new courses published yet.</p>
+              </div>
+            ) : (
+              orgCourses.slice(0, 4).map((course, i) => (
+                <Link href={`/student/courses/${course._id}`} key={i}>
+                  <Card className="hover:shadow-md transition-all border-slate-100 cursor-pointer overflow-hidden group">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="h-16 w-24 rounded-lg bg-slate-200 overflow-hidden shrink-0">
+                        {course.thumbnail ? (
+                          <img src={course.thumbnail} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-green-50">
+                            <BookOpen className="h-6 w-6 text-[#4CAF50]" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-slate-800 truncate group-hover:text-[#4CAF50] transition-colors">
+                          {course.title}
+                        </h4>
+                        <p className="text-xs text-slate-500 line-clamp-2">{course.description || "Explore this new course"}</p>
                       </div>
                       <ChevronRight className="h-5 w-5 text-slate-300" />
                     </CardContent>

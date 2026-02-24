@@ -20,7 +20,7 @@ export default function MyCourses() {
     const fetchMyCourses = useCallback(async () => {
         setLoading(true)
         try {
-            const r = await fetch(`${API()}/student/my-courses`, {
+            const r = await fetch(`${API()}/api/courses/my-courses`, {
                 headers: { Authorization: `Bearer ${getToken()}` },
                 credentials: "include"
             })

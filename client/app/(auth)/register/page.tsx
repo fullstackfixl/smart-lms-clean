@@ -8,9 +8,7 @@ import { Eye, EyeOff, Loader2, ArrowLeft, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
-import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
 export default function RegisterPage() {
@@ -19,16 +17,15 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-  const [role, setRole] = useState<"student" | "parent">("student")
-  const [orgSubdomain, setOrgSubdomain] = useState("")
+  const [organizationCode, setOrganizationCode] = useState("")
+  const [orgValidated, setOrgValidated] = useState(false)
+  const [orgName, setOrgName] = useState<string>("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
   const [otp, setOtp] = useState("")
   const [displayedOtp, setDisplayedOtp] = useState<string | null>(null)
-  const [generatedOrgCode, setGeneratedOrgCode] = useState<string | null>(null)
-  const { register, verifyOtp, resendOtp } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -40,6 +37,41 @@ export default function RegisterPage() {
     }
     return () => clearInterval(interval)
   }, [resendTimer])
+
+  // Validate organization code when changed (debounced)
+  useEffect(() => {
+    const code = organizationCode.trim()
+    if (!code) {
+      setOrgValidated(false)
+      setOrgName("")
+      return
+    }
+    const t = setTimeout(async () => {
+      try {
+        setLoading(true)
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/student/validate-organization`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ organization_code: code })
+        })
+        const data = await res.json()
+        if (res.ok && data?.success !== false) {
+          setOrgValidated(true)
+          setOrgName(data?.data?.name || "")
+        } else {
+          setOrgValidated(false)
+          setOrgName("")
+        }
+      } catch {
+        setOrgValidated(false)
+        setOrgName("")
+      } finally {
+        setLoading(false)
+      }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [organizationCode])
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,28 +86,39 @@ export default function RegisterPage() {
       return
     }
 
-    if (!orgSubdomain.trim()) {
-      toast.error("School subdomain is required")
+    if (!organizationCode.trim()) {
+      toast.error("Organization code is required")
+      return
+    }
+
+    if (!orgValidated) {
+      toast.error("Invalid organization code")
       return
     }
 
     setLoading(true)
-    const result = await register({
-      name,
-      email,
-      password,
-      role,
-      orgSubdomain
-    })
-    setLoading(true)
-
-    if (result.success) {
-      toast.success("Verification code sent. Check your email")
-      setStep("otp")
-      setResendTimer(60)
-      setLoading(false)
-    } else {
-      toast.error(result.error || "Registration failed")
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/student/send-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name,
+          email,
+          organization_code: organizationCode.trim()
+        })
+      })
+      const data = await res.json()
+      if (res.ok && (data.success ?? true)) {
+        toast.success("Verification code sent. Check your email")
+        setStep("otp")
+        setResendTimer(60)
+      } else {
+        toast.error(data.message || data.error || "Registration failed")
+      }
+    } catch {
+      toast.error("Registration failed")
+    } finally {
       setLoading(false)
     }
   }
@@ -88,74 +131,88 @@ export default function RegisterPage() {
     }
 
     setLoading(true)
-    const result = await verifyOtp(email, otp)
-    setLoading(false)
-
-    if (result.success) {
-      // Check if organization_code is returned (for org_admin)
-      const orgCode = (result as any).data?.organization_code
-      if (orgCode) {
-        setGeneratedOrgCode(orgCode)
-        toast.success(`Organization created! Your code: ${orgCode}`)
-        // Redirect after showing org code
-        setTimeout(() => {
-          router.push(result.redirectUrl || '/dashboard')
-        }, 2000)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/student/complete-registration`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          organization_code: organizationCode.trim(),
+          otp
+        })
+      })
+      const data = await res.json()
+      if (res.ok && (data.success ?? true)) {
+        const token = data?.data?.token || data?.token
+        if (token) {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem("instatute_token", token)
+            window.localStorage.setItem("instatute_token", token)
+          }
+        }
+        toast.success("Registration successful! Redirecting...")
+        router.push("/student/dashboard")
       } else {
-        toast.success("Registration successful!")
-        // Immediate redirect for non-admin users
-        router.push(result.redirectUrl || '/dashboard')
+        const errorMsg = data.message || data.error || "Verification failed"
+        if (errorMsg.toLowerCase().includes("already")) {
+          toast.error("Email already registered. Redirecting to login...")
+          setTimeout(() => router.push("/login"), 1500)
+        } else {
+          toast.error(errorMsg)
+        }
       }
-    } else {
-      const errorMsg = result.error || "Verification failed"
-
-      // Check if it's a "no verification found" or "already verified" error
-      if (errorMsg.toLowerCase().includes("no verification") || errorMsg.toLowerCase().includes("already verified")) {
-        toast.error("Verification expired or already completed. Please login instead.")
-        setTimeout(() => {
-          router.push("/login")
-        }, 2000)
-      } else {
-        toast.error(errorMsg)
-      }
+    } catch {
+      toast.error("Verification failed")
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return
 
-    setLoading(true)
-    const result = await resendOtp(email)
-    setLoading(false)
-
-    if (result.success) {
-      // Check if OTP is in response (email service failed)
-      const responseData = (result as any).data
-      if (responseData?.otp) {
-        setDisplayedOtp(responseData.otp)
-        if (responseData?.emailFailed) {
-          toast.error("Email service unavailable. Your verification code is displayed below.", {
-            duration: 10000
-          })
+    try {
+      setLoading(true)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/student/send-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name,
+          email,
+          organization_code: organizationCode.trim()
+        })
+      })
+      const data = await res.json()
+      if (res.ok && (data.success ?? true)) {
+        const maybeOtp = data?.data?.otp
+        if (maybeOtp) {
+          setDisplayedOtp(maybeOtp)
+          if (data?.data?.emailFailed) {
+            toast.error("Email unavailable. Code shown below.", { duration: 8000 })
+          } else {
+            toast.success("New verification code sent")
+          }
         } else {
           toast.success("New verification code sent")
         }
+        setResendTimer(60)
       } else {
-        toast.success("New verification code sent")
+        const errorMsg = data.message || data.error || "Failed to resend code"
+        if (errorMsg.toLowerCase().includes("already registered")) {
+          toast.error("Email already registered. Redirecting to login...")
+          setTimeout(() => router.push("/login"), 1500)
+        } else {
+          toast.error(errorMsg)
+        }
       }
-      setResendTimer(60)
-    } else {
-      const errorMsg = result.error || "Failed to resend code"
-
-      // Check if email already registered
-      if (errorMsg.toLowerCase().includes("already registered")) {
-        toast.error("Email already registered. Redirecting to login...")
-        setTimeout(() => {
-          router.push("/login")
-        }, 2000)
-      } else {
-        toast.error(errorMsg)
-      }
+    } catch {
+      toast.error("Failed to resend code")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -203,31 +260,20 @@ export default function RegisterPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={(v: any) => setRole(v)}>
-                <SelectTrigger className="bg-secondary">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student">Student</SelectItem>
-                  <SelectItem value="parent">Parent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="orgSubdomain">School Subdomain</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="orgSubdomain"
-                  placeholder="myschool"
-                  value={orgSubdomain}
-                  onChange={(e) => setOrgSubdomain(e.target.value.toLowerCase().trim())}
-                  required
-                  className="bg-secondary"
-                />
-                <span className="text-sm text-muted-foreground">.smartlms.com</span>
-              </div>
+              <Label htmlFor="organizationCode">Organization Code</Label>
+              <Input
+                id="organizationCode"
+                placeholder="e.g., ABC123"
+                value={organizationCode}
+                onChange={(e) => setOrganizationCode(e.target.value.trim())}
+                required
+                className="bg-secondary"
+              />
+              {organizationCode && (
+                <p className={`text-xs ${orgValidated ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                  {orgValidated ? `Organization: ${orgName || "Valid"}` : "Invalid organization code"}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -310,14 +356,6 @@ export default function RegisterPage() {
               <p className="text-sm font-medium text-orange-900 dark:text-orange-100">Email service unavailable. Your verification code:</p>
               <p className="mt-2 text-3xl font-bold text-orange-600 dark:text-orange-400 tracking-widest">{displayedOtp}</p>
               <p className="mt-2 text-xs text-orange-700 dark:text-orange-300">Enter this code below to complete registration</p>
-            </div>
-          )}
-
-          {generatedOrgCode && (
-            <div className="mt-4 rounded-lg border-2 border-primary bg-primary/10 p-4 text-center">
-              <p className="text-sm font-medium text-foreground">Your Organization Code:</p>
-              <p className="mt-1 text-2xl font-bold text-primary">{generatedOrgCode}</p>
-              <p className="mt-2 text-xs text-muted-foreground">Share this code with your students and instructors</p>
             </div>
           )}
 

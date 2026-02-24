@@ -127,6 +127,15 @@ const organizationSchema = new mongoose.Schema({
 organizationSchema.index({ status: 1 });
 organizationSchema.index({ is_deleted: 1 });
 
+// Virtual alias for organization_code to match API
+organizationSchema.virtual('organization_code')
+  .get(function () {
+    return this.code;
+  })
+  .set(function (val) {
+    this.code = (val || '').toString().toUpperCase().trim();
+  });
+
 // Pre-save middleware to generate code and slug if missing
 organizationSchema.pre('save', async function (next) {
   if (this.isNew || !this.code || !this.slug) {

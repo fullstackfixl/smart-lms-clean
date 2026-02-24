@@ -1,6 +1,8 @@
 const express = require('express');
 const { Course, Section, Lesson, Enrollment, User, Organization, Certificate } = require('../models');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const { cloudinaryUpload, handleUploadError } = require('../middleware/upload');
+const { uploadToCloudinary } = require('../config/cloudinary');
 
 const router = express.Router();
 
@@ -21,6 +23,7 @@ router.get('/profile', authMiddleware, requireRole(['student']), async (req, res
       _id: user._id,
       name: user.name,
       email: user.email,
+      organization_code: req.user.organization_code || user.organization_code || null,
       phone: user.profile?.phone || '',
       location: user.profile?.location || '',
       bio: user.profile?.bio || '',
@@ -35,6 +38,56 @@ router.get('/profile', authMiddleware, requireRole(['student']), async (req, res
     res.error(error.message, 'Failed to get profile', 500);
   }
 });
+
+// POST /student/profile/avatar — upload avatar to Cloudinary and update user profile
+router.post(
+  '/profile/avatar',
+  authMiddleware,
+  requireRole(['student']),
+  cloudinaryUpload.single('avatar'),
+  handleUploadError,
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.error('No file provided', 'Please select an image to upload', 400);
+      }
+
+      // Validate image type and size (client also validates)
+      if (!req.file.mimetype.startsWith('image/')) {
+        return res.error('Invalid file type', 'Only image files are allowed', 400);
+      }
+      if (req.file.size > 5 * 1024 * 1024) {
+        return res.error('File too large', 'Image must be smaller than 5MB', 400);
+      }
+
+      const orgId = req.user.organization_id?._id || req.user.organization_id;
+      const folder = `smart-lms/${orgId}/avatars`;
+      const publicId = `avatar_${req.user._id}_${Date.now()}`;
+
+      const result = await uploadToCloudinary(req.file.buffer, {
+        folder,
+        public_id: publicId,
+        resource_type: 'image',
+        transformation: [{ width: 512, height: 512, crop: 'fill', gravity: 'face', quality: 'auto' }]
+      });
+
+      // Update current user's avatar URL
+      const user = await User.findByIdAndUpdate(
+        req.user._id,
+        { 'profile.avatar': result.secure_url },
+        { new: true }
+      ).select('name email profile');
+
+      return res.success(
+        { avatar: user.profile?.avatar || result.secure_url },
+        'Avatar updated successfully'
+      );
+    } catch (error) {
+      console.error('student avatar upload error:', error);
+      return res.error(error.message, 'Failed to upload avatar', 500);
+    }
+  }
+);
 
 // PATCH /student/profile
 router.patch('/profile', authMiddleware, requireRole(['student']), async (req, res) => {

@@ -178,6 +178,10 @@ try {
   const instructorRoutes = require('./routes/instructor');
   app.use('/instructor', instructorRoutes);
 
+  console.log('  - instructor uploads');
+  const instructorUploadRoutes = require('./routes/videoUpload');
+  app.use('/api/instructor', instructorUploadRoutes);
+
   console.log('  - instructor-live-classes');
   const instructorLiveClassRoutes = require('./routes/instructorLiveClasses');
   app.use('/instructor/live-classes', instructorLiveClassRoutes);
@@ -217,6 +221,10 @@ try {
   console.log('  - student-lectures');
   const studentLectureRoutes = require('./routes/studentLectures');
   app.use('/student', studentLectureRoutes);
+
+  console.log('  - student-registration');
+  const studentRegistrationRoutes = require('./routes/studentRoutes');
+  app.use('/api/student', studentRegistrationRoutes);
 
   console.log('  - student');
   const studentRoutes = require('./routes/student');

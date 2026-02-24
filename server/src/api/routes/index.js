@@ -20,6 +20,63 @@ const router = express.Router();
 // Course Management APIs
 router.post('/courses', authMiddleware, requireRole(['teacher', 'admin']), enforceOrgIsolation, (req, res, next) => courseController.createCourse(req, res, next));
 router.get('/courses', (req, res, next) => courseController.getCourses(req, res, next));
+// Spec: Get Courses For Student (avoid collision with /courses/:id)
+router.get('/courses/student', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { Course, Section, Lesson } = require('../../models');
+    const courses = await Course.find({
+      organization_id: req.user.organization_id,
+      status: 'published',
+      isActive: true
+    })
+      .populate('instructor_id', 'name')
+      .select('_id title description instructor_id');
+
+    const results = [];
+    for (const course of courses) {
+      const sections = await Section.find({ course_id: course._id, isActive: true }).select('_id');
+      let totalLessons = 0;
+      for (const section of sections) {
+        totalLessons += await Lesson.countDocuments({ section_id: section._id, isActive: true });
+      }
+      results.push({
+        _id: course._id,
+        title: course.title,
+        description: course.description,
+        instructor: { name: course.instructor_id?.name || '' },
+        totalLessons
+      });
+    }
+
+    res.success({ courses: results }, 'Courses for student retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to get courses for student', 500);
+  }
+});
+// Spec: Get My Enrolled Courses (alias under /api)
+router.get('/courses/my-courses', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { Enrollment } = require('../../models');
+    const enrollments = await Enrollment.find({
+      student_id: req.user._id,
+      organization_id: req.user.organization_id
+    })
+      .populate({ path: 'course_id', select: 'title description instructor_id', populate: { path: 'instructor_id', select: 'name' } })
+      .sort({ enrolledAt: -1 });
+
+    const courses = enrollments.map(e => ({
+      _id: e.course_id?._id,
+      title: e.course_id?.title,
+      description: e.course_id?.description,
+      instructor: { name: e.course_id?.instructor_id?.name || '' },
+      progress: e.progress?.completionPercentage || 0
+    }));
+
+    res.success({ courses }, 'My courses retrieved successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to get my courses', 500);
+  }
+});
 router.get('/courses/:id', (req, res, next) => courseController.getCourseById(req, res, next));
 router.put('/courses/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => courseController.updateCourse(req, res, next));
 router.delete('/courses/:id', authMiddleware, enforceOrgIsolation, (req, res, next) => courseController.deleteCourse(req, res, next));

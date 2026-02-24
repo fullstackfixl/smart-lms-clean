@@ -238,7 +238,7 @@ class InstructorController extends BaseController {
   // MODULES (Sections)
   createModule = this.asyncHandler(async (req, res) => {
     const { courseId } = req.params;
-    const { title, description, order } = req.body;
+    const { title, description } = req.body;
 
     if (!title) {
       return res.error('Module title is required', 'Validation failed', 400);
@@ -249,12 +249,22 @@ class InstructorController extends BaseController {
       return res.error('Course not found', 'Course does not exist or you do not have access', 404);
     }
 
+    // Compute next order if not provided
+    let nextOrder = 1;
+    const lastSection = await Section.findOne({
+      course_id: course._id,
+      organization_id: req.user.organization_id
+    }).sort({ order: -1 }).select('order');
+    if (lastSection && typeof lastSection.order === 'number') {
+      nextOrder = lastSection.order + 1;
+    }
+
     const moduleDoc = await Section.create({
       organization_id: req.user.organization_id,
       course_id: course._id,
       title,
       description,
-      order
+      order: nextOrder
     });
 
     this.sendSuccess(res, moduleDoc, 'Module created successfully', 201);
@@ -314,7 +324,7 @@ class InstructorController extends BaseController {
   // LESSONS
   createLesson = this.asyncHandler(async (req, res) => {
     const { moduleId } = req.params;
-    const { title, description, type, content, order, prerequisites = [], duration = 0, isPreview = false } = req.body;
+    const { title, description, type, content, prerequisites = [], duration = 0, isPreview = false } = req.body;
 
     if (!title || !type) {
       return res.error('Missing required fields', 'Lesson title and type are required', 400);
@@ -335,6 +345,17 @@ class InstructorController extends BaseController {
       return res.error('Access denied', 'You do not have permission to modify this lesson', 403);
     }
 
+    // Compute next order within the section
+    let nextOrder = 1;
+    const lastLesson = await Lesson.findOne({
+      section_id: section._id,
+      organization_id: req.user.organization_id,
+      isActive: true
+    }).sort({ order: -1 }).select('order');
+    if (lastLesson && typeof lastLesson.order === 'number') {
+      nextOrder = lastLesson.order + 1;
+    }
+
     const lesson = await Lesson.create({
       organization_id: req.user.organization_id,
       course_id: course._id,
@@ -343,7 +364,7 @@ class InstructorController extends BaseController {
       description,
       type,
       content,
-      order,
+      order: nextOrder,
       prerequisites,
       duration,
       isPreview

@@ -5,6 +5,32 @@ const { sendEnrollmentEmail } = require('../utils/email');
 
 const router = express.Router();
 
+// 1️⃣ Instructor Create Course (Spec Alias)
+router.post('/create', authMiddleware, requireRole(['instructor']), async (req, res) => {
+  try {
+    const { title, description, category = 'general', price = 0, level = 'beginner', thumbnail, tags = [] } = req.body;
+    if (!title || !description) {
+      return res.error('Missing required fields', 'Title and description are required', 400);
+    }
+    const course = await Course.create({
+      organization_id: req.user.organization_id,
+      instructor_id: req.user._id,
+      title,
+      description,
+      category,
+      price: Math.max(0, Number(price) || 0),
+      level,
+      thumbnail,
+      tags,
+      status: 'draft',
+      isActive: true
+    });
+    res.success({ course }, 'Course created successfully', 201);
+  } catch (error) {
+    res.error(error.message, 'Failed to create course', 500);
+  }
+});
+
 // Create course (instructor/admin only)
 router.post('/', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
   try {
@@ -178,6 +204,39 @@ router.get('/', optionalAuth, async (req, res) => {
   }
 });
 
+// 2️⃣ Get Courses For Student (Spec Alias)
+router.get('/student', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const courses = await Course.find({
+      organization_id: req.user.organization_id,
+      status: 'published',
+      isActive: true
+    })
+      .populate('instructor_id', 'name')
+      .select('_id title description instructor_id');
+
+    const results = [];
+    for (const course of courses) {
+      const sections = await Section.find({ course_id: course._id, isActive: true }).select('_id');
+      let totalLessons = 0;
+      for (const section of sections) {
+        totalLessons += await Lesson.countDocuments({ section_id: section._id, isActive: true });
+      }
+      results.push({
+        _id: course._id,
+        title: course.title,
+        description: course.description,
+        instructor: { name: course.instructor_id?.name || '' },
+        totalLessons
+      });
+    }
+
+    res.success({ courses: results }, 'Courses for student retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to get courses for student', 500);
+  }
+});
+
 // Get course details with sections and lessons
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
@@ -240,6 +299,13 @@ router.get('/:id', optionalAuth, async (req, res) => {
         status: 'active'
       });
       isEnrolled = !!enrollment;
+    }
+
+    // 5️⃣ Course Access Guard (Students must be enrolled)
+    if (req.user && req.user.role === 'student') {
+      if (!isEnrolled) {
+        return res.error('Access denied', 'You must be enrolled to access this course', 403);
+      }
     }
 
     // Update total lessons count in course
@@ -473,6 +539,30 @@ router.post('/:id/purchase', authMiddleware, async (req, res) => {
   }
 });
 
+// 4️⃣ Get My Enrolled Courses (Spec Alias)
+router.get('/my-courses', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const enrollments = await Enrollment.find({
+      student_id: req.user._id,
+      organization_id: req.user.organization_id
+    })
+      .populate({ path: 'course_id', select: 'title description instructor_id', populate: { path: 'instructor_id', select: 'name' } })
+      .sort({ enrolledAt: -1 });
+
+    const courses = enrollments.map(e => ({
+      _id: e.course_id?._id,
+      title: e.course_id?.title,
+      description: e.course_id?.description,
+      instructor: { name: e.course_id?.instructor_id?.name || '' },
+      progress: e.progress?.completionPercentage || 0
+    }));
+
+    res.success({ courses }, 'My courses retrieved successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to get my courses', 500);
+  }
+});
+
 // Get user's enrolled courses
 router.get('/my/enrollments', authMiddleware, async (req, res) => {
   try {
@@ -558,6 +648,65 @@ router.get('/organization/:orgId', authMiddleware, orgAccessMiddleware, async (r
   } catch (error) {
     console.error('Get organization courses error:', error);
     res.error(error.message, 'Failed to get organization courses', 500);
+  }
+});
+
+// 3️⃣ Enroll in Course (Spec Alias)
+router.post('/enroll/:courseId', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findOne({
+      _id: courseId,
+      organization_id: req.user.organization_id,
+      status: 'published',
+      isActive: true
+    });
+
+    if (!course) {
+      return res.error('Course not found', 'Course does not exist or is not available for enrollment', 404);
+    }
+
+    const existingEnrollment = await Enrollment.findOne({
+      student_id: req.user._id,
+      course_id: courseId,
+      status: { $in: ['active', 'completed'] }
+    });
+
+    if (existingEnrollment) {
+      return res.error('Already enrolled', 'You are already enrolled in this course', 400);
+    }
+
+    const sections = await Section.find({ course_id: courseId, isActive: true }).select('_id');
+    let totalLessons = 0;
+    for (const section of sections) {
+      totalLessons += await Lesson.countDocuments({ section_id: section._id, isActive: true });
+    }
+
+    const enrollment = await Enrollment.create({
+      organization_id: req.user.organization_id,
+      student_id: req.user._id,
+      course_id: courseId,
+      enrollmentType: course.price > 0 ? 'paid' : 'free',
+      status: 'active',
+      progress: {
+        completedLessons: [],
+        totalLessons,
+        completionPercentage: 0,
+        totalTimeSpent: 0
+      },
+      enrolledAt: new Date(),
+      lastAccessedAt: new Date()
+    });
+
+    await Course.findByIdAndUpdate(courseId, {
+      $inc: { enrollmentCount: 1 },
+      $addToSet: { students: req.user._id }
+    });
+
+    res.success({ enrollment }, 'Enrollment successful');
+  } catch (error) {
+    res.error(error.message, 'Failed to enroll in course', 500);
   }
 });
 
