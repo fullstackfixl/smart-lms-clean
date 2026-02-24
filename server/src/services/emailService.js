@@ -52,12 +52,44 @@ class EmailService {
     }
   }
 
+  async sendViaResend(to, subject, text, html) {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@example.com';
+    if (!apiKey) return false;
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from,
+          to,
+          subject,
+          html: html || text
+        })
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        console.error('❌ [EMAIL SERVICE] Resend error:', res.status, body);
+        return false;
+      }
+      console.log('✅ [EMAIL SERVICE] Resend email sent');
+      return true;
+    } catch (err) {
+      console.error('❌ [EMAIL SERVICE] Resend send failed:', err);
+      return false;
+    }
+  }
+
   async sendEmail(to, subject, text, html) {
     try {
       const ready = await this.ensureTransport();
       if (!ready) {
-        console.error('❌ [EMAIL SERVICE] Transport not ready');
-        return false;
+        console.error('❌ [EMAIL SERVICE] Transport not ready, trying Resend fallback');
+        const resendOk = await this.sendViaResend(to, subject, text, html);
+        return resendOk;
       }
       const mailOptions = {
         from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
@@ -72,6 +104,9 @@ class EmailService {
       return true;
     } catch (error) {
       console.error('❌ [EMAIL SERVICE] Error sending email:', error);
+      // Attempt Resend fallback if SMTP failed mid-send
+      const resendOk = await this.sendViaResend(to, subject, text, html);
+      if (resendOk) return true;
       return false;
     }
   }

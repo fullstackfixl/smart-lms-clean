@@ -79,6 +79,10 @@ class EnvironmentValidator {
       validator: (value) => !value || ['true', 'false'].includes(value.toLowerCase()),
       message: 'SMTP_SECURE must be "true" or "false"'
     });
+    this.optionalVars.set('RESEND_API_KEY', {
+      validator: (value) => !value || value.length > 0,
+      message: 'RESEND_API_KEY enables HTTP email fallback'
+    });
 
     this.optionalVars.set('RAZORPAY_KEY_ID', {
       validator: (value) => !value || value.startsWith('rzp_'),
