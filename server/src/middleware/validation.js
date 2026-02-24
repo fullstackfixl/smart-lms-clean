@@ -17,7 +17,7 @@ const authValidation = {
 
   applyOrganization: Joi.object({
     organizationName: Joi.string().required().min(3).max(100),
-    subdomain: Joi.string().lowercase().required().min(3).max(30).pattern(/^[a-z0-9-]+$/),
+    subdomain: Joi.string().lowercase().optional().min(3).max(30).pattern(/^[a-z0-9-]+$/),
     adminName: Joi.string().required().min(2).max(100),
     adminEmail: Joi.string().email().required(),
     selectedPlan: Joi.string().valid('basic', 'pro', 'enterprise').required()

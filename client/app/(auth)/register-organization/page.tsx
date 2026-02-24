@@ -13,7 +13,6 @@ import { toast } from "sonner"
 
 export default function RegisterOrganizationPage() {
     const [organizationName, setOrganizationName] = useState("")
-    const [subdomain, setSubdomain] = useState("")
     const [adminName, setAdminName] = useState("")
     const [adminEmail, setAdminEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -27,7 +26,6 @@ export default function RegisterOrganizationPage() {
         setLoading(true)
         const result = await registerOrganization({
             organizationName,
-            subdomain,
             adminName,
             adminEmail,
             password
@@ -68,20 +66,7 @@ export default function RegisterOrganizationPage() {
                     />
                 </div>
 
-                <div className="flex flex-col gap-2">
-                    <Label htmlFor="subdomain">Preferred Subdomain</Label>
-                    <div className="flex items-center gap-2">
-                        <Input
-                            id="subdomain"
-                            placeholder="global-academy"
-                            value={subdomain}
-                            onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                            required
-                            className="bg-secondary"
-                        />
-                        <span className="text-sm text-muted-foreground">.smartlms.com</span>
-                    </div>
-                </div>
+                {/* Subdomain removed; a route slug will be auto-generated from organization name */}
 
                 <div className="mt-4 border-t border-border pt-4">
                     <h2 className="text-sm font-semibold mb-3">Admin Details</h2>

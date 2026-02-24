@@ -18,7 +18,6 @@ export default function ApplyOrganizationPage() {
     const [plan, setPlan] = useState("basic")
 
     const [organizationName, setOrganizationName] = useState("")
-    const [subdomain, setSubdomain] = useState("")
     const [adminName, setAdminName] = useState("")
     const [adminEmail, setAdminEmail] = useState("")
 
@@ -37,7 +36,6 @@ export default function ApplyOrganizationPage() {
         try {
             const response = await authApi.applyOrganization({
                 organizationName,
-                subdomain,
                 adminName,
                 adminEmail,
                 selectedPlan: plan
@@ -125,22 +123,7 @@ export default function ApplyOrganizationPage() {
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="subdomain">Subdomain</Label>
-                                <div className="relative">
-                                    <Input
-                                        id="subdomain"
-                                        placeholder="global-academy"
-                                        value={subdomain}
-                                        onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                                        required
-                                        className="h-12 border-muted pr-28"
-                                    />
-                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
-                                        .smartlms.com
-                                    </span>
-                                </div>
-                            </div>
+                            {/* Subdomain removed per routing-based access; route is auto-generated from organization name */}
                         </div>
 
                         <div className="space-y-2 pt-4">

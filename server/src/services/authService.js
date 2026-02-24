@@ -79,29 +79,30 @@ class AuthService {
    */
   async applyOrganization(data) {
     const { organizationName, subdomain, adminName, adminEmail, selectedPlan } = data;
+    // Generate a route-friendly slug from organizationName if subdomain not provided
+    const routeSlug = (subdomain || organizationName || '')
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || `org-${Date.now()}`;
 
-    // Check if organization already exists
-    const existingOrg = await Organization.findOne({ subdomain: subdomain.toLowerCase() });
-    if (existingOrg) {
-      const { ConflictError } = require('../core/errors');
-      throw new ConflictError('Subdomain already exists');
-    }
+    // No subdomain logic: do not block on slug conflicts; rely on admin email uniqueness in pending queue
 
     // Check if application already exists
     const existingApp = await OrganizationApplication.findOne({
-      $or: [
-        { subdomain: subdomain.toLowerCase() },
-        { admin_email: adminEmail.toLowerCase(), status: 'pending' }
-      ]
+      admin_email: adminEmail.toLowerCase(),
+      status: 'pending'
     });
     if (existingApp) {
-      throw new ValidationError('An application for this subdomain or email is already pending');
+      return existingApp;
     }
 
     // Create Application
     const application = new OrganizationApplication({
       organization_name: organizationName,
-      subdomain: subdomain.toLowerCase(),
+      subdomain: routeSlug, // store route-friendly slug for consistency
       admin_name: adminName,
       admin_email: adminEmail.toLowerCase(),
       selected_plan: selectedPlan
@@ -115,12 +116,12 @@ class AuthService {
         const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
         const listLink = `${baseUrl}/platform/applications?status=pending`;
         const subject = 'New Organization Application Submitted';
-        const text = `A new organization application has been submitted.\n\nOrganization: ${organizationName}\nSubdomain: ${subdomain}\nAdmin: ${adminName} <${adminEmail}>\nPlan: ${selectedPlan}\n\nReview pending applications:\n${listLink}`;
+        const text = `A new organization application has been submitted.\n\nOrganization: ${organizationName}\nRoute: /org/${routeSlug}\nAdmin: ${adminName} <${adminEmail}>\nPlan: ${selectedPlan}\n\nReview pending applications:\n${listLink}`;
         const html = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color:#2563eb;margin-bottom:8px;">New Organization Application</h2>
             <p><strong>Organization:</strong> ${organizationName}</p>
-            <p><strong>Subdomain:</strong> ${subdomain}</p>
+            <p><strong>Route:</strong> /org/${routeSlug}</p>
             <p><strong>Admin:</strong> ${adminName} &lt;${adminEmail}&gt;</p>
             <p><strong>Plan:</strong> ${selectedPlan}</p>
             <div style="margin:20px 0;">
