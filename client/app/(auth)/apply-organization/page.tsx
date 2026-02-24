@@ -25,7 +25,11 @@ function ApplyOrganizationInner() {
 
     useEffect(() => {
         const p = searchParams.get("plan")
-        if (p) setPlan(p)
+        if (p) {
+            const normalized = p.toLowerCase().trim()
+            const allowed = ['basic', 'pro', 'enterprise']
+            setPlan(allowed.includes(normalized) ? normalized : 'basic')
+        }
     }, [searchParams])
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -34,10 +38,10 @@ function ApplyOrganizationInner() {
 
         try {
             const response = await authApi.applyOrganization({
-                organizationName,
-                subdomain,
-                adminName,
-                adminEmail,
+                organizationName: organizationName.trim(),
+                subdomain: subdomain.toLowerCase().trim(),
+                adminName: adminName.trim(),
+                adminEmail: adminEmail.toLowerCase().trim(),
                 selectedPlan: plan
             })
 
