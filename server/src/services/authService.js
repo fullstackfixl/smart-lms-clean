@@ -3,6 +3,7 @@ const jwtUtils = require('../utils/jwt');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { AuthenticationError, ValidationError, NotFoundError } = require('../core/errors');
+const emailService = require('./emailService');
 
 class AuthService {
   /**
@@ -107,6 +108,32 @@ class AuthService {
     });
     await application.save();
 
+    // Notify Platform Admin via email (simple notification)
+    try {
+      const adminNotifyEmail = process.env.SUPPORT_EMAIL || process.env.EMAIL_USER;
+      if (adminNotifyEmail) {
+        const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
+        const listLink = `${baseUrl}/platform/applications?status=pending`;
+        const subject = 'New Organization Application Submitted';
+        const text = `A new organization application has been submitted.\n\nOrganization: ${organizationName}\nSubdomain: ${subdomain}\nAdmin: ${adminName} <${adminEmail}>\nPlan: ${selectedPlan}\n\nReview pending applications:\n${listLink}`;
+        const html = `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color:#2563eb;margin-bottom:8px;">New Organization Application</h2>
+            <p><strong>Organization:</strong> ${organizationName}</p>
+            <p><strong>Subdomain:</strong> ${subdomain}</p>
+            <p><strong>Admin:</strong> ${adminName} &lt;${adminEmail}&gt;</p>
+            <p><strong>Plan:</strong> ${selectedPlan}</p>
+            <div style="margin:20px 0;">
+              <a href="${listLink}" style="background-color:#2563eb;color:white;padding:10px 18px;text-decoration:none;border-radius:6px;font-weight:bold;">Review Applications</a>
+            </div>
+          </div>
+        `;
+        await emailService.sendEmail(adminNotifyEmail, subject, text, html);
+      }
+    } catch (notifyErr) {
+      console.error('⚠️ Notify platform admin failed:', notifyErr.message);
+    }
+
     return application;
   }
 
@@ -175,6 +202,32 @@ class AuthService {
     // 4. Mark token as used
     approvalToken.used = true;
     await approvalToken.save();
+
+    // Notify Platform Admin that organization has been created
+    try {
+      const adminNotifyEmail = process.env.SUPPORT_EMAIL || process.env.EMAIL_USER;
+      if (adminNotifyEmail) {
+        const subject = 'Organization Created Successfully';
+        const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
+        const orgLink = `${baseUrl}/platform/organizations`;
+        const text = `A new organization has been created.\n\nOrganization: ${organization.name}\nSubdomain: ${organization.subdomain}\nAdmin: ${admin.name} <${admin.email}>\nPlan: ${organization.plan}\n\nManage organizations:\n${orgLink}`;
+        const html = `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+            <h2 style="color:#16a34a;margin-bottom:8px;">Organization Created</h2>
+            <p><strong>Organization:</strong> ${organization.name}</p>
+            <p><strong>Subdomain:</strong> ${organization.subdomain}</p>
+            <p><strong>Admin:</strong> ${admin.name} &lt;${admin.email}&gt;</p>
+            <p><strong>Plan:</strong> ${organization.plan}</p>
+            <div style="margin:20px 0;">
+              <a href="${orgLink}" style="background-color:#2563eb;color:white;padding:10px 18px;text-decoration:none;border-radius:6px;font-weight:bold;">View Organizations</a>
+            </div>
+          </div>
+        `;
+        await emailService.sendEmail(adminNotifyEmail, subject, text, html);
+      }
+    } catch (notifyErr) {
+      console.error('⚠️ Notify platform admin of creation failed:', notifyErr.message);
+    }
 
     // Generate login response
     return this.login(admin.email, password);

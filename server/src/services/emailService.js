@@ -2,110 +2,82 @@ const nodemailer = require('nodemailer');
 
 class EmailService {
   constructor() {
-    const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
-    const smtpSecure = (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
-    const emailUser = process.env.EMAIL_USER;
-    const emailPass = process.env.EMAIL_PASS;
-    const emailService = process.env.EMAIL_SERVICE || 'gmail';
+    this.transporter = null;
+    this.initTransport();
+  }
 
-    if (smtpHost && emailUser && emailPass) {
-      this.transporter = nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpSecure,
-        auth: {
-          user: emailUser,
-          pass: emailPass
-        }
-      });
-    } else {
-      // Prefer explicit Gmail SMTP if selected
-      if ((emailService || '').toLowerCase() === 'gmail' && emailUser && emailPass) {
+  async initTransport() {
+    try {
+      // Prefer explicit SMTP host/port if provided
+      if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
         this.transporter = nodemailer.createTransport({
-          host: 'smtp.gmail.com',
+          host: process.env.EMAIL_HOST,
+          port: parseInt(process.env.EMAIL_PORT || '587', 10),
+          secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for 587
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+          },
+          tls: {
+            rejectUnauthorized: false
+          }
+        });
+        console.log('📧 [EMAIL SERVICE] Using SMTP transport:', process.env.EMAIL_HOST);
+      } else if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        // Fallback: service-based (e.g., gmail). For gmail, prefer explicit SMTP for reliability.
+        if ((process.env.EMAIL_SERVICE || '').toLowerCase() === 'gmail') {
+          const port = parseInt(process.env.EMAIL_PORT || '465', 10);
+          const secure = port === 465 || process.env.EMAIL_SECURE === 'true';
+          this.transporter = nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port,
+            secure,
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS
+            }
+          });
+          console.log('📧 [EMAIL SERVICE] Using Gmail SMTP transport (smtp.gmail.com):', `port=${port} secure=${secure}`);
+        } else {
+          this.transporter = nodemailer.createTransport({
+            service: process.env.EMAIL_SERVICE || 'gmail',
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS
+            }
+          });
+          console.log('📧 [EMAIL SERVICE] Using service transport:', process.env.EMAIL_SERVICE || 'gmail');
+        }
+      } else {
+        // Development fallback: Ethereal test account
+        const testAccount = await nodemailer.createTestAccount();
+        this.transporter = nodemailer.createTransport({
+          host: 'smtp.ethereal.email',
           port: 587,
           secure: false,
           auth: {
-            user: emailUser,
-            pass: emailPass
+            user: testAccount.user,
+            pass: testAccount.pass
           }
         });
-      } else {
-        this.transporter = nodemailer.createTransport({
-          service: emailService,
-          auth: {
-            user: emailUser,
-            pass: emailPass
-          }
-        });
+        this.ethereal = true;
+        console.log('📧 [EMAIL SERVICE] Using Ethereal test transport:', testAccount.user);
       }
-    }
-  }
 
-  async ensureTransport() {
-    if (!this.transporter) return false;
-    try {
-      await this.transporter.verify();
-      return true;
-    } catch {
-      const fallbackService = process.env.EMAIL_SERVICE || 'gmail';
-      const emailUser = process.env.EMAIL_USER;
-      const emailPass = process.env.EMAIL_PASS;
-      try {
-        this.transporter = nodemailer.createTransport({
-          service: fallbackService,
-          auth: { user: emailUser, pass: emailPass }
-        });
+      // Verify transport
+      if (this.transporter) {
         await this.transporter.verify();
-        return true;
-      } catch {
-        return false;
+        console.log('✅ [EMAIL SERVICE] Transport verified and ready');
       }
-    }
-  }
-
-  async sendViaResend(to, subject, text, html) {
-    const apiKey = process.env.RESEND_API_KEY;
-    const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@example.com';
-    if (!apiKey) return false;
-    try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from,
-          to,
-          subject,
-          html: html || text
-        })
-      });
-      if (!res.ok) {
-        const body = await res.text();
-        console.error('❌ [EMAIL SERVICE] Resend error:', res.status, body);
-        return false;
-      }
-      console.log('✅ [EMAIL SERVICE] Resend email sent');
-      return true;
     } catch (err) {
-      console.error('❌ [EMAIL SERVICE] Resend send failed:', err);
-      return false;
+      console.error('❌ [EMAIL SERVICE] Transport initialization failed:', err);
     }
   }
 
   async sendEmail(to, subject, text, html) {
     try {
-      const ready = await this.ensureTransport();
-      if (!ready) {
-        console.error('❌ [EMAIL SERVICE] Transport not ready, trying Resend fallback');
-        const resendOk = await this.sendViaResend(to, subject, text, html);
-        return resendOk;
-      }
       const mailOptions = {
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@smartlms.local',
         to,
         subject,
         text,
@@ -114,22 +86,63 @@ class EmailService {
 
       const info = await this.transporter.sendMail(mailOptions);
       console.log('✅ [EMAIL SERVICE] Email sent:', info.messageId);
+      if (this.ethereal) {
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        if (previewUrl) {
+          console.log('🔗 [EMAIL SERVICE] Ethereal preview URL:', previewUrl);
+        }
+      }
       return true;
     } catch (error) {
       console.error('❌ [EMAIL SERVICE] Error sending email:', error);
-      // Attempt Resend fallback if SMTP failed mid-send
-      const resendOk = await this.sendViaResend(to, subject, text, html);
-      if (resendOk) return true;
+      // Automatic fallback: Try Ethereal and resend
+      try {
+        if (!this.ethereal) {
+          console.log('📧 [EMAIL SERVICE] Falling back to Ethereal test transport...');
+          const testAccount = await nodemailer.createTestAccount();
+          this.transporter = nodemailer.createTransport({
+            host: 'smtp.ethereal.email',
+            port: 587,
+            secure: false,
+            auth: {
+              user: testAccount.user,
+              pass: testAccount.pass
+            }
+          });
+          this.ethereal = true;
+          const info = await this.transporter.sendMail({
+            from: 'Smart LMS <no-reply@smartlms.test>',
+            to,
+            subject,
+            text,
+            html: html || text
+          });
+          console.log('✅ [EMAIL SERVICE] Fallback email sent:', info.messageId);
+          const previewUrl = nodemailer.getTestMessageUrl(info);
+          if (previewUrl) {
+            console.log('🔗 [EMAIL SERVICE] Ethereal preview URL:', previewUrl);
+          }
+          return true;
+        }
+      } catch (fallbackError) {
+        console.error('❌ [EMAIL SERVICE] Fallback email failed:', fallbackError);
+      }
+      // Final fallback to logging
+      console.log('-----------------------------------------');
+      console.log(`📧 [MOCK EMAIL] To: ${to}`);
+      console.log(`📧 [MOCK EMAIL] Subject: ${subject}`);
+      console.log(`📧 [MOCK EMAIL] Body: ${text}`);
+      console.log('-----------------------------------------');
       return false;
     }
   }
 
   async sendApprovalEmail(email, setupLink) {
-    const subject = 'Your Organization Application has been Approved!';
+    const subject = 'Complete Your Smart LMS Registration';
     const text = `Congratulations! Your application for Smart LMS has been approved.\n\nPlease complete your registration by setting your password here: ${setupLink}\n\nThis link will expire in 24 hours.`;
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; rounded: 8px;">
-        <h2 style="color: #2563eb;">Application Approved!</h2>
+        <h2 style="color: #2563eb;">Complete Your Smart LMS Registration</h2>
         <p>Congratulations! Your application for <strong>Smart LMS</strong> has been approved.</p>
         <p>Please click the button below to set your password and finalize your organization account:</p>
         <div style="text-align: center; margin: 30px 0;">

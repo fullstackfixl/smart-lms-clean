@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, Suspense } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { Loader2, ArrowLeft, CheckCircle2 } from "lucide-react"
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { authApi } from "@/lib/api"
 
-function ApplyOrganizationInner() {
+export default function ApplyOrganizationPage() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const [plan, setPlan] = useState("basic")
@@ -25,11 +25,7 @@ function ApplyOrganizationInner() {
 
     useEffect(() => {
         const p = searchParams.get("plan")
-        if (p) {
-            const normalized = p.toLowerCase().trim()
-            const allowed = ['basic', 'pro', 'enterprise']
-            setPlan(allowed.includes(normalized) ? normalized : 'basic')
-        }
+        if (p) setPlan(p)
     }, [searchParams])
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -38,10 +34,10 @@ function ApplyOrganizationInner() {
 
         try {
             const response = await authApi.applyOrganization({
-                organizationName: organizationName.trim(),
-                subdomain: subdomain.toLowerCase().trim(),
-                adminName: adminName.trim(),
-                adminEmail: adminEmail.toLowerCase().trim(),
+                organizationName,
+                subdomain,
+                adminName,
+                adminEmail,
                 selectedPlan: plan
             })
 
@@ -185,12 +181,4 @@ function ApplyOrganizationInner() {
             </motion.div>
         </div>
     )
-}
-
-export default function ApplyOrganizationPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen" />}>
-      <ApplyOrganizationInner />
-    </Suspense>
-  )
 }

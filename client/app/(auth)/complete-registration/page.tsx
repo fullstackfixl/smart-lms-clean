@@ -1,6 +1,6 @@
  "use client"
  
- import React, { useState, useEffect, Suspense } from "react"
+ import React, { useState, useEffect } from "react"
  import { useRouter, useSearchParams } from "next/navigation"
  import { motion } from "framer-motion"
  import { Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react"
@@ -10,7 +10,7 @@
  import { toast } from "sonner"
  import { authApi } from "@/lib/api"
  
-function CompleteRegistrationInner() {
+ export default function CompleteRegistrationPage() {
    const router = useRouter()
    const searchParams = useSearchParams()
    const [token, setToken] = useState<string>("")
@@ -31,7 +31,6 @@ function CompleteRegistrationInner() {
        toast.error("Invalid or missing registration token")
        return
      }
- 
      if (password.length < 8) {
        toast.error("Password must be at least 8 characters")
        return
@@ -78,8 +77,6 @@ function CompleteRegistrationInner() {
        </div>
      )
    }
- 
- 
  
    return (
      <div className="min-h-screen flex items-center justify-center p-4 bg-secondary/30">
@@ -138,13 +135,5 @@ function CompleteRegistrationInner() {
          </div>
        </motion.div>
      </div>
-   )
- }
- 
- export default function CompleteRegistrationPage() {
-   return (
-     <Suspense fallback={<div className="min-h-screen" />}>
-       <CompleteRegistrationInner />
-     </Suspense>
    )
  }

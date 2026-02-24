@@ -3,9 +3,6 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const app = express();
 
-// Trust proxy for secure cookies behind Render/Proxies
-app.set('trust proxy', 1);
-
 // CORS - allow Vercel frontend and any CLIENT_URL in env
 app.use(cors({
   origin: function (origin, callback) {
@@ -25,9 +22,7 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, Postman, curl, etc.)
     if (!origin) return callback(null, true);
 
-    // Allow exact matches, or *.vercel.app domains
-    const vercelMatch = /\.vercel\.app$/i.test(origin);
-    if (allowedOrigins.indexOf(origin) !== -1 || vercelMatch) {
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log('❌ [CORS] Blocked origin:', origin);

@@ -72,7 +72,19 @@ export default function PlatformApplicationsPage() {
         try {
             const response = await platformApi.approveApplication(token, id)
             if (response.success) {
-                toast.success("Application approved! Link sent to admin.")
+        const payload: any = response.data
+        const setupLink = payload?.setupLink || payload?.data?.setupLink
+        if (setupLink) {
+          try {
+            await navigator.clipboard.writeText(setupLink)
+            toast.success("Application approved! Link copied to clipboard and email sent.")
+          } catch {
+            toast.success("Application approved! Email sent. Link available in console.")
+            console.log("🔗 Setup link:", setupLink)
+          }
+        } else {
+          toast.success("Application approved! Link sent to admin.")
+        }
                 fetchApplications()
             } else {
                 toast.error(response.error || "Failed to approve application")
@@ -94,20 +106,6 @@ export default function PlatformApplicationsPage() {
             }
         } catch (error) {
             toast.error("Failed to reject application")
-        }
-    }
-
-    const handleSendEmail = async (id: string) => {
-        if (!token) return
-        try {
-            const response = await platformApi.sendApprovalEmail(token, id)
-            if (response.success) {
-                toast.success("Approval email sent to organization admin.")
-            } else {
-                toast.error(response.error || "Failed to send approval email")
-            }
-        } catch (error) {
-            toast.error("Failed to send approval email")
         }
     }
 
@@ -241,17 +239,6 @@ export default function PlatformApplicationsPage() {
                                                         <Badge className={status === 'approved' ? 'bg-green-500' : 'bg-red-500'}>
                                                             {status}
                                                         </Badge>
-                                                        {status === 'approved' && (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-10 px-6 rounded-xl font-bold"
-                                                                onClick={() => handleSendEmail(app._id)}
-                                                            >
-                                                                <Mail className="h-4 w-4 mr-1.5" />
-                                                                Send Email
-                                                            </Button>
-                                                        )}
                                                     </div>
                                                 )}
                                             </td>

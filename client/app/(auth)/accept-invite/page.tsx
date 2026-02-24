@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, Suspense } from "react"
+import React, { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react"
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
 
-function AcceptInviteInner() {
+export default function AcceptInvitePage() {
     const searchParams = useSearchParams()
     const token = searchParams.get("token")
     const [name, setName] = useState("")
@@ -141,12 +141,4 @@ function AcceptInviteInner() {
             </form>
         </motion.div>
     )
-}
-
-export default function AcceptInvitePage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen" />}>
-      <AcceptInviteInner />
-    </Suspense>
-  )
 }
