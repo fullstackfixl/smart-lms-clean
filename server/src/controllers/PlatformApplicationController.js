@@ -69,9 +69,12 @@ class PlatformApplicationController extends BaseController {
             // Send approval email with link (prefer CLIENT_URL, fallback to production domain)
             const baseUrl = process.env.CLIENT_URL || 'https://smartlms.com';
             const setupLink = `${baseUrl.replace(/\/$/, '')}/complete-registration?token=${token}`;
-            await emailService.sendApprovalEmail(application.admin_email, setupLink);
+            const emailSent = await emailService.sendApprovalEmail(application.admin_email, setupLink);
+            if (!emailSent) {
+                console.warn('⚠️ [PlatformApplication] Approval email failed to send. Check EMAIL_* env and SMTP connectivity.');
+            }
 
-            return res.success({ application, token, setupLink }, 'Application approved successfully');
+            return res.success({ application, token, setupLink, emailSent }, 'Application approved successfully');
         } catch (error) {
             console.error('Approve application error:', error);
             return res.error(error.message, 'Failed to approve application', 400);

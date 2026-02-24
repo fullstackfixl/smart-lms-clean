@@ -49,6 +49,27 @@ router.get('/applications', platformApplicationController.getApplications);
 router.put('/applications/:id/approve', platformApplicationController.approveApplication);
 router.put('/applications/:id/reject', platformApplicationController.rejectApplication);
 
+// --- Email Diagnostics ---
+router.get('/email/test', async (req, res) => {
+    try {
+        const emailService = require('../services/emailService');
+        const stats = emailService.getStats ? emailService.getStats() : { transporterReady: !!emailService.transporter };
+        const connection = await (emailService.testConnection ? emailService.testConnection() : Promise.resolve({ success: !!emailService.transporter }));
+        const to = req.query.to;
+        let testSend = null;
+        if (to) {
+            testSend = await emailService.sendEmail(
+                to.toString(),
+                'Smart LMS Email Test',
+                'If you received this, SMTP is configured correctly.',
+                '<p><strong>Smart LMS</strong> email configuration is working.</p>'
+            );
+        }
+        res.json({ success: true, data: { stats, connection, testSend } });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 // --- Platform Admins ---
 router.get('/admins', platformAdminsController.getAll.bind(platformAdminsController));
 router.post('/admins', platformAdminsController.create.bind(platformAdminsController));
