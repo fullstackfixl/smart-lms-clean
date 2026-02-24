@@ -20,13 +20,26 @@ class EmailService {
         }
       });
     } else {
-      this.transporter = nodemailer.createTransport({
-        service: emailService,
-        auth: {
-          user: emailUser,
-          pass: emailPass
-        }
-      });
+      // Prefer explicit Gmail SMTP if selected
+      if ((emailService || '').toLowerCase() === 'gmail' && emailUser && emailPass) {
+        this.transporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
+          auth: {
+            user: emailUser,
+            pass: emailPass
+          }
+        });
+      } else {
+        this.transporter = nodemailer.createTransport({
+          service: emailService,
+          auth: {
+            user: emailUser,
+            pass: emailPass
+          }
+        });
+      }
     }
   }
 

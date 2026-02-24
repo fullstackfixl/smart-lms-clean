@@ -97,6 +97,20 @@ export default function PlatformApplicationsPage() {
         }
     }
 
+    const handleSendEmail = async (id: string) => {
+        if (!token) return
+        try {
+            const response = await platformApi.sendApprovalEmail(token, id)
+            if (response.success) {
+                toast.success("Approval email sent to organization admin.")
+            } else {
+                toast.error(response.error || "Failed to send approval email")
+            }
+        } catch (error) {
+            toast.error("Failed to send approval email")
+        }
+    }
+
     return (
         <div className="p-8 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
@@ -227,6 +241,17 @@ export default function PlatformApplicationsPage() {
                                                         <Badge className={status === 'approved' ? 'bg-green-500' : 'bg-red-500'}>
                                                             {status}
                                                         </Badge>
+                                                        {status === 'approved' && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-10 px-6 rounded-xl font-bold"
+                                                                onClick={() => handleSendEmail(app._id)}
+                                                            >
+                                                                <Mail className="h-4 w-4 mr-1.5" />
+                                                                Send Email
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 )}
                                             </td>

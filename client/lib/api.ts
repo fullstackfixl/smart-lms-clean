@@ -479,6 +479,8 @@ export const platformApi = {
     apiRequest(`/platform/applications/${id}/approve`, { method: "PUT", token }),
   rejectApplication: (token: string, id: string) =>
     apiRequest(`/platform/applications/${id}/reject`, { method: "PUT", token }),
+  sendApprovalEmail: (token: string, id: string) =>
+    apiRequest(`/platform/applications/${id}/send-approval-email`, { method: "POST", token }),
 }
 
 // Instructor APIs

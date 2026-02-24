@@ -36,6 +36,46 @@ class PlatformApplicationController extends BaseController {
     }
 
     /**
+     * Send or Resend approval email with password setup link
+     * Requires application to exist; allowed for both pending and approved
+     */
+    async sendApprovalEmail(req, res) {
+        try {
+            const { id } = req.params;
+            const application = await OrganizationApplication.findById(id);
+            if (!application) {
+                return res.error('Application not found', 'Not found', 404);
+            }
+            if (application.status === 'rejected') {
+                return res.error('Application rejected', 'Validation Error', 400);
+            }
+            // Generate fresh token
+            const token = crypto.randomBytes(32).toString('hex');
+            const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const approvalToken = new OrganizationApprovalToken({
+                application_id: application._id,
+                token,
+                expires_at
+            });
+            await approvalToken.save();
+            // If still pending, mark approved
+            if (application.status === 'pending') {
+                application.status = 'approved';
+                await application.save();
+            }
+            const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+            const setupLink = `${clientUrl}/complete-registration?token=${token}`;
+            const sent = await emailService.sendApprovalEmail(application.admin_email, setupLink);
+            if (!sent) {
+                return res.error('Failed to send approval email', 'Email delivery failed', 502);
+            }
+            return res.success({ application, token, setupLink }, 'Approval email sent');
+        } catch (error) {
+            console.error('Send approval email error:', error);
+            return res.error(error.message, 'Failed to send approval email', 400);
+        }
+    }
+    /**
      * Approve an application
      */
     async approveApplication(req, res) {

@@ -48,6 +48,7 @@ router.delete('/organizations/:id', platformOrganizationController.deleteOrganiz
 router.get('/applications', platformApplicationController.getApplications);
 router.put('/applications/:id/approve', platformApplicationController.approveApplication);
 router.put('/applications/:id/reject', platformApplicationController.rejectApplication);
+router.post('/applications/:id/send-approval-email', platformApplicationController.sendApprovalEmail);
 
 // --- Platform Admins ---
 router.get('/admins', platformAdminsController.getAll.bind(platformAdminsController));
