@@ -47,7 +47,8 @@ class PlatformApplicationController extends BaseController {
                 return res.error('Application not found', 'Not found', 404);
             }
 
-            if (application.status !== 'pending') {
+            // Allow re-approval email if already approved
+            if (application.status === 'rejected') {
                 return res.error('Application already processed', 'Validation Error', 400);
             }
 
@@ -62,9 +63,11 @@ class PlatformApplicationController extends BaseController {
             });
             await approvalToken.save();
 
-            // Update application status
-            application.status = 'approved';
-            await application.save();
+            // Update application status if still pending
+            if (application.status === 'pending') {
+                application.status = 'approved';
+                await application.save();
+            }
 
             // Send approval email with link
             const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
