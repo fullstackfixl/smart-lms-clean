@@ -3,8 +3,8 @@ const nodemailer = require('nodemailer');
 class EmailService {
   constructor() {
     const smtpHost = process.env.SMTP_HOST;
-    const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
-    const smtpSecure = (process.env.SMTP_SECURE || 'true').toLowerCase() === 'true';
+    const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+    const smtpSecure = (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
     const emailUser = process.env.EMAIL_USER;
     const emailPass = process.env.EMAIL_PASS;
     const emailService = process.env.EMAIL_SERVICE || 'gmail';
@@ -30,8 +30,35 @@ class EmailService {
     }
   }
 
+  async ensureTransport() {
+    if (!this.transporter) return false;
+    try {
+      await this.transporter.verify();
+      return true;
+    } catch {
+      const fallbackService = process.env.EMAIL_SERVICE || 'gmail';
+      const emailUser = process.env.EMAIL_USER;
+      const emailPass = process.env.EMAIL_PASS;
+      try {
+        this.transporter = nodemailer.createTransport({
+          service: fallbackService,
+          auth: { user: emailUser, pass: emailPass }
+        });
+        await this.transporter.verify();
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  }
+
   async sendEmail(to, subject, text, html) {
     try {
+      const ready = await this.ensureTransport();
+      if (!ready) {
+        console.error('❌ [EMAIL SERVICE] Transport not ready');
+        return false;
+      }
       const mailOptions = {
         from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
         to,
@@ -45,12 +72,6 @@ class EmailService {
       return true;
     } catch (error) {
       console.error('❌ [EMAIL SERVICE] Error sending email:', error);
-      // Fallback to logging in development
-      console.log('-----------------------------------------');
-      console.log(`📧 [MOCK EMAIL] To: ${to}`);
-      console.log(`📧 [MOCK EMAIL] Subject: ${subject}`);
-      console.log(`📧 [MOCK EMAIL] Body: ${text}`);
-      console.log('-----------------------------------------');
       return false;
     }
   }
