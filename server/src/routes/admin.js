@@ -209,7 +209,7 @@ router.get('/dashboard/activities', async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .limit(limit)
-      .populate('student_id', 'profile.fullName email')
+      .populate('student_id', 'name email')
       .populate('course_id', 'title');
 
     // Recent fee payments
@@ -219,7 +219,7 @@ router.get('/dashboard/activities', async (req, res) => {
     })
       .sort({ paidAt: -1 })
       .limit(limit)
-      .populate('student_id', 'profile.fullName email');
+      .populate('student_id', 'name email');
 
     res.success({
       recentEnrollments,

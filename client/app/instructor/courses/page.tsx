@@ -3,14 +3,15 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { 
+import {
   Plus, Search, Filter, BookOpen, Users, Eye, Edit, Trash2,
   Loader2, MoreVertical, CheckCircle, XCircle, Clock
 } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { API_URL } from "@/lib/config"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,14 +56,13 @@ export default function InstructorCoursesPage() {
     setLoading(true)
     try {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-      
+
       if (!token) {
         toast.error('Please login first')
         router.push('/login')
         return
       }
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
       const params = new URLSearchParams({
         page: page.toString(),
@@ -107,8 +107,7 @@ export default function InstructorCoursesPage() {
 
     try {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-      
+
       const response = await fetch(
         `${API_URL}/instructor/courses/${courseId}`,
         {
@@ -137,8 +136,7 @@ export default function InstructorCoursesPage() {
   const handlePublishCourse = async (courseId: string) => {
     try {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-      
+
       const response = await fetch(
         `${API_URL}/instructor/courses/${courseId}/publish`,
         {

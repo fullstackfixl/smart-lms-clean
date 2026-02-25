@@ -10,10 +10,17 @@ const API_BASE_URL = API_URL;
 // Helper to make authenticated requests
 async function apiRequest(
   endpoint: string,
-  options: RequestInit = {}
+  options: any = {}
 ): Promise<any> {
-  const token = localStorage.getItem('token');
-  
+  // Prefer explicit token passed in, else use 'instatute_token' from storage, else 'token'
+  let token = options.token;
+  if (!token && typeof window !== 'undefined') {
+    token =
+      window.sessionStorage.getItem('instatute_token') ||
+      window.localStorage.getItem('instatute_token') ||
+      window.localStorage.getItem('token') ||
+      undefined;
+  }
   if (!token) {
     throw new Error('No authentication token found');
   }
@@ -24,9 +31,17 @@ async function apiRequest(
     ...(options.headers as Record<string, string> || {})
   };
 
+  const body = options.body && typeof options.body === 'object'
+    ? JSON.stringify(options.body)
+    : options.body;
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
+    // Ensure we don't leak token or unstringified body in options
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ...(options.token ? { token: undefined } : {}),
     headers,
+    body: body as any,
     credentials: 'include'
   });
 
@@ -65,9 +80,34 @@ export async function getUsers(params: GetUsersParams = {}) {
   if (params.page) queryParams.append('page', params.page.toString());
   if (params.limit) queryParams.append('limit', params.limit.toString());
   if (params.status) queryParams.append('status', params.status);
-  
+
   const query = queryParams.toString();
   return apiRequest(`/api/admin/users${query ? `?${query}` : ''}`);
+}
+
+// Org-admin user creation (invite flow)
+export async function createInstructor(token: string, data: { name: string; email: string }) {
+  return apiRequest(`/api/org/users/create-instructor`, {
+    method: 'POST',
+    body: data,
+    token
+  });
+}
+
+export async function createStudent(token: string, data: { name: string; email: string; admissionNumber?: string }) {
+  return apiRequest(`/api/org/users/create-student`, {
+    method: 'POST',
+    body: data,
+    token
+  });
+}
+
+export async function listInstructors(token: string) {
+  return apiRequest(`/api/org/users/instructors`, { token });
+}
+
+export async function listStudents(token: string) {
+  return apiRequest(`/api/org/users/students`, { token });
 }
 
 export async function getUserById(userId: string) {
@@ -137,7 +177,7 @@ export async function getCourses(params: GetCoursesParams = {}) {
   if (params.status) queryParams.append('status', params.status);
   if (params.page) queryParams.append('page', params.page.toString());
   if (params.limit) queryParams.append('limit', params.limit.toString());
-  
+
   const query = queryParams.toString();
   return apiRequest(`/api/admin/courses${query ? `?${query}` : ''}`);
 }
@@ -189,7 +229,7 @@ export async function getGrades(params: GetGradesParams = {}) {
   if (params.studentId) queryParams.append('studentId', params.studentId);
   if (params.minGrade) queryParams.append('minGrade', params.minGrade.toString());
   if (params.maxGrade) queryParams.append('maxGrade', params.maxGrade.toString());
-  
+
   const query = queryParams.toString();
   return apiRequest(`/api/admin/grades${query ? `?${query}` : ''}`);
 }
@@ -238,7 +278,7 @@ export async function getFeeHistory(params: GetFeeHistoryParams = {}) {
   if (params.startDate) queryParams.append('startDate', params.startDate);
   if (params.endDate) queryParams.append('endDate', params.endDate);
   if (params.status) queryParams.append('status', params.status);
-  
+
   const query = queryParams.toString();
   return apiRequest(`/api/admin/fees/history${query ? `?${query}` : ''}`);
 }
@@ -280,7 +320,7 @@ export async function getEvents(params: GetEventsParams = {}) {
   if (params.type) queryParams.append('type', params.type);
   if (params.startDate) queryParams.append('startDate', params.startDate);
   if (params.endDate) queryParams.append('endDate', params.endDate);
-  
+
   const query = queryParams.toString();
   return apiRequest(`/api/admin/events${query ? `?${query}` : ''}`);
 }
@@ -317,7 +357,7 @@ export async function getRevenueAnalytics(params: GetRevenueAnalyticsParams = {}
   const queryParams = new URLSearchParams();
   if (params.startDate) queryParams.append('startDate', params.startDate);
   if (params.endDate) queryParams.append('endDate', params.endDate);
-  
+
   const query = queryParams.toString();
   return apiRequest(`/api/admin/analytics/revenue${query ? `?${query}` : ''}`);
 }

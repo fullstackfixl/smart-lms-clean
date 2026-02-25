@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 
-const API = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "")
+import { API_URL as API } from "@/lib/config"
 const getToken = () =>
   typeof window !== "undefined"
     ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -61,7 +61,7 @@ export default function InstructorLiveClassesPage() {
   const fetchClasses = useCallback(async () => {
     setLoadingList(true)
     try {
-      const r = await fetch(`${API()}/instructor/live-classes`, {
+      const r = await fetch(`${API}/instructor/live-classes`, {
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: "include"
       })
@@ -73,7 +73,7 @@ export default function InstructorLiveClassesPage() {
 
   const fetchCourses = useCallback(async () => {
     try {
-      const r = await fetch(`${API()}/instructor/courses`, {
+      const r = await fetch(`${API}/instructor/courses`, {
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: "include"
       })
@@ -104,7 +104,7 @@ export default function InstructorLiveClassesPage() {
     }
     setSubmitting(true)
     try {
-      const r = await fetch(`${API()}/instructor/live-classes`, {
+      const r = await fetch(`${API}/instructor/live-classes`, {
         method: "POST",
         headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
         credentials: "include",
@@ -133,7 +133,7 @@ export default function InstructorLiveClassesPage() {
   const handleCancel = async (id: string) => {
     if (!confirm("Cancel this live class?")) return
     try {
-      const r = await fetch(`${API()}/instructor/live-classes/${id}`, {
+      const r = await fetch(`${API}/instructor/live-classes/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: "include"

@@ -9,7 +9,7 @@ const inviteSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['instructor', 'support_staff', 'org_admin'],
+        enum: ['instructor', 'support_staff', 'org_admin', 'student'],
         required: true
     },
     organization_id: {

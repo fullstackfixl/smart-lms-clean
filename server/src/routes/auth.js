@@ -35,6 +35,19 @@ router.post('/register/resend-otp', authController.resendRegistrationOtp);
 // Accept Invite
 router.post('/accept-invite', authController.acceptInvite);
 
+// Password setup (alias using invite token)
+router.post('/set-password', async (req, res) => {
+  try {
+    const { token, name, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ success: false, message: 'Token and password are required' });
+    }
+    const result = await require('../services/authService').acceptInvite({ token, name: name || 'User', password });
+    return res.status(200).json({ success: true, data: result, message: 'Password set successfully' });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ success: false, message: error.message });
+  }
+});
 // Logout
 router.post('/logout', authMiddleware, authController.logout);
 

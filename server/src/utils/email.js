@@ -8,15 +8,25 @@ const emailService = require('../services/emailService');
  * Send email using the new email service
  * Maintains backward compatibility with old sendEmail API
  */
-const sendEmail = async (options) => {
-  // Handle old API format: sendEmail(to, subject, html)
-  if (typeof options === 'string') {
-    const [to, subject, html] = arguments;
-    return await emailService.sendEmail({ to, subject, html });
+const sendEmail = async (to, subject, html, text) => {
+  try {
+    // If first argument is an object, assume it's the new options format
+    if (to && typeof to === 'object' && !Array.isArray(to)) {
+      const options = to;
+      return await emailService.sendEmail(
+        options.to,
+        options.subject,
+        options.text || '',
+        options.html || options.text
+      );
+    }
+
+    // Fallback to positional arguments
+    return await emailService.sendEmail(to, subject, text || '', html || text);
+  } catch (error) {
+    console.error('❌ [Email Utility Error]:', error.message);
+    throw error;
   }
-  
-  // Handle new API format: sendEmail({ to, subject, html, text })
-  return await emailService.sendEmail(options);
 };
 
 /**

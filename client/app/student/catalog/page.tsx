@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+import { API_URL } from "@/lib/config"
 import { toast } from "sonner"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -131,7 +131,7 @@ export default function StudentCatalogPage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 className="pl-12 h-14 text-base rounded-2xl border-gray-200 shadow-sm focus:ring-2 focus:ring-blue-500/20"
               />
-              <Button 
+              <Button
                 onClick={handleSearch}
                 className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-6 bg-blue-600 hover:bg-blue-700 rounded-xl"
               >

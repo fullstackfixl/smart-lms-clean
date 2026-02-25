@@ -1,11 +1,11 @@
 "use client"
+import { API_URL } from "@/lib/config"
 
 import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Star, Users, BookOpen, ArrowRight, Tag } from "lucide-react"
 import Link from "next/link"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
 interface Course {
   _id: string

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
+import { API_URL } from "@/lib/config"
 
 export default function StudentRegisterPage() {
   const [name, setName] = useState("")
@@ -34,7 +35,7 @@ export default function StudentRegisterPage() {
 
       setValidatingOrg(true)
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/validate-organization`, {
+        const response = await fetch(`${API_URL}/auth/validate-organization`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ organizationCode: organizationCode.trim() })
@@ -96,7 +97,7 @@ export default function StudentRegisterPage() {
     setLoading(true)
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register/student`, {
+      const response = await fetch(`${API_URL}/auth/register/student`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -117,14 +118,14 @@ export default function StudentRegisterPage() {
         }
 
         toast.success("Registration successful! Redirecting...")
-        
+
         // Redirect to student dashboard
         setTimeout(() => {
           router.push('/student/dashboard')
         }, 1000)
       } else {
         const errorMsg = data.message || data.error || "Registration failed"
-        
+
         if (errorMsg.toLowerCase().includes("already registered")) {
           toast.error("Email already registered. Redirecting to login...")
           setTimeout(() => {
@@ -217,7 +218,7 @@ export default function StudentRegisterPage() {
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
-          
+
           {password.length > 0 && (
             <div className="space-y-1">
               <div className="flex gap-1 h-1">
@@ -252,7 +253,7 @@ export default function StudentRegisterPage() {
               ) : null}
             </div>
           </div>
-          
+
           {organizationName && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
@@ -261,7 +262,7 @@ export default function StudentRegisterPage() {
               </p>
             </div>
           )}
-          
+
           {!organizationName && organizationCode.length >= 6 && !validatingOrg && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
               <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
@@ -270,15 +271,15 @@ export default function StudentRegisterPage() {
               </p>
             </div>
           )}
-          
+
           <p className="text-xs text-muted-foreground">
             Get this code from your organization administrator
           </p>
         </div>
 
-        <Button 
-          type="submit" 
-          disabled={loading || !orgValidated} 
+        <Button
+          type="submit"
+          disabled={loading || !orgValidated}
           className="h-12 text-base font-medium mt-2"
         >
           {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}

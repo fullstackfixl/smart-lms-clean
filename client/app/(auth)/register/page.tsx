@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { toast } from "sonner"
+import { API_URL } from "@/lib/config"
 
 export default function RegisterPage() {
   const [step, setStep] = useState<"details" | "otp">("details")
@@ -49,7 +50,7 @@ export default function RegisterPage() {
     const t = setTimeout(async () => {
       try {
         setLoading(true)
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/student/validate-organization`, {
+        const res = await fetch(`${API_URL}/api/student/validate-organization`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -98,7 +99,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/student/send-verification`, {
+      const res = await fetch(`${API_URL}/api/student/send-verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -132,7 +133,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/student/complete-registration`, {
+      const res = await fetch(`${API_URL}/api/student/complete-registration`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -176,7 +177,7 @@ export default function RegisterPage() {
 
     try {
       setLoading(true)
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/student/send-verification`, {
+      const res = await fetch(`${API_URL}/api/student/send-verification`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

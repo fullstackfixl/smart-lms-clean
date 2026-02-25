@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { 
+import {
   BookOpen, Users, Video, Calendar, TrendingUp, Clock,
   FileText, Award, Loader2, Plus, Eye
 } from "lucide-react"
@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { API_URL } from "@/lib/config"
 
 interface DashboardData {
   totalCourses: number
@@ -45,7 +46,6 @@ export default function InstructorDashboardPage() {
       }
 
       // Use environment variable for API URL
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
       const response = await fetch(
         `${API_URL}/instructor/dashboard/overview`,
         {
@@ -196,8 +196,8 @@ export default function InstructorDashboardPage() {
                   <Calendar className="h-5 w-5" />
                   Upcoming Live Classes
                 </CardTitle>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => router.push('/instructor/live-classes')}
                 >

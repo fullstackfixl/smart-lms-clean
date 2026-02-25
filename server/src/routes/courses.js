@@ -213,7 +213,7 @@ router.get('/student', authMiddleware, requireRole(['student']), async (req, res
       isActive: true
     })
       .populate('instructor_id', 'name')
-      .select('_id title description instructor_id');
+      .select('_id title description instructor_id thumbnail');
 
     const results = [];
     for (const course of courses) {
@@ -550,11 +550,16 @@ router.get('/my-courses', authMiddleware, requireRole(['student']), async (req, 
       .sort({ enrolledAt: -1 });
 
     const courses = enrollments.map(e => ({
-      _id: e.course_id?._id,
-      title: e.course_id?.title,
-      description: e.course_id?.description,
-      instructor: { name: e.course_id?.instructor_id?.name || '' },
-      progress: e.progress?.completionPercentage || 0
+      _id: e._id,
+      course: {
+        _id: e.course_id?._id,
+        title: e.course_id?.title,
+        description: e.course_id?.description,
+        thumbnail: e.course_id?.thumbnail,
+        instructor: { name: e.course_id?.instructor_id?.name || '' }
+      },
+      progress: e.progress?.completionPercentage || 0,
+      enrolledAt: e.enrolledAt
     }));
 
     res.success({ courses }, 'My courses retrieved successfully');

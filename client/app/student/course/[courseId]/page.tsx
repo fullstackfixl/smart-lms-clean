@@ -26,8 +26,9 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion"
 import AIChatSidebar from "@/components/student/AIChatSidebar"
+import { useSearchParams } from "next/navigation"
+import { API_URL } from "@/lib/config"
 
-const API = () => (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -35,6 +36,8 @@ const getToken = () =>
 
 export default function CoursePlayerPage({ params }: { params: Promise<{ courseId: string }> }) {
     const { courseId } = use(params)
+    const searchParams = useSearchParams()
+    const lessonIdParam = searchParams.get("lessonId")
     const [course, setCourse] = useState<any>(null)
     const [sections, setSections] = useState<any[]>([])
     const [currentLesson, setCurrentLesson] = useState<any>(null)
@@ -48,7 +51,7 @@ export default function CoursePlayerPage({ params }: { params: Promise<{ courseI
     useEffect(() => {
         const fetchDetail = async () => {
             try {
-                const r = await fetch(`${API()}/student/course/${courseId}`, {
+                const r = await fetch(`${API_URL}/student/course/${courseId}`, {
                     headers: { Authorization: `Bearer ${getToken()}` },
                     credentials: "include"
                 })
@@ -57,11 +60,21 @@ export default function CoursePlayerPage({ params }: { params: Promise<{ courseI
                     setCourse(data.data.course)
                     setSections(data.data.sections)
 
-                    // Auto-select first lesson or last accessed
+                    // Auto-select priority: 1. URL param, 2. Last accessed, 3. First lesson
                     const lastAccessed = data.data.enrollment?.progress?.lastAccessedLesson
                     let lessonToSelect = null
 
-                    if (lastAccessed) {
+                    if (lessonIdParam) {
+                        for (const s of data.data.sections) {
+                            const l = s.lessons.find((ll: any) => ll._id === lessonIdParam)
+                            if (l) {
+                                lessonToSelect = l
+                                break
+                            }
+                        }
+                    }
+
+                    if (!lessonToSelect && lastAccessed) {
                         for (const s of data.data.sections) {
                             const l = s.lessons.find((ll: any) => ll._id === lastAccessed)
                             if (l) {
@@ -90,7 +103,7 @@ export default function CoursePlayerPage({ params }: { params: Promise<{ courseI
         if (!currentLesson || completing) return
         setCompleting(true)
         try {
-            const r = await fetch(`${API()}/student/complete-lesson`, {
+            const r = await fetch(`${API_URL}/student/complete-lesson`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

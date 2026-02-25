@@ -53,12 +53,11 @@ export default function InstructorNotificationsPage() {
       const params = new URLSearchParams({
         limit: '50'
       })
-      
+
       if (statusFilter !== 'all') {
         params.append('status', statusFilter)
       }
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:5000';
       const response = await fetch(`${API_URL}/instructor/notifications?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -85,7 +84,6 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
       const response = await fetch(`${API_URL}/instructor/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
@@ -108,7 +106,6 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
       const response = await fetch(`${API_URL}/instructor/notifications/read-all`, {
         method: 'PATCH',
         headers: {
@@ -131,7 +128,6 @@ export default function InstructorNotificationsPage() {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
       if (!token) return
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
       const response = await fetch(`${API_URL}/instructor/notifications/${notificationId}`, {
         method: 'DELETE',
         headers: {
@@ -267,7 +263,7 @@ export default function InstructorNotificationsPage() {
                         {notification.message}
                       </p>
                     </div>
-                    
+
                     {/* Priority Badge */}
                     {getPriorityBadge(notification.priority)}
                   </div>

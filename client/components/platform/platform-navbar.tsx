@@ -4,15 +4,20 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, Bell, ChevronDown, Settings, LogOut } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export function PlatformNavbar() {
   const router = useRouter()
+  const { user, logout } = useAuth()
   const [profileOpen, setProfileOpen] = useState(false)
 
   const handleLogout = () => {
-    // Clear auth and redirect
-    router.push("/login")
+    logout()
   }
+
+  const initials = (user as any)?.name
+    ? (user as any).name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "PA"
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50">
@@ -50,7 +55,7 @@ export function PlatformNavbar() {
               className="flex items-center gap-2 px-3 py-2 hover:bg-slate-800/50 rounded-xl transition-all"
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
-                PA
+                {initials}
               </div>
               <ChevronDown className="w-4 h-4 text-slate-400" />
             </motion.button>
@@ -72,8 +77,8 @@ export function PlatformNavbar() {
                     className="absolute right-0 mt-2 w-64 bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-xl shadow-xl overflow-hidden z-50"
                   >
                     <div className="p-4 border-b border-slate-800/50">
-                      <p className="text-sm font-medium text-slate-200">Platform Admin</p>
-                      <p className="text-xs text-slate-500 mt-0.5">platform@admin.com</p>
+                      <p className="text-sm font-medium text-slate-200">{user?.name || (user as any)?.full_name || "Platform Admin"}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{user?.email || "platform@admin.com"}</p>
                     </div>
                     <div className="p-2">
                       <button

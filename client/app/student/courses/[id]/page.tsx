@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { toast } from "sonner"
+import { API_URL } from "@/lib/config"
 
 interface Lesson {
   _id: string
@@ -84,7 +85,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/student/courses/${courseId}`,
+        `${API_URL}/student/course/${courseId}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -124,7 +125,7 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/student/enroll/${courseId}`,
+        `${API_URL}/api/courses/enroll/${courseId}`,
         {
           method: 'POST',
           headers: {
@@ -236,7 +237,11 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                         </div>
                         <Progress value={progress?.completionPercentage || 0} />
                       </div>
-                      <Button className="w-full" size="lg">
+                      <Button
+                        className="w-full"
+                        size="lg"
+                        onClick={() => router.push(`/student/course/${courseId}`)}
+                      >
                         <PlayCircle className="h-5 w-5 mr-2" />
                         Continue Learning
                       </Button>
@@ -292,7 +297,8 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                         return (
                           <div
                             key={lesson._id}
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                            className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                            onClick={() => router.push(`/student/course/${courseId}?lessonId=${lesson._id}`)}
                           >
                             <div className="flex items-center gap-3">
                               {isCompleted ? (

@@ -24,13 +24,7 @@ interface AIChatSidebarProps {
     onClose: () => void
 }
 
-const API = () => {
-    const url = (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
-    if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-        console.log("ℹ️ [AI Tutor] Using API URL:", url);
-    }
-    return url;
-}
+import { API_URL } from "@/lib/config"
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -50,7 +44,7 @@ export default function AIChatSidebar({ lessonId, lessonTitle, isOpen, onClose }
         const fetchHistory = async () => {
             setFetching(true)
             try {
-                const r = await fetch(`${API()}/api/ai/lesson-chat/${lessonId}`, {
+                const r = await fetch(`${API_URL}/api/ai/lesson-chat/${lessonId}`, {
                     headers: { Authorization: `Bearer ${getToken()}` },
                     credentials: "include"
                 })
@@ -87,7 +81,7 @@ export default function AIChatSidebar({ lessonId, lessonTitle, isOpen, onClose }
         setLoading(true)
 
         try {
-            const r = await fetch(`${API()}/api/ai/lesson-chat`, {
+            const r = await fetch(`${API_URL}/api/ai/lesson-chat`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

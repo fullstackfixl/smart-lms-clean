@@ -15,11 +15,16 @@ try { socketService = require('../services/socketService'); } catch (_) { }
 // ─────────────────────────────────────────────────────────────────────────────
 async function notifyOrgStudents(liveClass, instructor, course) {
     try {
-        const students = await User.find({
+        const query = {
             organization_id: liveClass.organization_id,
             role: 'student',
             isActive: { $ne: false }
-        }).select('name email');
+        };
+
+        // If liveClass or instructor has organization_code, we can use it for double validation
+        // but organization_id is the primary reliable link.
+
+        const students = await User.find(query).select('name email organization_code');
 
         if (!students.length) return;
 
@@ -63,13 +68,18 @@ async function notifyOrgStudents(liveClass, instructor, course) {
     `;
 
         // Send emails asynchronously — do NOT await, failures are logged only
+        console.log(`[LiveClass] Attempting to notify ${students.length} students for class: ${liveClass.title}`);
         const emailPromises = students.map(s =>
             sendEmail({ to: s.email, subject: `📹 New Live Class: ${liveClass.title}`, html: emailHtml(s.name) })
-                .catch(err => console.error(`[LiveClass] Email failed for ${s.email}:`, err.message))
+                .catch(err => {
+                    console.error(`❌ [LiveClass] Email failed for ${s.email}:`, err.message);
+                    return { success: false, email: s.email };
+                })
         );
-        Promise.all(emailPromises).then(() =>
-            console.log(`[LiveClass] Emails dispatched to ${students.length} students`)
-        );
+        Promise.all(emailPromises).then((results) => {
+            const successCount = results.filter(r => r !== undefined && r.success !== false).length;
+            console.log(`✅ [LiveClass] Emails dispatched: ${successCount} successful, ${students.length - successCount} failed`);
+        });
 
         // Socket broadcast to org room
         if (socketService && socketService.io) {

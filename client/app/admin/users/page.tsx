@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Users, Plus, Search, Edit, Trash2, UserCheck, UserX } from "lucide-react"
 import { adminApi } from "@/lib/api"
+import * as orgUsersApi from "@/lib/services/orgAdminApi"
 import { toast } from "sonner"
 
 export default function UserManagementPage() {
@@ -24,10 +25,9 @@ export default function UserManagementPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [newUser, setNewUser] = useState({
     email: "",
-    password: "",
     fullName: "",
-    role: "student",
-    phone: ""
+    role: "instructor",
+    admissionNumber: ""
   })
 
   useEffect(() => {
@@ -47,14 +47,18 @@ export default function UserManagementPage() {
     
     setLoadingUsers(true)
     try {
-      const params = new URLSearchParams()
-      if (roleFilter !== 'all') params.append('role', roleFilter)
-      if (statusFilter !== 'all') params.append('status', statusFilter)
-      if (searchQuery) params.append('search', searchQuery)
-
-      const res = await adminApi.listUsers(token, params.toString())
-      if (res.success && res.data) {
-        setUsers((res.data as any).users || [])
+      if (roleFilter === 'instructor') {
+        const res = await orgUsersApi.listInstructors(token!)
+        if ((res as any).success) setUsers(((res as any).data as any).users || [])
+      } else if (roleFilter === 'student') {
+        const res = await orgUsersApi.listStudents(token!)
+        if ((res as any).success) setUsers(((res as any).data as any).users || [])
+      } else {
+        const params = new URLSearchParams()
+        if (statusFilter !== 'all') params.append('status', statusFilter)
+        if (searchQuery) params.append('search', searchQuery)
+        const res = await adminApi.listUsers(token, params.toString())
+        if (res.success && res.data) setUsers((res.data as any).users || [])
       }
     } catch (error) {
       console.error('Failed to fetch users:', error)
@@ -67,23 +71,34 @@ export default function UserManagementPage() {
   const handleCreateUser = async () => {
     if (!token) return
     
-    if (!newUser.email || !newUser.password || !newUser.fullName || !newUser.role) {
+    if (!newUser.email || !newUser.fullName || !newUser.role) {
       toast.error('Please fill all required fields')
       return
     }
 
     try {
-      const res = await adminApi.createUser(token, newUser)
-      if (res.success) {
-        toast.success('User created successfully')
-        setIsCreateDialogOpen(false)
-        setNewUser({ email: "", password: "", fullName: "", role: "student", phone: "" })
-        fetchUsers()
+      let res
+      if (newUser.role === 'instructor') {
+        res = await orgUsersApi.createInstructor(token!, { name: newUser.fullName, email: newUser.email })
       } else {
-        toast.error(res.error || 'Failed to create user')
+        res = await orgUsersApi.createStudent(token!, { name: newUser.fullName, email: newUser.email, admissionNumber: newUser.admissionNumber })
+      }
+      if ((res as any).success) {
+        toast.success('Invitation email sent')
+        setIsCreateDialogOpen(false)
+        setNewUser({ email: "", fullName: "", role: "instructor", admissionNumber: "" })
+        if (newUser.role === 'instructor') {
+          const list = await orgUsersApi.listInstructors(token!)
+          if ((list as any).success) setUsers(((list as any).data as any).users || [])
+        } else {
+          const list = await orgUsersApi.listStudents(token!)
+          if ((list as any).success) setUsers(((list as any).data as any).users || [])
+        }
+      } else {
+        toast.error((res as any).error || 'Failed to send invitation')
       }
     } catch (error) {
-      toast.error('Failed to create user')
+      toast.error('Failed to send invitation')
     }
   }
 
@@ -160,35 +175,27 @@ export default function UserManagementPage() {
                 />
               </div>
               <div>
-                <Label>Password *</Label>
-                <Input
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  placeholder="Min 8 characters"
-                />
-              </div>
-              <div>
                 <Label>Role *</Label>
                 <Select value={newUser.role} onValueChange={(val) => setNewUser({ ...newUser, role: val })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
                     <SelectItem value="instructor">Instructor</SelectItem>
-                    <SelectItem value="parent">Parent</SelectItem>
+                    <SelectItem value="student">Student</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Phone</Label>
-                <Input
-                  value={newUser.phone}
-                  onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
-                  placeholder="+1234567890"
-                />
-              </div>
+              {newUser.role === 'student' && (
+                <div>
+                  <Label>Admission Number</Label>
+                  <Input
+                    value={newUser.admissionNumber}
+                    onChange={(e) => setNewUser({ ...newUser, admissionNumber: e.target.value })}
+                    placeholder="Optional"
+                  />
+                </div>
+              )}
               <Button onClick={handleCreateUser} className="w-full">Create User</Button>
             </div>
           </DialogContent>
@@ -221,7 +228,6 @@ export default function UserManagementPage() {
                   <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="student">Student</SelectItem>
                   <SelectItem value="instructor">Instructor</SelectItem>
-                  <SelectItem value="parent">Parent</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -237,6 +237,9 @@ userSchema.methods.linkChild = function (studentId) {
 userSchema.virtual('fullName').get(function () {
   return this.name;
 });
+userSchema.virtual('full_name').get(function () {
+  return this.name;
+});
 // console.log("hello");
 
 // Ensure virtual fields are serialized

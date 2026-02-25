@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import Link from "next/link"
 
-const API = () => (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
+import { API_URL as API } from "@/lib/config"
 const getToken = () =>
   typeof window !== "undefined"
     ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -21,7 +21,7 @@ export default function CertificatesPage() {
 
   const fetchCompleted = useCallback(async () => {
     try {
-      const r = await fetch(`${API()}/student/my-courses`, {
+      const r = await fetch(`${API}/student/my-courses`, {
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: "include"
       })

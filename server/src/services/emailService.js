@@ -139,6 +139,7 @@ class EmailService {
 
   async sendApprovalEmail(email, setupLink) {
     const subject = 'Complete Your Smart LMS Registration';
+    console.log(`📧 [EMAIL SERVICE] Sending approval email to: ${email}`);
     const text = `Congratulations! Your application for Smart LMS has been approved.\n\nPlease complete your registration by setting your password here: ${setupLink}\n\nThis link will expire in 24 hours.`;
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; rounded: 8px;">

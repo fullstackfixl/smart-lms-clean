@@ -56,7 +56,7 @@ class CertificateService {
         student_id: studentId,
         course_id: courseId,
         enrollment_id: enrollmentId,
-        student_name: student.full_name,
+        student_name: student.name || student.full_name,
         course_title: completionDetails.course_title,
         instructor_name: completionDetails.instructor_name,
         organization_name: organization.name,
@@ -421,7 +421,7 @@ class CertificateService {
       certificate.is_active = false;
       certificate.metadata.revocation_reason = reason;
       certificate.metadata.revoked_at = new Date();
-      
+
       await certificate.save();
 
       return {

@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import CourseCard from "@/components/student/CourseCard"
 import { toast } from "sonner"
 
-const API = () => (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
+import { API_URL } from "@/lib/config"
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -20,7 +20,7 @@ export default function MyCourses() {
     const fetchMyCourses = useCallback(async () => {
         setLoading(true)
         try {
-            const r = await fetch(`${API()}/api/courses/my-courses`, {
+            const r = await fetch(`${API_URL}/api/courses/my-courses`, {
                 headers: { Authorization: `Bearer ${getToken()}` },
                 credentials: "include"
             })

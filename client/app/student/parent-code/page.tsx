@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
 import { toast } from "sonner"
+import { API_URL } from "@/lib/config"
 
 export default function StudentParentCodePage() {
     const { user, token } = useAuth()
@@ -18,7 +19,6 @@ export default function StudentParentCodePage() {
         if (!token) return
         setLoading(true)
         try {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com"
             const res = await fetch(`${API_URL}/api/parent/generate-code`, {
                 method: "POST",
                 headers: {

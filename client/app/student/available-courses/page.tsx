@@ -10,7 +10,6 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
 import { API_URL } from "@/lib/config"
-const API = () => API_URL
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -26,7 +25,7 @@ export default function AvailableCourses() {
     const fetchCourses = useCallback(async () => {
         setLoading(true)
         try {
-            const r = await fetch(`${API()}/api/courses/student`, {
+            const r = await fetch(`${API_URL}/api/courses/student`, {
                 headers: { Authorization: `Bearer ${getToken()}` },
                 credentials: "include"
             })
@@ -48,7 +47,7 @@ export default function AvailableCourses() {
     const handleEnroll = async (courseId: string) => {
         setEnrollingId(courseId)
         try {
-            const r = await fetch(`${API()}/api/courses/enroll/${courseId}`, {
+            const r = await fetch(`${API_URL}/api/courses/enroll/${courseId}`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${getToken()}`,

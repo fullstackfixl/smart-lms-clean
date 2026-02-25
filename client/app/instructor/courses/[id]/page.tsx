@@ -34,6 +34,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { instructorApi } from "@/lib/api"
 import { toast } from "sonner"
+import { API_URL } from "@/lib/config"
 
 interface Lesson {
   _id: string
@@ -135,7 +136,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/instructor/courses/${courseId}/publish`, {
+      const response = await fetch(`${API_URL}/instructor/courses/${courseId}/publish`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -237,7 +238,6 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
         setUploadProgress(0)
         toast.info("Uploading video...")
 
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
         const formData = new FormData()
         formData.append('video', lessonForm.uploadFile)
@@ -750,8 +750,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   <button
                     type="button"
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${lessonForm.uploadMethod === 'url'
-                        ? 'bg-background shadow-sm'
-                        : 'hover:bg-background/50'
+                      ? 'bg-background shadow-sm'
+                      : 'hover:bg-background/50'
                       }`}
                     onClick={() => setLessonForm({ ...lessonForm, uploadMethod: 'url' })}
                   >
@@ -760,8 +760,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   <button
                     type="button"
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${lessonForm.uploadMethod === 'file'
-                        ? 'bg-background shadow-sm'
-                        : 'hover:bg-background/50'
+                      ? 'bg-background shadow-sm'
+                      : 'hover:bg-background/50'
                       }`}
                     onClick={() => setLessonForm({ ...lessonForm, uploadMethod: 'file' })}
                   >
@@ -770,8 +770,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                   <button
                     type="button"
                     className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${lessonForm.uploadMethod === 'drag'
-                        ? 'bg-background shadow-sm'
-                        : 'hover:bg-background/50'
+                      ? 'bg-background shadow-sm'
+                      : 'hover:bg-background/50'
                       }`}
                     onClick={() => setLessonForm({ ...lessonForm, uploadMethod: 'drag' })}
                   >
@@ -831,8 +831,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 {lessonForm.uploadMethod === 'drag' && (
                   <div
                     className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${lessonForm.isDragging
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/50'
                       }`}
                     onDragOver={(e) => {
                       e.preventDefault()

@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import { API_URL } from "@/lib/config"
 
 interface Course {
   _id: string
@@ -63,7 +64,7 @@ export default function StudentCoursesPage() {
       if (level !== 'all') params.append('level', level)
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/student/courses?${params}`,
+        `${API_URL}/student/courses?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -172,7 +173,7 @@ export default function StudentCoursesPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <Card 
+                  <Card
                     className="h-full hover:shadow-lg transition-shadow cursor-pointer"
                     onClick={() => handleCourseClick(course._id)}
                   >
@@ -230,7 +231,7 @@ export default function StudentCoursesPage() {
                     </CardContent>
 
                     <CardFooter className="p-4 pt-0">
-                      <Button 
+                      <Button
                         className="w-full"
                         variant={course.isEnrolled ? "outline" : "default"}
                       >

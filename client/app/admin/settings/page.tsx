@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Settings, Building, Palette, Bell } from "lucide-react"
 import { toast } from "sonner"
+import { API_URL } from "@/lib/config"
 
 export default function SettingsPage() {
   const { user, token, loading } = useAuth()
@@ -35,29 +36,28 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchSettings = async () => {
       if (!token || !user) return
-      
+
       try {
         setLoadingSettings(true)
-        
+
         // Use /auth/me endpoint which already has organization data
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
         const response = await fetch(`${API_URL}/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
           },
           credentials: 'include'
         })
-        
+
         if (response.ok) {
           const data = await response.json()
-          
+
           if (data.success && data.data) {
             const userData = data.data
-            
+
             // Set organization codes from user data
             setOrgCode(userData.organization_code || "N/A")
             setOrgId(userData.organization_id || "N/A")
-            
+
             // Set organization name if available
             if (userData.organizationName) {
               setOrgSettings(prev => ({
@@ -69,7 +69,7 @@ export default function SettingsPage() {
         } else {
           toast.error('Failed to load organization settings')
         }
-        
+
       } catch (error) {
         console.error('Failed to fetch settings:', error)
         toast.error('Failed to load organization settings')
@@ -77,7 +77,7 @@ export default function SettingsPage() {
         setLoadingSettings(false)
       }
     }
-    
+
     if (user && token) {
       fetchSettings()
     }
@@ -260,7 +260,7 @@ export default function SettingsPage() {
               Share this 6-character code with students and instructors for easy registration
             </p>
           </div>
-          
+
           <div className="space-y-3">
             <div className="flex justify-between items-center pb-2 border-b">
               <span className="text-sm text-muted-foreground">Organization ID (24-char)</span>
@@ -282,7 +282,7 @@ export default function SettingsPage() {
               Alternative registration code (MongoDB ObjectId) - both codes work for registration
             </p>
           </div>
-          
+
           <div className="flex justify-between items-center pb-2 border-b">
             <span className="text-sm">Admin Email</span>
             <span className="font-semibold">{user.email}</span>

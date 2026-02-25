@@ -20,14 +20,13 @@ import { API_URL } from "@/lib/config"
 import Link from "next/link"
 import { toast } from "sonner"
 
-const API = () => API_URL
 const getToken = () =>
   typeof window !== "undefined"
     ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
     : null
 
 async function apiFetch(path: string) {
-  const r = await fetch(`${API()}${path}`, {
+  const r = await fetch(`${API_URL}${path}`, {
     headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
     credentials: "include"
   })

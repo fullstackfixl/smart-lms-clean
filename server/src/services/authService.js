@@ -41,6 +41,10 @@ class AuthService {
     if (user.status !== 'active') {
       throw new AuthenticationError(`Account is ${user.status}. Please contact support.`);
     }
+    // Require verified email
+    if (!user.email_verified) {
+      throw new AuthenticationError('Email not verified. Please complete setup.');
+    }
 
     // Check organization status (if not platform admin)
     if (user.role !== 'platform_admin' && user.organization_id) {
@@ -80,7 +84,7 @@ class AuthService {
   async applyOrganization(data) {
     const { organizationName, subdomain, adminName, adminEmail, selectedPlan } = data;
     // Generate a route-friendly slug from organizationName if subdomain not provided
-    const routeSlug = (subdomain || organizationName || '')
+    let routeSlug = (subdomain || organizationName || '')
       .toString()
       .trim()
       .toLowerCase()
@@ -97,6 +101,23 @@ class AuthService {
     });
     if (existingApp) {
       return existingApp;
+    }
+
+    // Ensure slug uniqueness against existing applications and organizations
+    const slugExists = async (slug) => {
+      const existsApp = await OrganizationApplication.findOne({ subdomain: slug });
+      const existsOrg = await Organization.findOne({ subdomain: slug });
+      return !!(existsApp || existsOrg);
+    };
+    let attempt = 0;
+    const baseSlug = routeSlug;
+    while (await slugExists(routeSlug)) {
+      attempt += 1;
+      routeSlug = `${baseSlug}-${attempt}`;
+      if (attempt > 10) {
+        routeSlug = `${baseSlug}-${Date.now()}`;
+        break;
+      }
     }
 
     // Create Application
@@ -191,6 +212,7 @@ class AuthService {
       password_hash: passwordHash,
       role: 'org_admin',
       organization_id: organization._id,
+      organization_code: organization.code || organization.organization_code,
       status: 'active',
       email_verified: true
     });
@@ -339,12 +361,14 @@ class AuthService {
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
     // Create user
+    const organization = await Organization.findById(invite.organization_id);
     user = new User({
       name,
       email: invite.email,
       password_hash: passwordHash,
       role: invite.role,
       organization_id: invite.organization_id,
+      organization_code: organization?.code || organization?.organization_code || invite.organization_code,
       status: 'active',
       email_verified: true
     });

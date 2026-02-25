@@ -10,7 +10,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+import { API_URL as API } from "@/lib/config"
 
 interface Course {
     _id: string
@@ -153,8 +153,8 @@ export default function PlatformCoursesPage() {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium pointer-events-auto ${t.type === "success"
-                                    ? "bg-emerald-950 border-emerald-700/50 text-emerald-300"
-                                    : "bg-red-950 border-red-700/50 text-red-300"
+                                ? "bg-emerald-950 border-emerald-700/50 text-emerald-300"
+                                : "bg-red-950 border-red-700/50 text-red-300"
                                 }`}
                         >
                             {t.type === "success" ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
@@ -339,8 +339,8 @@ export default function PlatformCoursesPage() {
                                                 disabled={toggling === course._id || course.status !== "published"}
                                                 title={course.status !== "published" ? "Instructor must publish the course first" : ""}
                                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${course.isGloballyPublished
-                                                        ? "bg-slate-700 text-slate-300 hover:bg-red-900/40 hover:text-red-400"
-                                                        : "bg-orange-500/15 text-orange-400 hover:bg-orange-500/30"
+                                                    ? "bg-slate-700 text-slate-300 hover:bg-red-900/40 hover:text-red-400"
+                                                    : "bg-orange-500/15 text-orange-400 hover:bg-orange-500/30"
                                                     }`}
                                             >
                                                 {toggling === course._id ? (

@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
+import { API_URL } from "@/lib/config"
 
 export default function CreateCoursePage() {
   const router = useRouter()
@@ -36,14 +37,13 @@ export default function CreateCoursePage() {
 
     try {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-      
+
       if (!token) {
         toast.error('Please login first')
         router.push('/login')
         return
       }
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
       const response = await fetch(`${API_URL}/instructor/courses`, {
         method: 'POST',

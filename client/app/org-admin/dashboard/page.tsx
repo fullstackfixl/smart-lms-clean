@@ -21,7 +21,7 @@ export default function OrgAdminDashboard() {
   async function loadDashboardData() {
     setLoading(true)
     setError(null)
-    
+
     try {
       const [metricsData, activitiesData] = await Promise.all([
         getDashboardMetrics(),
@@ -31,7 +31,7 @@ export default function OrgAdminDashboard() {
       if (metricsData.success) {
         setMetrics(metricsData.data)
       }
-      
+
       if (activitiesData.success) {
         setActivities(activitiesData.data)
       }
@@ -72,29 +72,29 @@ export default function OrgAdminDashboard() {
   }
 
   const stats = [
-    { 
-      title: "Total Students", 
-      value: metrics.metrics.totalStudents, 
-      icon: Users, 
-      gradient: "from-blue-500 to-cyan-500" 
+    {
+      title: "Total Students",
+      value: metrics.metrics.totalStudents,
+      icon: Users,
+      gradient: "from-blue-500 to-cyan-500"
     },
-    { 
-      title: "Total Instructors", 
-      value: metrics.metrics.totalInstructors, 
-      icon: UserCheck, 
-      gradient: "from-purple-500 to-pink-500" 
+    {
+      title: "Total Instructors",
+      value: metrics.metrics.totalInstructors,
+      icon: UserCheck,
+      gradient: "from-purple-500 to-pink-500"
     },
-    { 
-      title: "Total Courses", 
-      value: metrics.metrics.activeCourses, 
-      icon: BookOpen, 
-      gradient: "from-orange-500 to-red-500" 
+    {
+      title: "Total Courses",
+      value: metrics.metrics.activeCourses,
+      icon: BookOpen,
+      gradient: "from-orange-500 to-red-500"
     },
-    { 
-      title: "Total Revenue", 
-      value: `$${metrics.metrics.totalRevenue.toLocaleString()}`, 
-      icon: DollarSign, 
-      gradient: "from-emerald-500 to-teal-500" 
+    {
+      title: "Total Revenue",
+      value: `$${metrics.metrics.totalRevenue.toLocaleString()}`,
+      icon: DollarSign,
+      gradient: "from-emerald-500 to-teal-500"
     },
   ]
 
@@ -149,14 +149,14 @@ export default function OrgAdminDashboard() {
               </span>
             </div>
             <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500" 
-                style={{ width: `${metrics.metrics.attendancePercentage || 0}%` }} 
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                style={{ width: `${metrics.metrics.attendancePercentage || 0}%` }}
               />
             </div>
             <p className="text-xs text-slate-400 mt-2">
-              {metrics.metrics.attendancePercentage > 0 
-                ? 'Based on recorded attendance' 
+              {metrics.metrics.attendancePercentage > 0
+                ? 'Based on recorded attendance'
                 : 'No attendance data yet'}
             </p>
           </div>
@@ -184,8 +184,8 @@ export default function OrgAdminDashboard() {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-2">
-              {metrics.metrics.pendingFees > 0 
-                ? 'Outstanding payments to collect' 
+              {metrics.metrics.pendingFees > 0
+                ? 'Outstanding payments to collect'
                 : 'All fees collected'}
             </p>
           </div>
@@ -207,14 +207,14 @@ export default function OrgAdminDashboard() {
               </span>
             </div>
             <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-purple-500 to-pink-500" 
-                style={{ width: `${metrics.metrics.completionRate || 0}%` }} 
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                style={{ width: `${metrics.metrics.completionRate || 0}%` }}
               />
             </div>
             <p className="text-xs text-slate-400 mt-2">
-              {metrics.metrics.completionRate > 0 
-                ? 'Students completing courses' 
+              {metrics.metrics.completionRate > 0
+                ? 'Students completing courses'
                 : 'No completions yet'}
             </p>
           </div>
@@ -270,9 +270,9 @@ export default function OrgAdminDashboard() {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={metrics.charts.enrollmentGrowth}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis 
-                dataKey="_id.month" 
-                stroke="#94a3b8" 
+              <XAxis
+                dataKey="_id.month"
+                stroke="#94a3b8"
                 fontSize={12}
                 tickFormatter={(value) => {
                   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -335,12 +335,14 @@ export default function OrgAdminDashboard() {
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                          {enrollment.student_id?.profile?.fullName?.split(" ").map((n: string) => n[0]).join("") || "?"}
+                        <div className="h-8 w-8 rounded-full bg-[#4CAF50]/10 flex items-center justify-center text-[#4CAF50] font-bold text-xs">
+                          {(enrollment.student_id?.name || "?").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
                         </div>
-                        <span className="text-sm font-medium text-slate-200">
-                          {enrollment.student_id?.profile?.fullName || 'Unknown'}
-                        </span>
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">
+                            {enrollment.student_id?.name || 'Unknown'}
+                          </p>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-300">

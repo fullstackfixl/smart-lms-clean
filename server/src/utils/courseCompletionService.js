@@ -65,16 +65,15 @@ class CourseCompletionService {
       });
 
       // Check lesson completion
-      const lessonCompletionStatus = await this.checkLessonCompletion(
-        studentId, 
-        lessons, 
-        organizationId
+      const lessonCompletionStatus = await this.checkLessonCompletionFromEnrollment(
+        enrollment,
+        lessons
       );
 
       // Check quiz completion
       const quizCompletionStatus = await this.checkQuizCompletion(
-        studentId, 
-        quizzes, 
+        studentId,
+        quizzes,
         organizationId
       );
 
@@ -92,7 +91,7 @@ class CourseCompletionService {
       const completionDetails = {
         course_id: courseId,
         course_title: course.title,
-        instructor_name: course.instructor_id.full_name,
+        instructor_name: course.instructor_id?.name || course.instructor_id?.full_name || 'Instructor',
         student_id: studentId,
         enrollment_id: enrollment._id,
         lessons: lessonCompletionStatus,
@@ -123,43 +122,44 @@ class CourseCompletionService {
   }
 
   /**
-   * Check lesson completion status
+   * Check lesson completion status from Enrollment document
+   * @param {Object} enrollment - Enrollment object
+   * @param {Array} lessons - Array of lesson objects
+   * @returns {Object} Lesson completion details
+   */
+  static async checkLessonCompletionFromEnrollment(enrollment, lessons) {
+    try {
+      const completedLessonIds = (enrollment.progress?.completedLessons || []).map(l => l.lessonId.toString());
+
+      const lessonDetails = lessons.map(lesson => ({
+        lesson_id: lesson._id,
+        title: lesson.title,
+        order: lesson.order,
+        completed: completedLessonIds.includes(lesson._id.toString()),
+        completion_date: enrollment.progress?.completedLessons.find(l => l.lessonId.toString() === lesson._id.toString())?.completedAt || null
+      }));
+
+      return {
+        total_count: lessons.length,
+        completed_count: lessonDetails.filter(l => l.completed).length,
+        completion_percentage: lessons.length > 0 ? Math.round((lessonDetails.filter(l => l.completed).length / lessons.length) * 100) : 100,
+        lessons: lessonDetails
+      };
+    } catch (error) {
+      console.error('Lesson completion check error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check lesson completion status (DEPRECATED: Use checkLessonCompletionFromEnrollment)
    * @param {string} studentId - Student ID
    * @param {Array} lessons - Array of lesson objects
    * @param {string} organizationId - Organization ID
    * @returns {Promise<Object>} Lesson completion details
    */
   static async checkLessonCompletion(studentId, lessons, organizationId) {
-    try {
-      // Get all lesson completion points for the student
-      const lessonPoints = await GamificationPoints.find({
-        user_id: studentId,
-        organization_id: organizationId,
-        activity_type: 'lesson_completion',
-        is_active: true
-      });
-
-      const completedLessonIds = lessonPoints.map(point => point.lesson_id.toString());
-      
-      const lessonDetails = lessons.map(lesson => ({
-        lesson_id: lesson._id,
-        title: lesson.title,
-        order: lesson.order,
-        completed: completedLessonIds.includes(lesson._id.toString()),
-        completion_date: lessonPoints.find(p => p.lesson_id.toString() === lesson._id.toString())?.earned_at || null
-      }));
-
-      return {
-        total_count: lessons.length,
-        completed_count: completedLessonIds.length,
-        completion_percentage: lessons.length > 0 ? Math.round((completedLessonIds.length / lessons.length) * 100) : 100,
-        lessons: lessonDetails
-      };
-
-    } catch (error) {
-      console.error('Lesson completion check error:', error);
-      throw error;
-    }
+    return this.checkLessonCompletionFromEnrollment({ progress: { completedLessons: [] } }, lessons);
   }
 
   /**
@@ -214,10 +214,10 @@ class CourseCompletionService {
             organization_id: organizationId,
             is_active: true
           });
-          
+
           quizDetail.attempts_count = totalAttempts;
           totalScore += bestAttempt.percentage;
-          
+
           if (bestAttempt.passed) {
             passedCount++;
           }

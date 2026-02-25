@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef, use } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
+import { API_URL } from "@/lib/config"
 import { motion } from "framer-motion"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 import {
   Play,
   Pause,
@@ -152,10 +152,10 @@ export default function StudentLecturePage({ params }: { params: Promise<{ id: s
     if (!lecture || lecture.type !== 'video') return
 
     try {
-      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      const token = localStorage.getItem('instatute_token') || sessionStorage.getItem('instatute_token')
       if (!token) return
 
-      await fetch(`${API_URL}/student/lectures/${lectureId}/progress`, {
+      await fetch(`${API_URL}/student/lectures/${unwrappedParams.id}/progress`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -524,8 +524,8 @@ export default function StudentLecturePage({ params }: { params: Promise<{ id: s
                                 key={oIdx}
                                 onClick={() => handleAnswerSelect(qIdx, oIdx)}
                                 className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedAnswers[qIdx] === oIdx
-                                    ? 'border-indigo-500 bg-indigo-500/10'
-                                    : 'border-slate-700 hover:border-slate-600'
+                                  ? 'border-indigo-500 bg-indigo-500/10'
+                                  : 'border-slate-700 hover:border-slate-600'
                                   }`}
                               >
                                 {option}

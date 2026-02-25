@@ -35,7 +35,7 @@ export default function CourseManagementPage() {
 
   const fetchCourses = async () => {
     if (!token) return
-    
+
     setLoadingCourses(true)
     try {
       const params = new URLSearchParams()
@@ -56,7 +56,7 @@ export default function CourseManagementPage() {
 
   const handleTogglePublish = async (courseId: string, currentStatus: boolean) => {
     if (!token) return
-    
+
     try {
       const res = await adminApi.publishCourse(token, courseId, !currentStatus)
       if (res.success) {
@@ -146,12 +146,10 @@ export default function CourseManagementPage() {
                   <span>{course.instructor_id?.name || course.instructor_id?.profile?.fullName || 'No instructor'}</span>
                 </div>
                 <div className="flex gap-2">
-                  <Link href={`/dashboard/courses/${course._id || course.id}`} className="flex-1">
-                    <Button variant="outline" size="sm" className="w-full">
-                      <Eye className="mr-2 h-4 w-4" />
-                      View
-                    </Button>
-                  </Link>
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => toast.info("Course preview coming soon")}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View
+                  </Button>
                   <Button
                     variant={course.isPublished ? "destructive" : "default"}
                     size="sm"

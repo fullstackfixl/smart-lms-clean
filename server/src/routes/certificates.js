@@ -33,7 +33,7 @@ router.post('/generate/:enrollmentId', auth, [
       _id: req.params.enrollmentId,
       student_id: req.user._id,
       organization_id: req.user.organization_id,
-      status: 'active'
+      status: { $in: ['active', 'completed'] }
     });
 
     if (!enrollment) {
@@ -201,9 +201,9 @@ router.get('/:id/download', auth, [
     // Serve the PDF file
     const path = require('path');
     const fs = require('fs');
-    
+
     const filePath = path.join(__dirname, '../../uploads/certificates', path.basename(certificate.pdf_url));
-    
+
     if (fs.existsSync(filePath)) {
       res.sendFile(filePath);
     } else {

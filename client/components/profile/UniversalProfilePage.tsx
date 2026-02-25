@@ -16,8 +16,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth-context"
-
-const API = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "")
+import { API_URL as API } from "@/lib/config"
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -71,7 +70,7 @@ export function UniversalProfilePage({ role }: Props) {
         setError(null)
         try {
             const endpoint = profileEndpoint(role)
-            const r = await fetch(`${API()}${endpoint}`, {
+            const r = await fetch(`${API}${endpoint}`, {
                 headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
                 credentials: "include"
             })
@@ -134,7 +133,7 @@ export function UniversalProfilePage({ role }: Props) {
             const body = role === "student"
                 ? form
                 : { firstName: nameParts[0] || "", lastName: nameParts.slice(1).join(" ") || "", phone: form.phone, bio: form.bio }
-            const r = await fetch(`${API()}${endpoint}`, {
+            const r = await fetch(`${API}${endpoint}`, {
                 method,
                 headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
                 credentials: "include",

@@ -8,7 +8,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
-const API = () => (process.env.NEXT_PUBLIC_API_URL || "https://smart-lms-clean-1.onrender.com").replace(/\/$/, "")
+import { API_URL as API } from "@/lib/config"
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -23,7 +23,7 @@ export default function CertificateDetail({ params }: { params: Promise<{ course
 
     const fetchCert = useCallback(async () => {
         try {
-            const r = await fetch(`${API()}/student/certificate/${courseId}`, {
+            const r = await fetch(`${API}/student/certificate/${courseId}`, {
                 headers: { Authorization: `Bearer ${getToken()}` },
                 credentials: "include"
             })
@@ -54,7 +54,7 @@ export default function CertificateDetail({ params }: { params: Promise<{ course
         if (!cert.pdfGenerated) {
             setGenerating(true)
             try {
-                const r = await fetch(`${API()}/api/certificates/generate/${cert.enrollmentId}`, {
+                const r = await fetch(`${API}/api/certificates/generate/${cert.enrollmentId}`, {
                     method: "POST",
                     headers: { Authorization: `Bearer ${getToken()}` },
                     credentials: "include"
@@ -64,7 +64,7 @@ export default function CertificateDetail({ params }: { params: Promise<{ course
                     toast.success("Certificate PDF generated!")
                     setCert((prev: any) => ({ ...prev, pdfGenerated: true, id: data.data._id }))
                     // Proceed to download
-                    window.open(`${API()}/api/certificates/${data.data._id}/download?token=${getToken()}`, "_blank")
+                    window.open(`${API}/api/certificates/${data.data._id}/download?token=${getToken()}`, "_blank")
                 } else {
                     toast.error(data.message || "Failed to generate PDF")
                 }
@@ -78,7 +78,7 @@ export default function CertificateDetail({ params }: { params: Promise<{ course
             // Note: For download endpoints that require auth, we sometimes pass the token in query if clicking a link, 
             // or we use a blob fetch if we want to stay in the same tab.
             // Given the backend implementation uses res.sendFile, a window.open or a link is easiest.
-            window.open(`${API()}/api/certificates/${cert.id}/download?token=${getToken()}`, "_blank")
+            window.open(`${API}/api/certificates/${cert.id}/download?token=${getToken()}`, "_blank")
         }
     }
 

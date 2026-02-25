@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 
-const API = () => (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "")
+import { API_URL as API } from "@/lib/config"
+
 const getToken = () =>
   typeof window !== "undefined"
     ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
@@ -39,7 +40,7 @@ export default function StudentLiveClassesPage() {
   const fetchClasses = useCallback(async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${API()}/student/live-classes`, {
+      const r = await fetch(`${API}/student/live-classes`, {
         headers: { Authorization: `Bearer ${getToken()}` },
         credentials: "include"
       })
