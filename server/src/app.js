@@ -104,6 +104,10 @@ try {
   const platformRoutes = require('./routes/platform');
   app.use('/platform', platformRoutes);
 
+  console.log('  - platform-api');
+  const platformApiRoutes = require('./routes/platformApi');
+  app.use('/api/platform', platformApiRoutes);
+
   console.log('  - payments');
   const paymentRoutes = require('./api/routes/payment.routes');
   app.use('/payments', paymentRoutes);

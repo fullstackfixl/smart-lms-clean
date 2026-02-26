@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
   },
   password_hash: {
     type: String,
-    required: true,
+    required: false,
     select: false
   },
   name: {
@@ -124,6 +124,14 @@ const userSchema = new mongoose.Schema({
   updated_at: {
     type: Date,
     default: Date.now
+  },
+  inviteToken: {
+    type: String,
+    select: false
+  },
+  inviteTokenExpiry: {
+    type: Date,
+    select: false
   }
 });
 
@@ -181,8 +189,12 @@ userSchema.pre('save', async function (next) {
   if (!this.isModified('password_hash')) return next();
 
   try {
-    // Check if password is already hashed (bcrypt hashes start with $2a$, $2b$, or $2y$)
-    if (this.password_hash && this.password_hash.match(/^\$2[aby]\$/)) {
+    // Check if password is already hashed or if it's empty/null
+    if (!this.password_hash) {
+      return next();
+    }
+
+    if (this.password_hash.match(/^\$2[aby]\$/)) {
       // Password is already hashed, skip hashing
       return next();
     }

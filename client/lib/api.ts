@@ -479,6 +479,33 @@ export const platformApi = {
     apiRequest(`/platform/applications/${id}/approve`, { method: "PUT", token }),
   rejectApplication: (token: string, id: string) =>
     apiRequest(`/platform/applications/${id}/reject`, { method: "PUT", token }),
+
+  // New Organization Invitation Flow
+  createOrgV2: async (token: string, data: {
+    orgName: string
+    orgType: string
+    adminName: string
+    adminEmail: string
+  }) => {
+    return apiRequest("/api/platform/organizations/create", {
+      method: "POST",
+      token,
+      body: data
+    })
+  },
+  verifyOrgInvite: (token: string) =>
+    apiRequest(`/api/platform/org-invite/verify?token=${token}`),
+  completeOrgSetup: (data: {
+    token: string
+    address?: string
+    phone?: string
+    password?: string
+  }) => {
+    return apiRequest("/api/platform/org-invite/complete", {
+      method: "POST",
+      body: data
+    })
+  },
 }
 
 // Instructor APIs

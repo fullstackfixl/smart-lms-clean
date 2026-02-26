@@ -8,6 +8,11 @@ const organizationSchema = new mongoose.Schema({
     minlength: [2, 'Name must be at least 2 characters'],
     maxlength: [100, 'Name cannot exceed 100 characters']
   },
+  type: {
+    type: String,
+    enum: ['School', 'College', 'Institute', 'Coaching', 'Other'],
+    required: [true, 'Organization type is required']
+  },
   subdomain: {
     type: String,
     required: [true, 'Subdomain is required'],
@@ -32,8 +37,8 @@ const organizationSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: {
-      values: ['active', 'suspended', 'deleted'],
-      message: 'Status must be active, suspended, or deleted'
+      values: ['active', 'suspended', 'deleted', 'pending'],
+      message: 'Status must be active, suspended, deleted, or pending'
     },
     default: 'active'
   },
@@ -62,9 +67,13 @@ const organizationSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-  deleted_by: {
+  created_by: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  phone: {
+    type: String,
+    trim: true
   },
   address: {
     street: { type: String, trim: true },

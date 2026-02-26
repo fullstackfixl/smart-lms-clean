@@ -156,6 +156,30 @@ class EmailService {
     `;
     return this.sendEmail(email, subject, text, html);
   }
+
+  async sendOrgInviteEmail(email, orgName, orgType, setupLink) {
+    const subject = `Invitation to join ${orgName} on Smart LMS`;
+    console.log(`📧 [EMAIL SERVICE] Sending org invite email to: ${email}`);
+
+    const text = `Hello,\n\nYou have been invited as the Administrator for ${orgName} (${orgType}) on Smart LMS.\n\nPlease complete your organization setup by clicking the link below:\n\n${setupLink}\n\nThis link will expire in 24 hours.`;
+
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #2563eb;">Organization Invitation</h2>
+        <p>Hello,</p>
+        <p>You have been invited as the <strong>Administrator</strong> for <strong>${orgName}</strong> (${orgType}) on Smart LMS.</p>
+        <p>Please click the button below to complete your organization setup and set your password:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${setupLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Complete Setup</a>
+        </div>
+        <p style="font-size: 14px; color: #666;">If the button doesn't work, copy and paste this link into your browser:</p>
+        <p style="font-size: 12px; color: #2563eb; word-break: break-all;">${setupLink}</p>
+        <p style="font-size: 14px; color: #666; margin-top: 30px;">This link will expire in 24 hours.</p>
+      </div>
+    `;
+
+    return this.sendEmail(email, subject, text, html);
+  }
 }
 
 module.exports = new EmailService();

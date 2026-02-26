@@ -53,6 +53,74 @@ class PlatformOrganizationController extends BaseController {
     }
   }
 
+  async createOrganizationWithInvite(req, res) {
+    try {
+      const { orgName, orgType, adminName, adminEmail } = req.body;
+
+      if (!orgName || !orgType || !adminName || !adminEmail) {
+        return res.error('All fields are required', 'Validation Error', 400);
+      }
+
+      // Check if admin user exists
+      const existingUser = await User.findOne({ email: adminEmail.toLowerCase() });
+      if (existingUser) {
+        return res.error('Admin email already registered', 'Conflict', 409);
+      }
+
+      // 1. Create Organization with status PENDING
+      // Generating a temporary subdomain/slug from name if not provided
+      const subdomain = orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+      const organization = new Organization({
+        name: orgName,
+        type: orgType,
+        subdomain: `${subdomain}-${Math.random().toString(36).substring(2, 7)}`, // Ensure uniqueness for now
+        status: 'pending',
+        created_by: req.user._id
+      });
+      await organization.save();
+
+      // 2. Create Org Admin user with status PENDING
+      const inviteToken = require('crypto').randomBytes(32).toString('hex');
+      const inviteTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+      const admin = new User({
+        name: adminName,
+        email: adminEmail.toLowerCase(),
+        password_hash: null, // No password yet
+        role: 'org_admin',
+        organization_id: organization._id,
+        status: 'pending',
+        email_verified: false,
+        inviteToken,
+        inviteTokenExpiry
+      });
+      await admin.save();
+
+      // 3. Link Admin to Organization
+      organization.admin_user_id = admin._id;
+      await organization.save();
+
+      // 4. Send invitation email
+      const emailService = require('../services/emailService');
+      const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+      const setupLink = `${baseUrl}/org/setup?token=${inviteToken}`;
+
+      await emailService.sendOrgInviteEmail(adminEmail, orgName, orgType, setupLink);
+
+      return res.success({
+        organization: {
+          id: organization._id,
+          name: organization.name,
+          status: organization.status
+        }
+      }, 'Organization created and invitation sent successfully', 201);
+    } catch (error) {
+      console.error('Create organization with invite error:', error);
+      return res.error(error.message, 'Failed to create organization', 500);
+    }
+  }
+
   async listOrganizations(req, res) {
     try {
       const { page = 1, limit = 10, search, status, plan, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
