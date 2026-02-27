@@ -2,6 +2,7 @@ const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const User = require('../models/User');
 const crypto = require('crypto');
+const emailService = require('./emailService');
 
 /**
  * Multi-Factor Authentication Service
@@ -235,6 +236,24 @@ class MFAService {
   async isMFAEnabled(userId) {
     const user = await User.findById(userId);
     return user && user.mfa_enabled === true;
+  }
+  async sendOTPEmail(email, token) {
+    const subject = 'Your Smart LMS Authentication Code';
+    const text = `Your authentication code is: ${token}\n\nThis code will expire in 10 minutes.`;
+    const html = `
+      <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #2563eb;">Authentication Code</h2>
+        <p>Hello,</p>
+        <p>Use the following code to complete your login or MFA setup:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <span style="font-size: 32px; font-family: monospace; font-weight: bold; letter-spacing: 5px; background: #f3f4f6; padding: 10px 20px; border-radius: 5px; color: #111827;">${token}</span>
+        </div>
+        <p style="font-size: 14px; color: #666;">This code will expire in 10 minutes. If you did not request this code, please ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 12px; color: #9ca3af;">Sent by Smart LMS Security</p>
+      </div>
+    `;
+    return emailService.sendEmail(email, subject, text, html);
   }
 }
 

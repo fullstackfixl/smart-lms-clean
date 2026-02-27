@@ -84,78 +84,107 @@ class EmailService {
   }
 
   async sendEmail(to, subject, text, html) {
-    try {
-      const mailOptions = {
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@smartlms.local',
-        to,
-        subject,
-        text,
-        html: html || text
-      };
+    // 1. Primary for Production (No Domain): Brevo (formerly Sendinblue)
+    if (process.env.BREVO_API_KEY) {
+      console.log('📧 [EMAIL SERVICE] Attempting delivery via Brevo API...');
+      const success = await this.sendWithBrevo(to, subject, html || text);
+      if (success) return true;
+    }
 
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ [EMAIL SERVICE] Email sent:', info.messageId);
-      if (this.ethereal) {
-        const previewUrl = nodemailer.getTestMessageUrl(info);
-        if (previewUrl) {
-          console.log('🔗 [EMAIL SERVICE] Ethereal preview URL:', previewUrl);
-        }
-      }
-      return true;
-    } catch (error) {
-      console.error('❌ [EMAIL SERVICE] SMTP Error:', error.message);
+    // 2. Secondary/Production (Custom Domain): Resend
+    if (process.env.RESEND_API_KEY) {
+      console.log('📧 [EMAIL SERVICE] Attempting delivery via Resend API...');
+      const success = await this.sendWithResend(to, subject, html || text);
+      if (success) return true;
+    }
 
-      // Fallback 1: Resend (HTTP based, usually bypasses SMTP blocks)
-      if (process.env.RESEND_API_KEY) {
-        console.log('📧 [EMAIL SERVICE] SMTP failed, trying Resend...');
-        const resendSuccess = await this.sendWithResend(to, subject, html || text);
-        if (resendSuccess) return true;
-      }
-
-      // Fallback 2: Try Ethereal and resend
+    // 3. Local/Fallback: SMTP (Mailtrap, Gmail, etc.)
+    if (this.transporter && !this.ethereal) {
       try {
-        if (!this.ethereal) {
-          console.log('📧 [EMAIL SERVICE] SMTP & Resend failed, falling back to Ethereal...');
-          const testAccount = await nodemailer.createTestAccount();
-          this.transporter = nodemailer.createTransport({
-            host: 'smtp.ethereal.email',
-            port: 587,
-            secure: false,
-            auth: {
-              user: testAccount.user,
-              pass: testAccount.pass
-            }
-          });
-          this.ethereal = true;
-          const info = await this.transporter.sendMail({
-            from: 'Smart LMS <no-reply@smartlms.test>',
-            to,
-            subject,
-            text,
-            html: html || text
-          });
-          console.log('✅ [EMAIL SERVICE] Fallback email sent:', info.messageId);
-          const previewUrl = nodemailer.getTestMessageUrl(info);
-          if (previewUrl) {
-            console.log('🔗 [EMAIL SERVICE] Ethereal preview URL:', previewUrl);
-          }
-          return true;
-        }
-      } catch (fallbackError) {
-        console.error('❌ [EMAIL SERVICE] Fallback email failed:', fallbackError);
+        const mailOptions = {
+          from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@smartlms.local',
+          to,
+          subject,
+          text,
+          html: html || text
+        };
+        const info = await this.transporter.sendMail(mailOptions);
+        console.log('✅ [EMAIL SERVICE] Email sent via SMTP:', info.messageId);
+        return true;
+      } catch (smtpError) {
+        console.error('❌ [EMAIL SERVICE] SMTP Error:', smtpError.message);
       }
-      // Final fallback to logging
-      console.log('-----------------------------------------');
-      console.log(`📧 [MOCK EMAIL] To: ${to}`);
-      console.log(`📧 [MOCK EMAIL] Subject: ${subject}`);
-      console.log(`📧 [MOCK EMAIL] Body: ${text}`);
-      console.log('-----------------------------------------');
+    }
+
+    // 4. Fallback: Ethereal (for testing)
+    if (this.ethereal || !this.transporter) {
+      try {
+        console.log('📧 [EMAIL SERVICE] No primary config success, using Ethereal fallback...');
+        if (!this.transporter) await this.initTransport();
+
+        const info = await this.transporter.sendMail({
+          from: 'Smart LMS <no-reply@smartlms.test>',
+          to,
+          subject,
+          text,
+          html: html || text
+        });
+        console.log('✅ [EMAIL SERVICE] Ethereal email sent:', info.messageId);
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        if (previewUrl) console.log('🔗 [EMAIL SERVICE] Ethereal preview URL:', previewUrl);
+        return true;
+      } catch (err) {
+        console.error('❌ [EMAIL SERVICE] Ethereal failed:', err.message);
+      }
+    }
+
+    // 5. MOCK LOGGING FALLBACK (Last Resort)
+    console.warn('⚠️ [EMAIL SERVICE] All delivery methods failed. Logging to console only.');
+    console.log('-----------------------------------------');
+    console.log(`📧 [MOCK EMAIL] To: ${to}`);
+    console.log(`📧 [MOCK EMAIL] Subject: ${subject}`);
+    console.log(`📧 [MOCK EMAIL] Body: ${text}`);
+    console.log('-----------------------------------------');
+    return false;
+  }
+
+  async sendWithBrevo(to, subject, html) {
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': process.env.BREVO_API_KEY,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: {
+            name: "Smart LMS",
+            email: process.env.EMAIL_FROM || process.env.EMAIL_USER
+          },
+          to: [{ email: to }],
+          subject: subject,
+          htmlContent: html
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        console.log('✅ [EMAIL SERVICE] Brevo success:', data.messageId);
+        return true;
+      } else {
+        console.error('❌ [EMAIL SERVICE] Brevo API error:', data.message || data);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ [EMAIL SERVICE] Brevo fetch error:', error.message);
       return false;
     }
   }
 
   async sendWithResend(to, subject, html) {
     try {
+      // Use global fetch in Node 18+
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -172,14 +201,14 @@ class EmailService {
 
       const data = await response.json();
       if (response.ok) {
-        console.log('✅ [EMAIL SERVICE] Email sent via Resend:', data.id);
+        console.log('✅ [EMAIL SERVICE] Resend success:', data.id);
         return true;
       } else {
-        console.error('❌ [EMAIL SERVICE] Resend API error:', data);
+        console.error('❌ [EMAIL SERVICE] Resend API error:', data.message || data);
         return false;
       }
     } catch (error) {
-      console.error('❌ [EMAIL SERVICE] Resend fetch error:', error);
+      console.error('❌ [EMAIL SERVICE] Resend fetch error:', error.message);
       return false;
     }
   }
@@ -225,6 +254,23 @@ class EmailService {
       </div>
     `;
 
+    return this.sendEmail(email, subject, text, html);
+  }
+
+  async sendVerificationEmail(email, userName, verificationLink) {
+    const subject = 'Verify your Smart LMS Email';
+    const text = `Hello ${userName},\n\nPlease verify your email address by clicking the link below:\n\n${verificationLink}\n\nThis link will expire in 24 hours.`;
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #2563eb;">Email Verification</h2>
+        <p>Hello ${userName},</p>
+        <p>Thank you for joining Smart LMS. Please verify your email address to activate your account:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verificationLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">Verify Email</a>
+        </div>
+        <p style="font-size: 14px; color: #666; margin-top: 30px;">This link will expire in 24 hours.</p>
+      </div>
+    `;
     return this.sendEmail(email, subject, text, html);
   }
 }
