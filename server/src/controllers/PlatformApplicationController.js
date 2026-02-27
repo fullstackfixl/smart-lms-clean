@@ -73,7 +73,10 @@ class PlatformApplicationController extends BaseController {
                     "EXAMS",
                     "PARENT_PORTAL",
                     "COURSES",
-                    "REPORTS"
+                    "REPORTS",
+                    "TIMETABLE",
+                    "EVENTS",
+                    "LIVE_CLASSES"
                 ],
                 'COLLEGE': [
                     "DEPARTMENTS",
@@ -81,21 +84,32 @@ class PlatformApplicationController extends BaseController {
                     "SUBJECTS",
                     "GPA_REPORTS",
                     "COURSES",
-                    "EXAMS"
+                    "EXAMS",
+                    "TIMETABLE",
+                    "EVENTS",
+                    "LIVE_CLASSES",
+                    "REPORTS"
                 ],
                 'INSTITUTE': [
                     "BATCHES",
                     "TEST_SERIES",
                     "TRAINERS",
                     "COURSES",
-                    "LEADERBOARDS"
+                    "LEADERBOARDS",
+                    "TIMETABLE",
+                    "EVENTS",
+                    "LIVE_CLASSES",
+                    "REPORTS",
+                    "FEES"
                 ],
                 'ONLINE_ACADEMY': [
                     "PUBLIC_CATALOG",
                     "COUPONS",
                     "COURSE_SALES",
                     "CERTIFICATES",
-                    "STUDENT_ANALYTICS"
+                    "STUDENT_ANALYTICS",
+                    "LIVE_CLASSES",
+                    "REPORTS"
                 ]
             };
 

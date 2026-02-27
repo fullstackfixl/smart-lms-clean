@@ -139,7 +139,7 @@ class EmailService {
     }
 
     // 5. MOCK LOGGING FALLBACK (Last Resort)
-    console.warn('⚠️ [EMAIL SERVICE] All delivery methods failed. Logging to console only.');
+    console.warn(`⚠️ [EMAIL SERVICE] All delivery methods failed for ${to}. Logging to console only.`);
     console.log('-----------------------------------------');
     console.log(`📧 [MOCK EMAIL] To: ${to}`);
     console.log(`📧 [MOCK EMAIL] Subject: ${subject}`);
@@ -150,19 +150,24 @@ class EmailService {
 
   async sendWithBrevo(to, subject, html) {
     try {
+      const trimmedTo = (to || '').trim();
+      const senderEmail = (process.env.EMAIL_FROM || process.env.EMAIL_USER || '').trim();
+
+      console.log(`📧 [BREVO] Sending to: ${trimmedTo} from: ${senderEmail}`);
+
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',
-          'api-key': process.env.BREVO_API_KEY,
+          'api-key': (process.env.BREVO_API_KEY || '').trim(),
           'content-type': 'application/json'
         },
         body: JSON.stringify({
           sender: {
             name: "Smart LMS",
-            email: process.env.EMAIL_FROM || process.env.EMAIL_USER
+            email: senderEmail
           },
-          to: [{ email: to }],
+          to: [{ email: trimmedTo }],
           subject: subject,
           htmlContent: html
         })
@@ -173,7 +178,7 @@ class EmailService {
         console.log('✅ [EMAIL SERVICE] Brevo success:', data.messageId);
         return true;
       } else {
-        console.error('❌ [EMAIL SERVICE] Brevo API error:', data.message || data);
+        console.error('❌ [EMAIL SERVICE] Brevo API error:', JSON.stringify(data, null, 2));
         return false;
       }
     } catch (error) {
