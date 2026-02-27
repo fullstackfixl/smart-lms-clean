@@ -11,6 +11,8 @@ interface User {
   email: string
   role: "platform_admin" | "org_admin" | "instructor" | "student" | "parent" | "support"
   organization_id?: string
+  modulesEnabled?: string[]
+  organizationType?: string
   profile?: {
     avatar?: string
     phone?: string

@@ -14,8 +14,11 @@ class StudentLectureController {
       const { lectureId } = req.params;
       const user = req.user;
 
-      // Fetch full lecture details
-      const lecture = await Lesson.findById(lectureId)
+      // Fetch full lecture details with organization isolation
+      const lecture = await Lesson.findOne({
+        _id: lectureId,
+        organization_id: user.organization_id
+      })
         .select('-content.questions.correctAnswer -content.questions.explanation')
         .lean();
 
@@ -34,9 +37,9 @@ class StudentLectureController {
       }).lean();
 
       // Check if quiz is available
-      const quizAvailable = lecture.type === 'quiz' && 
-                           lecture.content.questions && 
-                           lecture.content.questions.length > 0;
+      const quizAvailable = lecture.type === 'quiz' &&
+        lecture.content.questions &&
+        lecture.content.questions.length > 0;
 
       // Get quiz attempts if quiz lecture
       let quizAttempts = [];
@@ -53,7 +56,7 @@ class StudentLectureController {
       }
 
       // Get next and previous lectures
-      const nextLecture = await lecture.getNextLesson ? 
+      const nextLecture = await lecture.getNextLesson ?
         await Lesson.findOne({
           section_id: lecture.section_id,
           order: { $gt: lecture.order },
@@ -143,8 +146,8 @@ class StudentLectureController {
       }
 
       // Get lecture duration
-      const totalDuration = lecture.type === 'video' ? 
-        (await Lesson.findById(lectureId).select('content.videoDuration').lean()).content.videoDuration : 
+      const totalDuration = lecture.type === 'video' ?
+        (await Lesson.findById(lectureId).select('content.videoDuration').lean()).content.videoDuration :
         lecture.duration * 60; // Convert minutes to seconds
 
       if (!totalDuration) {
@@ -231,8 +234,11 @@ class StudentLectureController {
         });
       }
 
-      // Fetch lecture with quiz questions
-      const lecture = await Lesson.findById(lectureId).lean();
+      // Fetch lecture with quiz questions and organization isolation
+      const lecture = await Lesson.findOne({
+        _id: lectureId,
+        organization_id: user.organization_id
+      }).lean();
 
       if (!lecture || lecture.type !== 'quiz') {
         return res.status(400).json({
@@ -311,7 +317,8 @@ class StudentLectureController {
       if (passed) {
         let progress = await LectureProgress.findOne({
           user_id: user._id,
-          lecture_id: lectureId
+          lecture_id: lectureId,
+          organization_id: user.organization_id
         });
 
         if (!progress) {
@@ -372,9 +379,10 @@ class StudentLectureController {
    */
   async checkCourseCompletion(userId, courseId, currentLectureId) {
     try {
-      // Get all lectures in the course
+      // Get all lectures in the course with organization isolation
       const totalLectures = await Lesson.countDocuments({
         course_id: courseId,
+        organization_id: (await User.findById(userId)).organization_id, // Safer lookup
         isActive: true
       });
 
@@ -387,10 +395,11 @@ class StudentLectureController {
 
       // Check if all lectures are completed
       if (completedLectures >= totalLectures) {
-        // Update enrollment status
+        // Update enrollment status with organization isolation
         const enrollment = await Enrollment.findOne({
           student_id: userId,
-          course_id: courseId
+          course_id: courseId,
+          organization_id: (await User.findById(userId)).organization_id
         });
 
         if (enrollment && enrollment.status !== 'completed') {
@@ -434,14 +443,15 @@ class StudentLectureController {
         });
       }
 
-      // Get all lectures with sections
+      // Get all lectures with sections and organization isolation
       const lectures = await Lesson.find({
         course_id: courseId,
+        organization_id: user.organization_id,
         isActive: true
       })
-      .select('title description type duration order section_id isPreview')
-      .sort({ section_id: 1, order: 1 })
-      .lean();
+        .select('title description type duration order section_id isPreview')
+        .sort({ section_id: 1, order: 1 })
+        .lean();
 
       // Get user's progress for all lectures
       const progressRecords = await LectureProgress.find({

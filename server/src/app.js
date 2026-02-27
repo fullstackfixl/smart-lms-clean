@@ -236,6 +236,10 @@ try {
   const orgUsersRoutes = require('./routes/orgUsers');
   app.use('/api/org', orgUsersRoutes);
 
+  console.log('  - org-features');
+  const orgFeaturesRoutes = require('./routes/orgFeatures');
+  app.use('/api/org-features', orgFeaturesRoutes);
+
   console.log('  - student-lectures');
   const studentLectureRoutes = require('./routes/studentLectures');
   app.use('/student', studentLectureRoutes);

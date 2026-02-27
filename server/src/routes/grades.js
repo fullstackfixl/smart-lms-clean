@@ -1,12 +1,16 @@
 const express = require('express');
 const { body, validationResult, query } = require('express-validator');
 const { authMiddleware: auth } = require('../middleware/auth');
+const moduleGuard = require('../middleware/moduleGuard');
 const Grade = require('../models/Grade');
 const GradeSummary = require('../models/GradeSummary');
 const Course = require('../models/Course');
 const User = require('../models/User');
 
 const router = express.Router();
+
+// Apply module guard to all grade routes
+router.use(auth, moduleGuard('GRADES_SECTIONS'));
 
 /**
  * POST /api/grades
@@ -443,7 +447,7 @@ router.put('/:id', [
         organization_id,
         grade._id
       );
-      
+
       if (currentTotalWeight + req.body.weight > 100) {
         return res.status(400).json({
           success: false,
@@ -455,7 +459,7 @@ router.put('/:id', [
 
     // Update allowed fields
     const allowedUpdates = [
-      'earned_score', 'max_score', 'weight', 'comments', 
+      'earned_score', 'max_score', 'weight', 'comments',
       'rubric_scores', 'late_penalty', 'grade_category'
     ];
 

@@ -21,6 +21,7 @@ interface NavItem {
   href: string
   icon: React.ElementType
   roles?: string[]
+  module?: string
   badge?: string
 }
 
@@ -30,34 +31,50 @@ const navItems: NavItem[] = [
   { label: "My Courses", href: "/student/courses", icon: BookOpen, roles: ["student"] },
   { label: "Quizzes", href: "/student/quizzes", icon: ClipboardList, roles: ["student"] },
   { label: "Certificates", href: "/student/certificates", icon: Award, roles: ["student"] },
-  { label: "Leaderboard", href: "/student/leaderboard", icon: Trophy, roles: ["student"] },
-  { label: "Timetable", href: "/student/timetable", icon: Clock, roles: ["student"] },
-  { label: "Events", href: "/student/events", icon: Calendar, roles: ["student"] },
-  { label: "Grades", href: "/student/grades", icon: BarChart3, roles: ["student"] },
+  { label: "Leaderboard", href: "/student/leaderboard", icon: Trophy, roles: ["student"], module: "LEADERBOARDS" },
+  { label: "Timetable", href: "/student/timetable", icon: Clock, roles: ["student"], module: "TIMETABLE" },
+  { label: "Events", href: "/student/events", icon: Calendar, roles: ["student"], module: "EVENTS" },
+  { label: "Grades", href: "/student/grades", icon: BarChart3, roles: ["student"], module: "GRADES_SECTIONS" },
   { label: "Profile", href: "/student/profile", icon: Users, roles: ["student"] },
-  
+
   // Instructor
-  { label: "Course Manager", href: "/instructor/courses", icon: FileText, roles: ["instructor"] },
-  { label: "Upload Lessons", href: "/instructor/upload", icon: Upload, roles: ["instructor"] },
-  { label: "Create Quiz", href: "/instructor/quiz", icon: FileQuestion, roles: ["instructor"] },
-  { label: "Attendance", href: "/instructor/attendance", icon: UserCheck, roles: ["instructor"] },
-  { label: "Grade Entry", href: "/instructor/grades", icon: BarChart3, roles: ["instructor"] },
-  { label: "Live Classes", href: "/instructor/live-classes", icon: Video, roles: ["instructor"] },
-  { label: "Analytics", href: "/instructor/analytics", icon: TrendingUp, roles: ["instructor"] },
+  { label: "Course Manager", href: "/instructor/courses", icon: FileText, roles: ["instructor"], module: "COURSES" },
+  { label: "Upload Lessons", href: "/instructor/upload", icon: Upload, roles: ["instructor"], module: "COURSES" },
+  { label: "Create Quiz", href: "/instructor/quiz", icon: FileQuestion, roles: ["instructor"], module: "EXAMS" },
+  { label: "Attendance", href: "/instructor/attendance", icon: UserCheck, roles: ["instructor"], module: "ATTENDANCE" },
+  { label: "Grade Entry", href: "/instructor/grades", icon: BarChart3, roles: ["instructor"], module: "GRADES_SECTIONS" },
+  { label: "Live Classes", href: "/instructor/live-classes", icon: Video, roles: ["instructor"], module: "LIVE_CLASSES" },
+  { label: "Analytics", href: "/instructor/analytics", icon: TrendingUp, roles: ["instructor"], module: "REPORTS" },
   { label: "Messages", href: "/instructor/messages", icon: MessageSquare, roles: ["instructor"] },
-  
+
   // Org Admin
   { label: "User Management", href: "/admin/users", icon: Users, roles: ["org_admin"] },
-  { label: "Course Management", href: "/admin/courses", icon: FileText, roles: ["org_admin"] },
-  { label: "Attendance Management", href: "/admin/attendance", icon: UserCheck, roles: ["org_admin"] },
-  { label: "Grade Management", href: "/admin/grades", icon: BarChart3, roles: ["org_admin"] },
-  { label: "Fees Management", href: "/admin/fees", icon: CreditCard, roles: ["org_admin"] },
-  { label: "Timetable", href: "/admin/timetable", icon: Clock, roles: ["org_admin"] },
-  { label: "Events", href: "/admin/events", icon: Calendar, roles: ["org_admin"] },
-  { label: "Reports", href: "/admin/reports", icon: BarChart3, roles: ["org_admin"] },
+  { label: "Academic Year", href: "/admin/academic-year", icon: Calendar, roles: ["org_admin"], module: "ACADEMIC_YEAR" },
+  { label: "Departments", href: "/admin/departments", icon: Home, roles: ["org_admin"], module: "DEPARTMENTS" },
+  { label: "Semesters", href: "/admin/semesters", icon: Clock, roles: ["org_admin"], module: "SEMESTERS" },
+  { label: "Subjects", href: "/admin/subjects", icon: BookOpen, roles: ["org_admin"], module: "SUBJECTS" },
+  { label: "Batches", href: "/admin/batches", icon: LayoutDashboard, roles: ["org_admin"], module: "BATCHES" },
+  { label: "Course Management", href: "/admin/courses", icon: FileText, roles: ["org_admin"], module: "COURSES" },
+  { label: "Public Catalog", href: "/admin/catalog", icon: BookOpen, roles: ["org_admin"], module: "PUBLIC_CATALOG" },
+  { label: "Certificates", href: "/admin/certificates", icon: Award, roles: ["org_admin"], module: "CERTIFICATES" },
+  { label: "Attendance Management", href: "/admin/attendance", icon: UserCheck, roles: ["org_admin"], module: "ATTENDANCE" },
+  { label: "Grade Management", href: "/admin/grades", icon: BarChart3, roles: ["org_admin"], module: "GRADES_SECTIONS" },
+  { label: "GPA Reports", href: "/admin/gpa-reports", icon: BarChart3, roles: ["org_admin"], module: "GPA_REPORTS" },
+  { label: "Test Series", href: "/admin/test-series", icon: FileQuestion, roles: ["org_admin"], module: "TEST_SERIES" },
+  { label: "Exams", href: "/admin/exams", icon: ClipboardList, roles: ["org_admin"], module: "EXAMS" },
+  { label: "Parent Portal", href: "/admin/parent-portal", icon: Users, roles: ["org_admin"], module: "PARENT_PORTAL" },
+  { label: "Fees Management", href: "/admin/fees", icon: CreditCard, roles: ["org_admin"], module: "FEES" },
+  { label: "Course Sales", href: "/admin/sales", icon: TrendingUp, roles: ["org_admin"], module: "COURSE_SALES" },
+  { label: "Coupons", href: "/admin/coupons", icon: Sparkles, roles: ["org_admin"], module: "COUPONS" },
+  { label: "Timetable", href: "/admin/timetable", icon: Clock, roles: ["org_admin"], module: "TIMETABLE" },
+  { label: "Events", href: "/admin/events", icon: Calendar, roles: ["org_admin"], module: "EVENTS" },
+  { label: "Trainers", href: "/admin/trainers", icon: Users, roles: ["org_admin"], module: "TRAINERS" },
+  { label: "Reports", href: "/admin/reports", icon: BarChart3, roles: ["org_admin"], module: "REPORTS" },
+  { label: "Student Analytics", href: "/admin/student-analytics", icon: TrendingUp, roles: ["org_admin"], module: "STUDENT_ANALYTICS" },
+  { label: "Leaderboard", href: "/admin/leaderboard", icon: Trophy, roles: ["org_admin"], module: "LEADERBOARDS" },
   { label: "Branding Settings", href: "/admin/branding", icon: Sparkles, roles: ["org_admin"] },
   { label: "Organization Settings", href: "/admin/settings", icon: Settings, roles: ["org_admin"] },
-  
+
   // Platform Admin
   { label: "Organization Management", href: "/platform/organizations", icon: Home, roles: ["platform_admin"] },
   { label: "Subscription Management", href: "/platform/subscriptions", icon: CreditCard, roles: ["platform_admin"] },
@@ -72,9 +89,19 @@ export function DashboardSidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
 
-  const filteredItems = navItems.filter(
-    (item) => !item.roles || (user?.role && item.roles.includes(user.role))
-  )
+  const filteredItems = navItems.filter((item) => {
+    // Role check
+    const hasRole = !item.roles || (user?.role && item.roles.includes(user.role))
+    if (!hasRole) return false
+
+    // Module check for org-scoped users
+    if (item.module && user?.role !== 'platform_admin') {
+      const isEnabled = user?.modulesEnabled?.includes(item.module)
+      if (!isEnabled) return false
+    }
+
+    return true
+  })
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col bg-gradient-to-b from-background to-muted/20">
@@ -143,8 +170,8 @@ export function DashboardSidebar() {
                 onClick={() => setMobileOpen(false)}
                 className={cn(
                   "group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200",
-                  isActive 
-                    ? "bg-gradient-to-r from-primary/10 to-primary/5 text-primary shadow-sm" 
+                  isActive
+                    ? "bg-gradient-to-r from-primary/10 to-primary/5 text-primary shadow-sm"
                     : "text-muted-foreground hover:bg-secondary/80 hover:text-foreground"
                 )}
               >

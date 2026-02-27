@@ -48,8 +48,23 @@ class EmailService {
           });
           console.log('📧 [EMAIL SERVICE] Using service transport:', process.env.EMAIL_SERVICE || 'gmail');
         }
-      } else {
-        // Development fallback: Ethereal test account
+      }
+
+      // Initialize Resend as fallback if API key is present
+      if (process.env.RESEND_API_KEY) {
+        console.log('📧 [EMAIL SERVICE] Resend fallback initialized');
+      }
+
+      // Verify transport (non-blocking to prevent app hang)
+      if (this.transporter) {
+        this.transporter.verify().then(() => {
+          console.log('✅ [EMAIL SERVICE] SMTP Transport verified and ready');
+        }).catch(err => {
+          console.error('⚠️ [EMAIL SERVICE] SMTP Transport verification failed:', err.message);
+        });
+      } else if (!process.env.RESEND_API_KEY) {
+        // Only if no SMTP and no Resend, use Ethereal
+        console.log('📧 [EMAIL SERVICE] No primary email config, using Ethereal...');
         const testAccount = await nodemailer.createTestAccount();
         this.transporter = nodemailer.createTransport({
           host: 'smtp.ethereal.email',
@@ -62,12 +77,6 @@ class EmailService {
         });
         this.ethereal = true;
         console.log('📧 [EMAIL SERVICE] Using Ethereal test transport:', testAccount.user);
-      }
-
-      // Verify transport
-      if (this.transporter) {
-        await this.transporter.verify();
-        console.log('✅ [EMAIL SERVICE] Transport verified and ready');
       }
     } catch (err) {
       console.error('❌ [EMAIL SERVICE] Transport initialization failed:', err);
@@ -94,11 +103,19 @@ class EmailService {
       }
       return true;
     } catch (error) {
-      console.error('❌ [EMAIL SERVICE] Error sending email:', error);
-      // Automatic fallback: Try Ethereal and resend
+      console.error('❌ [EMAIL SERVICE] SMTP Error:', error.message);
+
+      // Fallback 1: Resend (HTTP based, usually bypasses SMTP blocks)
+      if (process.env.RESEND_API_KEY) {
+        console.log('📧 [EMAIL SERVICE] SMTP failed, trying Resend...');
+        const resendSuccess = await this.sendWithResend(to, subject, html || text);
+        if (resendSuccess) return true;
+      }
+
+      // Fallback 2: Try Ethereal and resend
       try {
         if (!this.ethereal) {
-          console.log('📧 [EMAIL SERVICE] Falling back to Ethereal test transport...');
+          console.log('📧 [EMAIL SERVICE] SMTP & Resend failed, falling back to Ethereal...');
           const testAccount = await nodemailer.createTestAccount();
           this.transporter = nodemailer.createTransport({
             host: 'smtp.ethereal.email',
@@ -133,6 +150,36 @@ class EmailService {
       console.log(`📧 [MOCK EMAIL] Subject: ${subject}`);
       console.log(`📧 [MOCK EMAIL] Body: ${text}`);
       console.log('-----------------------------------------');
+      return false;
+    }
+  }
+
+  async sendWithResend(to, subject, html) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || 'onboarding@resend.dev',
+          to: [to],
+          subject: subject,
+          html: html
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        console.log('✅ [EMAIL SERVICE] Email sent via Resend:', data.id);
+        return true;
+      } else {
+        console.error('❌ [EMAIL SERVICE] Resend API error:', data);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ [EMAIL SERVICE] Resend fetch error:', error);
       return false;
     }
   }

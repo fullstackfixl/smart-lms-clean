@@ -2,7 +2,11 @@ const express = require('express');
 const { body, param, query, validationResult } = require('express-validator');
 const { authMiddleware: auth } = require('../middleware/auth');
 const CertificateService = require('../utils/certificateService');
+const moduleGuard = require('../middleware/moduleGuard');
 const router = express.Router();
+
+// Apply module guard to all certificate routes
+router.use(auth, moduleGuard('CERTIFICATES'));
 
 // POST /api/certificates/generate/:enrollmentId - Generate certificate for completed course
 router.post('/generate/:enrollmentId', auth, [

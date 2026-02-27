@@ -6,6 +6,12 @@
 const mongoose = require('mongoose');
 
 const auditLogSchema = new mongoose.Schema({
+  organization_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Organization',
+    required: false, // Optional for platform_admin global logs
+    index: true
+  },
   user_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -68,25 +74,34 @@ auditLogSchema.index({ timestamp: -1 }); // For time-based queries
 auditLogSchema.index({ timestamp: 1 }, { expireAfterSeconds: 63072000 }); // 2 years
 
 // Static method to get audit trail for a resource
-auditLogSchema.statics.getResourceAuditTrail = function(resource, resourceId, limit = 50) {
-  return this.find({ resource, resource_id: resourceId })
+auditLogSchema.statics.getResourceAuditTrail = function (organizationId, resource, resourceId, limit = 50) {
+  const query = { resource, resource_id: resourceId };
+  if (organizationId) query.organization_id = organizationId;
+
+  return this.find(query)
     .sort({ timestamp: -1 })
     .limit(limit)
     .lean();
 };
 
 // Static method to get user activity
-auditLogSchema.statics.getUserActivity = function(userId, limit = 100) {
-  return this.find({ user_id: userId })
+auditLogSchema.statics.getUserActivity = function (organizationId, userId, limit = 100) {
+  const query = { user_id: userId };
+  if (organizationId) query.organization_id = organizationId;
+
+  return this.find(query)
     .sort({ timestamp: -1 })
     .limit(limit)
     .lean();
 };
 
 // Static method to get recent sensitive operations
-auditLogSchema.statics.getRecentSensitiveOperations = function(limit = 100) {
+auditLogSchema.statics.getRecentSensitiveOperations = function (organizationId, limit = 100) {
   const sensitiveActions = ['DELETE', 'SUSPEND', 'ROLE_CHANGE', 'PERMISSION_CHANGE'];
-  return this.find({ action: { $in: sensitiveActions } })
+  const query = { action: { $in: sensitiveActions } };
+  if (organizationId) query.organization_id = organizationId;
+
+  return this.find(query)
     .sort({ timestamp: -1 })
     .limit(limit)
     .lean();

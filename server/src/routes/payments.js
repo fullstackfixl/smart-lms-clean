@@ -6,33 +6,36 @@ const { createPaymentIntent, createCustomer, getPaymentIntent } = require('../co
 const { Organization, User } = require('../models');
 const notificationService = require('../utils/notificationService');
 
+const notificationService = require('../utils/notificationService');
+const moduleGuard = require('../middleware/moduleGuard');
+
 const router = express.Router();
 
-// Razorpay: Create order
-router.post('/razorpay/create-order', authMiddleware, async (req, res) => {
-  try {
-    const { amount, currency = 'INR', receipt } = req.body;
+// Apply module guard to payment creation and verification
+router.use(['/razorpay/create-order', '/razorpay/verify', '/stripe/create-payment-intent', '/stripe/verify'], authMiddleware, moduleGuard('COURSE_SALES'));
+try {
+  const { amount, currency = 'INR', receipt } = req.body;
 
-    if (!amount || amount <= 0) {
-      return res.error('Invalid amount', 'Amount must be greater than 0', 400);
-    }
-
-    const order = await createOrder(amount, currency, receipt, {
-      organization_id: req.user.organization_id.toString(),
-      user_id: req.user._id.toString()
-    });
-
-    res.success({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID
-    }, 'Razorpay order created successfully');
-
-  } catch (error) {
-    console.error('Razorpay create order error:', error);
-    res.error(error.message, 'Failed to create Razorpay order', 500);
+  if (!amount || amount <= 0) {
+    return res.error('Invalid amount', 'Amount must be greater than 0', 400);
   }
+
+  const order = await createOrder(amount, currency, receipt, {
+    organization_id: req.user.organization_id.toString(),
+    user_id: req.user._id.toString()
+  });
+
+  res.success({
+    orderId: order.id,
+    amount: order.amount,
+    currency: order.currency,
+    keyId: process.env.RAZORPAY_KEY_ID
+  }, 'Razorpay order created successfully');
+
+} catch (error) {
+  console.error('Razorpay create order error:', error);
+  res.error(error.message, 'Failed to create Razorpay order', 500);
+}
 });
 
 // Razorpay: Verify payment
@@ -157,20 +160,20 @@ router.post('/webhooks/razorpay', rawBodyParser, verifyRazorpayWebhook, validate
         // Handle successful payment
         const payment = payload.payment.entity;
         console.log('Payment captured:', payment.id);
-        
+
         // For course enrollments, the verification is handled in the enrollment route
         // This webhook can be used for additional processing like notifications
-        
+
         break;
 
       case 'payment.failed':
         // Handle failed payment
         const failedPayment = payload.payment.entity;
         console.log('Payment failed:', failedPayment.id);
-        
+
         // Clean up any pending enrollment records if needed
         // Send failure notification to user
-        
+
         break;
 
       case 'order.paid':
@@ -203,28 +206,28 @@ router.post('/webhooks/stripe', rawBodyParser, verifyStripeWebhook, validateWebh
         // Handle successful payment
         const paymentIntent = event.data.object;
         console.log('Payment succeeded:', paymentIntent.id);
-        
+
         // Update organization subscription or handle payment success
         // Add your business logic here
-        
+
         break;
 
       case 'payment_intent.payment_failed':
         // Handle failed payment
         const failedPaymentIntent = event.data.object;
         console.log('Payment failed:', failedPaymentIntent.id);
-        
+
         // Add your business logic here
-        
+
         break;
 
       case 'invoice.payment_succeeded':
         // Handle subscription payment success
         const invoice = event.data.object;
         console.log('Subscription payment succeeded:', invoice.id);
-        
+
         // Add your business logic here
-        
+
         break;
 
       default:

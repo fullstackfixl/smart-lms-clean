@@ -4,7 +4,7 @@ const BaseController = require('../core/BaseController');
 class PlatformOrganizationController extends BaseController {
   async createOrganization(req, res) {
     try {
-      const { name, subdomain, adminEmail, adminName, password, plan = 'basic' } = req.body;
+      const { name, subdomain, adminEmail, adminName, password, plan = 'basic', type = 'School' } = req.body;
 
       // Check if organization exists
       const existingOrg = await Organization.findOne({ subdomain: subdomain.toLowerCase() });
@@ -18,12 +18,19 @@ class PlatformOrganizationController extends BaseController {
         return res.error('Admin email already registered', 'Validation Error', 400);
       }
 
+      // Lookup template for the requested type so we can seed modules
+      const OrgTemplate = require('../models/OrgTemplate');
+      const template = await OrgTemplate.findOne({ type });
+
       // 1. Create Organization
       const organization = new Organization({
         name,
         subdomain: subdomain.toLowerCase(),
         plan,
-        status: 'active'
+        status: 'active',
+        type,
+        modulesEnabled: template ? template.modulesEnabled : [],
+        templateVersion: template ? template._id : undefined
       });
       await organization.save();
 
@@ -106,15 +113,25 @@ class PlatformOrganizationController extends BaseController {
       const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
       const setupLink = `${baseUrl}/org/setup?token=${inviteToken}`;
 
-      await emailService.sendOrgInviteEmail(adminEmail, orgName, orgType, setupLink);
+      let emailSent = false;
+      try {
+        emailSent = await emailService.sendOrgInviteEmail(adminEmail, orgName, orgType, setupLink);
+      } catch (emailError) {
+        console.error('📧 [PORTAL] Failed to send invitation email:', emailError.message);
+      }
 
       return res.success({
         organization: {
           id: organization._id,
           name: organization.name,
           status: organization.status
-        }
-      }, 'Organization created and invitation sent successfully', 201);
+        },
+        setupLink, // Return link so admin can share it manually if email fails
+        emailSent,
+        warning: !emailSent ? 'Organization created but invitation email failed to send. Please share the setup link manually.' : null
+      }, emailSent
+        ? 'Organization created and invitation sent successfully'
+        : 'Organization created but invitation email failed. You can copy the setup link below.', 201);
     } catch (error) {
       console.error('Create organization with invite error:', error);
       return res.error(error.message, 'Failed to create organization', 500);

@@ -202,48 +202,24 @@ export async function assignInstructor(courseId: string, instructorId: string) {
 
 // ==================== ATTENDANCE ====================
 
-export async function getAttendanceSummary() {
-  return apiRequest('/api/admin/attendance/summary');
-}
+export const attendanceApi = {
+  getSummary: () => apiRequest('/api/attendance/reports/summary'),
+  getCourseAttendance: (courseId: string) => apiRequest(`/api/attendance/course/${courseId}`),
+  getStudentAttendance: (studentId: string) => apiRequest(`/api/attendance/student/${studentId}`),
+  mark: (data: any) => apiRequest('/api/attendance/mark', { method: 'POST', body: data }),
+  update: (id: string, data: any) => apiRequest(`/api/attendance/${id}`, { method: 'PUT', body: data }),
+};
 
-export async function getStudentAttendance(studentId: string) {
-  return apiRequest(`/api/admin/attendance/student/${studentId}`);
-}
+// ==================== GRADES & EXAMS ====================
 
-export async function getInstructorAttendance(instructorId: string) {
-  return apiRequest(`/api/admin/attendance/instructor/${instructorId}`);
-}
-
-// ==================== GRADES ====================
-
-export interface GetGradesParams {
-  courseId?: string;
-  studentId?: string;
-  minGrade?: number;
-  maxGrade?: number;
-}
-
-export async function getGrades(params: GetGradesParams = {}) {
-  const queryParams = new URLSearchParams();
-  if (params.courseId) queryParams.append('courseId', params.courseId);
-  if (params.studentId) queryParams.append('studentId', params.studentId);
-  if (params.minGrade) queryParams.append('minGrade', params.minGrade.toString());
-  if (params.maxGrade) queryParams.append('maxGrade', params.maxGrade.toString());
-
-  const query = queryParams.toString();
-  return apiRequest(`/api/admin/grades${query ? `?${query}` : ''}`);
-}
-
-export async function getCourseGrades(courseId: string) {
-  return apiRequest(`/api/admin/grades/course/${courseId}`);
-}
-
-export async function exportGrades(courseId?: string, format: 'json' | 'csv' = 'json') {
-  return apiRequest('/api/admin/grades/export', {
-    method: 'POST',
-    body: JSON.stringify({ courseId, format })
-  });
-}
+export const gradeApi = {
+  list: (params: any = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return apiRequest(`/api/admin/grades${query ? `?${query}` : ''}`);
+  },
+  getCourseGrades: (id: string) => apiRequest(`/api/admin/grades/course/${id}`),
+  export: (data: any) => apiRequest('/api/admin/grades/export', { method: 'POST', body: data }),
+};
 
 // ==================== FEES ====================
 
@@ -380,4 +356,96 @@ export async function updateSettings(data: UpdateSettingsData) {
     method: 'PUT',
     body: JSON.stringify(data)
   });
+}
+
+// ==================== ORGANIZATION FEATURES (NEW) ====================
+
+// Generic CRUD helper for org features
+async function orgFeatureRequest(resource: string, method: string = 'GET', data?: any) {
+  const options: any = { method };
+  if (data) options.body = data;
+  return apiRequest(`/api/org-features/${resource}`, options);
+}
+
+// Academic Years
+export const academicYearApi = {
+  list: () => orgFeatureRequest('academic-years'),
+  create: (data: any) => orgFeatureRequest('academic-years', 'POST', data),
+  get: (id: string) => orgFeatureRequest(`academic-years/${id}`),
+  update: (id: string, data: any) => orgFeatureRequest(`academic-years/${id}`, 'PUT', data),
+  delete: (id: string) => orgFeatureRequest(`academic-years/${id}`, 'DELETE'),
+};
+
+// Departments
+export const departmentApi = {
+  list: () => orgFeatureRequest('departments'),
+  create: (data: any) => orgFeatureRequest('departments', 'POST', data),
+  get: (id: string) => orgFeatureRequest(`departments/${id}`),
+  update: (id: string, data: any) => orgFeatureRequest(`departments/${id}`, 'PUT', data),
+  delete: (id: string) => orgFeatureRequest(`departments/${id}`, 'DELETE'),
+};
+
+// Batches
+export const batchApi = {
+  list: () => orgFeatureRequest('batches'),
+  create: (data: any) => orgFeatureRequest('batches', 'POST', data),
+  get: (id: string) => orgFeatureRequest(`batches/${id}`),
+  update: (id: string, data: any) => orgFeatureRequest(`batches/${id}`, 'PUT', data),
+  delete: (id: string) => orgFeatureRequest(`batches/${id}`, 'DELETE'),
+};
+
+// Semesters
+export const semesterApi = {
+  list: () => orgFeatureRequest('semesters'),
+  create: (data: any) => orgFeatureRequest('semesters', 'POST', data),
+  get: (id: string) => orgFeatureRequest(`semesters/${id}`),
+  update: (id: string, data: any) => orgFeatureRequest(`semesters/${id}`, 'PUT', data),
+  delete: (id: string) => orgFeatureRequest(`semesters/${id}`, 'DELETE'),
+};
+
+// Subjects
+export const subjectApi = {
+  list: () => orgFeatureRequest('subjects'),
+  create: (data: any) => orgFeatureRequest('subjects', 'POST', data),
+  get: (id: string) => orgFeatureRequest(`subjects/${id}`),
+  update: (id: string, data: any) => orgFeatureRequest(`subjects/${id}`, 'PUT', data),
+  delete: (id: string) => orgFeatureRequest(`subjects/${id}`, 'DELETE'),
+};
+
+// Test Series
+export const testSeriesApi = {
+  list: () => orgFeatureRequest('test-series'),
+  create: (data: any) => orgFeatureRequest('test-series', 'POST', data),
+  get: (id: string) => orgFeatureRequest(`test-series/${id}`),
+  update: (id: string, data: any) => orgFeatureRequest(`test-series/${id}`, 'PUT', data),
+  delete: (id: string) => orgFeatureRequest(`test-series/${id}`, 'DELETE'),
+}
+
+export const schoolGradeApi = {
+  listLevels: () => orgFeatureRequest('school-levels'),
+  createLevel: (data: any) => orgFeatureRequest('school-levels', 'POST', data),
+  updateLevel: (id: string, data: any) => orgFeatureRequest(`school-levels/${id}`, 'PUT', data),
+  deleteLevel: (id: string) => orgFeatureRequest(`school-levels/${id}`, 'DELETE'),
+
+  listSections: (gradeLevelId?: string) => orgFeatureRequest(`school-sections${gradeLevelId ? `?grade_level_id=${gradeLevelId}` : ''}`),
+  createSection: (data: any) => orgFeatureRequest('school-sections', 'POST', data),
+  updateSection: (id: string, data: any) => orgFeatureRequest(`school-sections/${id}`, 'PUT', data),
+  deleteSection: (id: string) => orgFeatureRequest(`school-sections/${id}`, 'DELETE'),
+}
+
+export const gpaApi = {
+  getStats: () => orgFeatureRequest('gpa/stats'),
+  getAtRisk: (threshold?: number) => orgFeatureRequest(`gpa/at-risk${threshold ? `?threshold=${threshold}` : ''}`),
+  getDepartments: () => orgFeatureRequest('gpa/departments'),
+  getStudentGPA: (studentId: string) => orgFeatureRequest(`gpa/student/${studentId}`),
+}
+
+export const trainerApi = {
+  list: () => orgFeatureRequest('trainers'),
+  updateExpertise: (id: string, data: { expertise: string; bio?: string }) => orgFeatureRequest(`trainers/${id}/expertise`, 'PUT', data),
+}
+
+export const leaderboardApi = {
+  getGlobal: () => orgFeatureRequest('leaderboard'),
+  getBadges: (userId: string) => orgFeatureRequest(`leaderboard/badges/${userId}`),
 }

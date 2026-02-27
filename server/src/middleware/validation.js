@@ -20,7 +20,8 @@ const authValidation = {
     subdomain: Joi.string().lowercase().optional().min(3).max(30).pattern(/^[a-z0-9-]+$/),
     adminName: Joi.string().required().min(2).max(100),
     adminEmail: Joi.string().email().required(),
-    selectedPlan: Joi.string().valid('basic', 'pro', 'enterprise').required()
+    selectedPlan: Joi.string().valid('basic', 'pro', 'enterprise').required(),
+    organizationType: Joi.string().valid('SCHOOL', 'COLLEGE', 'INSTITUTE', 'ONLINE_ACADEMY').required()
   }),
 
   completeOrganizationRegistration: Joi.object({

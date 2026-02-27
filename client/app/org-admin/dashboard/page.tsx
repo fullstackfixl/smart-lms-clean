@@ -98,6 +98,25 @@ export default function OrgAdminDashboard() {
     },
   ]
 
+  // Add type-specific stats
+  const orgType = metrics.organizationType;
+  if (orgType === 'School') {
+    stats.push(
+      { title: "Grade Levels", value: metrics.metrics.gradeLevels || 0, icon: Activity, gradient: "from-indigo-500 to-blue-500" },
+      { title: "Sections", value: metrics.metrics.sections || 0, icon: Activity, gradient: "from-slate-500 to-slate-700" }
+    );
+  } else if (orgType === 'College') {
+    stats.push(
+      { title: "Departments", value: metrics.metrics.departments || 0, icon: Activity, gradient: "from-indigo-500 to-purple-500" },
+      { title: "Semesters", value: metrics.metrics.semesters || 0, icon: Activity, gradient: "from-emerald-500 to-teal-500" }
+    );
+  } else if (orgType === 'Institute') {
+    stats.push(
+      { title: "Batches", value: metrics.metrics.batches || 0, icon: Activity, gradient: "from-orange-500 to-amber-500" },
+      { title: "Test Series", value: metrics.metrics.testSeries || 0, icon: Activity, gradient: "from-rose-500 to-red-500" }
+    );
+  }
+
   const userDistribution = [
     { name: "Students", value: metrics.metrics.totalStudents, color: "#3b82f6" },
     { name: "Instructors", value: metrics.metrics.totalInstructors, color: "#a855f7" },
@@ -120,7 +139,7 @@ export default function OrgAdminDashboard() {
       </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <StatCard key={stat.title} {...stat} delay={index * 0.1} />
         ))}

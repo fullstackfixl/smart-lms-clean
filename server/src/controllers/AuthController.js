@@ -47,11 +47,11 @@ class AuthController {
             }
 
             const result = await authService.applyOrganization(req.body);
-      res.status(201).json({
-          success: true,
-          message: 'Application submitted. Awaiting approval.',
-          data: result
-      });
+            res.status(201).json({
+                success: true,
+                message: 'Application submitted. Awaiting approval.',
+                data: result
+            });
         } catch (error) {
             res.status(error.statusCode || 400).json({
                 success: false,
@@ -382,7 +382,7 @@ class AuthController {
             }
             res.status(200).json({
                 success: true,
-                data: { user: req.user }
+                data: { user: req.user.toPublicJSON ? req.user.toPublicJSON() : req.user }
             });
         } catch (error) {
             res.status(500).json({

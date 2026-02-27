@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Building2, Plus, Search, Filter, Edit, Trash2, Eye, CheckCircle, XCircle, RefreshCw, MoreVertical, Clock } from "lucide-react"
+import { Building2, Plus, Search, Filter, Edit, Trash2, Eye, CheckCircle, XCircle, RefreshCw, MoreVertical, Clock, Copy, Check } from "lucide-react"
 import { platformApi } from "@/lib/api"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
@@ -402,12 +402,14 @@ function CreateOrganizationModal({ onClose, onSuccess }: { onClose: () => void; 
   const { token } = useAuth()
   const [formData, setFormData] = useState({
     orgName: "",
-    orgType: "School",
+    orgType: "SCHOOL",
     adminName: "",
     adminEmail: ""
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [successData, setSuccessData] = useState<{ setupLink: string; emailSent: boolean } | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -420,7 +422,10 @@ function CreateOrganizationModal({ onClose, onSuccess }: { onClose: () => void; 
       const response = await platformApi.createOrgV2(token, formData)
 
       if (response.success) {
-        onSuccess()
+        setSuccessData({
+          setupLink: (response.data as any).setupLink,
+          emailSent: (response.data as any).emailSent
+        })
       } else {
         setError(response.error || "Failed to create organization")
       }
@@ -429,6 +434,75 @@ function CreateOrganizationModal({ onClose, onSuccess }: { onClose: () => void; 
     } finally {
       setLoading(false)
     }
+  }
+
+  const copyToClipboard = () => {
+    if (successData?.setupLink) {
+      navigator.clipboard.writeText(successData.setupLink)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  if (successData) {
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-slate-900 rounded-xl border border-slate-800/50 p-8 max-w-md w-full mx-4"
+        >
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-500/10 mb-4">
+              <CheckCircle className="h-8 w-8 text-green-500" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-50">Organization Created</h3>
+            <p className="text-gray-400 mt-2">
+              {successData.emailSent
+                ? "The invitation email has been sent to the administrator."
+                : "The organization was created, but the invitation email could not be sent."}
+            </p>
+          </div>
+
+          {!successData.emailSent && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <p className="text-sm text-amber-400 font-medium mb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4" /> Action Required
+                </p>
+                <p className="text-xs text-amber-200/70">
+                  Please copy the setup link below and share it with the administrator manually.
+                </p>
+              </div>
+
+              <div className="relative group">
+                <input
+                  readOnly
+                  value={successData.setupLink}
+                  className="w-full h-12 bg-slate-950 border border-slate-800 rounded-xl px-4 pr-12 text-xs text-indigo-400 font-mono focus:outline-none"
+                />
+                <button
+                  onClick={copyToClipboard}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-800 rounded-lg text-gray-400 transition-colors"
+                >
+                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={() => {
+              onSuccess()
+              onClose()
+            }}
+            className="w-full mt-8 h-12 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/20"
+          >
+            Done
+          </button>
+        </motion.div>
+      </div>
+    )
   }
 
   return (
@@ -470,11 +544,10 @@ function CreateOrganizationModal({ onClose, onSuccess }: { onClose: () => void; 
               onChange={(e) => setFormData({ ...formData, orgType: e.target.value })}
               className="w-full h-10 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
-              <option value="School">School</option>
-              <option value="College">College</option>
-              <option value="Institute">Institute</option>
-              <option value="Coaching">Coaching</option>
-              <option value="Other">Other</option>
+              <option value="SCHOOL">School</option>
+              <option value="COLLEGE">College</option>
+              <option value="INSTITUTE">Institute</option>
+              <option value="ONLINE_ACADEMY">Online Academy</option>
             </select>
           </div>
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult, query } = require('express-validator');
 const { authMiddleware: auth } = require('../middleware/auth');
+const moduleGuard = require('../middleware/moduleGuard');
 const Attendance = require('../models/Attendance');
 const Course = require('../models/Course');
 const User = require('../models/User');
@@ -8,6 +9,9 @@ const Enrollment = require('../models/Enrollment');
 const notificationService = require('../utils/notificationService');
 
 const router = express.Router();
+
+// All attendance routes require ATTENDANCE module to be enabled
+router.use(auth, moduleGuard('ATTENDANCE'));
 
 /**
  * POST /api/attendance/mark
@@ -103,7 +107,7 @@ router.post('/mark', [
     if (existingAttendance) {
       // Update existing attendance
       attendance = existingAttendance;
-      
+
       // Update session details
       attendance.end_time = end_time;
       attendance.session_type = session_type;
@@ -111,7 +115,7 @@ router.post('/mark', [
       attendance.location = location;
       attendance.topic_covered = topic_covered;
       attendance.homework_assigned = homework_assigned;
-      
+
       if (isLateMarking && !attendance.late_marking_reason) {
         attendance.late_marking_reason = req.body.late_marking_reason || 'Marked after session end time';
       }
@@ -120,9 +124,9 @@ router.post('/mark', [
       await attendance.bulkMarkAttendance(attendance_records, userId);
     } else {
       // Create new attendance record
-      const startMinutes = attendance.timeToMinutes ? attendance.timeToMinutes(start_time) : 
+      const startMinutes = attendance.timeToMinutes ? attendance.timeToMinutes(start_time) :
         parseInt(start_time.split(':')[0]) * 60 + parseInt(start_time.split(':')[1]);
-      const endMinutes = attendance.timeToMinutes ? attendance.timeToMinutes(end_time) : 
+      const endMinutes = attendance.timeToMinutes ? attendance.timeToMinutes(end_time) :
         parseInt(end_time.split(':')[0]) * 60 + parseInt(end_time.split(':')[1]);
 
       attendance = new Attendance({
@@ -167,7 +171,7 @@ router.post('/mark', [
     // Check for low attendance and send notifications
     try {
       const lowAttendanceThreshold = 75; // Can be configurable
-      
+
       for (const record of attendance_records) {
         if (record.status === 'absent') {
           const attendanceSummary = await Attendance.getStudentAttendanceSummary(
@@ -179,7 +183,7 @@ router.post('/mark', [
           if (attendanceSummary.attendance_percentage < lowAttendanceThreshold) {
             // Send low attendance notification
             const student = await User.findById(record.student_id).select('full_name parent_id');
-            
+
             // Notify student
             await notificationService.createNotification({
               organization_id: organization_id,
@@ -319,7 +323,7 @@ router.get('/course/:course_id', [
     const dateRange = {};
     if (start_date) dateRange.start = new Date(start_date);
     if (end_date) dateRange.end = new Date(end_date);
-    
+
     const courseStats = await Attendance.getCourseAttendanceStats(course_id, organization_id, dateRange);
 
     res.json({
@@ -438,9 +442,9 @@ router.get('/student/:student_id', [
       is_active: true,
       ...filters
     })
-    .populate('course_id', 'title')
-    .sort({ session_date: -1 })
-    .limit(50); // Limit to recent 50 records
+      .populate('course_id', 'title')
+      .sort({ session_date: -1 })
+      .limit(50); // Limit to recent 50 records
 
     // Extract student's attendance from each session
     const studentAttendanceRecords = detailedRecords.map(session => {
@@ -542,7 +546,7 @@ router.put('/:id', [
 
     // Update allowed fields
     const allowedUpdates = ['session_title', 'topic_covered', 'homework_assigned', 'attendance_records'];
-    
+
     allowedUpdates.forEach(field => {
       if (req.body[field] !== undefined) {
         if (field === 'attendance_records') {
@@ -635,7 +639,7 @@ router.get('/reports/summary', [
     // Get overall statistics
     const overallStats = {
       total_students_below_threshold: filteredStudents.length,
-      average_attendance_of_low_performers: filteredStudents.length > 0 ? 
+      average_attendance_of_low_performers: filteredStudents.length > 0 ?
         Math.round(filteredStudents.reduce((sum, s) => sum + s.attendance_percentage, 0) / filteredStudents.length) : 0,
       courses_affected: [...new Set(filteredStudents.map(s => s.course_id.toString()))].length
     };

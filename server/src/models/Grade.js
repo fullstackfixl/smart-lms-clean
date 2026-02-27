@@ -156,9 +156,9 @@ gradeSchema.index({ course_id: 1, assignment_type: 1, graded_date: -1 });
 gradeSchema.index({ organization_id: 1, course_id: 1, assignment_type: 1 });
 
 // Virtual for letter grade
-gradeSchema.virtual('letter_grade').get(function() {
+gradeSchema.virtual('letter_grade').get(function () {
   const percentage = this.percentage || (this.earned_score / this.max_score) * 100;
-  
+
   if (percentage >= 90) return 'A';
   if (percentage >= 80) return 'B';
   if (percentage >= 70) return 'C';
@@ -167,9 +167,9 @@ gradeSchema.virtual('letter_grade').get(function() {
 });
 
 // Virtual for grade points (4.0 scale)
-gradeSchema.virtual('grade_points').get(function() {
+gradeSchema.virtual('grade_points').get(function () {
   const percentage = this.percentage || (this.earned_score / this.max_score) * 100;
-  
+
   if (percentage >= 90) return 4.0;
   if (percentage >= 80) return 3.0;
   if (percentage >= 70) return 2.0;
@@ -178,63 +178,63 @@ gradeSchema.virtual('grade_points').get(function() {
 });
 
 // Virtual for weighted score
-gradeSchema.virtual('weighted_score').get(function() {
+gradeSchema.virtual('weighted_score').get(function () {
   const percentage = this.percentage || (this.earned_score / this.max_score) * 100;
   return (percentage * this.weight) / 100;
 });
 
 // Pre-save middleware to calculate percentage
-gradeSchema.pre('save', function(next) {
+gradeSchema.pre('save', function (next) {
   // Calculate percentage if not provided
   if (!this.percentage && this.max_score > 0) {
     this.percentage = Math.round((this.earned_score / this.max_score) * 100 * 100) / 100; // Round to 2 decimal places
   }
-  
+
   // Validate earned score doesn't exceed max score
   if (this.earned_score > this.max_score && !this.is_extra_credit) {
     return next(new Error('Earned score cannot exceed maximum score unless it is extra credit'));
   }
-  
+
   // Apply late penalty if applicable
   if (this.late_submission && this.late_penalty > 0) {
     this.earned_score = Math.max(0, this.earned_score - this.late_penalty);
     this.percentage = Math.round((this.earned_score / this.max_score) * 100 * 100) / 100;
   }
-  
+
   next();
 });
 
 // Instance method to calculate rubric total
-gradeSchema.methods.calculateRubricTotal = function() {
+gradeSchema.methods.calculateRubricTotal = function () {
   if (this.rubric_scores.length === 0) return { earned: 0, max: 0 };
-  
+
   const earned = this.rubric_scores.reduce((sum, score) => sum + score.earned_points, 0);
   const max = this.rubric_scores.reduce((sum, score) => sum + score.max_points, 0);
-  
+
   return { earned, max };
 };
 
 // Instance method to update from rubric scores
-gradeSchema.methods.updateFromRubric = function() {
+gradeSchema.methods.updateFromRubric = function () {
   const rubricTotal = this.calculateRubricTotal();
-  
+
   if (rubricTotal.max > 0) {
     this.max_score = rubricTotal.max;
     this.earned_score = rubricTotal.earned;
     this.percentage = Math.round((rubricTotal.earned / rubricTotal.max) * 100 * 100) / 100;
   }
-  
+
   return this.save();
 };
 
 // Static method to find grades by organization
-gradeSchema.statics.findByOrganization = function(organizationId, filters = {}) {
+gradeSchema.statics.findByOrganization = function (organizationId, filters = {}) {
   const query = {
     organization_id: organizationId,
     is_active: true,
     ...filters
   };
-  
+
   return this.find(query)
     .populate('student_id', 'full_name email')
     .populate('course_id', 'title')
@@ -243,18 +243,18 @@ gradeSchema.statics.findByOrganization = function(organizationId, filters = {}) 
 };
 
 // Static method to get student grades summary
-gradeSchema.statics.getStudentGradesSummary = async function(studentId, organizationId, filters = {}) {
+gradeSchema.statics.getStudentGradesSummary = async function (studentId, organizationId, filters = {}) {
   const matchQuery = {
     student_id: studentId,
     organization_id: organizationId,
     is_active: true,
     ...filters
   };
-  
+
   const grades = await this.find(matchQuery)
     .populate('course_id', 'title')
     .sort({ graded_date: -1 });
-  
+
   // Group by course
   const courseGrades = {};
   grades.forEach(grade => {
@@ -268,12 +268,12 @@ gradeSchema.statics.getStudentGradesSummary = async function(studentId, organiza
         current_percentage: 0
       };
     }
-    
+
     courseGrades[courseId].grades.push(grade);
     courseGrades[courseId].total_weighted_score += grade.weighted_score;
     courseGrades[courseId].total_weight += grade.weight;
   });
-  
+
   // Calculate current percentage for each course
   Object.keys(courseGrades).forEach(courseId => {
     const course = courseGrades[courseId];
@@ -281,19 +281,19 @@ gradeSchema.statics.getStudentGradesSummary = async function(studentId, organiza
       course.current_percentage = Math.round((course.total_weighted_score / course.total_weight) * 100 * 100) / 100;
     }
   });
-  
+
   return courseGrades;
 };
 
 // Static method to get course grade statistics
-gradeSchema.statics.getCourseGradeStats = async function(courseId, organizationId, filters = {}) {
+gradeSchema.statics.getCourseGradeStats = async function (courseId, organizationId, filters = {}) {
   const matchQuery = {
     course_id: courseId,
     organization_id: organizationId,
     is_active: true,
     ...filters
   };
-  
+
   const stats = await this.aggregate([
     { $match: matchQuery },
     {
@@ -308,7 +308,7 @@ gradeSchema.statics.getCourseGradeStats = async function(courseId, organizationI
     },
     { $sort: { _id: 1 } }
   ]);
-  
+
   const overallStats = await this.aggregate([
     { $match: matchQuery },
     {
@@ -333,7 +333,7 @@ gradeSchema.statics.getCourseGradeStats = async function(courseId, organizationI
       }
     }
   ]);
-  
+
   return {
     by_assignment_type: stats,
     overall: overallStats[0] || {
@@ -346,29 +346,29 @@ gradeSchema.statics.getCourseGradeStats = async function(courseId, organizationI
 };
 
 // Static method to validate grade weights for a course
-gradeSchema.statics.validateCourseWeights = async function(courseId, organizationId, excludeGradeId = null) {
+gradeSchema.statics.validateCourseWeights = async function (courseId, organizationId, excludeGradeId = null) {
   const matchQuery = {
     course_id: courseId,
     organization_id: organizationId,
     is_active: true
   };
-  
+
   if (excludeGradeId) {
     matchQuery._id = { $ne: excludeGradeId };
   }
-  
+
   const totalWeight = await this.aggregate([
     { $match: matchQuery },
     { $group: { _id: null, total: { $sum: '$weight' } } }
   ]);
-  
+
   return totalWeight[0]?.total || 0;
 };
 
 // Static method to recalculate grade summaries for a course
-gradeSchema.statics.recalculateCourseSummaries = async function(courseId, organizationId) {
+gradeSchema.statics.recalculateCourseSummaries = async function (courseId, organizationId) {
   const GradeSummary = mongoose.model('GradeSummary');
-  
+
   // Get all students with grades in this course
   const studentGrades = await this.aggregate([
     {
@@ -387,14 +387,14 @@ gradeSchema.statics.recalculateCourseSummaries = async function(courseId, organi
       }
     }
   ]);
-  
+
   // Update or create grade summaries
   const summaryPromises = studentGrades.map(async (studentData) => {
-    const currentPercentage = studentData.total_weight > 0 ? 
+    const currentPercentage = studentData.total_weight > 0 ?
       Math.round((studentData.total_weighted_score / studentData.total_weight) * 100 * 100) / 100 : 0;
-    
+
     const letterGrade = this.calculateLetterGrade(currentPercentage);
-    
+
     // Group grades by category
     const gradeCategories = {};
     studentData.grades.forEach(grade => {
@@ -408,19 +408,19 @@ gradeSchema.statics.recalculateCourseSummaries = async function(courseId, organi
           percentage: 0
         };
       }
-      
+
       gradeCategories[category].weight += grade.weight;
       gradeCategories[category].earned_points += grade.earned_score;
       gradeCategories[category].possible_points += grade.max_score;
     });
-    
+
     // Calculate percentage for each category
     Object.values(gradeCategories).forEach(category => {
       if (category.possible_points > 0) {
         category.percentage = Math.round((category.earned_points / category.possible_points) * 100 * 100) / 100;
       }
     });
-    
+
     return GradeSummary.findOneAndUpdate(
       {
         student_id: studentData._id,
@@ -438,12 +438,12 @@ gradeSchema.statics.recalculateCourseSummaries = async function(courseId, organi
       { upsert: true, new: true }
     );
   });
-  
+
   return Promise.all(summaryPromises);
 };
 
 // Static method to calculate letter grade from percentage
-gradeSchema.statics.calculateLetterGrade = function(percentage) {
+gradeSchema.statics.calculateLetterGrade = function (percentage) {
   if (percentage >= 90) return 'A';
   if (percentage >= 80) return 'B';
   if (percentage >= 70) return 'C';
@@ -452,43 +452,43 @@ gradeSchema.statics.calculateLetterGrade = function(percentage) {
 };
 
 // Pre-save middleware to validate organization consistency
-gradeSchema.pre('save', async function(next) {
+gradeSchema.pre('save', async function (next) {
   if (this.isNew) {
     try {
       // Verify student belongs to same organization
       const User = mongoose.model('User');
       const student = await User.findById(this.student_id);
-      
+
       if (!student) {
         return next(new Error('Student not found'));
       }
-      
+
       if (student.organization_id.toString() !== this.organization_id.toString()) {
         return next(new Error('Student must belong to the same organization'));
       }
-      
+
       // Verify course belongs to same organization
       const Course = mongoose.model('Course');
       const course = await Course.findById(this.course_id);
-      
+
       if (!course) {
         return next(new Error('Course not found'));
       }
-      
+
       if (course.organization_id.toString() !== this.organization_id.toString()) {
         return next(new Error('Course must belong to the same organization'));
       }
-      
+
     } catch (error) {
       return next(error);
     }
   }
-  
+
   next();
 });
 
 // Post-save middleware to update grade summary
-gradeSchema.post('save', async function() {
+gradeSchema.post('save', async function () {
   try {
     await this.constructor.recalculateCourseSummaries(this.course_id, this.organization_id);
   } catch (error) {

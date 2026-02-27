@@ -2,8 +2,12 @@ const express = require('express');
 const { Course, Section, Lesson, Enrollment, User, Organization } = require('../models');
 const { authMiddleware, optionalAuth, orgAccessMiddleware, requireRole } = require('../middleware/auth');
 const { sendEnrollmentEmail } = require('../utils/email');
+const moduleGuard = require('../middleware/moduleGuard');
 
 const router = express.Router();
+
+// Apply module guard to all course routes
+router.use(authMiddleware, moduleGuard('COURSES'));
 
 // 1️⃣ Instructor Create Course (Spec Alias)
 router.post('/create', authMiddleware, requireRole(['instructor']), async (req, res) => {

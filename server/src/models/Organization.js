@@ -10,8 +10,16 @@ const organizationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['School', 'College', 'Institute', 'Coaching', 'Other'],
+    enum: ['SCHOOL', 'COLLEGE', 'INSTITUTE', 'ONLINE_ACADEMY'],
     required: [true, 'Organization type is required']
+  },
+  modulesEnabled: [{
+    type: String,
+    trim: true
+  }],
+  templateVersion: {
+    type: String,
+    default: 'v1'
   },
   subdomain: {
     type: String,

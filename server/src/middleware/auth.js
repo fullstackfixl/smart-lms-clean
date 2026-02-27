@@ -58,6 +58,12 @@ const authMiddleware = async (req, res, next) => {
 
     console.log('✅ [Auth] Authenticated:', user.email, 'Role:', user.role);
     req.user = user;
+
+    // Attach modulesEnabled for moduleGuard middleware
+    if (user.organization_id && user.organization_id.modulesEnabled) {
+      req.user.modulesEnabled = user.organization_id.modulesEnabled;
+    }
+
     next();
   } catch (error) {
     console.log('❌ [Auth] Error:', error.message);

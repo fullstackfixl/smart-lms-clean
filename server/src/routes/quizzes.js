@@ -8,7 +8,11 @@ const Enrollment = require('../models/Enrollment');
 const GamificationPoints = require('../models/GamificationPoints');
 const UserBadge = require('../models/UserBadge');
 const notificationService = require('../utils/notificationService');
+const moduleGuard = require('../middleware/moduleGuard');
 const router = express.Router();
+
+// Apply module guard to all quiz routes
+router.use(auth, moduleGuard('EXAMS'));
 
 // Validation middleware
 const validateQuizCreation = [
@@ -236,7 +240,7 @@ router.get('/', auth, async (req, res) => {
         organization_id: req.user.organization_id,
         status: 'active'
       }).select('course_id');
-      
+
       const enrolledCourseIds = enrollments.map(e => e.course_id);
       query.course_id = { $in: enrolledCourseIds };
     }
@@ -252,7 +256,7 @@ router.get('/', auth, async (req, res) => {
     ]);
 
     // For students, return quiz without correct answers
-    const responseQuizzes = req.user.role === 'student' 
+    const responseQuizzes = req.user.role === 'student'
       ? quizzes.map(quiz => quiz.getStudentVersion())
       : quizzes;
 
@@ -298,8 +302,8 @@ router.get('/:id', auth, [
       organization_id: req.user.organization_id,
       is_active: true
     })
-    .populate('course_id', 'title description')
-    .populate('instructor_id', 'full_name email');
+      .populate('course_id', 'title description')
+      .populate('instructor_id', 'full_name email');
 
     if (!quiz) {
       return res.status(404).json({
@@ -392,7 +396,7 @@ router.put('/:id', auth, checkInstructorPermission, validateQuizUpdate, async (r
     // Update quiz
     const updateFields = {};
     const allowedFields = ['title', 'description', 'questions', 'timer_minutes', 'pass_percentage', 'max_attempts'];
-    
+
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
         updateFields[field] = req.body[field];
@@ -751,8 +755,8 @@ router.post('/:id/submit', auth, [
           badges_unlocked: badgesUnlocked
         }
       },
-      message: quizAttempt.passed ? 
-        `Congratulations! You passed with ${quizAttempt.percentage}%` : 
+      message: quizAttempt.passed ?
+        `Congratulations! You passed with ${quizAttempt.percentage}%` :
         `Quiz completed. You scored ${quizAttempt.percentage}% (${quiz.pass_percentage}% required to pass)`
     });
 
@@ -837,7 +841,7 @@ router.get('/:id/start', auth, [
 
     // Return quiz for student (without correct answers)
     const studentQuiz = quiz.getStudentVersion();
-    
+
     res.json({
       success: true,
       data: {

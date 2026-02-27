@@ -25,20 +25,27 @@ import { useAuth } from "@/lib/auth-context"
 
 const navItems = [
   { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
-  { label: 'Browse Courses', href: '/student/available-courses', icon: GraduationCap },
-  { label: 'My Courses', href: '/student/my-courses', icon: BookOpen },
-  { label: 'Quizzes', href: '/student/quizzes', icon: FileQuestion },
-  { label: 'Certificates', href: '/student/certificates', icon: Award },
-  { label: 'Leaderboard', href: '/student/leaderboard', icon: Trophy },
-  { label: 'Timetable', href: '/student/timetable', icon: Calendar },
-  { label: 'Events', href: '/student/events', icon: CalendarDays },
+  { label: 'Browse Courses', href: '/student/available-courses', icon: GraduationCap, module: 'COURSES' },
+  { label: 'My Courses', href: '/student/my-courses', icon: BookOpen, module: 'COURSES' },
+  { label: 'Quizzes', href: '/student/quizzes', icon: FileQuestion, module: 'EXAMS' },
+  { label: 'Certificates', href: '/student/certificates', icon: Award, module: 'CERTIFICATES' },
+  { label: 'Leaderboard', href: '/student/leaderboard', icon: Trophy, module: 'LEADERBOARDS' },
+  { label: 'Timetable', href: '/student/timetable', icon: Calendar, module: 'TIMETABLE' },
+  { label: 'Events', href: '/student/events', icon: CalendarDays, module: 'EVENTS' },
 ]
 
 export function StudentSidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+
+  const filteredItems = navItems.filter(item => {
+    if (item.module) {
+      return user?.modulesEnabled?.includes(item.module)
+    }
+    return true
+  })
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-[#F5F5F5] border-r border-slate-200 shadow-sm">
@@ -54,7 +61,7 @@ export function StudentSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
+        {filteredItems.map((item) => {
           const isActive = pathname === item.href
           const Icon = item.icon
 

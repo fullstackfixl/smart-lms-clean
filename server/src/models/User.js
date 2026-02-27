@@ -132,6 +132,13 @@ const userSchema = new mongoose.Schema({
   inviteTokenExpiry: {
     type: Date,
     select: false
+  },
+  // Multi-tenant fields (hydrated by middleware or virtual)
+  modulesEnabled: [{
+    type: String
+  }],
+  organizationType: {
+    type: String
   }
 });
 
@@ -215,12 +222,12 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 
 // Get public user data (exclude sensitive fields)
 userSchema.methods.toPublicJSON = function () {
-  return {
+  const userObj = {
     id: this._id,
     email: this.email,
     name: this.name,
     role: this.role,
-    organization_id: this.organization_id,
+    organization_id: this.organization_id?._id || this.organization_id,
     organization_code: this.organization_code,
     profile: this.profile,
     preferences: this.preferences,
@@ -229,6 +236,17 @@ userSchema.methods.toPublicJSON = function () {
     created_at: this.created_at,
     updated_at: this.updated_at
   };
+
+  // Include organization-specific fields if populated
+  if (this.organization_id && typeof this.organization_id === 'object') {
+    userObj.modulesEnabled = this.organization_id.modulesEnabled;
+    userObj.organizationType = this.organization_id.type;
+  } else if (this.modulesEnabled) {
+    // Fallback if modulesEnabled was attached but org not populated
+    userObj.modulesEnabled = this.modulesEnabled;
+  }
+
+  return userObj;
 };
 
 // Check if user is parent of another user
@@ -259,6 +277,9 @@ userSchema.set('toJSON', {
   virtuals: true,
   transform: function (doc, ret) {
     delete ret.password_hash;
+    // Ensure modulesEnabled and organizationType are included if they were attached
+    if (doc.modulesEnabled) ret.modulesEnabled = doc.modulesEnabled;
+    if (doc.organizationType) ret.organizationType = doc.organizationType;
     return ret;
   }
 });

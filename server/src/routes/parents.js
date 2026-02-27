@@ -2,7 +2,11 @@ const express = require('express');
 const parentController = require('../controllers/parentController');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const tenantIsolation = require('../middleware/tenantIsolation');
+const moduleGuard = require('../middleware/moduleGuard');
 const router = express.Router();
+
+// Apply module guard to all parent routes
+router.use(authMiddleware, moduleGuard('PARENT_PORTAL'));
 
 // Student: Generate linking code
 router.post('/generate-code', authMiddleware, requireRole(['student']), parentController.generateCode);

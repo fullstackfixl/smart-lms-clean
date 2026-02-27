@@ -28,6 +28,15 @@ const Message = require('./Message');
 const QuestionBank = require('./QuestionBank');
 const Announcement = require('./Announcement');
 const Review = require('./Review');
+const OrgTemplate = require('./OrgTemplate');
+const AcademicYear = require('./AcademicYear');
+const Department = require('./Department');
+const Batch = require('./Batch');
+const Semester = require('./Semester');
+const Subject = require('./Subject');
+const TestSeries = require('./TestSeries');
+const GradeLevel = require('./GradeLevel');
+const GradeSection = require('./GradeSection');
 
 module.exports = {
   Organization,
@@ -59,5 +68,14 @@ module.exports = {
   Message,
   QuestionBank,
   Announcement,
-  Review
+  Review,
+  OrgTemplate,
+  AcademicYear,
+  Department,
+  Batch,
+  Semester,
+  Subject,
+  TestSeries,
+  GradeLevel,
+  GradeSection
 };

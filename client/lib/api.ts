@@ -726,4 +726,8 @@ export const adminApi = {
     apiRequest(`/api/admin/grades/course/${courseId}`, { token }),
   exportGrades: (token: string, data: Record<string, unknown>) =>
     apiRequest("/api/admin/grades/export", { method: "POST", token, body: data }),
+
+  // Multi-Tenant Modules
+  getModules: (token: string) =>
+    apiRequest("/api/admin/modules", { token }),
 }

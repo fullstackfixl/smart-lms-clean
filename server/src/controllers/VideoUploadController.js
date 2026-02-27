@@ -49,30 +49,29 @@ class VideoUploadController {
         });
       }
 
-      // Fetch lecture
-      const lecture = await Lesson.findById(lectureId);
+      // Fetch lecture with organization isolation
+      const lecture = await Lesson.findOne({
+        _id: lectureId,
+        organization_id: user.organization_id
+      });
 
       if (!lecture) {
         return res.status(404).json({
           success: false,
           error: 'Not Found',
-          message: 'Lecture not found'
+          message: 'Lecture not found or access denied'
         });
       }
 
       // Check if user is the instructor of the course
       const Course = require('../models/Course');
-      const course = await Course.findById(lecture.course_id);
+      const course = await Course.findOne({
+        _id: lecture.course_id,
+        organization_id: user.organization_id,
+        instructor_id: user._id
+      });
 
       if (!course) {
-        return res.status(404).json({
-          success: false,
-          error: 'Not Found',
-          message: 'Course not found'
-        });
-      }
-
-      if (course.instructor_id.toString() !== user._id.toString()) {
         return res.status(403).json({
           success: false,
           error: 'Forbidden',

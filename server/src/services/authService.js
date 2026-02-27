@@ -26,7 +26,9 @@ class AuthService {
    */
   async login(email, password, mfaCode) {
     // Find user with password
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password_hash +mfa_secret');
+    const user = await User.findOne({ email: email.toLowerCase() })
+      .select('+password_hash +mfa_secret')
+      .populate('organization_id');
     if (!user) {
       throw new AuthenticationError('Invalid email or password');
     }
@@ -66,8 +68,8 @@ class AuthService {
     const token = jwtUtils.generateToken({
       user_id: user._id,
       role: user.role,
-      organization_id: user.organization_id,
-      subdomain: user.role !== 'platform_admin' ? (await Organization.findById(user.organization_id))?.subdomain : null
+      organization_id: user.organization_id?._id || user.organization_id,
+      subdomain: user.role !== 'platform_admin' ? user.organization_id?.subdomain : null
     });
 
     return {
@@ -82,7 +84,7 @@ class AuthService {
    * Submit Organization Application
    */
   async applyOrganization(data) {
-    const { organizationName, subdomain, adminName, adminEmail, selectedPlan } = data;
+    const { organizationName, subdomain, adminName, adminEmail, selectedPlan, organizationType } = data;
     // Generate a route-friendly slug from organizationName if subdomain not provided
     let routeSlug = (subdomain || organizationName || '')
       .toString()
@@ -126,7 +128,8 @@ class AuthService {
       subdomain: routeSlug, // store route-friendly slug for consistency
       admin_name: adminName,
       admin_email: adminEmail.toLowerCase(),
-      selected_plan: selectedPlan
+      selected_plan: selectedPlan,
+      organization_type: organizationType
     });
     await application.save();
 
@@ -196,14 +199,20 @@ class AuthService {
     const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // 1. Create Organization
+    const orgType = application.organization_type || 'School';
+
+    // 1. Create Organization with modules from application
     const organization = new Organization({
       name: application.organization_name,
       subdomain: application.subdomain,
       plan: application.selected_plan,
+      type: orgType,
+      modulesEnabled: application.modulesEnabled || [],
+      templateVersion: `v1_${orgType.toLowerCase()}`,
       status: 'active'
     });
     await organization.save();
+    console.log(`📋 [Registration] Created org "${organization.name}" type="${orgType}" modules=[${organization.modulesEnabled.join(', ')}]`);
 
     // 2. Create Org Admin User
     const admin = new User({

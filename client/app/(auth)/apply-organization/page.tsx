@@ -18,6 +18,7 @@ export default function ApplyOrganizationPage() {
     const [plan, setPlan] = useState("basic")
 
     const [organizationName, setOrganizationName] = useState("")
+    const [organizationType, setOrganizationType] = useState("SCHOOL")
     const [adminName, setAdminName] = useState("")
     const [adminEmail, setAdminEmail] = useState("")
 
@@ -36,6 +37,7 @@ export default function ApplyOrganizationPage() {
         try {
             const response = await authApi.applyOrganization({
                 organizationName,
+                organizationType,
                 adminName,
                 adminEmail,
                 selectedPlan: plan
@@ -121,6 +123,22 @@ export default function ApplyOrganizationPage() {
                                     required
                                     className="h-12 border-muted"
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="organizationType">Organization Type</Label>
+                                <select
+                                    id="organizationType"
+                                    value={organizationType}
+                                    onChange={(e) => setOrganizationType(e.target.value)}
+                                    className="flex h-12 w-full rounded-md border border-muted bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    required
+                                >
+                                    <option value="SCHOOL">School</option>
+                                    <option value="COLLEGE">College</option>
+                                    <option value="INSTITUTE">Institute</option>
+                                    <option value="ONLINE_ACADEMY">Online Academy</option>
+                                </select>
                             </div>
 
                             {/* Subdomain removed per routing-based access; route is auto-generated from organization name */}

@@ -28,6 +28,7 @@ import { useAuth } from "@/lib/auth-context"
 interface Application {
     _id: string
     organization_name: string
+    organization_type: string
     subdomain: string
     admin_name: string
     admin_email: string
@@ -72,19 +73,19 @@ export default function PlatformApplicationsPage() {
         try {
             const response = await platformApi.approveApplication(token, id)
             if (response.success) {
-        const payload: any = response.data
-        const setupLink = payload?.setupLink || payload?.data?.setupLink
-        if (setupLink) {
-          try {
-            await navigator.clipboard.writeText(setupLink)
-            toast.success("Application approved! Link copied to clipboard and email sent.")
-          } catch {
-            toast.success("Application approved! Email sent. Link available in console.")
-            console.log("🔗 Setup link:", setupLink)
-          }
-        } else {
-          toast.success("Application approved! Link sent to admin.")
-        }
+                const payload: any = response.data
+                const setupLink = payload?.setupLink || payload?.data?.setupLink
+                if (setupLink) {
+                    try {
+                        await navigator.clipboard.writeText(setupLink)
+                        toast.success("Application approved! Link copied to clipboard and email sent.")
+                    } catch {
+                        toast.success("Application approved! Email sent. Link available in console.")
+                        console.log("🔗 Setup link:", setupLink)
+                    }
+                } else {
+                    toast.success("Application approved! Link sent to admin.")
+                }
                 fetchApplications()
             } else {
                 toast.error(response.error || "Failed to approve application")
@@ -153,8 +154,9 @@ export default function PlatformApplicationsPage() {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-secondary/40 border-b border-border">
-                                <th className="px-8 py-6 text-xs font-black uppercase tracking-widest text-muted-foreground">Organization</th>
-                                <th className="px-8 py-6 text-xs font-black uppercase tracking-widest text-muted-foreground">Contact</th>
+                                <th className="px-8 py-6 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Organization</th>
+                                <th className="px-8 py-6 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Type</th>
+                                <th className="px-8 py-6 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Admin Details</th>
                                 <th className="px-8 py-6 text-xs font-black uppercase tracking-widest text-muted-foreground">Plan</th>
                                 <th className="px-8 py-6 text-xs font-black uppercase tracking-widest text-muted-foreground">Date</th>
                                 <th className="px-8 py-6 text-xs font-black uppercase tracking-widest text-muted-foreground text-right">Actions</th>
@@ -164,13 +166,13 @@ export default function PlatformApplicationsPage() {
                             <AnimatePresence mode="popLayout">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={5} className="py-20 text-center">
+                                        <td colSpan={6} className="py-20 text-center">
                                             <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary opacity-50" />
                                         </td>
                                     </tr>
                                 ) : applications.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="py-20 text-center text-muted-foreground font-medium italic">
+                                        <td colSpan={6} className="py-20 text-center text-muted-foreground font-medium italic">
                                             No {status} applications found
                                         </td>
                                     </tr>
@@ -183,11 +185,21 @@ export default function PlatformApplicationsPage() {
                                             exit={{ opacity: 0, scale: 0.95 }}
                                             className="group border-b border-border/50 hover:bg-secondary/20 transition-colors"
                                         >
-                                            <td className="px-8 py-6">
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="text-lg font-bold text-foreground">{app.organization_name}</span>
-                                                    <span className="text-sm text-primary font-bold">{app.subdomain}.smartlms.com</span>
+                                            <td className="px-8 py-6 whitespace-nowrap">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                                                        <Building2 className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-bold text-foreground">{app.organization_name}</div>
+                                                        <div className="text-[10px] text-muted-foreground font-mono">/org/{app.subdomain}</div>
+                                                    </div>
                                                 </div>
+                                            </td>
+                                            <td className="px-8 py-6 whitespace-nowrap">
+                                                <Badge variant="outline" className="bg-secondary/50 font-bold capitalize">
+                                                    {app.organization_type || 'School'}
+                                                </Badge>
                                             </td>
                                             <td className="px-8 py-6">
                                                 <div className="flex flex-col gap-0.5">

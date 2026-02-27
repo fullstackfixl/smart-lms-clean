@@ -9,11 +9,43 @@ const Attendance = require('../models/Attendance');
 const Grade = require('../models/Grade');
 
 const router = express.Router();
+const Organization = require('../models/Organization');
+const GradeLevel = require('../models/GradeLevel');
+const GradeSection = require('../models/GradeSection');
+const Department = require('../models/Department');
+const Semester = require('../models/Semester');
+const Batch = require('../models/Batch');
+const TestSeries = require('../models/TestSeries');
+const AcademicYear = require('../models/AcademicYear');
 
 // All routes require org_admin role
 router.use(authMiddleware, requireRole(['org_admin']));
 
-// Dashboard Overview Metrics
+// --- Get enabled modules for this organization ---
+router.get('/modules', async (req, res) => {
+  try {
+    const org = req.user.organization_id;
+    if (!org) {
+      return res.error('Organization not found', 'Unauthorized', 401);
+    }
+
+    const Organization = require('../models/Organization');
+    let orgDoc = org;
+    // If org is populated, use it directly; otherwise load from DB
+    if (!org.modulesEnabled) {
+      orgDoc = await Organization.findById(org).select('modulesEnabled type templateVersion').lean();
+    }
+
+    res.success({
+      modulesEnabled: orgDoc?.modulesEnabled || [],
+      organizationType: orgDoc?.type || 'Other'
+    }, 'Modules retrieved');
+  } catch (error) {
+    console.error('Get modules error:', error);
+    res.error(error.message, 'Failed to fetch modules', 500);
+  }
+});
+
 router.get('/dashboard/metrics', async (req, res) => {
   try {
     const organizationId = req.user.organization_id;
@@ -169,6 +201,23 @@ router.get('/dashboard/metrics', async (req, res) => {
       ? ((completionData[0].completed / completionData[0].total) * 100).toFixed(1)
       : 0;
 
+    // Type-specific metrics
+    const org = await Organization.findById(orgId).select('type').lean();
+    const orgType = org?.type || 'School';
+    const typeSpecific = {};
+
+    if (orgType === 'School') {
+      typeSpecific.gradeLevels = await GradeLevel.countDocuments({ organization_id: orgId });
+      typeSpecific.sections = await GradeSection.countDocuments({ organization_id: orgId });
+      typeSpecific.academicYears = await AcademicYear.countDocuments({ organization_id: orgId });
+    } else if (orgType === 'College') {
+      typeSpecific.departments = await Department.countDocuments({ organization_id: orgId });
+      typeSpecific.semesters = await Semester.countDocuments({ organization_id: orgId });
+    } else if (orgType === 'Institute') {
+      typeSpecific.batches = await Batch.countDocuments({ organization_id: orgId });
+      typeSpecific.testSeries = await TestSeries.countDocuments({ organization_id: orgId });
+    }
+
     res.success({
       metrics: {
         totalStudents,
@@ -177,8 +226,10 @@ router.get('/dashboard/metrics', async (req, res) => {
         totalRevenue,
         pendingFees,
         attendancePercentage: parseFloat(attendancePercentage),
-        completionRate: parseFloat(completionRate)
+        completionRate: parseFloat(completionRate),
+        ...typeSpecific
       },
+      organizationType: orgType,
       charts: {
         enrollmentGrowth,
         feeCollection

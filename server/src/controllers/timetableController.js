@@ -12,7 +12,7 @@ class TimetableController extends BaseController {
   });
 
   getOrgTimetable = this.asyncHandler(async (req, res) => {
-    const timetable = await timetableService.getOrgTimetable(req.params.org_id);
+    const timetable = await timetableService.getOrgTimetable(req.user.organization_id);
     this.sendSuccess(res, timetable, 'Organization timetable retrieved successfully');
   });
 

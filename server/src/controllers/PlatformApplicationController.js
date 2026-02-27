@@ -36,7 +36,7 @@ class PlatformApplicationController extends BaseController {
     }
 
     /**
-     * Approve an application
+     * Approve an application — assigns template modules to the new organization
      */
     async approveApplication(req, res) {
         try {
@@ -47,9 +47,72 @@ class PlatformApplicationController extends BaseController {
                 return res.error('Application not found', 'Not found', 404);
             }
 
-            if (application.status !== 'pending') {
-                return res.error('Application already processed', 'Validation Error', 400);
+            console.log(`📥 [Platform] Approval request for ID: ${id}`);
+
+            if (application.status === 'approved') {
+                console.log(`✅ [Approval] Application ${id} already approved`);
+                return res.success({
+                    application,
+                    message: 'Application already approved'
+                }, 'Application already processed');
             }
+
+            console.log(`📋 [Approval] Current Status: ${application.status}`);
+
+            if (application.status !== 'pending') {
+                console.error(`❌ [Approval] Invalid Status: ${application.status}`);
+                return res.error(`Application status is ${application.status}`, 'Validation Error', 400);
+            }
+
+            // Module mapping based on strictly defined specification
+            const moduleMapping = {
+                'SCHOOL': [
+                    "ACADEMIC_YEAR",
+                    "GRADES_SECTIONS",
+                    "ATTENDANCE",
+                    "EXAMS",
+                    "PARENT_PORTAL",
+                    "COURSES",
+                    "REPORTS"
+                ],
+                'COLLEGE': [
+                    "DEPARTMENTS",
+                    "SEMESTERS",
+                    "SUBJECTS",
+                    "GPA_REPORTS",
+                    "COURSES",
+                    "EXAMS"
+                ],
+                'INSTITUTE': [
+                    "BATCHES",
+                    "TEST_SERIES",
+                    "TRAINERS",
+                    "COURSES",
+                    "LEADERBOARDS"
+                ],
+                'ONLINE_ACADEMY': [
+                    "PUBLIC_CATALOG",
+                    "COUPONS",
+                    "COURSE_SALES",
+                    "CERTIFICATES",
+                    "STUDENT_ANALYTICS"
+                ]
+            };
+
+            // Default to SCHOOL if type is missing (legacy applications)
+            if (!application.organization_type) {
+                console.log(`⚠️  [Approval] Application ${application._id} missing type, defaulting to SCHOOL`);
+                application.organization_type = 'SCHOOL';
+            }
+
+            const orgType = application.organization_type.toUpperCase();
+            const modulesEnabled = moduleMapping[orgType] || moduleMapping['SCHOOL'];
+
+            console.log(`📋 [Approval] Assigning modules for ${orgType}: ${modulesEnabled.join(', ')}`);
+
+            // Save assigned modules to application so registration completion can use them
+            application.modulesEnabled = modulesEnabled;
+            application.organization_type = orgType; // Normalize case
 
             // Generate secure token
             const token = crypto.randomBytes(32).toString('hex');
@@ -66,18 +129,24 @@ class PlatformApplicationController extends BaseController {
             application.status = 'approved';
             await application.save();
 
-            // Send approval email with link (prefer CLIENT_URL, fallback to production domain)
+            // Send approval email with link
             const baseUrl = process.env.CLIENT_URL || 'https://smartlms.com';
             const setupLink = `${baseUrl.replace(/\/$/, '')}/complete-registration?token=${token}`;
             const emailSent = await emailService.sendApprovalEmail(application.admin_email, setupLink);
             if (!emailSent) {
-                console.warn('⚠️ [PlatformApplication] Approval email failed to send. Check EMAIL_* env and SMTP connectivity.');
+                console.warn('⚠️ [PlatformApplication] Approval email failed to send.');
             }
 
-            return res.success({ application, token, setupLink, emailSent }, 'Application approved successfully');
+            return res.success({
+                application,
+                token,
+                setupLink,
+                emailSent,
+                modulesEnabled
+            }, 'Application approved successfully');
         } catch (error) {
-            console.error('Approve application error:', error);
-            return res.error(error.message, 'Failed to approve application', 400);
+            console.error('❌ [Approval Error]:', error);
+            return res.error(error.message || 'Internal Server Error', 'Failed to approve application', 500);
         }
     }
 

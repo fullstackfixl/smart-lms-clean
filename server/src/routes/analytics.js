@@ -5,8 +5,12 @@ const RiskAssessment = require('../models/RiskAssessment');
 const User = require('../models/User');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
+const moduleGuard = require('../middleware/moduleGuard');
 
 const router = express.Router();
+
+// Apply module guard to all analytics routes
+router.use(auth, moduleGuard(['REPORTS', 'STUDENT_ANALYTICS']));
 
 /**
  * GET /api/analytics/risk/:student_id/:course_id
@@ -186,8 +190,8 @@ router.get('/dashboard', auth, async (req, res) => {
       organization_id,
       filters
     )
-    .limit(parseInt(limit))
-    .skip(skip);
+      .limit(parseInt(limit))
+      .skip(skip);
 
     // Get total count for pagination
     const totalAssessments = await RiskAssessment.countDocuments({
@@ -307,8 +311,8 @@ router.get('/dashboard', auth, async (req, res) => {
           high_risk_students_count: orgStats.high.count,
           avg_risk_score: Math.round(
             (orgStats.high.avg_score * orgStats.high.count +
-             orgStats.medium.avg_score * orgStats.medium.count +
-             orgStats.low.avg_score * orgStats.low.count) / 
+              orgStats.medium.avg_score * orgStats.medium.count +
+              orgStats.low.avg_score * orgStats.low.count) /
             (orgStats.total || 1)
           )
         },

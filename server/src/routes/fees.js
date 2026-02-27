@@ -1,12 +1,16 @@
 const express = require('express');
 const { body, validationResult, query } = require('express-validator');
 const { authMiddleware: auth } = require('../middleware/auth');
+const moduleGuard = require('../middleware/moduleGuard');
 const Fee = require('../models/Fee');
 const User = require('../models/User');
 const Course = require('../models/Course');
 const notificationService = require('../utils/notificationService');
 
 const router = express.Router();
+
+// All fee routes require FEES module to be enabled
+router.use(auth, moduleGuard('FEES'));
 
 /**
  * POST /api/fees
@@ -16,7 +20,7 @@ router.post('/', [
   auth,
   body('student_id').isMongoId().withMessage('Valid student ID is required'),
   body('fee_type').isIn([
-    'course_enrollment', 'monthly_tuition', 'semester_fee', 'exam_fee', 
+    'course_enrollment', 'monthly_tuition', 'semester_fee', 'exam_fee',
     'library_fee', 'lab_fee', 'admission_fee', 'other'
   ]).withMessage('Valid fee type is required'),
   body('title').trim().isLength({ min: 1, max: 200 }).withMessage('Title is required (max 200 characters)'),
@@ -171,7 +175,7 @@ router.get('/', [
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
   query('status').optional().isIn(['pending', 'paid', 'overdue', 'cancelled', 'refunded', 'partially_paid']),
   query('fee_type').optional().isIn([
-    'course_enrollment', 'monthly_tuition', 'semester_fee', 'exam_fee', 
+    'course_enrollment', 'monthly_tuition', 'semester_fee', 'exam_fee',
     'library_fee', 'lab_fee', 'admission_fee', 'other'
   ]),
   query('student_id').optional().isMongoId().withMessage('Valid student ID required'),
@@ -431,7 +435,7 @@ router.put('/:id', [
 
     // Update allowed fields
     const allowedUpdates = [
-      'title', 'description', 'amount', 'due_date', 'status', 
+      'title', 'description', 'amount', 'due_date', 'status',
       'late_fee', 'discount', 'notes'
     ];
 
@@ -540,7 +544,7 @@ router.post('/bulk-create', [
   body('student_ids').optional().isArray().withMessage('Student IDs must be an array'),
   body('fee_data').isObject().withMessage('Fee data is required'),
   body('fee_data.fee_type').isIn([
-    'course_enrollment', 'monthly_tuition', 'semester_fee', 'exam_fee', 
+    'course_enrollment', 'monthly_tuition', 'semester_fee', 'exam_fee',
     'library_fee', 'lab_fee', 'admission_fee', 'other'
   ]).withMessage('Valid fee type required'),
   body('fee_data.title').trim().isLength({ min: 1, max: 200 }).withMessage('Title required'),

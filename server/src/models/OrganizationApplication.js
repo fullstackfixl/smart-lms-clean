@@ -32,6 +32,15 @@ const organizationApplicationSchema = new mongoose.Schema({
         enum: ['basic', 'pro', 'enterprise'],
         required: true
     },
+    organization_type: {
+        type: String,
+        enum: ['SCHOOL', 'COLLEGE', 'INSTITUTE', 'ONLINE_ACADEMY'],
+        required: [true, 'Organization type is required']
+    },
+    modulesEnabled: [{
+        type: String,
+        trim: true
+    }],
     status: {
         type: String,
         enum: ['pending', 'approved', 'rejected'],
