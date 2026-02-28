@@ -34,48 +34,80 @@ import {
   ClipboardCheck,
   ShieldCheck,
   Trophy,
-  Group
+  Group,
+  Palette,
+  ShoppingCart,
+  Award,
+  TrendingUp,
+  Tag,
+  Globe
 } from "lucide-react"
 
-const navigation = [
-  { name: "Dashboard", href: "/org-admin/dashboard", icon: LayoutDashboard, module: "LMS_CORE" },
-  { name: "Users", href: "/org-admin/users", icon: Users, module: "LMS_CORE" },
+// ──────────────────────────────────────────────────────────────
+// MODULE CONFIG — single source of truth per specification
+// ──────────────────────────────────────────────────────────────
+const MODULE_CONFIG: Record<string, { label: string; path: string; icon: any }> = {
+  // SCHOOL
+  ACADEMIC_YEAR: { label: "Academic Year", path: "/org-admin/academic-year", icon: History },
+  GRADES_SECTIONS: { label: "Grades & Sections", path: "/org-admin/grades-sections", icon: TableProperties },
+  ATTENDANCE: { label: "Attendance", path: "/org-admin/attendance", icon: Calendar },
+  EXAMS: { label: "Exams", path: "/org-admin/exams", icon: GraduationCap },
+  PARENT_PORTAL: { label: "Parent Portal", path: "/org-admin/parent-portal", icon: HeartHandshake },
+  REPORTS: { label: "Reports", path: "/org-admin/reports", icon: BarChart3 },
+  // COLLEGE
+  DEPARTMENTS: { label: "Departments", path: "/org-admin/departments", icon: Library },
+  SEMESTERS: { label: "Semesters", path: "/org-admin/semesters", icon: Layers },
+  SUBJECTS: { label: "Subjects", path: "/org-admin/subjects", icon: Book },
+  GPA_REPORTS: { label: "GPA Reports", path: "/org-admin/gpa-reports", icon: FileSpreadsheet },
+  // INSTITUTE
+  BATCHES: { label: "Batches", path: "/org-admin/batches", icon: Group },
+  TEST_SERIES: { label: "Test Series", path: "/org-admin/test-series", icon: ClipboardCheck },
+  TRAINERS: { label: "Trainers", path: "/org-admin/trainers", icon: ShieldCheck },
+  LEADERBOARDS: { label: "Leaderboards", path: "/org-admin/leaderboards", icon: Trophy },
+  // ONLINE_ACADEMY
+  PUBLIC_CATALOG: { label: "Public Catalog", path: "/org-admin/catalog", icon: Globe },
+  COUPONS: { label: "Coupons", path: "/org-admin/coupons", icon: Tag },
+  COURSE_SALES: { label: "Course Sales", path: "/org-admin/sales", icon: ShoppingCart },
+  CERTIFICATES: { label: "Certificates", path: "/org-admin/certificates", icon: Award },
+  STUDENT_ANALYTICS: { label: "Student Analytics", path: "/org-admin/analytics", icon: TrendingUp },
+  // COMMON (always shown as dynamic if enabled)
+  COURSES: { label: "Courses", path: "/org-admin/courses", icon: BookOpen },
+  TIMETABLE: { label: "Timetable", path: "/org-admin/timetable", icon: Clock },
+  EVENTS: { label: "Events", path: "/org-admin/events", icon: CalendarDays },
+  FEES: { label: "Fees", path: "/org-admin/fees", icon: DollarSign },
+  LIVE_CLASSES: { label: "Live Classes", path: "/org-admin/live-classes", icon: UserCheck },
+}
 
-  // School Specific
-  { name: "Academic Year", href: "/org-admin/academic-year", icon: History, module: "ACADEMIC_YEAR" },
-  { name: "Grades & Sections", href: "/org-admin/grades-sections", icon: TableProperties, module: "GRADES_SECTIONS" },
-  { name: "Attendance", href: "/org-admin/attendance", icon: Calendar, module: "ATTENDANCE" },
-  { name: "Parent Portal", href: "/org-admin/parent-portal", icon: HeartHandshake, module: "PARENT_PORTAL" },
+// These items always appear regardless of org type
+const STATIC_NAV = [
+  { name: "Dashboard", href: "/org-admin/dashboard", icon: LayoutDashboard },
+  { name: "User Management", href: "/org-admin/users", icon: Users },
+]
 
-  // College Specific
-  { name: "Departments", href: "/org-admin/departments", icon: Library, module: "DEPARTMENTS" },
-  { name: "Semesters", href: "/org-admin/semesters", icon: Layers, module: "SEMESTERS" },
-  { name: "Subjects", href: "/org-admin/subjects", icon: Book, module: "SUBJECTS" },
-  { name: "GPA Reports", href: "/org-admin/gpa-reports", icon: FileSpreadsheet, module: "GPA_REPORTS" },
-
-  // Institute Specific
-  { name: "Batches", href: "/org-admin/batches", icon: Group, module: "BATCHES" },
-  { name: "Test Series", href: "/org-admin/test-series", icon: ClipboardCheck, module: "TEST_SERIES" },
-  { name: "Trainers", href: "/org-admin/trainers", icon: ShieldCheck, module: "TRAINERS" },
-  { name: "Leaderboards", href: "/org-admin/leaderboards", icon: Trophy, module: "LEADERBOARDS" },
-
-  // General
-  { name: "Courses", href: "/org-admin/courses", icon: BookOpen, module: "COURSES" },
-  { name: "Exams", href: "/org-admin/exams", icon: GraduationCap, module: "EXAMS" },
-  { name: "Reports", href: "/org-admin/reports", icon: BarChart3, module: "REPORTS" },
-  { name: "Settings", href: "/org-admin/settings", icon: Settings, module: "LMS_CORE" },
+// These always appear at the bottom
+const STATIC_BOTTOM_NAV = [
+  { name: "Branding Settings", href: "/org-admin/settings", icon: Palette },
+  { name: "Org Settings", href: "/org-admin/settings", icon: Settings },
 ]
 
 export default function OrgAdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { user, token } = useAuth()
+  const { user, token, organization } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [enabledModules, setEnabledModules] = useState<string[]>([])
+  const [enabledModules, setEnabledModules] = useState<string[]>([]
+  )
   const [orgType, setOrgType] = useState("")
 
   useEffect(() => {
+    // Prefer org data from auth context (populated on login)
+    if (organization?.modulesEnabled?.length) {
+      setEnabledModules(organization.modulesEnabled)
+      setOrgType(organization.type || "")
+      return
+    }
+    // Fallback: fetch from API if org not in context (e.g. page refresh)
     const fetchModules = async () => {
       if (!token) return
       try {
@@ -90,11 +122,16 @@ export default function OrgAdminLayout({ children }: { children: React.ReactNode
       }
     }
     fetchModules()
-  }, [token])
+  }, [token, organization])
 
-  const filteredNavigation = navigation.filter(item =>
-    !item.module || enabledModules.includes(item.module) || item.module === "LMS_CORE"
-  )
+  // Build dynamic nav from enabled modules
+  const dynamicNav = enabledModules
+    .map(key => {
+      const config = MODULE_CONFIG[key]
+      if (!config) return null
+      return { name: config.label, href: config.path, icon: config.icon }
+    })
+    .filter(Boolean) as { name: string; href: string; icon: any }[]
 
   return (
     <ProtectedRoute allowedRoles={["org_admin"]}>
@@ -116,7 +153,8 @@ export default function OrgAdminLayout({ children }: { children: React.ReactNode
 
             {/* Navigation */}
             <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-              {filteredNavigation.map((item) => {
+              {/* static core items */}
+              {STATIC_NAV.map((item) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon
                 return (
@@ -138,6 +176,62 @@ export default function OrgAdminLayout({ children }: { children: React.ReactNode
                         className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400"
                       />
                     )}
+                  </motion.button>
+                )
+              })}
+
+              {/* dynamic module items */}
+              {dynamicNav.length > 0 && (
+                <>
+                  <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                    {orgType ? orgType.replace(/_/g, " ") : "Modules"}
+                  </p>
+                  {dynamicNav.map((item) => {
+                    const isActive = pathname === item.href
+                    const Icon = item.icon
+                    return (
+                      <motion.button
+                        key={item.name}
+                        onClick={() => router.push(item.href)}
+                        whileHover={{ x: 4 }}
+                        whileTap={{ scale: 0.98 }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
+                          ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 shadow-lg shadow-indigo-500/20"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                          }`}
+                      >
+                        <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                        <span>{item.name}</span>
+                        {isActive && (
+                          <motion.div
+                            layoutId="activeNavDyn"
+                            className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400"
+                          />
+                        )}
+                      </motion.button>
+                    )
+                  })}
+                </>
+              )}
+
+              {/* static bottom items */}
+              <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Settings</p>
+              {STATIC_BOTTOM_NAV.map((item) => {
+                const isActive = pathname === item.href
+                const Icon = item.icon
+                return (
+                  <motion.button
+                    key={item.name}
+                    onClick={() => router.push(item.href)}
+                    whileHover={{ x: 4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
+                      ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 shadow-lg shadow-indigo-500/20"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                      }`}
+                  >
+                    <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+                    <span>{item.name}</span>
                   </motion.button>
                 )
               })}
@@ -191,16 +285,55 @@ export default function OrgAdminLayout({ children }: { children: React.ReactNode
                     </button>
                   </div>
                   <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                    {filteredNavigation.map((item) => {
+                    {STATIC_NAV.map((item) => {
                       const isActive = pathname === item.href
                       const Icon = item.icon
                       return (
                         <button
                           key={item.name}
-                          onClick={() => {
-                            router.push(item.href)
-                            setSidebarOpen(false)
-                          }}
+                          onClick={() => { router.push(item.href); setSidebarOpen(false) }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
+                            ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400"
+                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                            }`}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span>{item.name}</span>
+                        </button>
+                      )
+                    })}
+                    {dynamicNav.length > 0 && (
+                      <>
+                        <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                          {orgType ? orgType.replace(/_/g, " ") : "Modules"}
+                        </p>
+                        {dynamicNav.map((item) => {
+                          const isActive = pathname === item.href
+                          const Icon = item.icon
+                          return (
+                            <button
+                              key={item.name}
+                              onClick={() => { router.push(item.href); setSidebarOpen(false) }}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
+                                ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400"
+                                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                                }`}
+                            >
+                              <Icon className="w-5 h-5" />
+                              <span>{item.name}</span>
+                            </button>
+                          )
+                        })}
+                      </>
+                    )}
+                    <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Settings</p>
+                    {STATIC_BOTTOM_NAV.map((item) => {
+                      const isActive = pathname === item.href
+                      const Icon = item.icon
+                      return (
+                        <button
+                          key={item.name}
+                          onClick={() => { router.push(item.href); setSidebarOpen(false) }}
                           className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
                             ? "bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400"
                             : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"

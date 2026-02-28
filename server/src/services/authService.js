@@ -12,7 +12,7 @@ class AuthService {
   getRedirectUrl(role) {
     const redirects = {
       'platform_admin': '/platform/dashboard',
-      'org_admin': '/organization/dashboard',
+      'org_admin': '/org-admin/dashboard',
       'instructor': '/instructor/dashboard',
       'student': '/student/dashboard',
       'parent': '/parent/dashboard',
@@ -76,7 +76,13 @@ class AuthService {
       token,
       role: user.role,
       redirectUrl: this.getRedirectUrl(user.role),
-      user: user.toPublicJSON()
+      user: user.toPublicJSON(),
+      organization: user.organization_id ? {
+        _id: user.organization_id._id || user.organization_id,
+        name: user.organization_id.name,
+        type: user.organization_id.type,
+        modulesEnabled: user.organization_id.modulesEnabled || []
+      } : null
     };
   }
 
@@ -311,8 +317,8 @@ class AuthService {
   async inviteStaff(orgId, inviteData) {
     const { email, role } = inviteData;
 
-    if (!['instructor', 'support_staff'].includes(role)) {
-      throw new ValidationError('Invalid role for staff invitation');
+    if (!['instructor', 'student', 'support_staff'].includes(role)) {
+      throw new ValidationError('Invalid role for staff invitation — must be instructor, student, or support_staff');
     }
 
     // Check if user already exists in this org
@@ -329,8 +335,32 @@ class AuthService {
       expires_at: { $gt: new Date() }
     });
 
+    // Fetch the organization for context in the invitation email
+    const organization = await Organization.findById(orgId).select('name subdomain code organization_code');
+    const orgName = organization?.name || 'Your Organization';
+
     if (existingInvite) {
-      return existingInvite; // Return existing invite if still valid
+      // Resend the email for the existing invite
+      try {
+        const baseUrl = (process.env.CLIENT_URL || 'https://smart-lms-clean.vercel.app').replace(/\/$/, '');
+        const acceptLink = `${baseUrl}/accept-invite?token=${existingInvite.token}`;
+        const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+        await emailService.sendEmail(
+          email.toLowerCase(),
+          `Reminder: You're invited to join ${orgName} as ${roleLabel} — Smart LMS`,
+          `You have a pending invitation to join ${orgName} as a ${roleLabel}.\n\nAccept here: ${acceptLink}\n\nExpires in 7 days.`,
+          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
+            <h2 style="color:#818cf8;">Invitation Reminder 🎓</h2>
+            <p>You have been invited to join <strong style="color:#c4b5fd;">${orgName}</strong> as a <strong style="color:#c4b5fd;">${roleLabel}</strong> on Smart LMS.</p>
+            <div style="margin:28px 0;"><a href="${acceptLink}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;">Accept Invitation →</a></div>
+            <p style="color:#64748b;font-size:13px;">This link expires in <strong>7 days</strong>.</p>
+          </div>`
+        );
+        console.log(`📧 [Invite] Reminder email sent to ${email}`);
+      } catch (e) {
+        console.error('⚠️ [Invite] Failed to resend invite email:', e.message);
+      }
+      return existingInvite;
     }
 
     // Create new invite
@@ -343,6 +373,36 @@ class AuthService {
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
     });
     await invite.save();
+
+    // Send invitation email with accept link
+    try {
+      const baseUrl = (process.env.CLIENT_URL || 'https://smart-lms-clean.vercel.app').replace(/\/$/, '');
+      const acceptLink = `${baseUrl}/accept-invite?token=${token}`;
+      const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+      const subject = `You're invited to join ${orgName} as ${roleLabel} — Smart LMS`;
+      const text = `You have been invited to join ${orgName} as a ${roleLabel} on Smart LMS.\n\nClick the link below to set your password and activate your account:\n${acceptLink}\n\nThis link expires in 7 days.`;
+      const html = `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:24px;font-weight:800;">Smart LMS</span>
+          </div>
+          <h2 style="color:#818cf8;margin-bottom:8px;">You're Invited! 🎓</h2>
+          <p style="color:#cbd5e1;">You have been invited to join <strong style="color:#c4b5fd;">${orgName}</strong> as a <strong style="color:#c4b5fd;">${roleLabel}</strong>.</p>
+          <p style="color:#94a3b8;">Click the button below to set your password and activate your account:</p>
+          <div style="margin:28px 0;text-align:center;">
+            <a href="${acceptLink}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;display:inline-block;">Accept Invitation →</a>
+          </div>
+          <p style="color:#64748b;font-size:12px;">Or paste this link in your browser:<br/><span style="color:#6366f1;word-break:break-all;">${acceptLink}</span></p>
+          <hr style="border:1px solid #1e293b;margin:20px 0;"/>
+          <p style="color:#475569;font-size:12px;">This invitation link will expire in <strong>7 days</strong>. If you did not expect this, ignore this email.</p>
+        </div>
+      `;
+      await emailService.sendEmail(email.toLowerCase(), subject, text, html);
+      console.log(`📧 [Invite] Email sent to ${email} (${role}) for org: ${orgName} | Link: ${acceptLink}`);
+    } catch (emailErr) {
+      console.error('⚠️ [Invite] Failed to send invitation email:', emailErr.message);
+      // Don't throw — the invite record is already created; email failure is non-fatal
+    }
 
     return invite;
   }

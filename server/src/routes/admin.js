@@ -17,6 +17,8 @@ const Semester = require('../models/Semester');
 const Batch = require('../models/Batch');
 const TestSeries = require('../models/TestSeries');
 const AcademicYear = require('../models/AcademicYear');
+const Invite = require('../models/Invite');
+const emailService = require('../services/emailService');
 
 // All routes require org_admin role
 router.use(authMiddleware, requireRole(['org_admin']));
@@ -305,14 +307,14 @@ router.get('/users', async (req, res) => {
       query.role = role;
     }
 
-    if (status) {
-      query.isActive = status === 'active';
+    if (status && status !== 'all') {
+      query.status = status; // User model has status: 'active'|'suspended'|'inactive'
     }
 
     if (search) {
       query.$or = [
         { email: { $regex: search, $options: 'i' } },
-        { 'profile.fullName': { $regex: search, $options: 'i' } }
+        { name: { $regex: search, $options: 'i' } }  // User model stores `name` directly
       ];
     }
 
@@ -342,7 +344,77 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// Get single user
+// !! IMPORTANT: All specific /users/... routes MUST come BEFORE the wildcard /users/:id route
+
+// Invite staff/instructor/student
+router.post('/users/invite', async (req, res) => {
+  try {
+    const authService = require('../services/authService');
+    const invite = await authService.inviteStaff(req.user.organization_id, req.body);
+    res.success({ invite }, 'Invitation sent successfully');
+  } catch (error) {
+    console.error('Invite staff error:', error);
+    res.error(error.message, 'Failed to send invitation', error.statusCode || 500);
+  }
+});
+
+// List pending invitations for this org
+router.get('/users/invites', async (req, res) => {
+  try {
+    const orgId = new mongoose.Types.ObjectId(String(req.user.organization_id));
+    const invites = await Invite.find({
+      organization_id: orgId,
+      used: false,
+      expires_at: { $gt: new Date() }
+    }).sort({ created_at: -1 }).lean();
+    res.success({ invites }, 'Pending invitations fetched');
+  } catch (error) {
+    console.error('[Invites] GET /users/invites error:', error.message);
+    res.error(error.message, 'Failed to fetch invites', 500);
+  }
+});
+
+// Resend an invitation email
+router.post('/users/resend-invite/:inviteId', async (req, res) => {
+  try {
+    const orgId = new mongoose.Types.ObjectId(String(req.user.organization_id));
+    const invite = await Invite.findOne({
+      _id: req.params.inviteId,
+      organization_id: orgId,
+      used: false,
+      expires_at: { $gt: new Date() }
+    });
+    if (!invite) {
+      return res.error('Invite not found or already used/expired', 'Not found', 404);
+    }
+
+    const org = await Organization.findById(req.user.organization_id).select('name');
+    const baseUrl = (process.env.CLIENT_URL || 'https://smart-lms-clean.vercel.app').replace(/\/$/, '');
+    const acceptLink = `${baseUrl}/accept-invite?token=${invite.token}`;
+    const roleLabel = invite.role.charAt(0).toUpperCase() + invite.role.slice(1);
+    const orgName = org?.name || 'Your Organization';
+
+    await emailService.sendEmail(
+      invite.email,
+      `Reminder: Join ${orgName} as ${roleLabel} — Smart LMS`,
+      `Reminder: You are invited to join ${orgName} as a ${roleLabel}.\n\nAccept here: ${acceptLink}\n\nExpires: ${invite.expires_at.toDateString()}`,
+      `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
+        <h2 style="color:#818cf8;">Invitation Reminder 🎓</h2>
+        <p>Join <strong style="color:#c4b5fd;">${orgName}</strong> as a <strong style="color:#c4b5fd;">${roleLabel}</strong> on Smart LMS.</p>
+        <div style="margin:24px 0;text-align:center;"><a href="${acceptLink}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;">Accept Invitation →</a></div>
+        <p style="color:#64748b;font-size:12px;word-break:break-all;">${acceptLink}</p>
+        <p style="color:#475569;font-size:12px;">Expires: ${invite.expires_at.toDateString()}</p>
+      </div>`
+    );
+
+    res.success({ invite }, 'Invitation resent successfully');
+  } catch (error) {
+    console.error('[Resend Invite] Error:', error.message);
+    res.error(error.message, 'Failed to resend invite', 500);
+  }
+});
+
+// Get single user — MUST come AFTER all specific /users/XXX routes
 router.get('/users/:id', async (req, res) => {
   try {
     const organizationId = req.user.organization_id;
@@ -362,18 +434,6 @@ router.get('/users/:id', async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.error(error.message, 'Failed to fetch user', 500);
-  }
-});
-
-// Invite staff
-router.post('/users/invite', async (req, res) => {
-  try {
-    const authService = require('../services/authService');
-    const invite = await authService.inviteStaff(req.user.organization_id, req.body);
-    res.success({ invite }, 'Invitation sent successfully');
-  } catch (error) {
-    console.error('Invite staff error:', error);
-    res.error(error.message, 'Failed to send invitation', error.statusCode || 500);
   }
 });
 

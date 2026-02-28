@@ -20,9 +20,17 @@ interface User {
   }
 }
 
+interface Organization {
+  _id: string
+  name: string
+  type: string
+  modulesEnabled: string[]
+}
+
 interface AuthContextType {
   user: User | null
   token: string | null
+  organization: Organization | null
   loading: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectUrl?: string }>
   register: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
@@ -39,6 +47,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
+  const [organization, setOrganization] = useState<Organization | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -85,12 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log("🔐 [AuthContext] Login response:", res)
 
     if (res.success && res.data) {
-      const { token: newToken, user: userData } = res.data as { token: string; user: User }
+      const { token: newToken, user: userData, organization: orgData } = res.data as { token: string; user: User; organization: Organization | null }
       console.log("🔐 [AuthContext] Token received:", newToken?.substring(0, 20) + "...")
       console.log("🔐 [AuthContext] User data:", userData)
+      console.log("🔐 [AuthContext] Organization data:", orgData)
 
       setToken(newToken)
       setUser(userData)
+      if (orgData) setOrganization(orgData)
 
       // Save to both sessionStorage and localStorage
       if (typeof window !== "undefined") {
@@ -173,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setUser(null)
     setToken(null)
+    setOrganization(null)
     window.sessionStorage.removeItem("instatute_token")
     window.localStorage.removeItem("instatute_token")
     console.log("🔐 [AuthContext] Logged out, tokens cleared")
@@ -227,6 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         token,
+        organization,
         loading,
         login,
         register,
