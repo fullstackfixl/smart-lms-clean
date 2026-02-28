@@ -73,6 +73,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+
+
 // Load routes safely
 try {
   const responseMiddleware = require('./middleware/response');

@@ -18,7 +18,10 @@ const Batch = require('../models/Batch');
 const TestSeries = require('../models/TestSeries');
 const AcademicYear = require('../models/AcademicYear');
 const Invite = require('../models/Invite');
-const emailService = require('../services/emailService');
+const emailService = require('../services/email.service');
+const { generateInvitationTemplate } = emailService;
+const { recordOrgEvent, EVENT_TYPES } = require('../utils/orgEvents');
+
 
 // All routes require org_admin role
 router.use(authMiddleware, requireRole(['org_admin']));
@@ -352,6 +355,17 @@ router.post('/users/invite', async (req, res) => {
     const authService = require('../services/authService');
     const invite = await authService.inviteStaff(req.user.organization_id, req.body);
     res.success({ invite }, 'Invitation sent successfully');
+
+
+
+    // Record Event
+    await recordOrgEvent(
+      req.user.organization_id,
+      invite.role === 'student' ? EVENT_TYPES.NEW_STUDENT : EVENT_TYPES.NEW_INSTRUCTOR, // Approximate
+      `Administrative invitation sent to ${req.body.email} (${req.body.role})`,
+      invite._id
+    );
+
   } catch (error) {
     console.error('Invite staff error:', error);
     res.error(error.message, 'Failed to send invitation', error.statusCode || 500);
@@ -394,18 +408,16 @@ router.post('/users/resend-invite/:inviteId', async (req, res) => {
     const roleLabel = invite.role.charAt(0).toUpperCase() + invite.role.slice(1);
     const orgName = org?.name || 'Your Organization';
 
-    await emailService.sendEmail(
-      invite.email,
-      `Reminder: Join ${orgName} as ${roleLabel} — Smart LMS`,
-      `Reminder: You are invited to join ${orgName} as a ${roleLabel}.\n\nAccept here: ${acceptLink}\n\nExpires: ${invite.expires_at.toDateString()}`,
-      `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
-        <h2 style="color:#818cf8;">Invitation Reminder 🎓</h2>
-        <p>Join <strong style="color:#c4b5fd;">${orgName}</strong> as a <strong style="color:#c4b5fd;">${roleLabel}</strong> on Smart LMS.</p>
-        <div style="margin:24px 0;text-align:center;"><a href="${acceptLink}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;">Accept Invitation →</a></div>
-        <p style="color:#64748b;font-size:12px;word-break:break-all;">${acceptLink}</p>
-        <p style="color:#475569;font-size:12px;">Expires: ${invite.expires_at.toDateString()}</p>
-      </div>`
-    );
+    try {
+      const html = generateInvitationTemplate(orgName, acceptLink);
+      await emailService.sendEmail({
+        to: invite.email,
+        subject: `Reminder: Join ${orgName} as ${roleLabel} — Smart LMS`,
+        html
+      });
+    } catch (mailErr) {
+      console.warn('Mail send failed, continuing:', mailErr.message);
+    }
 
     res.success({ invite }, 'Invitation resent successfully');
   } catch (error) {

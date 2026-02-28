@@ -129,7 +129,8 @@ class AuthController {
             const User = require('../models/User');
             const VerificationOTP = require('../models/VerificationOTP');
             const { generateOTP } = require('../utils/otp');
-            const emailService = require('../services/emailService');
+            const emailService = require('../services/email.service');
+            const { generateOtpTemplate } = emailService;
             const org = await Organization.findOne({ subdomain: orgSubdomain.toLowerCase() });
             if (!org) {
                 return res.status(404).json({ success: false, message: 'Organization not found' });
@@ -154,21 +155,13 @@ class AuthController {
             });
             await verificationRecord.save();
             const subject = 'Verify Your Registration - Smart LMS';
-            const html = `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #3b82f6;">Email Verification</h2>
-                <p>Hello ${name},</p>
-                <p>Your verification code is:</p>
-                <div style="background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-                  ${otp}
-                </div>
-                <p>This code will expire in 10 minutes.</p>
-                <p>If you didn't request this, please ignore this email.</p>
-                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                <p style="color: #6b7280; font-size: 12px;">Smart LMS - Learning Management System</p>
-              </div>
-            `;
-            const emailSent = await emailService.sendEmail(email, subject, `Your verification code is ${otp}`, html);
+            const html = generateOtpTemplate(otp);
+
+            const emailSent = await emailService.sendEmail({
+                to: email,
+                subject,
+                html
+            });
             res.status(200).json({
                 success: true,
                 message: 'Verification code sent to your email',
@@ -256,7 +249,8 @@ class AuthController {
             }
             const VerificationOTP = require('../models/VerificationOTP');
             const { generateOTP } = require('../utils/otp');
-            const emailService = require('../services/emailService');
+            const emailService = require('../services/email.service');
+            const { generateOtpTemplate } = emailService;
             const record = await VerificationOTP.findOne({
                 email: email.toLowerCase(),
                 verified: false,
@@ -271,20 +265,12 @@ class AuthController {
             record.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
             await record.save();
             const subject = 'Your new verification code - Smart LMS';
-            const html = `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #3b82f6;">Email Verification</h2>
-                <p>Hello ${record.registrationData.name},</p>
-                <p>Your new verification code is:</p>
-                <div style="background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-                  ${otp}
-                </div>
-                <p>This code will expire in 10 minutes.</p>
-                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                <p style="color: #6b7280; font-size: 12px;">Smart LMS - Learning Management System</p>
-              </div>
-            `;
-            const emailSent = await emailService.sendEmail(email, subject, `Your verification code is ${otp}`, html);
+            const html = generateOtpTemplate(otp);
+            const emailSent = await emailService.sendEmail({
+                to: email,
+                subject,
+                html
+            });
             res.status(200).json({
                 success: true,
                 data: emailSent ? {} : { otp, emailFailed: true },
@@ -402,6 +388,50 @@ class AuthController {
             });
         } catch (error) {
             res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    /**
+     * Forgot password request
+     */
+    async forgotPassword(req, res) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                return res.status(400).json({ success: false, message: 'Email is required' });
+            }
+            await authService.forgotPassword(email);
+            res.status(200).json({
+                success: true,
+                message: 'If an account exists with that email, a password reset link has been sent.'
+            });
+        } catch (error) {
+            res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    /**
+     * Reset password using token
+     */
+    async resetPassword(req, res) {
+        try {
+            const { token, password } = req.body;
+            if (!token || !password) {
+                return res.status(400).json({ success: false, message: 'Token and password are required' });
+            }
+            await authService.resetPassword(token, password);
+            res.status(200).json({
+                success: true,
+                message: 'Password reset successful. You can now login.'
+            });
+        } catch (error) {
+            res.status(error.statusCode || 400).json({
                 success: false,
                 message: error.message
             });

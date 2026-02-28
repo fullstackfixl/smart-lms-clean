@@ -50,6 +50,20 @@ class PlatformOrganizationController extends BaseController {
       organization.admin_user_id = admin._id;
       await organization.save();
 
+      // 4. Notify User of Account Creation
+      try {
+        const emailService = require('../services/email.service');
+        const { generateUserCreationTemplate } = emailService;
+        const html = generateUserCreationTemplate(adminName, 'Organization Admin', name);
+        await emailService.sendEmail({
+          to: adminEmail,
+          subject: 'Welcome to Smart LMS - Account Created',
+          html
+        });
+      } catch (notifyErr) {
+        console.warn('⚠️ User creation notification failed:', notifyErr.message);
+      }
+
       return res.success({
         organization,
         admin: admin.toPublicJSON()
@@ -108,14 +122,19 @@ class PlatformOrganizationController extends BaseController {
       organization.admin_user_id = admin._id;
       await organization.save();
 
-      // 4. Send invitation email
-      const emailService = require('../services/emailService');
+      const emailService = require('../services/email.service');
+      const { generateInvitationTemplate } = emailService;
       const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
       const setupLink = `${baseUrl}/org/setup?token=${inviteToken}`;
 
       let emailSent = false;
       try {
-        emailSent = await emailService.sendOrgInviteEmail(adminEmail, orgName, orgType, setupLink);
+        const html = generateInvitationTemplate(orgName, setupLink);
+        emailSent = await emailService.sendEmail({
+          to: adminEmail,
+          subject: `You're invited to join ${orgName} - Smart LMS`,
+          html
+        });
       } catch (emailError) {
         console.error('📧 [PORTAL] Failed to send invitation email:', emailError.message);
       }

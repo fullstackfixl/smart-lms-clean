@@ -363,11 +363,42 @@ export default function OrgAdminDashboard() {
           </div>
         </div>
         {orgEvents.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">
-            No recent activity recorded
+          <div className="p-8">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-sm font-medium text-slate-400">Recent Enrollments</h4>
+              <span className="text-xs text-slate-500">Showing user details as fallback</span>
+            </div>
+            {recentEnrollments.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 bg-slate-800/20 rounded-xl border border-dashed border-slate-700">
+                No recent activity or users found
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentEnrollments.map((enr: any, idx: number) => (
+                  <div key={enr._id} className="flex items-center justify-between p-3 bg-slate-800/40 rounded-xl border border-slate-700/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 text-xs font-bold">
+                        {enr.student_id?.name?.substring(0, 2).toUpperCase() || 'ST'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-200">{enr.student_id?.name || 'Unknown Student'}</p>
+                        <p className="text-xs text-slate-500">Enrolled in {enr.course_id?.title || 'Course'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-400">{new Date(enr.createdAt).toLocaleDateString()}</p>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        ACTIVE
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-slate-800/50">
+
             {orgEvents.map((event, index) => {
               const Icon = event.type === 'NEW_COURSE' ? BookOpen :
                 event.type === 'NEW_QUIZ' ? BookOpen :

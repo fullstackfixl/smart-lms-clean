@@ -1,5 +1,7 @@
 const BaseController = require('../core/BaseController');
 const { Course, Section, Lesson, Enrollment, Quiz, QuizAttempt, Announcement, User, LiveClass, QuizSubmission } = require('../models');
+const { recordOrgEvent, EVENT_TYPES } = require('../utils/orgEvents');
+
 const mongoose = require('mongoose');
 
 class InstructorController extends BaseController {
@@ -121,19 +123,19 @@ class InstructorController extends BaseController {
       is_deleted: false
     });
 
-    // Create Organization Event
-    const OrganizationEvent = require('../models/OrganizationEvent');
-    const event = await OrganizationEvent.create({
-      organizationId: req.user.organization_id,
-      type: 'NEW_COURSE',
-      message: `Instructor ${req.user.full_name || 'Generic'} created a new course: ${title}`,
-      relatedId: course._id
-    });
+    // Record Organization Event
+    const event = await recordOrgEvent(
+      req.user.organization_id,
+      EVENT_TYPES.NEW_COURSE,
+      `Instructor ${req.user.name || 'Generic'} created a new course: ${title}`,
+      course._id
+    );
 
     // Emit real-time update
-    if (global.io) {
+    if (global.io && event) {
       global.io.to(`organization_${req.user.organization_id}`).emit('new_event', event);
     }
+
 
     this.sendSuccess(res, course, 'Course created successfully', 201);
   });
@@ -247,7 +249,16 @@ class InstructorController extends BaseController {
     course.status = 'published';
     await course.save();
 
+    // Record Event
+    await recordOrgEvent(
+      req.user.organization_id,
+      EVENT_TYPES.QUIZ_PUBLISHED, // Reusing or adding a course published type if it existed, but using this for now as shorthand or I can add COURSE_PUBLISHED
+      `Course published: ${course.title}`,
+      course._id
+    );
+
     this.sendSuccess(res, course, 'Course published successfully');
+
   });
 
   // MODULES (Sections)
@@ -471,6 +482,15 @@ class InstructorController extends BaseController {
     });
 
     this.sendSuccess(res, quiz, 'AI Quiz generated and saved as draft', 201);
+
+    // Record Event
+    await recordOrgEvent(
+      orgId,
+      EVENT_TYPES.NEW_QUIZ,
+      `AI Quiz generated: ${quiz.title}`,
+      quiz._id
+    );
+
   });
 
   createQuiz = this.asyncHandler(async (req, res) => {

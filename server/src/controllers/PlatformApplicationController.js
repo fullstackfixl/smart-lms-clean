@@ -143,10 +143,19 @@ class PlatformApplicationController extends BaseController {
             application.status = 'approved';
             await application.save();
 
-            // Send approval email with link
+            const { generateInvitationTemplate } = emailService;
+
+            // Send approval email with link (acts as invitation for org admin)
             const baseUrl = process.env.CLIENT_URL || 'https://smartlms.com';
             const setupLink = `${baseUrl.replace(/\/$/, '')}/complete-registration?token=${token}`;
-            const emailSent = await emailService.sendApprovalEmail(application.admin_email, setupLink);
+
+            const html = generateInvitationTemplate(application.organization_name || 'Your organization', setupLink);
+            const emailSent = await emailService.sendEmail({
+                to: application.admin_email,
+                subject: 'Organization Application Approved - Smart LMS',
+                html
+            });
+
             if (!emailSent) {
                 console.warn('⚠️ [PlatformApplication] Approval email failed to send.');
             }

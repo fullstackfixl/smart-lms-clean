@@ -3,7 +3,7 @@ const jwtUtils = require('../utils/jwt');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { AuthenticationError, ValidationError, NotFoundError } = require('../core/errors');
-const emailService = require('./emailService');
+const emailService = require('./email.service');
 
 class AuthService {
   /**
@@ -145,21 +145,11 @@ class AuthService {
       if (adminNotifyEmail) {
         const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
         const listLink = `${baseUrl}/platform/applications?status=pending`;
-        const subject = 'New Organization Application Submitted';
-        const text = `A new organization application has been submitted.\n\nOrganization: ${organizationName}\nRoute: /org/${routeSlug}\nAdmin: ${adminName} <${adminEmail}>\nPlan: ${selectedPlan}\n\nReview pending applications:\n${listLink}`;
-        const html = `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color:#2563eb;margin-bottom:8px;">New Organization Application</h2>
-            <p><strong>Organization:</strong> ${organizationName}</p>
-            <p><strong>Route:</strong> /org/${routeSlug}</p>
-            <p><strong>Admin:</strong> ${adminName} &lt;${adminEmail}&gt;</p>
-            <p><strong>Plan:</strong> ${selectedPlan}</p>
-            <div style="margin:20px 0;">
-              <a href="${listLink}" style="background-color:#2563eb;color:white;padding:10px 18px;text-decoration:none;border-radius:6px;font-weight:bold;">Review Applications</a>
-            </div>
-          </div>
-        `;
-        await emailService.sendEmail(adminNotifyEmail, subject, text, html);
+        await emailService.sendEmail({
+          to: adminNotifyEmail,
+          subject,
+          html
+        });
       }
     } catch (notifyErr) {
       console.error('⚠️ Notify platform admin failed:', notifyErr.message);
@@ -245,23 +235,11 @@ class AuthService {
     try {
       const adminNotifyEmail = process.env.SUPPORT_EMAIL || process.env.EMAIL_USER;
       if (adminNotifyEmail) {
-        const subject = 'Organization Created Successfully';
-        const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
-        const orgLink = `${baseUrl}/platform/organizations`;
-        const text = `A new organization has been created.\n\nOrganization: ${organization.name}\nSubdomain: ${organization.subdomain}\nAdmin: ${admin.name} <${admin.email}>\nPlan: ${organization.plan}\n\nManage organizations:\n${orgLink}`;
-        const html = `
-          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-            <h2 style="color:#16a34a;margin-bottom:8px;">Organization Created</h2>
-            <p><strong>Organization:</strong> ${organization.name}</p>
-            <p><strong>Subdomain:</strong> ${organization.subdomain}</p>
-            <p><strong>Admin:</strong> ${admin.name} &lt;${admin.email}&gt;</p>
-            <p><strong>Plan:</strong> ${organization.plan}</p>
-            <div style="margin:20px 0;">
-              <a href="${orgLink}" style="background-color:#2563eb;color:white;padding:10px 18px;text-decoration:none;border-radius:6px;font-weight:bold;">View Organizations</a>
-            </div>
-          </div>
-        `;
-        await emailService.sendEmail(adminNotifyEmail, subject, text, html);
+        await emailService.sendEmail({
+          to: adminNotifyEmail,
+          subject,
+          html
+        });
       }
     } catch (notifyErr) {
       console.error('⚠️ Notify platform admin of creation failed:', notifyErr.message);
@@ -379,25 +357,13 @@ class AuthService {
       const baseUrl = (process.env.CLIENT_URL || 'https://smart-lms-clean.vercel.app').replace(/\/$/, '');
       const acceptLink = `${baseUrl}/accept-invite?token=${token}`;
       const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
-      const subject = `You're invited to join ${orgName} as ${roleLabel} — Smart LMS`;
-      const text = `You have been invited to join ${orgName} as a ${roleLabel} on Smart LMS.\n\nClick the link below to set your password and activate your account:\n${acceptLink}\n\nThis link expires in 7 days.`;
-      const html = `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
-          <div style="text-align:center;margin-bottom:20px;">
-            <span style="background:linear-gradient(135deg,#6366f1,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:24px;font-weight:800;">Smart LMS</span>
-          </div>
-          <h2 style="color:#818cf8;margin-bottom:8px;">You're Invited! 🎓</h2>
-          <p style="color:#cbd5e1;">You have been invited to join <strong style="color:#c4b5fd;">${orgName}</strong> as a <strong style="color:#c4b5fd;">${roleLabel}</strong>.</p>
-          <p style="color:#94a3b8;">Click the button below to set your password and activate your account:</p>
-          <div style="margin:28px 0;text-align:center;">
-            <a href="${acceptLink}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;display:inline-block;">Accept Invitation →</a>
-          </div>
-          <p style="color:#64748b;font-size:12px;">Or paste this link in your browser:<br/><span style="color:#6366f1;word-break:break-all;">${acceptLink}</span></p>
-          <hr style="border:1px solid #1e293b;margin:20px 0;"/>
-          <p style="color:#475569;font-size:12px;">This invitation link will expire in <strong>7 days</strong>. If you did not expect this, ignore this email.</p>
-        </div>
-      `;
-      await emailService.sendEmail(email.toLowerCase(), subject, text, html);
+      const { generateInvitationTemplate } = emailService;
+      const html = generateInvitationTemplate(orgName, acceptLink);
+      await emailService.sendEmail({
+        to: email.toLowerCase(),
+        subject,
+        html
+      });
       console.log(`📧 [Invite] Email sent to ${email} (${role}) for org: ${orgName} | Link: ${acceptLink}`);
     } catch (emailErr) {
       console.error('⚠️ [Invite] Failed to send invitation email:', emailErr.message);
@@ -448,7 +414,63 @@ class AuthService {
     await invite.save();
 
     return user.toPublicJSON();
+  /**
+   * Forgot Password - Generate token and send email
+   */
+  async forgotPassword(email) {
+      const user = await User.findOne({ email: email.toLowerCase() });
+      if (!user) {
+        // For security, don't reveal if user exists
+        return true;
+      }
+
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+      const resetPasswordExpires = Date.now() + 3600000; // 1 hour
+
+      await User.findByIdAndUpdate(user._id, {
+        resetPasswordToken,
+        resetPasswordExpires
+      });
+
+      const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+      const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
+
+      const { generatePasswordResetTemplate } = emailService;
+      const html = generatePasswordResetTemplate(resetLink);
+
+      await emailService.sendEmail({
+        to: user.email,
+        subject: 'Password Reset Request - Smart LMS',
+        html
+      });
+
+      return true;
+    }
+
+  /**
+   * Reset Password - Verify token and update password
+   */
+  async resetPassword(token, password) {
+      const resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
+
+      const user = await User.findOne({
+        resetPasswordToken,
+        resetPasswordExpires: { $gt: Date.now() }
+      }).select('+resetPasswordToken +resetPasswordExpires');
+
+      if (!user) {
+        throw new ValidationError('Invalid or expired password reset token');
+      }
+
+      // Set new password
+      user.password_hash = password; // Will be hashed by pre-save hook
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      return true;
+    }
   }
-}
 
 module.exports = new AuthService();

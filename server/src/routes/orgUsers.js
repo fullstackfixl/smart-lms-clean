@@ -1,8 +1,11 @@
 const express = require('express');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { User, Invite } = require('../models');
-const emailService = require('../services/emailService');
+const emailService = require('../services/email.service');
+const { generateInvitationTemplate } = emailService;
 const crypto = require('crypto');
+const { recordOrgEvent, EVENT_TYPES } = require('../utils/orgEvents');
+
 
 const router = express.Router();
 
@@ -55,21 +58,21 @@ router.post('/users/create-instructor', async (req, res) => {
     const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
     const setupLink = `${baseUrl}/accept-invite?token=${invite.token}`;
     try {
-      await emailService.sendEmail(
-        email,
-        'Smart LMS Instructor Invitation',
-        `You have been invited as Instructor. Set your password: ${setupLink}`,
-        `<p>Hello ${name},</p>
-         <p>You have been invited as <strong>Instructor</strong> to join our platform.</p>
-         <p>Please click the button below to set your password and activate your account:</p>
-         <p><a href="${setupLink}" style="display: inline-block; padding: 10px 20px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Set Password & Activate</a></p>
-         <p>If the button doesn't work, copy and paste this link into your browser: ${setupLink}</p>`
-      );
+      const html = generateInvitationTemplate(req.user.organization_id?.name || 'Your Organization', setupLink);
+      await emailService.sendEmail({
+        to: email,
+        subject: 'Smart LMS Instructor Invitation',
+        html
+      });
     } catch (mailErr) {
       console.warn('Mail send failed, continuing:', mailErr.message);
     }
 
     res.success({ invite: { token: invite.token, expires_at: invite.expires_at } }, 'Invitation email sent');
+
+    // Record Event
+    await recordOrgEvent(orgId, EVENT_TYPES.NEW_INSTRUCTOR, `New instructor invited: ${name} (${email})`);
+
   } catch (error) {
     console.error('❌ [CREATE INSTRUCTOR ERROR]:', error);
     if (error.stack) console.error(error.stack);
@@ -119,21 +122,21 @@ router.post('/users/create-student', async (req, res) => {
     const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
     const setupLink = `${baseUrl}/accept-invite?token=${invite.token}`;
     try {
-      await emailService.sendEmail(
-        email,
-        'Smart LMS Student Invitation',
-        `You have been invited as Student. Set your password: ${setupLink}`,
-        `<p>Hello ${name},</p>
-         <p>You have been invited as <strong>Student</strong> to join our platform.</p>
-         <p>Please click the button below to set your password and activate your account:</p>
-         <p><a href="${setupLink}" style="display: inline-block; padding: 10px 20px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Set Password & Activate</a></p>
-         <p>If the button doesn't work, copy and paste this link into your browser: ${setupLink}</p>`
-      );
+      const html = generateInvitationTemplate(req.user.organization_id?.name || 'Your Organization', setupLink);
+      await emailService.sendEmail({
+        to: email,
+        subject: 'Smart LMS Student Invitation',
+        html
+      });
     } catch (mailErr) {
       console.warn('Mail send failed, continuing:', mailErr.message);
     }
 
     res.success({ invite: { token: invite.token, expires_at: invite.expires_at }, admissionNumber }, 'Invitation email sent');
+
+    // Record Event
+    await recordOrgEvent(orgId, EVENT_TYPES.NEW_STUDENT, `New student invited: ${name} (${email})`);
+
   } catch (error) {
     console.error('❌ [CREATE STUDENT ERROR]:', error);
     if (error.stack) console.error(error.stack);

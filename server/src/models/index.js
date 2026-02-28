@@ -38,6 +38,8 @@ const TestSeries = require('./TestSeries');
 const GradeLevel = require('./GradeLevel');
 const GradeSection = require('./GradeSection');
 const QuizSubmission = require('./QuizSubmission');
+const OrganizationEvent = require('./OrganizationEvent');
+
 
 
 module.exports = {

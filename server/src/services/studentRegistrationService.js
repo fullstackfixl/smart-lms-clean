@@ -64,23 +64,18 @@ class StudentRegistrationService {
     });
     await verification.save();
 
-    // Send email using existing mail system
+    const emailService = require('./email.service');
+    const { generateOtpTemplate } = emailService;
+
+    // Send email using new centralized system
     const subject = 'Verify Your Student Registration - Smart LMS';
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #3b82f6;">Email Verification</h2>
-        <p>Hello ${name},</p>
-        <p>Your verification code is:</p>
-        <div style="background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-          ${otp}
-        </div>
-        <p>This code will expire in 10 minutes.</p>
-        <p>If you didn't request this, please ignore this email.</p>
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-        <p style="color: #6b7280; font-size: 12px;">Smart LMS - Learning Management System</p>
-      </div>
-    `;
-    const emailSent = await emailService.sendEmail(email, subject, `Your verification code is ${otp}`, html);
+    const html = generateOtpTemplate(otp);
+
+    const emailSent = await emailService.sendEmail({
+      to: email,
+      subject,
+      html
+    });
 
     return emailSent ? {} : { otp, emailFailed: true };
   }
