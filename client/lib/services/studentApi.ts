@@ -16,11 +16,11 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     // Add JWT token
-    const token = 
-      typeof window !== 'undefined' 
+    const token =
+      typeof window !== 'undefined'
         ? window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
         : null
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -141,34 +141,34 @@ export const getQuizResults = async (quizId: string): Promise<ApiResponse> => {
 // ============================================
 export const getGrades = async (): Promise<ApiResponse> => {
   // Get current user ID from token or context
-  const token = typeof window !== 'undefined' 
+  const token = typeof window !== 'undefined'
     ? window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
     : null
-  
+
   if (!token) {
     throw new Error('No authentication token found')
   }
-  
+
   // Decode token to get user ID (basic decode, not verification)
   const payload = JSON.parse(atob(token.split('.')[1]))
   const userId = payload.userId
-  
+
   const response = await apiClient.get(`/api/grades/student/${userId}`)
   return response.data
 }
 
 export const getCourseGrades = async (courseId: string): Promise<ApiResponse> => {
-  const token = typeof window !== 'undefined' 
+  const token = typeof window !== 'undefined'
     ? window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
     : null
-  
+
   if (!token) {
     throw new Error('No authentication token found')
   }
-  
+
   const payload = JSON.parse(atob(token.split('.')[1]))
   const userId = payload.userId
-  
+
   const response = await apiClient.get(`/api/grades/summary/${courseId}/${userId}`)
   return response.data
 }

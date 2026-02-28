@@ -2,30 +2,55 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Users, BookOpen, UserCheck, DollarSign, TrendingUp, TrendingDown, Activity, Loader2 } from "lucide-react"
+import { Users, BookOpen, UserCheck, DollarSign, TrendingUp, TrendingDown, Activity, Loader2, CalendarDays } from "lucide-react"
 import { StatCard } from "@/components/org-admin/stat-card"
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import { getDashboardMetrics, getDashboardActivities } from "@/lib/services/orgAdminApi"
+import { getDashboardMetrics, getDashboardActivities, getOrgEvents } from "@/lib/services/orgAdminApi"
 import { toast } from "sonner"
+import { useAuth } from "@/lib/auth-context"
+import { io } from "socket.io-client"
+import { API_URL } from "@/lib/config"
 
 export default function OrgAdminDashboard() {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState<any>(null)
   const [activities, setActivities] = useState<any>(null)
+  const [orgEvents, setOrgEvents] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadDashboardData()
   }, [])
 
+  useEffect(() => {
+    if (!user?.organization_id) return
+
+    const socket = io(API_URL)
+
+    socket.emit('join_organization', user.organization_id)
+
+    socket.on('new_event', (event) => {
+      setOrgEvents(prev => [event, ...prev.slice(0, 19)])
+      toast.info(event.message, {
+        description: new Date(event.createdAt).toLocaleTimeString(),
+      })
+    })
+
+    return () => {
+      socket.disconnect()
+    }
+  }, [user?.organization_id])
+
   async function loadDashboardData() {
     setLoading(true)
     setError(null)
 
     try {
-      const [metricsData, activitiesData] = await Promise.all([
+      const [metricsData, activitiesData, eventsData] = await Promise.all([
         getDashboardMetrics(),
-        getDashboardActivities(10)
+        getDashboardActivities(10),
+        getOrgEvents()
       ])
 
       if (metricsData.success) {
@@ -34,6 +59,10 @@ export default function OrgAdminDashboard() {
 
       if (activitiesData.success) {
         setActivities(activitiesData.data)
+      }
+
+      if (eventsData.success) {
+        setOrgEvents(eventsData.data)
       }
     } catch (err) {
       console.error('Failed to load dashboard data:', err)
@@ -319,61 +348,62 @@ export default function OrgAdminDashboard() {
         </motion.div>
       </div>
 
-      {/* Recent Activity */}
+      {/* Activity Feed */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.7 }}
         className="bg-slate-900/80 backdrop-blur-sm border border-slate-800/50 rounded-2xl overflow-hidden"
       >
-        <div className="p-6 border-b border-slate-800/50">
-          <h3 className="text-lg font-semibold text-slate-200">Recent Enrollments</h3>
+        <div className="p-6 border-b border-slate-800/50 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-200">Organization Activity Feed</h3>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-xs text-slate-400">Live Updates</span>
+          </div>
         </div>
-        {recentEnrollments.length === 0 ? (
+        {orgEvents.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
-            No recent enrollments
+            No recent activity recorded
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-800/30">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Student</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Course</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/50">
-                {recentEnrollments.map((enrollment: any, index: number) => (
-                  <motion.tr
-                    key={enrollment._id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.8 + index * 0.05 }}
-                    className="hover:bg-slate-800/30 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-[#4CAF50]/10 flex items-center justify-center text-[#4CAF50] font-bold text-xs">
-                          {(enrollment.student_id?.name || "?").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">
-                            {enrollment.student_id?.name || 'Unknown'}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-300">
-                      {enrollment.course_id?.title || 'Unknown Course'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                      {new Date(enrollment.createdAt).toLocaleDateString()}
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y divide-slate-800/50">
+            {orgEvents.map((event, index) => {
+              const Icon = event.type === 'NEW_COURSE' ? BookOpen :
+                event.type === 'NEW_QUIZ' ? BookOpen :
+                  event.type === 'QUIZ_PUBLISHED' ? Activity :
+                    event.type === 'NEW_STUDENT' ? UserCheck :
+                      event.type === 'NEW_INSTRUCTOR' ? Users :
+                        event.type === 'LIVE_CLASS_SCHEDULED' ? CalendarDays : Activity;
+
+              const colorClass = event.type.startsWith('NEW_') ? 'text-indigo-400' : 'text-emerald-400';
+              const bgColorClass = event.type.startsWith('NEW_') ? 'bg-indigo-500/10' : 'bg-emerald-500/10';
+
+              return (
+                <motion.div
+                  key={event._id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index < 5 ? 0.8 + index * 0.05 : 0 }}
+                  className="p-4 hover:bg-slate-800/30 transition-colors flex items-center gap-4"
+                >
+                  <div className={`w-10 h-10 rounded-xl ${bgColorClass} flex items-center justify-center ${colorClass}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-200 truncate">
+                      {event.message}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {new Date(event.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-xs font-semibold px-2 py-1 rounded bg-slate-800 text-slate-400 uppercase tracking-wider">
+                    {event.type.replace('_', ' ')}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </motion.div>

@@ -1,0 +1,11 @@
+/^\/auth\/?(?=\/|$)/i
+/^\/?(?=\/|$)/i
+/^\/api\/?(?=\/|$)/i
+/^\/api\/organizations\/?(?=\/|$)/i
+/^\/platform\/?(?=\/|$)/i
+/^\/api\/platform\/?(?=\/|$)/i
+/^\/payments\/?(?=\/|$)/i
+/^\/api\/upload\/?(?=\/|$)/i
+/^\/api\/courses\/?(?=\/|$)/i
+/^\/api\/sections\/?(?=\/|$)/i
+/^\/api\/lessons\/?(?=\/|$)/i

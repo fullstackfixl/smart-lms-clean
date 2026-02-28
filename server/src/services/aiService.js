@@ -1,5 +1,5 @@
 const BaseService = require('../core/BaseService');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 const Lesson = require('../models/Lesson');
 const Enrollment = require('../models/Enrollment');
 const QuizResult = require('../models/QuizResult');
@@ -9,13 +9,14 @@ const logger = require('../utils/logger');
 class AIService extends BaseService {
   constructor() {
     super();
-    this.genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+    this.groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
+    this.GROQ_MODEL = 'llama-3.3-70b-versatile';
   }
 
   async askLessonQuestion(userId, lessonId, message, organizationId) {
     try {
-      if (!this.genAI) {
-        throw new Error('AI Service not configured: GEMINI_API_KEY is missing');
+      if (!this.groq) {
+        throw new Error('AI Service not configured: GROQ_API_KEY is missing');
       }
 
       // 1. Verify student enrolled in course
@@ -47,23 +48,28 @@ class AIService extends BaseService {
       const scoreText = bestQuiz ? `${bestQuiz.score}%` : 'not attempted yet';
 
       // 4. Build prompt
-      const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      const prompt = `You are a helpful AI tutor for Smart LMS. 
+      const systemMsg = `You are a helpful AI tutor for Smart LMS. Focus on being a trust-worthy assistant. Avoid using markdown headers like # or ##. Use bold text for emphasis.
 Lesson Title: "${lesson.title}"
 Lesson Content: "${lessonText}"
-Student's Quiz Performance for this lesson: "${scoreText}"
+Student's Quiz Performance for this lesson: "${scoreText}"`;
 
-The student has asked: "${message}"
+      const userMsg = `The student has asked: "${message}"
 
 Please explain simply with examples. Be professional, encouraging, and concise. 
 If the student's score is low (under 60%), provide extra clarity and break down concepts further.
-Focus on being a trust-worthy assistant. Avoid using markdown headers like # or ##. Use bold text for emphasis.
 Return only the helpful explanation.`;
 
       // 5. Generate AI Response
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const aiResponse = response.text();
+      const completion = await this.groq.chat.completions.create({
+        messages: [
+          { role: "system", content: systemMsg },
+          { role: "user", content: userMsg }
+        ],
+        model: this.GROQ_MODEL,
+        temperature: 0.5,
+        max_tokens: 1024,
+      });
+      const aiResponse = completion.choices[0]?.message?.content || "I am currently unable to answer your question.";
 
       // 6. Save chat to history
       const chatRecord = await LessonChat.create({
@@ -107,14 +113,79 @@ Return only the helpful explanation.`;
     }
   }
 
+  async generateGeminiQuiz(prompt, numberOfQuestions, difficulty, courseId, organizationId) {
+    const safePrompt = prompt.replace(/[<>]/g, '').substring(0, 500);
+
+    const systemPrompt = `You are a quiz generation API. You ONLY output valid JSON arrays of questions. No explanations, no markdown, no extra text.`;
+    const userPrompt = `Generate ${numberOfQuestions} multiple choice questions at ${difficulty} level about: "${safePrompt}".
+
+Return ONLY this exact JSON format:
+[{"question":"...","options":["A","B","C","D"],"correctAnswerIndex":0,"explanation":"..."}]`;
+
+    if (!this.groq) {
+      throw new Error('No AI provider configured. Set GROQ_API_KEY in .env');
+    }
+
+    try {
+      logger.info('[AI] Using Groq (llama-3.3-70b-versatile)');
+      const completion = await this.groq.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 4096,
+        response_format: { type: 'json_object' }
+      });
+
+      let text = completion.choices[0].message.content.trim();
+
+      // Groq with json_object wraps in an object sometimes — extract array
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        // Try parsing as object with questions key
+        const parsed = JSON.parse(text);
+        const arr = parsed.questions || parsed.quiz || parsed.items || Object.values(parsed)[0];
+        if (Array.isArray(arr) && arr.length > 0) {
+          return this._formatQuestions(arr);
+        }
+        throw new Error('No question array found in Groq response');
+      }
+
+      const questions = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(questions) || questions.length === 0) throw new Error('Empty array from Groq');
+
+      logger.info(`[AI:Groq] Generated ${questions.length} questions successfully`);
+      return this._formatQuestions(questions);
+
+    } catch (err) {
+      logger.error('[AI:Groq] Failed to generate quiz:', err.message);
+      throw new Error('AI providers failed. Last error: ' + err.message);
+    }
+  }
+
+  // Normalize questions from any AI provider to DB schema
+  _formatQuestions(questions) {
+    return questions.map(q => ({
+      question: q.question || q.text || '',
+      options: Array.isArray(q.options) ? q.options : [],
+      correct_answer: typeof q.correctAnswerIndex === 'number' ? q.correctAnswerIndex
+        : typeof q.correctIndex === 'number' ? q.correctIndex
+          : typeof q.answer === 'number' ? q.answer : 0,
+      explanation: q.explanation || q.rationale || ''
+    }));
+  }
+
+
   async generateQuiz(topicData) {
-    // ... existing mock logic ...
+    // keeping legacy logic for compatibility
     const questions = [
       {
         question_text: `What is ${topicData.topic}?`,
         type: 'multiple_choice',
         options: ['Option A', 'Option B', 'Option C', 'Option D'],
-        correct_answer: 'Option A',
+        correct_answer: 0,
         points: 10
       }
     ];

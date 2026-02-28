@@ -83,7 +83,7 @@ const validateLiveClassUpdate = [
 // Middleware to check instructor permissions
 const checkInstructorPermission = async (req, res, next) => {
   try {
-    if (!['teacher', 'admin'].includes(req.user.role)) {
+    if (!['instructor', 'teacher', 'admin', 'org_admin'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         error: 'Access denied',

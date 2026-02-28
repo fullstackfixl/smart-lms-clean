@@ -57,7 +57,7 @@ const quizAttemptSchema = new mongoose.Schema({
     type: [answerSchema],
     required: true,
     validate: {
-      validator: function(answers) {
+      validator: function (answers) {
         return answers && answers.length > 0;
       },
       message: 'Quiz attempt must have at least one answer'
@@ -121,22 +121,22 @@ quizAttemptSchema.index({ student_id: 1, submitted_at: -1 });
 quizAttemptSchema.index({ quiz_id: 1, attempt_number: 1, student_id: 1 }, { unique: true });
 
 // Virtual for correct answers count
-quizAttemptSchema.virtual('correct_answers').get(function() {
+quizAttemptSchema.virtual('correct_answers').get(function () {
   return this.answers ? this.answers.filter(answer => answer.is_correct).length : 0;
 });
 
 // Virtual for incorrect answers count
-quizAttemptSchema.virtual('incorrect_answers').get(function() {
+quizAttemptSchema.virtual('incorrect_answers').get(function () {
   return this.answers ? this.answers.filter(answer => !answer.is_correct).length : 0;
 });
 
 // Virtual for average time per question
-quizAttemptSchema.virtual('avg_time_per_question').get(function() {
+quizAttemptSchema.virtual('avg_time_per_question').get(function () {
   return this.total_questions > 0 ? Math.round(this.time_taken_seconds / this.total_questions) : 0;
 });
 
 // Instance method to check if user can access attempt
-quizAttemptSchema.methods.canUserAccess = function(user) {
+quizAttemptSchema.methods.canUserAccess = function (user) {
   // Check if user belongs to same organization
   if (this.organization_id.toString() !== user.organization_id.toString()) {
     return { canAccess: false, reason: 'organization_mismatch' };
@@ -161,10 +161,10 @@ quizAttemptSchema.methods.canUserAccess = function(user) {
 };
 
 // Instance method to get detailed results
-quizAttemptSchema.methods.getDetailedResults = async function() {
+quizAttemptSchema.methods.getDetailedResults = async function () {
   const Quiz = mongoose.model('Quiz');
   const quiz = await Quiz.findById(this.quiz_id);
-  
+
   if (!quiz) {
     throw new Error('Quiz not found');
   }
@@ -186,7 +186,7 @@ quizAttemptSchema.methods.getDetailedResults = async function() {
   for (let i = 0; i < this.answers.length; i++) {
     const answer = this.answers[i];
     const question = quiz.questions[answer.question_index];
-    
+
     if (question) {
       results.questions_review.push({
         question_number: i + 1,
@@ -205,7 +205,7 @@ quizAttemptSchema.methods.getDetailedResults = async function() {
 };
 
 // Static method to get user's attempts for a quiz
-quizAttemptSchema.statics.getUserAttempts = function(quizId, studentId, organizationId) {
+quizAttemptSchema.statics.getUserAttempts = function (quizId, studentId, organizationId) {
   return this.find({
     quiz_id: quizId,
     student_id: studentId,
@@ -215,7 +215,7 @@ quizAttemptSchema.statics.getUserAttempts = function(quizId, studentId, organiza
 };
 
 // Static method to get best attempt for a quiz
-quizAttemptSchema.statics.getBestAttempt = function(quizId, studentId, organizationId) {
+quizAttemptSchema.statics.getBestAttempt = function (quizId, studentId, organizationId) {
   return this.findOne({
     quiz_id: quizId,
     student_id: studentId,
@@ -225,7 +225,7 @@ quizAttemptSchema.statics.getBestAttempt = function(quizId, studentId, organizat
 };
 
 // Static method to get quiz statistics
-quizAttemptSchema.statics.getQuizStatistics = async function(quizId, organizationId) {
+quizAttemptSchema.statics.getQuizStatistics = async function (quizId, organizationId) {
   const stats = await this.aggregate([
     {
       $match: {
@@ -265,86 +265,86 @@ quizAttemptSchema.statics.getQuizStatistics = async function(quizId, organizatio
 };
 
 // Pre-save middleware to calculate derived fields
-quizAttemptSchema.pre('save', function(next) {
+quizAttemptSchema.pre('save', function (next) {
   if (this.isNew) {
     // Calculate percentage
-    this.percentage = this.total_questions > 0 ? 
+    this.percentage = this.total_questions > 0 ?
       Math.round((this.score / this.total_questions) * 100) : 0;
-    
+
     // Calculate time taken
     if (this.started_at && this.submitted_at) {
       this.time_taken_seconds = Math.floor((this.submitted_at - this.started_at) / 1000);
     }
   }
-  
+
   next();
 });
 
 // Pre-save middleware to validate organization consistency
-quizAttemptSchema.pre('save', async function(next) {
+quizAttemptSchema.pre('save', async function (next) {
   if (this.isNew) {
     try {
       // Verify quiz belongs to same organization
       const Quiz = mongoose.model('Quiz');
       const quiz = await Quiz.findById(this.quiz_id);
-      
+
       if (!quiz) {
         return next(new Error('Quiz not found'));
       }
-      
+
       if (quiz.organization_id.toString() !== this.organization_id.toString()) {
         return next(new Error('Quiz must belong to the same organization'));
       }
-      
+
       // Verify student belongs to same organization
       const User = mongoose.model('User');
       const student = await User.findById(this.student_id);
-      
+
       if (!student) {
         return next(new Error('Student not found'));
       }
-      
+
       if (student.organization_id.toString() !== this.organization_id.toString()) {
         return next(new Error('Student must belong to the same organization'));
       }
-      
+
       // Set course_id from quiz if not provided
       if (!this.course_id) {
         this.course_id = quiz.course_id;
       }
-      
+
       // Validate answers against quiz questions
       if (this.answers.length !== quiz.questions.length) {
         return next(new Error('Number of answers must match number of questions'));
       }
-      
+
       // Calculate score and determine pass/fail
       let correctCount = 0;
       for (let i = 0; i < this.answers.length; i++) {
         const answer = this.answers[i];
         const question = quiz.questions[answer.question_index];
-        
+
         if (!question) {
           return next(new Error(`Invalid question index: ${answer.question_index}`));
         }
-        
+
         // Check if answer is correct
         answer.is_correct = (answer.selected_option === question.correct_answer);
         if (answer.is_correct) {
           correctCount++;
         }
       }
-      
+
       this.score = correctCount;
       this.total_questions = quiz.questions.length;
       this.percentage = Math.round((correctCount / quiz.questions.length) * 100);
       this.passed = this.percentage >= quiz.pass_percentage;
-      
+
     } catch (error) {
       return next(error);
     }
   }
-  
+
   next();
 });
 

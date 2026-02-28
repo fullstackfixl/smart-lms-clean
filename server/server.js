@@ -16,11 +16,35 @@ async function startServer() {
     console.log('Connecting to MongoDB...');
     await connectDB();
     console.log('MongoDB connected successfully');
-    
+
+    const io = require('socket.io')(server, {
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+      }
+    });
+
+    global.io = io;
+
+    io.on('connection', (socket) => {
+      console.log('A user connected:', socket.id);
+
+      socket.on('join_organization', (orgId) => {
+        if (orgId) {
+          socket.join(`organization_${orgId}`);
+          console.log(`User ${socket.id} joined room: organization_${orgId}`);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+      });
+    });
+
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ Server running on port ${PORT}`);
+      console.log(`✅ Socket.io initialized`);
       console.log(`✅ Environment: ${process.env.NODE_ENV}`);
-      console.log(`✅ CORS enabled for Vercel frontend`);
     });
 
     server.on('error', (error) => {

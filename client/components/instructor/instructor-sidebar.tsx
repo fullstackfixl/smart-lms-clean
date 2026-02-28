@@ -2,16 +2,17 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Users, 
-  Video, 
-  BarChart3, 
-  FileText, 
-  Bell, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  Users,
+  Video,
+  BarChart3,
+  FileText,
+  Bell,
   Upload,
-  LogOut
+  LogOut,
+  ClipboardList
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ const navigation = [
   { name: "Manage Courses", href: "/instructor/courses", icon: BookOpen },
   { name: "Students", href: "/instructor/students", icon: Users },
   { name: "Live Classes", href: "/instructor/live-classes", icon: Video },
+  { name: "Quiz Management", href: "/instructor/quiz", icon: ClipboardList },
   { name: "Analytics", href: "/instructor/analytics", icon: BarChart3 },
   { name: "Submissions", href: "/instructor/submissions", icon: FileText },
   { name: "Notifications", href: "/instructor/notifications", icon: Bell },

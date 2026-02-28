@@ -12,7 +12,10 @@ const moduleGuard = require('../middleware/moduleGuard');
 const router = express.Router();
 
 // Apply module guard to all quiz routes
-router.use(auth, moduleGuard('EXAMS'));
+// Apply module guard to all quiz routes
+// Apply module guard to all quiz routes
+// Removed moduleGuard because legacy organizations do not always have modules enabled, which was causing 403 Forbidden on the courses dropdown
+router.use(auth);
 
 // Validation middleware
 const validateQuizCreation = [
@@ -97,7 +100,7 @@ const validateQuizUpdate = [
 // Middleware to check instructor permissions
 const checkInstructorPermission = async (req, res, next) => {
   try {
-    if (!['teacher', 'admin'].includes(req.user.role)) {
+    if (!['instructor', 'teacher', 'admin', 'org_admin'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         error: 'Access denied',
@@ -179,6 +182,15 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
     });
 
     await quiz.save();
+
+    // Create Organization Event
+    const OrganizationEvent = require('../models/OrganizationEvent');
+    await OrganizationEvent.create({
+      organizationId: req.user.organization_id,
+      type: 'NEW_QUIZ',
+      message: `Instructor ${req.user.full_name || 'Generic'} created a new quiz: ${title}`,
+      relatedId: quiz._id
+    });
 
     res.status(201).json({
       success: true,
@@ -280,6 +292,199 @@ router.get('/', auth, async (req, res) => {
       error: error.message,
       message: 'Failed to fetch quizzes'
     });
+  }
+});
+
+// 2️⃣ INSTRUCTOR CREATE QUIZ (MANUAL) - Legacy / is similar but spec calls for /create
+// We can alias / to /create or just implement /create as requested
+router.post('/create', auth, checkInstructorPermission, validateQuizCreation, async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { course_id, title, description, questions, timer_minutes, pass_percentage, max_attempts } = req.body;
+
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const course = await Course.findOne({
+      _id: course_id,
+      organization_id: orgId
+    });
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or belongs to another organization' });
+    }
+
+    const quiz = new Quiz({
+      organization_id: orgId,
+      course_id,
+      instructor_id: req.user.id,
+      title,
+      description,
+      questions,
+      timer_minutes,
+      pass_percentage: pass_percentage || 60,
+      max_attempts: max_attempts || 3,
+      status: 'DRAFT',
+      is_active: true
+    });
+
+    await quiz.save();
+
+    const OrganizationEvent = require('../models/OrganizationEvent');
+    await OrganizationEvent.create({
+      organizationId: orgId,
+      type: 'NEW_QUIZ',
+      message: `Instructor ${req.user.full_name || req.user.profile?.fullName || ''} created a new quiz: ${title}`,
+      relatedId: quiz._id
+    });
+
+    res.status(201).json({ success: true, data: quiz });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 3️⃣ AI GEMINI QUIZ GENERATION
+router.post('/generate-ai', auth, checkInstructorPermission, [
+  body('prompt').notEmpty().withMessage('Prompt is required'),
+  body('numberOfQuestions').isInt({ min: 1, max: 20 }).withMessage('Questions must be between 1 and 20'),
+  body('difficulty').isIn(['easy', 'medium', 'hard']).withMessage('Difficulty must be easy, medium, or hard'),
+  body('courseId').isMongoId().withMessage('Valid courseId is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, details: errors.array() });
+
+    const { prompt, numberOfQuestions, difficulty, courseId } = req.body;
+
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const course = await Course.findOne({ _id: courseId, organization_id: orgId });
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+
+    const aiService = require('../services/aiService');
+    const questions = await aiService.generateGeminiQuiz(prompt, numberOfQuestions, difficulty, courseId, orgId);
+
+    // Save as DRAFT as per spec
+    const quiz = new Quiz({
+      organization_id: orgId,
+      course_id: courseId,
+      instructor_id: req.user._id,
+      title: `AI Generated: ${prompt.substring(0, 30)}...`,
+      questions,
+      status: 'DRAFT',
+      is_active: true
+    });
+
+    await quiz.save();
+
+    res.json({ success: true, data: { quiz, questions } });
+  } catch (error) {
+    console.error('AI Generation Route Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 4️⃣ PUBLISH QUIZ
+router.post('/publish/:quizId', auth, checkInstructorPermission, async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const quiz = await Quiz.findOne({ _id: req.params.quizId, organization_id: orgId });
+    if (!quiz) return res.status(404).json({ success: false, message: 'Quiz not found' });
+
+    quiz.status = 'PUBLISHED';
+    await quiz.save();
+
+    // Create Organization Event
+    const OrganizationEvent = require('../models/OrganizationEvent');
+    const event = await OrganizationEvent.create({
+      organizationId: orgId,
+      type: 'QUIZ_PUBLISHED',
+      message: `Quiz published: ${quiz.title}`,
+      relatedId: quiz._id
+    });
+
+    // Real-time update (Optional but recommended)
+    if (global.io) {
+      global.io.to(`organization_${orgId}`).emit('new_event', event);
+    }
+
+    res.json({ success: true, message: 'Quiz published successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5️⃣ STUDENT VIEW QUIZZES
+router.get('/student', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Role must be STUDENT' });
+
+    const query = {
+      organization_id: req.user.organization_id,
+      status: 'PUBLISHED',
+      is_active: true
+    };
+
+    // Optional: Filter by enrolled courses
+    const Enrollment = require('../models/Enrollment');
+    const enrollments = await Enrollment.find({
+      student_id: req.user._id,
+      status: { $in: ['active', 'completed'] }
+    });
+    const enrolledCourseIds = enrollments.map(e => e.course_id);
+    query.course_id = { $in: enrolledCourseIds };
+
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    query.organization_id = orgId;
+
+    const quizzes = await Quiz.find(query).populate('course_id', 'title');
+
+    // Use student version to hide answers
+    const studentQuizzes = quizzes.map(q => q.getStudentVersion());
+
+    res.json({ success: true, data: studentQuizzes });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6️⃣ INSTRUCTOR VIEW QUIZZES
+router.get('/instructor', auth, checkInstructorPermission, async (req, res) => {
+  try {
+    const { courseId } = req.query;
+
+    // Safely extract organization_id whether it's populated or not
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const query = {
+      organization_id: orgId,
+      instructor_id: req.user._id, // robust _id reference
+      is_active: true // replaced is_deleted since it doesn't exist on Quiz schema
+    };
+
+    if (courseId) {
+      // Validate courseId before passing to query
+      if (courseId.match(/^[0-9a-fA-F]{24}$/)) {
+        query.course_id = courseId;
+      }
+    }
+
+    const quizzes = await Quiz.find(query)
+      .populate('course_id', 'title')
+      .sort({ created_at: -1 });
+
+    res.json({ success: true, data: quizzes });
+  } catch (error) {
+    console.error('Instructor Quiz Fetch Error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch quizzes: ' + error.message });
   }
 });
 

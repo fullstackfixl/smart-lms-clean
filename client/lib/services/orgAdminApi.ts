@@ -63,6 +63,10 @@ export async function getDashboardActivities(limit: number = 10) {
   return apiRequest(`/api/admin/dashboard/activities?limit=${limit}`);
 }
 
+export async function getOrgEvents() {
+  return apiRequest('/api/org/events');
+}
+
 // ==================== USER MANAGEMENT ====================
 
 export interface GetUsersParams {

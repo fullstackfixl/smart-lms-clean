@@ -309,6 +309,22 @@ class AuthController {
             }
 
             const result = await authService.acceptInvite(req.body);
+            const user = result.user;
+
+            if (user && user.role === 'instructor') {
+                const OrganizationEvent = require('../models/OrganizationEvent');
+                const event = await OrganizationEvent.create({
+                    organizationId: user.organization_id,
+                    type: 'NEW_INSTRUCTOR',
+                    message: `New instructor joined: ${user.name}`,
+                    relatedId: user._id
+                });
+
+                if (global.io) {
+                    global.io.to(`organization_${user.organization_id}`).emit('new_event', event);
+                }
+            }
+
             res.status(200).json({
                 success: true,
                 message: 'Invitation accepted. Your account is now active.',

@@ -222,7 +222,7 @@ export default function AIChatSidebar({ lessonId, lessonTitle, isOpen, onClose }
                     </Button>
                 </form>
                 <p className="text-[10px] text-center text-slate-400 mt-3 flex items-center justify-center gap-1">
-                    Powered by Google Gemini <Sparkles className="h-2 w-2" />
+                    Powered by Groq AI <Sparkles className="h-2 w-2" />
                 </p>
             </div>
         </aside>

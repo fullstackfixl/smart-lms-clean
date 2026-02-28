@@ -65,8 +65,8 @@ class InstructorController extends BaseController {
       });
 
       const completedEnrollments = allEnrollments.filter(e => e.status === 'completed');
-      const completionRate = allEnrollments.length > 0 
-        ? (completedEnrollments.length / allEnrollments.length) * 100 
+      const completionRate = allEnrollments.length > 0
+        ? (completedEnrollments.length / allEnrollments.length) * 100
         : 0;
 
       return res.success({
@@ -83,7 +83,7 @@ class InstructorController extends BaseController {
       });
     } catch (error) {
       console.error('Dashboard overview error:', error);
-      return res.error('Failed to load dashboard data', 500);
+      return res.error(error.message, `Server Exception: ${error.message}`, 500);
     }
   });
 
@@ -119,6 +119,20 @@ class InstructorController extends BaseController {
       status: 'draft',
       is_deleted: false
     });
+
+    // Create Organization Event
+    const OrganizationEvent = require('../models/OrganizationEvent');
+    const event = await OrganizationEvent.create({
+      organizationId: req.user.organization_id,
+      type: 'NEW_COURSE',
+      message: `Instructor ${req.user.full_name || 'Generic'} created a new course: ${title}`,
+      relatedId: course._id
+    });
+
+    // Emit real-time update
+    if (global.io) {
+      global.io.to(`organization_${req.user.organization_id}`).emit('new_event', event);
+    }
 
     this.sendSuccess(res, course, 'Course created successfully', 201);
   });
@@ -733,7 +747,7 @@ class InstructorController extends BaseController {
         organization_id: req.user.organization_id,
         is_deleted: false
       }).select('_id');
-      
+
       filters.course_id = { $in: instructorCourses.map(c => c._id) };
     }
 
@@ -792,11 +806,11 @@ class InstructorController extends BaseController {
       submission.earned_score = earned_score;
       submission.percentage = (earned_score / submission.max_score) * 100;
     }
-    
+
     if (comments !== undefined) {
       submission.comments = comments;
     }
-    
+
     if (rubric_scores) {
       submission.rubric_scores = rubric_scores;
     }

@@ -61,7 +61,7 @@ class LiveClassController extends BaseController {
     if (!course) {
       // Try to find the course without instructor filter to see if it exists
       const anyCourse = await Course.findOne({ _id: course_id, is_deleted: false });
-      
+
       if (!anyCourse) {
         console.error('❌ [LiveClass] Course not found at all');
         return res.status(404).json({
@@ -69,7 +69,7 @@ class LiveClassController extends BaseController {
           message: 'Course not found'
         });
       }
-      
+
       console.error('❌ [LiveClass] Course found but permission denied:', {
         courseOrgId: anyCourse.organization_id,
         userOrgId: user.organization_id,
@@ -78,7 +78,7 @@ class LiveClassController extends BaseController {
         orgMatch: anyCourse.organization_id?.toString() === user.organization_id?.toString(),
         instructorMatch: anyCourse.instructor_id?.toString() === user._id?.toString()
       });
-      
+
       return res.status(404).json({
         success: false,
         message: 'Course not found or you do not have permission to schedule classes for this course'
@@ -99,6 +99,20 @@ class LiveClassController extends BaseController {
       duration_minutes: parseInt(duration_minutes),
       status: 'scheduled'
     });
+
+    // Create Organization Event
+    const OrganizationEvent = require('../models/OrganizationEvent');
+    const event = await OrganizationEvent.create({
+      organizationId: req.user.organization_id,
+      type: 'LIVE_CLASS_SCHEDULED',
+      message: `New live class scheduled: ${title}`,
+      relatedId: liveClass._id
+    });
+
+    // Emit real-time update
+    if (global.io) {
+      global.io.to(`organization_${req.user.organization_id}`).emit('new_event', event);
+    }
 
     console.log('✅ [LiveClass] Live class created successfully:', liveClass._id);
 

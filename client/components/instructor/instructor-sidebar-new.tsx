@@ -57,6 +57,7 @@ const navItems: NavItem[] = [
   { label: 'Live Classes', href: '/instructor-live-classes', icon: Video },
   { label: 'Analytics', href: '/instructor-analytics', icon: BarChart3 },
   { label: 'Submissions', href: '/instructor-submissions', icon: FileText },
+  { label: 'Quiz Management', href: '/instructor/quiz', icon: FileText },
   { label: 'Notifications', href: '/instructor-notifications', icon: Bell },
   { label: 'Upload Content', href: '/instructor-upload', icon: Upload },
 ]

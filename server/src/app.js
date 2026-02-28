@@ -96,9 +96,6 @@ try {
   const organizationRoutes = require('./routes/organizations');
   app.use('/api/organizations', organizationRoutes);
 
-  console.log('  - api');
-  const apiRoutes = require('./api/routes/index');
-  app.use('/api', apiRoutes);
 
   console.log('  - platform');
   const platformRoutes = require('./routes/platform');
@@ -142,7 +139,10 @@ try {
 
   console.log('  - quizzes');
   const quizRoutes = require('./routes/quizzes');
+  const orgEventRoutes = require('./routes/orgEvents');
+
   app.use('/api/quizzes', quizRoutes);
+  app.use('/api/org', orgEventRoutes);
 
   console.log('  - gamification');
   const gamificationRoutes = require('./routes/gamification');
@@ -255,6 +255,10 @@ try {
   console.log('  - live-classes-simple');
   const liveClassesSimpleRoutes = require('./routes/liveClassesSimple');
   app.use(liveClassesSimpleRoutes);
+
+  console.log('  - api (generic REST routes)');
+  const apiRoutes = require('./api/routes/index');
+  app.use('/api', apiRoutes);
 
   console.log('✨ All routes loaded successfully');
 } catch (error) {

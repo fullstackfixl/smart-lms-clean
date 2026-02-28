@@ -16,11 +16,11 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     // Add JWT token
-    const token = 
-      typeof window !== 'undefined' 
+    const token =
+      typeof window !== 'undefined'
         ? window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
         : null
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -161,6 +161,35 @@ export const deleteQuiz = async (quizId: string): Promise<ApiResponse> => {
 }
 
 // ============================================
+// AI QUIZZES
+// ============================================
+export const generateAIQuiz = async (data: {
+  courseId: string;
+  prompt: string;
+  difficulty: string;
+  numQuestions: number
+}): Promise<ApiResponse> => {
+  const response = await apiClient.post('/api/quizzes/generate-ai', {
+    courseId: data.courseId,
+    prompt: data.prompt,
+    difficulty: data.difficulty,
+    numberOfQuestions: data.numQuestions  // Fix: backend expects 'numberOfQuestions'
+  })
+  return response.data
+}
+
+export const publishQuiz = async (quizId: string): Promise<ApiResponse> => {
+  const response = await apiClient.post(`/api/quizzes/publish/${quizId}`)
+  return response.data
+}
+
+export const getInstructorQuizzes = async (courseId?: string): Promise<ApiResponse> => {
+  const params = courseId ? { courseId } : {}
+  const response = await apiClient.get('/api/quizzes/instructor', { params })
+  return response.data
+}
+
+// ============================================
 // LIVE CLASSES
 // ============================================
 export const scheduleLiveClass = async (data: any): Promise<ApiResponse> => {
@@ -169,7 +198,7 @@ export const scheduleLiveClass = async (data: any): Promise<ApiResponse> => {
     return response.data
   } catch (error: any) {
     console.error('❌ scheduleLiveClass error:', error)
-    
+
     // Return error in consistent format
     if (error.response?.data) {
       return {
@@ -178,7 +207,7 @@ export const scheduleLiveClass = async (data: any): Promise<ApiResponse> => {
         data: error.response.data
       }
     }
-    
+
     return {
       success: false,
       message: error.message || 'Failed to schedule live class'

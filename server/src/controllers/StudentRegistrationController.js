@@ -38,7 +38,21 @@ class StudentRegistrationController {
       // Also set token cookie for convenience
       try {
         jwtUtils.setTokenCookie(res, token);
-      } catch {}
+      } catch { }
+
+      // Create Organization Event
+      const OrganizationEvent = require('../models/OrganizationEvent');
+      const event = await OrganizationEvent.create({
+        organizationId: user.organization_id,
+        type: 'NEW_STUDENT',
+        message: `New student registered: ${user.name}`,
+        relatedId: user._id
+      });
+
+      // Emit real-time update
+      if (global.io) {
+        global.io.to(`organization_${user.organization_id}`).emit('new_event', event);
+      }
 
       return res.status(201).json({
         success: true,
