@@ -422,36 +422,77 @@ router.post('/publish/:quizId', auth, checkInstructorPermission, async (req, res
   }
 });
 
-// 5️⃣ STUDENT VIEW QUIZZES
+// 5️⃣ STUDENT VIEW QUIZZES - shows ALL published quizzes in the org
 router.get('/student', auth, async (req, res) => {
   try {
     if (req.user.role !== 'student') return res.status(403).json({ success: false, message: 'Role must be STUDENT' });
 
-    const query = {
-      organization_id: req.user.organization_id,
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    // Get ALL published quizzes in the same organization - no enrollment restriction on viewing
+    const quizzes = await Quiz.find({
+      organization_id: orgId,
       status: 'PUBLISHED',
       is_active: true
-    };
+    })
+      .populate('course_id', 'title thumbnail')
+      .populate('instructor_id', 'name profile')
+      .sort({ created_at: -1 })
+      .lean();
 
-    // Optional: Filter by enrolled courses
-    const Enrollment = require('../models/Enrollment');
-    const enrollments = await Enrollment.find({
+    // Get all quiz attempts for this student to attach status info
+    const quizIds = quizzes.map(q => q._id);
+    const attempts = await QuizAttempt.find({
+      quiz_id: { $in: quizIds },
       student_id: req.user._id,
-      status: { $in: ['active', 'completed'] }
+      is_active: true
+    }).select('quiz_id score percentage passed attempt_number submitted_at').lean();
+
+    // Build attempt map for fast lookup
+    const attemptsByQuiz = {};
+    attempts.forEach(a => {
+      const key = a.quiz_id.toString();
+      if (!attemptsByQuiz[key]) attemptsByQuiz[key] = [];
+      attemptsByQuiz[key].push(a);
     });
-    const enrolledCourseIds = enrollments.map(e => e.course_id);
-    query.course_id = { $in: enrolledCourseIds };
 
-    const orgId = req.user.organization_id?._id || req.user.organization_id;
-    query.organization_id = orgId;
+    // Attach attempt data and strip correct answers from questions
+    const enrichedQuizzes = quizzes.map(quiz => {
+      const quizAttempts = attemptsByQuiz[quiz._id.toString()] || [];
+      const bestAttempt = quizAttempts.sort((a, b) => b.percentage - a.percentage)[0] || null;
 
-    const quizzes = await Quiz.find(query).populate('course_id', 'title');
+      // Remove correct_answer from questions for students
+      const safeQuestions = (quiz.questions || []).map(q => ({
+        question: q.question,
+        options: q.options
+      }));
 
-    // Use student version to hide answers
-    const studentQuizzes = quizzes.map(q => q.getStudentVersion());
+      return {
+        _id: quiz._id,
+        title: quiz.title,
+        description: quiz.description,
+        course: quiz.course_id,
+        instructor: quiz.instructor_id,
+        total_marks: quiz.total_marks,
+        timer_minutes: quiz.timer_minutes,
+        pass_percentage: quiz.pass_percentage,
+        max_attempts: quiz.max_attempts,
+        questions_count: (quiz.questions || []).length,
+        questions: safeQuestions,
+        created_at: quiz.created_at,
+        // Attempt status
+        attemptsCount: quizAttempts.length,
+        attemptsLeft: Math.max(0, quiz.max_attempts - quizAttempts.length),
+        bestScore: bestAttempt?.score || null,
+        bestPercentage: bestAttempt ? Math.round(bestAttempt.percentage) : null,
+        hasPassed: quizAttempts.some(a => a.passed),
+        lastAttemptAt: bestAttempt?.submitted_at || null
+      };
+    });
 
-    res.json({ success: true, data: studentQuizzes });
+    res.json({ success: true, data: enrichedQuizzes });
   } catch (error) {
+    console.error('Student quiz listing error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -485,6 +526,106 @@ router.get('/instructor', auth, checkInstructorPermission, async (req, res) => {
   } catch (error) {
     console.error('Instructor Quiz Fetch Error:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch quizzes: ' + error.message });
+  }
+});
+
+// ─── GET /api/quizzes/submissions ────────────────────────────
+// Instructor view: all student attempts on their quizzes
+// Must be BEFORE /:id to avoid param conflict
+router.get('/submissions', auth, checkInstructorPermission, async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { page = 1, limit = 100, quizId, courseId } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Find all quizzes belonging to this instructor in this org
+    const quizQuery = { organization_id: orgId, is_active: true };
+    if (!['admin', 'org_admin'].includes(req.user.role)) {
+      quizQuery.instructor_id = req.user._id;
+    }
+    if (quizId && quizId.match(/^[0-9a-fA-F]{24}$/)) quizQuery._id = quizId;
+    if (courseId && courseId.match(/^[0-9a-fA-F]{24}$/)) quizQuery.course_id = courseId;
+
+    const instructorQuizzes = await Quiz.find(quizQuery)
+      .select('_id title course_id questions total_marks pass_percentage')
+      .lean();
+    const quizIds = instructorQuizzes.map(q => q._id);
+    const quizMap = {};
+    instructorQuizzes.forEach(q => { quizMap[q._id.toString()] = q; });
+
+    if (quizIds.length === 0) {
+      return res.json({
+        success: true,
+        data: { submissions: [], pagination: { page: 1, pages: 0, total: 0 } }
+      });
+    }
+
+    const total = await QuizAttempt.countDocuments({ quiz_id: { $in: quizIds }, is_active: true });
+
+    const attempts = await QuizAttempt.find({ quiz_id: { $in: quizIds }, is_active: true })
+      .populate('student_id', 'name email profile')
+      .populate('course_id', 'title thumbnail')
+      .sort({ submitted_at: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    const submissions = attempts.map(attempt => {
+      const quizData = quizMap[attempt.quiz_id?.toString()] || {};
+      const student = attempt.student_id || {};
+      const course = attempt.course_id || {};
+
+      const questionReview = quizData.questions
+        ? (attempt.answers || []).map((ans, idx) => {
+          const q = quizData.questions[ans.question_index] ?? quizData.questions[idx];
+          return {
+            questionText: q?.question || `Question ${idx + 1}`,
+            options: q?.options || [],
+            selectedOption: ans.selected_option,
+            correctAnswer: q?.correct_answer,
+            selectedText: q?.options?.[ans.selected_option] || `Option ${ans.selected_option + 1}`,
+            correctText: q?.options?.[q?.correct_answer] || '',
+            isCorrect: ans.is_correct,
+            explanation: q?.explanation || ''
+          };
+        })
+        : [];
+
+      return {
+        _id: attempt._id,
+        studentId: student._id,
+        studentName: student.name || 'Unknown Student',
+        studentEmail: student.email || '',
+        studentAvatar: student.profile?.avatar || null,
+        quizId: attempt.quiz_id,
+        quizTitle: quizData.title || 'Unknown Quiz',
+        totalMarks: quizData.total_marks || attempt.total_questions,
+        passPercentage: quizData.pass_percentage || 60,
+        courseId: course._id,
+        courseTitle: course.title || 'Unknown Course',
+        score: attempt.score,
+        totalQuestions: attempt.total_questions,
+        percentage: Math.round(attempt.percentage || 0),
+        passed: attempt.passed,
+        attemptNumber: attempt.attempt_number,
+        timeTakenSeconds: attempt.time_taken_seconds,
+        submittedAt: attempt.submitted_at,
+        answersCount: (attempt.answers || []).length,
+        correctCount: (attempt.answers || []).filter(a => a.is_correct).length,
+        questionReview
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        submissions,
+        pagination: { page: parseInt(page), pages: Math.ceil(total / parseInt(limit)), total }
+      }
+    });
+  } catch (error) {
+    console.error('Quiz submissions fetch error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -847,29 +988,43 @@ router.post('/:id/submit', auth, [
       });
     }
 
-    // Validate timer if set
+    // ── MANUAL GRADING ──────────────────────────────────────────
     const startTime = new Date(started_at);
     const submitTime = new Date();
-    const timeTakenMinutes = (submitTime - startTime) / (1000 * 60);
+    const timeTakenSeconds = Math.max(0, Math.round((submitTime - startTime) / 1000));
 
-    if (quiz.timer_minutes && timeTakenMinutes > quiz.timer_minutes + 1) { // 1 minute grace period
-      return res.status(400).json({
-        success: false,
-        error: 'Time limit exceeded',
-        message: 'Quiz submission time limit has been exceeded'
-      });
-    }
+    // Grade each answer against the quiz's correct_answer
+    const gradedAnswers = answers.map((ans) => {
+      const question = quiz.questions[ans.question_index];
+      const isCorrect = question ? ans.selected_option === question.correct_answer : false;
+      return {
+        question_index: ans.question_index,
+        selected_option: ans.selected_option,
+        is_correct: isCorrect,
+        time_spent_seconds: ans.time_spent_seconds || 0
+      };
+    });
 
-    // Create quiz attempt (auto-grading happens in pre-save middleware)
+    const correctCount = gradedAnswers.filter(a => a.is_correct).length;
+    const totalQuestions = quiz.questions.length;
+    const percentage = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+    const passed = percentage >= (quiz.pass_percentage || 60);
+
+    // Create quiz attempt with all required fields populated
     const quizAttempt = new QuizAttempt({
-      organization_id: req.user.organization_id,
+      organization_id: req.user.organization_id?._id || req.user.organization_id,
       quiz_id: quiz._id,
       student_id: req.user._id,
-      course_id: quiz.course_id,
+      course_id: quiz.course_id?._id || quiz.course_id,
       attempt_number: existingAttempts.length + 1,
-      answers: answers,
+      answers: gradedAnswers,
+      score: correctCount,
+      total_questions: totalQuestions,
+      percentage,
+      passed,
       started_at: startTime,
       submitted_at: submitTime,
+      time_taken_seconds: timeTakenSeconds,
       ip_address: req.ip,
       user_agent: req.get('User-Agent')
     });

@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
@@ -18,6 +16,7 @@ import {
   Menu,
   X,
   Search,
+  Video,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
@@ -27,7 +26,8 @@ const navItems = [
   { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
   { label: 'Browse Courses', href: '/student/available-courses', icon: GraduationCap, module: 'COURSES' },
   { label: 'My Courses', href: '/student/my-courses', icon: BookOpen, module: 'COURSES' },
-  { label: 'Quizzes', href: '/student/quizzes', icon: FileQuestion, module: 'EXAMS' },
+  { label: 'Live Classes', href: '/student/live-classes', icon: Video },
+  { label: 'Quizzes', href: '/student/quizzes', icon: FileQuestion },
   { label: 'Certificates', href: '/student/certificates', icon: Award, module: 'CERTIFICATES' },
   { label: 'Leaderboard', href: '/student/leaderboard', icon: Trophy, module: 'LEADERBOARDS' },
   { label: 'Timetable', href: '/student/timetable', icon: Calendar, module: 'TIMETABLE' },

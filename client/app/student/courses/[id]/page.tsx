@@ -3,14 +3,16 @@
 import React, { useState, useEffect, use } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { motion } from "framer-motion"
-import { ArrowLeft, Clock, Star, BookOpen, User, CheckCircle, Loader2, PlayCircle } from "lucide-react"
+import { ArrowLeft, Clock, Star, BookOpen, User, CheckCircle, Loader2, PlayCircle, Trophy, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 import { API_URL } from "@/lib/config"
+
 
 interface Lesson {
   _id: string
@@ -58,6 +60,21 @@ interface CourseProgress {
   totalLessons: number
 }
 
+interface Quiz {
+  _id: string
+  title: string
+  description: string
+  total_marks: number
+  max_attempts: number
+  timer_minutes: number
+  attemptsCount: number
+  attemptsLeft: number
+  bestScore: number | null
+  bestPercentage: number | null
+  isCompleted: boolean
+}
+
+
 export default function CourseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params)
   const router = useRouter()
@@ -65,10 +82,13 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
 
   const [course, setCourse] = useState<Course | null>(null)
   const [sections, setSections] = useState<Section[]>([])
+  const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [isEnrolled, setIsEnrolled] = useState(false)
   const [progress, setProgress] = useState<CourseProgress | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingQuizzes, setLoadingQuizzes] = useState(false)
   const [enrolling, setEnrolling] = useState(false)
+
 
   useEffect(() => {
     fetchCourseDetails()
@@ -102,6 +122,10 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
         setSections(data.data.sections)
         setIsEnrolled(data.data.isEnrolled)
         setProgress(data.data.progress)
+
+        if (data.data.isEnrolled) {
+          fetchQuizzes(token)
+        }
       } else {
         toast.error(data.message || 'Failed to load course details')
         router.push('/student/courses')
@@ -113,6 +137,31 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
       setLoading(false)
     }
   }
+
+  const fetchQuizzes = async (token: string) => {
+    setLoadingQuizzes(true)
+    try {
+      const response = await fetch(
+        `${API_URL}/student/course/${courseId}/quizzes`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        }
+      )
+      const data = await response.json()
+      if (data.success) {
+        setQuizzes(data.data.quizzes)
+      }
+    } catch (error) {
+      console.error('Failed to fetch quizzes:', error)
+    } finally {
+      setLoadingQuizzes(false)
+    }
+  }
+
 
   const handleEnroll = async () => {
     setEnrolling(true)
@@ -269,69 +318,168 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Course Content */}
-      <div className="max-w-7xl mx-auto p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Course Content</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {sections.length} sections • {totalLessons} lessons
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Accordion type="multiple" className="w-full">
-              {sections.map((section, index) => (
-                <AccordionItem key={section._id} value={`section-${index}`}>
-                  <AccordionTrigger className="hover:no-underline">
-                    <div className="flex items-center gap-3 text-left">
-                      <span className="font-semibold">{section.title}</span>
-                      <Badge variant="secondary">{section.lessons.length} lessons</Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-2 pl-4">
-                      {section.lessons.map((lesson) => {
-                        const isCompleted = progress?.completedLessons?.some(
-                          (cl: any) => cl.lessonId === lesson._id
-                        )
+      <div className="max-w-7xl mx-auto p-6 pb-20">
+        <Tabs defaultValue="lessons" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="lessons" className="px-6">Lessons</TabsTrigger>
+            <TabsTrigger value="quizzes" className="px-6">Quizzes</TabsTrigger>
+          </TabsList>
 
-                        return (
-                          <div
-                            key={lesson._id}
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                            onClick={() => router.push(`/student/course/${courseId}?lessonId=${lesson._id}`)}
-                          >
-                            <div className="flex items-center gap-3">
-                              {isCompleted ? (
-                                <CheckCircle className="h-5 w-5 text-green-500" />
-                              ) : (
-                                <PlayCircle className="h-5 w-5 text-muted-foreground" />
-                              )}
-                              <div>
-                                <p className="font-medium">{lesson.title}</p>
-                                {lesson.description && (
-                                  <p className="text-sm text-muted-foreground">{lesson.description}</p>
-                                )}
+          <TabsContent value="lessons">
+            <Card>
+              <CardHeader>
+                <CardTitle>Course Lessons</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {sections.length} sections • {totalLessons} lessons
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Accordion type="multiple" className="w-full">
+                  {sections.map((section, index) => (
+                    <AccordionItem key={section._id} value={`section-${index}`}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-3 text-left">
+                          <span className="font-semibold">{section.title}</span>
+                          <Badge variant="secondary">{section.lessons.length} lessons</Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-2 pl-4">
+                          {section.lessons.map((lesson) => {
+                            const isCompleted = progress?.completedLessons?.some(
+                              (cl: any) => cl.lessonId === lesson._id
+                            )
+
+                            return (
+                              <div
+                                key={lesson._id}
+                                className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                                onClick={() => router.push(`/student/course/${courseId}?lessonId=${lesson._id}`)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  {isCompleted ? (
+                                    <CheckCircle className="h-5 w-5 text-green-500" />
+                                  ) : (
+                                    <PlayCircle className="h-5 w-5 text-muted-foreground" />
+                                  )}
+                                  <div>
+                                    <p className="font-medium">{lesson.title}</p>
+                                    {lesson.description && (
+                                      <p className="text-sm text-muted-foreground">{lesson.description}</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                  {lesson.duration && (
+                                    <span>{lesson.duration} min</span>
+                                  )}
+                                  {lesson.isPreview && (
+                                    <Badge variant="outline">Preview</Badge>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                              {lesson.duration && (
-                                <span>{lesson.duration} min</span>
-                              )}
-                              {lesson.isPreview && (
-                                <Badge variant="outline">Preview</Badge>
-                              )}
-                            </div>
-                          </div>
-                        )
-                      })}
+                            )
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="quizzes">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {loadingQuizzes ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <div className="h-32 bg-muted m-6 rounded-lg" />
+                    <div className="space-y-3 p-6 pt-0">
+                      <div className="h-4 bg-muted w-3/4 rounded" />
+                      <div className="h-4 bg-muted w-1/2 rounded" />
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </CardContent>
-        </Card>
+                  </Card>
+                ))
+              ) : quizzes.length > 0 ? (
+                quizzes.map((quiz) => (
+                  <Card key={quiz._id} className="flex flex-col">
+                    <CardHeader>
+                      <div className="flex justify-between items-start mb-2">
+                        <Badge variant={quiz.isCompleted ? "default" : "secondary"}>
+                          {quiz.isCompleted ? "PASSED" : "PENDING"}
+                        </Badge>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {quiz.timer_minutes} mins
+                        </div>
+                      </div>
+                      <CardTitle className="text-xl">{quiz.title}</CardTitle>
+                      <CardDescription className="line-clamp-2">
+                        {quiz.description}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Best Score:</span>
+                          <span className="font-semibold">
+                            {quiz.bestScore !== null ? `${quiz.bestScore} / ${quiz.total_marks}` : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Attempts:</span>
+                          <span className="font-semibold">
+                            {quiz.attemptsCount} / {quiz.max_attempts}
+                          </span>
+                        </div>
+                        {quiz.bestPercentage !== null && (
+                          <div className="pt-2">
+                            <div className="flex justify-between mb-1">
+                              <span className="text-xs">Highest Score</span>
+                              <span className="text-xs font-medium">{quiz.bestPercentage}%</span>
+                            </div>
+                            <Progress value={quiz.bestPercentage} className="h-1.5" />
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="pt-4 border-t">
+                      <Button
+                        className="w-full"
+                        variant={quiz.attemptsLeft === 0 ? "outline" : "default"}
+                        disabled={quiz.attemptsLeft === 0}
+                        onClick={() => router.push(`/student/quiz/${quiz._id}`)}
+                      >
+                        {quiz.attemptsLeft === 0 ? (
+                          <>Max Attempts Reached</>
+                        ) : quiz.isCompleted ? (
+                          <>Retake Quiz ({quiz.attemptsLeft} left)</>
+                        ) : (
+                          <>Start Quiz</>
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))
+              ) : (
+                <Card className="col-span-full py-12">
+                  <CardContent className="flex flex-col items-center text-center">
+                    <div className="bg-primary/5 p-4 rounded-full mb-4">
+                      <HelpCircle className="h-8 w-8 text-primary" />
+                    </div>
+                    <CardTitle className="mb-2">No Quizzes Available</CardTitle>
+                    <CardDescription>
+                      There are no quizzes published for this course yet.
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
     </div>
   )
 }

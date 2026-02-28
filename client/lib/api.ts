@@ -601,6 +601,14 @@ export const instructorApi = {
   getAnalytics: (token: string, courseId: string) =>
     apiRequest(`/instructor/courses/${courseId}/analytics`, { token }),
 
+  // Quizzes
+  generateAIQuiz: (token: string, courseId: string, data: { prompt: string; numberOfQuestions?: number; difficulty?: string }) =>
+    apiRequest(`/instructor/courses/${courseId}/quizzes/generate`, {
+      method: "POST",
+      token,
+      body: data,
+    }),
+
   // Announcements
   listAnnouncements: (token: string, courseId: string) =>
     apiRequest(`/instructor/courses/${courseId}/announcements`, { token }),

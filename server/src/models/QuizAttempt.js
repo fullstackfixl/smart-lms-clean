@@ -65,23 +65,27 @@ const quizAttemptSchema = new mongoose.Schema({
   },
   score: {
     type: Number,
-    required: true,
-    min: 0
+    required: false,
+    min: 0,
+    default: 0
   },
   total_questions: {
     type: Number,
-    required: true,
-    min: 1
+    required: false,
+    min: 0,
+    default: 0
   },
   percentage: {
     type: Number,
-    required: true,
+    required: false,
     min: 0,
-    max: 100
+    max: 100,
+    default: 0
   },
   passed: {
     type: Boolean,
-    required: true
+    required: false,
+    default: false
   },
   started_at: {
     type: Date,
@@ -94,8 +98,9 @@ const quizAttemptSchema = new mongoose.Schema({
   },
   time_taken_seconds: {
     type: Number,
-    required: true,
-    min: 0
+    required: false,
+    min: 0,
+    default: 0
   },
   ip_address: {
     type: String,

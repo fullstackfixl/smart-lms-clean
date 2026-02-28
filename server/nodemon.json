@@ -1,0 +1,9 @@
+{
+    "ignore": [
+        "comprehensive_quiz_test.js",
+        "tmp_test_quiz.js",
+        "*.log",
+        "test-results.txt",
+        "test_*.js"
+    ]
+}

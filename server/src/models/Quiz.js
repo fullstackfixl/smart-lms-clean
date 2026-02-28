@@ -70,6 +70,12 @@ const quizSchema = new mongoose.Schema({
       message: 'Quiz must have at least one question'
     }
   },
+  total_marks: {
+    type: Number,
+    required: true,
+    min: 1,
+    default: 10
+  },
   timer_minutes: {
     type: Number,
     min: 1,
@@ -194,15 +200,25 @@ quizSchema.statics.findByInstructor = function (instructorId, organizationId, op
 quizSchema.pre('save', async function (next) {
   if (this.isNew || this.isModified('course_id') || this.isModified('instructor_id')) {
     try {
+      const fs = require('fs');
+      const logPath = 'C:\\Users\\Lenovo\\projectlms\\server\\debug_quiz.log';
+      const quizOrgId = this.organization_id._id || this.organization_id;
+
       // Verify course belongs to same organization
       const Course = mongoose.model('Course');
       const course = await Course.findById(this.course_id);
 
       if (!course) {
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] Course not found: ${this.course_id}\n`);
         return next(new Error('Course not found'));
       }
 
-      if (course.organization_id.toString() !== this.organization_id.toString()) {
+      const courseOrgId = course.organization_id._id || course.organization_id;
+
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] Comparing Orgs:\n   Quiz Org: ${quizOrgId} (Type: ${typeof quizOrgId})\n   Course Org: ${courseOrgId} (Type: ${typeof courseOrgId})\n`);
+
+      if (courseOrgId.toString() !== quizOrgId.toString()) {
+        fs.appendFileSync(logPath, `❌ Mismatch! ${courseOrgId.toString()} !== ${quizOrgId.toString()}\n`);
         return next(new Error('Course must belong to the same organization'));
       }
 
@@ -214,7 +230,9 @@ quizSchema.pre('save', async function (next) {
         return next(new Error('Instructor not found'));
       }
 
-      if (instructor.organization_id.toString() !== this.organization_id.toString()) {
+      const instructorOrgId = instructor.organization_id._id || instructor.organization_id;
+
+      if (instructorOrgId.toString() !== quizOrgId.toString()) {
         return next(new Error('Instructor must belong to the same organization'));
       }
 

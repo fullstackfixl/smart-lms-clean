@@ -113,23 +113,30 @@ Return only the helpful explanation.`;
     }
   }
 
-  async generateGeminiQuiz(prompt, numberOfQuestions, difficulty, courseId, organizationId) {
+  async generateAIQuiz(prompt, numberOfQuestions, difficulty, courseId, organizationId) {
     const safePrompt = prompt.replace(/[<>]/g, '').substring(0, 500);
 
-    const systemPrompt = `You are a quiz generation API. You ONLY output valid JSON arrays of questions. No explanations, no markdown, no extra text.`;
-    const userPrompt = `Generate ${numberOfQuestions} multiple choice questions at ${difficulty} level about: "${safePrompt}".
+    const systemPrompt = `You are a professional quiz generation API. You ONLY output valid JSON.
+Return an object with a "questions" key containing an array of multiple choice questions.
+Match this exact schema for each question:
+{
+  "question": "The question text",
+  "options": ["A", "B", "C", "D"],
+  "correct_answer": 0,
+  "explanation": "Brief explanation"
+}
+Difficulty: ${difficulty}. Topic focus: ${safePrompt}.`;
 
-Return ONLY this exact JSON format:
-[{"question":"...","options":["A","B","C","D"],"correctAnswerIndex":0,"explanation":"..."}]`;
+    const userPrompt = `Generate ${numberOfQuestions} multiple choice questions.`;
 
     if (!this.groq) {
       throw new Error('No AI provider configured. Set GROQ_API_KEY in .env');
     }
 
     try {
-      logger.info('[AI] Using Groq (llama-3.3-70b-versatile)');
+      logger.info(`[AI:Groq] Generating ${numberOfQuestions} questions for: ${safePrompt}`);
       const completion = await this.groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
+        model: this.GROQ_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -139,29 +146,26 @@ Return ONLY this exact JSON format:
         response_format: { type: 'json_object' }
       });
 
-      let text = completion.choices[0].message.content.trim();
+      const text = completion.choices[0].message.content.trim();
+      const parsed = JSON.parse(text);
 
-      // Groq with json_object wraps in an object sometimes — extract array
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        // Try parsing as object with questions key
-        const parsed = JSON.parse(text);
-        const arr = parsed.questions || parsed.quiz || parsed.items || Object.values(parsed)[0];
-        if (Array.isArray(arr) && arr.length > 0) {
-          return this._formatQuestions(arr);
-        }
-        throw new Error('No question array found in Groq response');
+      let questions = parsed.questions || parsed.quiz || (Array.isArray(parsed) ? parsed : null);
+
+      if (!questions && typeof parsed === 'object') {
+        const firstKey = Object.keys(parsed)[0];
+        if (Array.isArray(parsed[firstKey])) questions = parsed[firstKey];
       }
 
-      const questions = JSON.parse(jsonMatch[0]);
-      if (!Array.isArray(questions) || questions.length === 0) throw new Error('Empty array from Groq');
+      if (!Array.isArray(questions) || questions.length === 0) {
+        throw new Error('Could not find question array in AI response');
+      }
 
-      logger.info(`[AI:Groq] Generated ${questions.length} questions successfully`);
+      logger.info(`[AI:Groq] Successfully generated ${questions.length} questions`);
       return this._formatQuestions(questions);
 
     } catch (err) {
       logger.error('[AI:Groq] Failed to generate quiz:', err.message);
-      throw new Error('AI providers failed. Last error: ' + err.message);
+      throw new Error('AI quiz generation failed: ' + err.message);
     }
   }
 
@@ -179,19 +183,14 @@ Return ONLY this exact JSON format:
 
 
   async generateQuiz(topicData) {
-    // keeping legacy logic for compatibility
-    const questions = [
-      {
-        question_text: `What is ${topicData.topic}?`,
-        type: 'multiple_choice',
-        options: ['Option A', 'Option B', 'Option C', 'Option D'],
-        correct_answer: 0,
-        points: 10
-      }
-    ];
+    const prompt = topicData.prompt || topicData.topic || 'General knowledge';
+    const count = topicData.numberOfQuestions || 5;
+    const difficulty = topicData.difficulty || 'medium';
+
+    const questions = await this.generateAIQuiz(prompt, count, difficulty);
 
     return {
-      title: `Quiz on ${topicData.topic}`,
+      title: `AI Generated: ${prompt.substring(0, 30)}`,
       questions,
       generated_at: new Date()
     };

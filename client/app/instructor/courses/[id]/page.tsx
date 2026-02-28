@@ -106,6 +106,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
 
+  // AI Quiz Dialolg
+  const [showAIDialog, setShowAIDialog] = useState(false)
+  const [aiGenerating, setAIGenerating] = useState(false)
+  const [aiForm, setAIForm] = useState({
+    prompt: "",
+    numberOfQuestions: 5,
+    difficulty: "medium"
+  })
+
   useEffect(() => {
     loadCourseData()
   }, [courseId, token])
@@ -428,6 +437,31 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     setShowLessonDialog(true)
   }
 
+  async function handleGenerateAIQuiz() {
+    const authToken = getToken()
+    if (!authToken || !courseId || !aiForm.prompt) {
+      toast.error("Topic or prompt is required for AI generation")
+      return
+    }
+
+    setAIGenerating(true)
+    try {
+      const res = await instructorApi.generateAIQuiz(authToken, courseId, aiForm)
+      if (res.success) {
+        toast.success("AI Quiz generated successfully and saved as Draft!")
+        setShowAIDialog(false)
+        setAIForm({ prompt: "", numberOfQuestions: 5, difficulty: "medium" })
+        loadCourseData()
+      } else {
+        toast.error(res.error || "Failed to generate AI quiz")
+      }
+    } catch (error) {
+      toast.error("Failed to generate AI quiz")
+    } finally {
+      setAIGenerating(false)
+    }
+  }
+
   const getLessonIcon = (type: string) => {
     switch (type) {
       case "video": return <Video className="h-4 w-4" />
@@ -503,6 +537,10 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               Publish Course
             </Button>
           )}
+          <Button variant="outline" onClick={() => setShowAIDialog(true)} className="gap-2 border-primary/50 hover:bg-primary/5">
+            <CheckCircle className="h-4 w-4 text-primary" />
+            AI Quiz
+          </Button>
           <Button onClick={() => openModuleDialog()} className="gap-2">
             <Plus className="h-4 w-4" />
             Add Module
@@ -966,6 +1004,85 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* AI Quiz Dialog */}
+      <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-primary" />
+              Generate Quiz with AI
+            </DialogTitle>
+            <DialogDescription>
+              Describe the topic and AI will generate a set of multiple choice questions for you using Groq Llama 3.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="ai-prompt">What should the quiz be about? *</Label>
+              <Textarea
+                id="ai-prompt"
+                placeholder="e.g., React Hooks, Chemical Bonds, History of the Roman Empire..."
+                value={aiForm.prompt}
+                onChange={(e) => setAIForm({ ...aiForm, prompt: e.target.value })}
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Number of Questions</Label>
+                <Select
+                  value={aiForm.numberOfQuestions.toString()}
+                  onValueChange={(v) => setAIForm({ ...aiForm, numberOfQuestions: parseInt(v) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[3, 5, 8, 10, 15].map(n => (
+                      <SelectItem key={n} value={n.toString()}>{n} Questions</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Difficulty</Label>
+                <Select
+                  value={aiForm.difficulty}
+                  onValueChange={(v) => setAIForm({ ...aiForm, difficulty: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAIDialog(false)} disabled={aiGenerating}>
+              Cancel
+            </Button>
+            <Button onClick={handleGenerateAIQuiz} disabled={aiGenerating || !aiForm.prompt}>
+              {aiGenerating ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent mr-2" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Generate Quiz
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   )
 }

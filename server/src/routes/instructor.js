@@ -35,6 +35,7 @@ router.put('/lessons/:id', ...requireInstructor, (req, res, next) => InstructorC
 router.delete('/lessons/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteLesson(req, res, next));
 
 // Quizzes
+router.post('/courses/:courseId/quizzes/generate', ...requireInstructor, (req, res, next) => InstructorController.generateAIQuiz(req, res, next));
 router.post('/courses/:courseId/quizzes', ...requireInstructor, (req, res, next) => InstructorController.createQuiz(req, res, next));
 router.put('/quizzes/:id', ...requireInstructor, (req, res, next) => InstructorController.updateQuiz(req, res, next));
 router.delete('/quizzes/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteQuiz(req, res, next));
@@ -50,6 +51,8 @@ router.delete('/announcements/:id', ...requireInstructor, (req, res, next) => In
 
 // Submissions Review
 router.get('/submissions', ...requireInstructor, (req, res, next) => InstructorController.getSubmissions(req, res, next));
+router.get('/quiz-submissions', ...requireInstructor, (req, res, next) => InstructorController.getQuizSubmissions(req, res, next));
+router.get('/quiz-submissions/:id', ...requireInstructor, (req, res, next) => InstructorController.getQuizSubmissionById(req, res, next));
 router.patch('/submissions/:id/grade', ...requireInstructor, (req, res, next) => InstructorController.gradeSubmission(req, res, next));
 
 // Notifications

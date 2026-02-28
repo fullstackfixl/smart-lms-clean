@@ -1,5 +1,5 @@
 const express = require('express');
-const { Course, Section, Lesson, Enrollment, User, Organization, Certificate } = require('../models');
+const { Course, Section, Lesson, Enrollment, User, Organization, Certificate, Quiz, QuizSubmission } = require('../models');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { cloudinaryUpload, handleUploadError } = require('../middleware/upload');
 const { uploadToCloudinary } = require('../config/cloudinary');
@@ -796,4 +796,274 @@ router.get('/live-classes', authMiddleware, requireRole(['student']), async (req
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// GET /student/quizzes — List all quizzes across enrolled courses
+router.get('/quizzes', authMiddleware, requireRole(['student']), async (req, res) => {
+  console.log('🎯 [DEBUG] Hit GET /student/quizzes for user:', req.user._id);
+  try {
+    const orgId = req.user.organization_id;
+
+    // 1. Find all active enrollments for this student
+    const enrollments = await Enrollment.find({
+      student_id: req.user._id,
+      organization_id: orgId,
+      status: { $in: ['active', 'completed'] }
+    }).select('course_id');
+
+    const courseIds = enrollments.map(e => e.course_id);
+
+    if (courseIds.length === 0) {
+      return res.success({ quizzes: [] }, 'No enrolled courses found');
+    }
+
+    // 2. Find all published quizzes for these courses
+    const quizzes = await Quiz.find({
+      course_id: { $in: courseIds },
+      organization_id: orgId,
+      status: 'PUBLISHED',
+      is_active: true
+    })
+      .populate('course_id', 'title thumbnail')
+      .select('title description total_marks max_attempts timer_minutes created_at course_id')
+      .sort({ created_at: -1 })
+      .lean();
+
+    // 3. Attach submission status for each quiz
+    const quizIds = quizzes.map(q => q._id);
+    const submissions = await QuizSubmission.find({
+      quizId: { $in: quizIds },
+      studentId: req.user._id
+    }).select('quizId score percentage attemptNumber passed submittedAt').lean();
+
+    const quizList = quizzes.map(quiz => {
+      const studentSubmissions = submissions.filter(s => s.quizId.toString() === quiz._id.toString());
+      const bestSubmission = studentSubmissions.sort((a, b) => b.score - a.score)[0] || null;
+
+      return {
+        ...quiz,
+        attemptsCount: studentSubmissions.length,
+        attemptsLeft: Math.max(0, quiz.max_attempts - studentSubmissions.length),
+        bestScore: bestSubmission?.score || null,
+        bestPercentage: bestSubmission?.percentage || null,
+        isCompleted: studentSubmissions.some(s => s.passed),
+        course: quiz.course_id // From populate
+      };
+    });
+
+    res.success({ quizzes: quizList }, 'All quizzes retrieved successfully');
+  } catch (error) {
+    console.error('get all quizzes error:', error);
+    res.error(error.message, 'Failed to get quizzes', 500);
+  }
+});
+
+// QUIZ SYSTEM ROUTES
+// ─────────────────────────────────────────────────────────────
+
+// GET /student/course/:courseId/quizzes — List quizzes for a course
+router.get('/course/:courseId/quizzes', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const orgId = req.user.organization_id;
+
+    // Verify enrollment
+    const enrollment = await Enrollment.findOne({
+      student_id: req.user._id,
+      course_id: courseId,
+      status: { $in: ['active', 'completed'] }
+    });
+
+    if (!enrollment) {
+      return res.error('Not enrolled', 'You are not enrolled in this course', 403);
+    }
+
+    const quizzes = await Quiz.find({
+      course_id: courseId,
+      organization_id: orgId,
+      status: 'PUBLISHED',
+      is_active: true
+    }).select('title description total_marks max_attempts timer_minutes created_at').lean();
+
+    // Attach submission status for each quiz
+    const quizIds = quizzes.map(q => q._id);
+    const submissions = await QuizSubmission.find({
+      quizId: { $in: quizIds },
+      studentId: req.user._id
+    }).select('quizId score percentage attemptNumber passed submittedAt').lean();
+
+    const quizList = quizzes.map(quiz => {
+      const studentSubmissions = submissions.filter(s => s.quizId.toString() === quiz._id.toString());
+      const bestSubmission = studentSubmissions.sort((a, b) => b.score - a.score)[0] || null;
+
+      return {
+        ...quiz,
+        attemptsCount: studentSubmissions.length,
+        attemptsLeft: Math.max(0, quiz.max_attempts - studentSubmissions.length),
+        bestScore: bestSubmission?.score || null,
+        bestPercentage: bestSubmission?.percentage || null,
+        isCompleted: studentSubmissions.some(s => s.passed)
+      };
+    });
+
+    res.success({ quizzes: quizList }, 'Quizzes retrieved successfully');
+  } catch (error) {
+    console.error('get course quizzes error:', error);
+    res.error(error.message, 'Failed to get quizzes', 500);
+  }
+});
+
+// GET /student/quiz/:quizId/start — Fetch quiz details for starting
+router.get('/quiz/:quizId/start', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const orgId = req.user.organization_id;
+
+    const quiz = await Quiz.findOne({
+      _id: quizId,
+      organization_id: orgId,
+      status: 'PUBLISHED',
+      is_active: true
+    });
+
+    if (!quiz) {
+      return res.error('Quiz not found', 'Quiz does not exist or is not published', 404);
+    }
+
+    // Check enrollment
+    const enrollment = await Enrollment.findOne({
+      student_id: req.user._id,
+      course_id: quiz.course_id,
+      status: { $in: ['active', 'completed'] }
+    });
+
+    if (!enrollment) {
+      return res.error('Not enrolled', 'You are not enrolled in the course for this quiz', 403);
+    }
+
+    // Check attempt limits
+    const attemptCount = await QuizSubmission.countDocuments({
+      quizId,
+      studentId: req.user._id
+    });
+
+    if (attemptCount >= quiz.max_attempts) {
+      return res.error('Max attempts reached', 'You have reached the maximum number of attempts for this quiz', 403);
+    }
+
+    // Return student version (no answers)
+    const studentQuiz = quiz.getStudentVersion();
+
+    res.success({
+      quiz: {
+        ...studentQuiz,
+        attemptNumber: attemptCount + 1,
+        totalMarks: quiz.total_marks
+      }
+    }, 'Quiz started successfully');
+  } catch (error) {
+    console.error('start quiz error:', error);
+    res.error(error.message, 'Failed to start quiz', 500);
+  }
+});
+
+// POST /student/quiz/:quizId/submit — Submit quiz and auto-grade
+router.post('/quiz/:quizId/submit', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { answers } = req.body; // Array of selected indices
+    const orgId = req.user.organization_id;
+
+    if (!Array.isArray(answers)) {
+      return res.error('Invalid format', 'Answers must be an array', 400);
+    }
+
+    const quiz = await Quiz.findOne({
+      _id: quizId,
+      organization_id: orgId,
+      status: 'PUBLISHED',
+      is_active: true
+    });
+
+    if (!quiz) {
+      return res.error('Quiz not found', 'Quiz does not exist or is not published', 404);
+    }
+
+    // Check enrollment
+    const enrollment = await Enrollment.findOne({
+      student_id: req.user._id,
+      course_id: quiz.course_id,
+      status: { $in: ['active', 'completed'] }
+    });
+
+    if (!enrollment) {
+      return res.error('Not enrolled', 'You are not enrolled in the course for this quiz', 403);
+    }
+
+    // Check attempt limits
+    const attemptCount = await QuizSubmission.countDocuments({
+      quizId,
+      studentId: req.user._id
+    });
+
+    if (attemptCount >= quiz.max_attempts) {
+      return res.error('Max attempts reached', 'You have already used all your attempts', 403);
+    }
+
+    // Auto-grading
+    let correctCount = 0;
+    const detailedAnswers = quiz.questions.map((q, idx) => {
+      const selectedIdx = answers[idx];
+      const isCorrect = selectedIdx === q.correct_answer;
+      if (isCorrect) correctCount++;
+      return {
+        questionIndex: idx,
+        selectedOption: selectedIdx,
+        isCorrect
+      };
+    });
+
+    const score = Math.round((correctCount / quiz.questions.length) * quiz.total_marks);
+    const percentage = Math.round((correctCount / quiz.questions.length) * 100);
+    const passed = percentage >= quiz.pass_percentage;
+
+    const submission = new QuizSubmission({
+      quizId,
+      courseId: quiz.course_id,
+      studentId: req.user._id,
+      instructorId: quiz.instructor_id,
+      organizationId: orgId,
+      answers: detailedAnswers,
+      score,
+      totalMarks: quiz.total_marks,
+      percentage,
+      attemptNumber: attemptCount + 1,
+      passed,
+      submittedAt: new Date(),
+      gradedAt: new Date()
+    });
+
+    await submission.save();
+
+    res.success({
+      submission: {
+        score,
+        totalMarks: quiz.total_marks,
+        percentage,
+        passed,
+        attemptNumber: attemptCount + 1,
+        results: detailedAnswers.map((da, idx) => ({
+          ...da,
+          explanation: quiz.questions[idx].explanation,
+          correctAnswer: quiz.questions[idx].correct_answer
+        }))
+      }
+    }, 'Quiz submitted and graded successfully');
+
+  } catch (error) {
+    console.error('submit quiz error:', error);
+    res.error(error.message, 'Failed to submit quiz', 500);
+  }
+});
+
 module.exports = router;
+

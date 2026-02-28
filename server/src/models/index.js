@@ -37,6 +37,8 @@ const Subject = require('./Subject');
 const TestSeries = require('./TestSeries');
 const GradeLevel = require('./GradeLevel');
 const GradeSection = require('./GradeSection');
+const QuizSubmission = require('./QuizSubmission');
+
 
 module.exports = {
   Organization,
@@ -77,5 +79,7 @@ module.exports = {
   Subject,
   TestSeries,
   GradeLevel,
-  GradeSection
+  GradeSection,
+  QuizSubmission
+
 };

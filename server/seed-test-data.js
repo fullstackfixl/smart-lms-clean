@@ -12,11 +12,23 @@ async function seedTestData() {
     await mongoose.connect(MONGODB_URI);
     console.log('✅ Connected to MongoDB');
 
+    // Clear existing test data to ensure fresh start
+    console.log('🗑️ Clearing existing test data...');
+    const testOrg = await Organization.findOne({ code: 'TEST001' });
+    if (testOrg) {
+      await User.deleteMany({ organization_id: testOrg._id });
+      await Course.deleteMany({ organization_id: testOrg._id });
+      await Organization.deleteOne({ _id: testOrg._id });
+      console.log('✅ Cleaned up existing TEST001 data');
+    }
+
     // Create Test Organization
     let org = await Organization.findOne({ code: 'TEST001' });
     if (!org) {
       org = await Organization.create({
         name: 'Test University',
+        type: 'COLLEGE',
+        subdomain: 'test-uni',
         slug: 'test-university',
         code: 'TEST001',
         domain: 'testuniversity.edu',
@@ -46,7 +58,7 @@ async function seedTestData() {
         role: 'org_admin',
         organization_id: org._id,
         isActive: true,
-        isEmailVerified: true
+        email_verified: true
       });
       console.log('✅ Created Org Admin:', orgAdmin.email);
     }
@@ -63,7 +75,7 @@ async function seedTestData() {
         role: 'instructor',
         organization_id: org._id,
         isActive: true,
-        isEmailVerified: true
+        email_verified: true
       });
       console.log('✅ Created Instructor:', instructor.email);
     } else {
@@ -83,7 +95,7 @@ async function seedTestData() {
           role: 'student',
           organization_id: org._id,
           isActive: true,
-          isEmailVerified: true
+          email_verified: true
         });
         console.log('✅ Created Student:', student.email);
       }
@@ -196,7 +208,7 @@ async function seedTestData() {
       // Create Enrollments
       const Enrollment = require('./src/models/Enrollment');
       const students = await User.find({ role: 'student', organization_id: org._id });
-      
+
       for (const student of students) {
         await Enrollment.create({
           organization_id: org._id,
@@ -253,7 +265,7 @@ async function seedTestData() {
 
       // Create Notifications
       const Notification = require('./src/models/Notification');
-      
+
       await Notification.create({
         organization_id: org._id,
         recipient_id: instructor._id,

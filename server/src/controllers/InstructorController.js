@@ -1,5 +1,5 @@
 const BaseController = require('../core/BaseController');
-const { Course, Section, Lesson, Enrollment, Quiz, QuizAttempt, Announcement, User, LiveClass } = require('../models');
+const { Course, Section, Lesson, Enrollment, Quiz, QuizAttempt, Announcement, User, LiveClass, QuizSubmission } = require('../models');
 const mongoose = require('mongoose');
 
 class InstructorController extends BaseController {
@@ -88,14 +88,15 @@ class InstructorController extends BaseController {
   });
 
   // Helper: ensure instructor owns course within their organization
-  async findInstructorCourse(courseId, user) {
-    return Course.findOne({
+  findInstructorCourse = async (courseId, user) => {
+    const orgId = user.organization_id._id || user.organization_id;
+    return await Course.findOne({
       _id: courseId,
-      organization_id: user.organization_id,
+      organization_id: orgId,
       instructor_id: user._id,
       is_deleted: false
     });
-  }
+  };
 
   // COURSES
   createCourse = this.asyncHandler(async (req, res) => {
@@ -439,6 +440,39 @@ class InstructorController extends BaseController {
   });
 
   // QUIZZES
+  generateAIQuiz = this.asyncHandler(async (req, res) => {
+    const { courseId } = req.params;
+    const { prompt, numberOfQuestions = 5, difficulty = 'medium' } = req.body;
+
+    if (!prompt) {
+      return res.error('Prompt is required', 'Topic or prompt is needed for AI generation', 400);
+    }
+
+    const course = await this.findInstructorCourse(courseId, req.user);
+    if (!course) {
+      return res.error('Course not found', 'Course does not exist or you do not have access', 404);
+    }
+
+    const aiService = require('../services/aiService');
+    const orgId = req.user.organization_id._id || req.user.organization_id;
+    const questions = await aiService.generateAIQuiz(prompt, numberOfQuestions, difficulty, courseId, orgId);
+
+    // Create a DRAFT quiz with generated questions
+    const quiz = await Quiz.create({
+      organization_id: orgId,
+      course_id: course._id,
+      instructor_id: req.user._id,
+      title: `AI Generated: ${prompt.substring(0, 30)}`,
+      questions,
+      status: 'DRAFT',
+      total_marks: questions.length * 2, // Default 2 marks per question
+      pass_percentage: 60,
+      max_attempts: 3
+    });
+
+    this.sendSuccess(res, quiz, 'AI Quiz generated and saved as draft', 201);
+  });
+
   createQuiz = this.asyncHandler(async (req, res) => {
     const { courseId } = req.params;
     const payload = req.body;
@@ -458,8 +492,11 @@ class InstructorController extends BaseController {
     this.sendSuccess(res, quiz, 'Quiz created successfully', 201);
   });
 
+
+
   updateQuiz = this.asyncHandler(async (req, res) => {
     const { id } = req.params;
+
 
     const quiz = await Quiz.findOne({
       _id: id,
@@ -923,8 +960,101 @@ class InstructorController extends BaseController {
     }
 
     await notification.dismiss();
-
     this.sendSuccess(res, null, 'Notification deleted successfully');
+  });
+
+  // QUIZ SUBMISSIONS (Course-Scoped Board)
+  getQuizSubmissions = this.asyncHandler(async (req, res) => {
+    const { courseId, quizId, page = 1, limit = 20 } = req.query;
+    const orgId = req.user.organization_id;
+
+    const filters = {
+      organizationId: orgId,
+      instructorId: req.user._id
+    };
+
+    if (courseId) filters.courseId = courseId;
+    if (quizId) filters.quizId = quizId;
+
+    const numericLimit = Math.min(parseInt(limit, 10) || 20, 50);
+    const numericPage = Math.max(parseInt(page, 10) || 1, 1);
+
+    const [submissions, total] = await Promise.all([
+      QuizSubmission.find(filters)
+        .populate('studentId', 'name email profile')
+        .populate('quizId', 'title')
+        .populate('courseId', 'title')
+        .sort({ submittedAt: -1 })
+        .skip((numericPage - 1) * numericLimit)
+        .limit(numericLimit)
+        .lean(),
+      QuizSubmission.countDocuments(filters)
+    ]);
+
+    const formattedSubmissions = submissions.map(sub => ({
+      _id: sub._id,
+      studentName: sub.studentId?.name || 'Unknown',
+      studentEmail: sub.studentId?.email || '',
+      studentProfilePhoto: sub.studentId?.profile?.avatar || '',
+      quizTitle: sub.quizId?.title || 'Unknown Quiz',
+      courseTitle: sub.courseId?.title || 'Unknown Course',
+      score: sub.score,
+      totalMarks: sub.totalMarks,
+      percentage: sub.percentage,
+      attemptNumber: sub.attemptNumber,
+      submittedAt: sub.submittedAt,
+      passed: sub.passed
+    }));
+
+    this.sendSuccess(res, {
+      submissions: formattedSubmissions,
+      pagination: {
+        page: numericPage,
+        limit: numericLimit,
+        total,
+        pages: Math.ceil(total / numericLimit)
+      }
+    }, 'Quiz submissions retrieved successfully');
+  });
+
+  getQuizSubmissionById = this.asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const orgId = req.user.organization_id;
+
+    const submission = await QuizSubmission.findOne({
+      _id: id,
+      organizationId: orgId,
+      instructorId: req.user._id
+    })
+      .populate('studentId', 'name email profile')
+      .populate({
+        path: 'quizId',
+        select: 'title questions pass_percentage total_marks'
+      })
+      .populate('courseId', 'title');
+
+    if (!submission) {
+      return res.error('Submission not found', 'Submission not found or access denied', 404);
+    }
+
+    // Attach question details, explanations and correct answers from the Quiz model
+    const detailedAnswers = submission.answers.map(ans => {
+      const question = submission.quizId.questions[ans.questionIndex];
+      return {
+        ...ans,
+        questionText: question.question,
+        options: question.options,
+        correctAnswer: question.correct_answer,
+        explanation: question.explanation
+      };
+    });
+
+    res.success({
+      submission: {
+        ...submission.toObject(),
+        answers: detailedAnswers
+      }
+    }, 'Submission details retrieved successfully');
   });
 }
 
