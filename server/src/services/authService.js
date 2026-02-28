@@ -413,7 +413,7 @@ class AuthService {
     invite.used = true;
     await invite.save();
 
-    return user.toPublicJSON();
+    return user.toPublicJSON();}
   /**
    * Forgot Password - Generate token and send email
    */
