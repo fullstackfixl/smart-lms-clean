@@ -1,14 +1,14 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
-const emailService = require('./emailService');
+// Email handled via mailer service inline
 const pushNotificationService = require('./pushNotificationService');
 const logger = require('./logger');
-const { 
-  getNotificationConfig, 
-  getDefaultChannels, 
+const {
+  getNotificationConfig,
+  getDefaultChannels,
   getDefaultPriority,
   validateNotificationData,
-  shouldRespectQuietHours 
+  shouldRespectQuietHours
 } = require('../config/notifications');
 
 /**
@@ -16,7 +16,7 @@ const {
  * Handles multi-channel notification delivery with queue system
  */
 class NotificationService {
-  
+
   constructor() {
     this.riskThresholds = {
       high: 70,
@@ -42,7 +42,7 @@ class NotificationService {
         channels,
         priority: options.priority
       };
-      
+
       const validation = validateNotificationData(validationData);
       if (!validation.isValid) {
         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
@@ -133,7 +133,7 @@ class NotificationService {
 
       // Queue notifications for each channel
       const channelResults = [];
-      
+
       for (const channel of userChannels) {
         try {
           const result = await this.queueChannelNotification(channel, user, notification, type, data, options);
@@ -168,7 +168,7 @@ class NotificationService {
   async createNotificationRecord(userId, type, data, channels, priority) {
     try {
       const config = getNotificationConfig(type);
-      
+
       const notification = await Notification.create({
         organization_id: data.organizationId,
         user_id: userId,
@@ -220,13 +220,13 @@ class NotificationService {
     switch (channel) {
       case 'email':
         return await this.queueEmailNotification(user, jobData, jobOptions);
-      
+
       case 'push':
         return await this.queuePushNotification(user, jobData, jobOptions);
-      
+
       case 'in_app':
         return await this.queueInAppNotification(user, jobData, jobOptions);
-      
+
       default:
         throw new Error(`Unsupported channel: ${channel}`);
     }
@@ -236,21 +236,20 @@ class NotificationService {
    * Send email notification directly (no queue)
    */
   async queueEmailNotification(user, data, options) {
+    const mailer = require('../services/mailer');
     const config = getNotificationConfig(data.type);
-    const emailData = {
-      to: user.email,
-      templateName: config.template,
-      data: {
-        ...data.templateData,
-        studentName: user.profile?.firstName + ' ' + user.profile?.lastName,
-        organizationName: data.organizationName || 'Smart LMS'
-      },
-      notificationId: data.notificationId
-    };
+    const subject = data.title || config.name || 'Smart LMS Notification';
+    const html = `
+      <div style="font-family: sans-serif; padding: 20px;">
+        <h2>${subject}</h2>
+        <p>${data.message || ''}</p>
+        <hr/>
+        <p style="font-size: 12px; color: #666;">Sent by Smart LMS</p>
+      </div>
+    `;
 
-    // Send directly without queue
     try {
-      const result = await emailService.sendTemplatedEmail(emailData);
+      const result = await mailer.sendEmail(user.email, subject, html);
       return { success: true, messageId: result.messageId };
     } catch (error) {
       logger.error('Failed to send email notification:', error);
@@ -267,7 +266,7 @@ class NotificationService {
     }
 
     const notification = pushNotificationService.createNotificationPayload(data.type, data.templateData);
-    
+
     // Send directly without queue
     try {
       const result = await pushNotificationService.sendBulkPushNotifications(user.push_tokens, notification);
@@ -674,7 +673,7 @@ class NotificationService {
   async processRiskAssessment(riskAssessment, organizationId) {
     try {
       const { risk_level, risk_score } = riskAssessment;
-      
+
       let result = { success: true, notifications_sent: 0 };
 
       // Check if we should send high-risk alert
@@ -685,7 +684,7 @@ class NotificationService {
           result.high_risk_alert = true;
         }
       }
-      
+
       // Check if we should send medium-risk alert
       else if (risk_level === 'medium' && risk_score >= this.riskThresholds.medium) {
         const mediumRiskResult = await this.sendMediumRiskAlert(riskAssessment, organizationId);

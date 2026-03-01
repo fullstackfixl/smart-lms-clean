@@ -1,7 +1,6 @@
 const { OrganizationApplication, OrganizationApprovalToken } = require('../models');
 const crypto = require('crypto');
-const { sendEmail } = require('../services/mailer');
-const emailTemplates = require('../services/email.service');
+const mailer = require('../services/mailer');
 const BaseController = require('../core/BaseController');
 
 class PlatformApplicationController extends BaseController {
@@ -148,8 +147,8 @@ class PlatformApplicationController extends BaseController {
             const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
             const setupLink = `${baseUrl}/complete-registration?token=${token}`;
 
-            const html = emailTemplates.generateInvitationTemplate(application.organization_name || 'Your organization', setupLink);
-            const emailSent = await sendEmail(application.admin_email, 'Organization Application Approved - Smart LMS', html);
+            const html = mailer.generateInvitationTemplate(application.organization_name || 'Your organization', setupLink);
+            const emailSent = await mailer.sendEmail(application.admin_email, 'Organization Application Approved - Smart LMS', html);
 
 
 

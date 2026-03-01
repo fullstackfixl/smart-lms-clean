@@ -3,8 +3,7 @@ const jwtUtils = require('../utils/jwt');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { AuthenticationError, ValidationError, NotFoundError } = require('../core/errors');
-const { sendEmail } = require('./mailer');
-const emailTemplates = require('./email.service'); // Keep for templates for now
+const mailer = require('./mailer');
 
 class AuthService {
   /**
@@ -146,7 +145,7 @@ class AuthService {
       if (adminNotifyEmail) {
         const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
         const listLink = `${baseUrl}/platform/applications?status=pending`;
-        await sendEmail(
+        await mailer.sendEmail(
           adminNotifyEmail,
           'New Organization Application',
           `<h1>New Application</h1><p>Organization: ${organizationName}</p><p>Admin: ${adminName} (${adminEmail})</p><p><a href="${listLink}">Review in Dashboard</a></p>`
@@ -236,7 +235,7 @@ class AuthService {
     try {
       const adminNotifyEmail = process.env.SUPPORT_EMAIL || process.env.EMAIL_USER;
       if (adminNotifyEmail) {
-        await sendEmail(
+        await mailer.sendEmail(
           adminNotifyEmail,
           'Organization Created Successfully',
           `<h1>Organization Created</h1><p>Organization: ${organization.name}</p><p>Admin: ${admin.name} (${admin.email})</p>`
@@ -324,7 +323,7 @@ class AuthService {
         const baseUrl = (process.env.CLIENT_URL || 'https://smart-lms-clean.vercel.app').replace(/\/$/, '');
         const acceptLink = `${baseUrl}/accept-invite?token=${existingInvite.token}`;
         const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
-        await sendEmail(
+        await mailer.sendEmail(
           email.toLowerCase(),
           `Reminder: You're invited to join ${orgName} as ${roleLabel} — Smart LMS`,
           `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
@@ -357,8 +356,8 @@ class AuthService {
       const baseUrl = (process.env.CLIENT_URL || 'https://smart-lms-clean.vercel.app').replace(/\/$/, '');
       const acceptLink = `${baseUrl}/accept-invite?token=${token}`;
       const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
-      const html = emailTemplates.generateInvitationTemplate(orgName, acceptLink);
-      await sendEmail(email.toLowerCase(), `Invitation to join ${orgName} — Smart LMS`, html);
+      const html = mailer.generateInvitationTemplate(orgName, acceptLink);
+      await mailer.sendEmail(email.toLowerCase(), `Invitation to join ${orgName} — Smart LMS`, html);
       console.log(`📧 [Invite] Email sent to ${email} (${role}) for org: ${orgName} | Link: ${acceptLink}`);
     } catch (emailErr) {
       console.error('⚠️ [Invite] Failed to send invitation email:', emailErr.message);
@@ -432,9 +431,9 @@ class AuthService {
     const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
     const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
 
-    const html = emailTemplates.generatePasswordResetTemplate(resetLink);
+    const html = mailer.generatePasswordResetTemplate(resetLink);
 
-    await sendEmail(user.email, 'Password Reset Request - Smart LMS', html);
+    await mailer.sendEmail(user.email, 'Password Reset Request - Smart LMS', html);
 
     return true;
   }

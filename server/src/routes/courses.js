@@ -1,7 +1,7 @@
 const express = require('express');
 const { Course, Section, Lesson, Enrollment, User, Organization } = require('../models');
 const { authMiddleware, optionalAuth, orgAccessMiddleware, requireRole } = require('../middleware/auth');
-const { sendEnrollmentEmail } = require('../utils/email');
+const mailer = require('../services/mailer');
 const moduleGuard = require('../middleware/moduleGuard');
 
 const router = express.Router();
@@ -524,7 +524,15 @@ router.post('/:id/purchase', authMiddleware, async (req, res) => {
     });
 
     // Send enrollment email
-    await sendEnrollmentEmail(user, course, course.organization_id);
+    const studentName = user.name || (user.profile ? `${user.profile.firstName} ${user.profile.lastName}` : 'Student');
+    const courseTitle = course.title;
+    const orgName = (course.organization_id && course.organization_id.name) || 'Smart LMS';
+
+    await mailer.sendEmail(
+      user.email,
+      `Enrollment Confirmation: ${courseTitle}`,
+      mailer.generateEnrollmentTemplate(studentName, courseTitle, orgName)
+    );
 
     res.success({
       enrollment: {

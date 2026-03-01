@@ -1,7 +1,7 @@
 const Fee = require('../models/Fee');
 const User = require('../models/User');
 const Course = require('../models/Course');
-const emailService = require('../utils/emailService');
+const mailer = require('../services/mailer');
 const mongoose = require('mongoose');
 
 // Set fees (Individual or Bulk)
@@ -176,23 +176,22 @@ exports.sendReminder = async (req, res) => {
             return res.error('Student email not found', 'Validation failed', 400);
         }
 
-        // Send email
-        const emailResult = await emailService.sendPlainEmail({
-            to: fee.student_id.email,
-            subject: `Fee Reminder: ${fee.title}`,
-            text: `Dear ${fee.student_id.profile.fullName},\n\n` +
-                `This is a reminder regarding the pending fee payment for "${fee.title}".\n` +
-                `Amount: ${fee.currency} ${fee.amount}\n` +
-                `Due Date: ${new Date(fee.due_date).toLocaleDateString()}\n\n` +
-                `Please ensure payment is made before the due date to avoid any late fees.\n\n` +
-                `Regards,\nAdmin`
-        });
+        const emailResult = await mailer.sendEmail(fee.student_id.email, `Fee Reminder: ${fee.title}`, `
+            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #2563eb;">Fee Reminder</h2>
+                <p>Dear ${fee.student_id.profile.fullName},</p>
+                <p>This is a reminder regarding the pending fee payment for <strong>"${fee.title}"</strong>.</p>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <p><strong>Amount:</strong> ${fee.currency} ${fee.amount}</p>
+                    <p><strong>Due Date:</strong> ${new Date(fee.due_date).toLocaleDateString()}</p>
+                </div>
+                <p>Please ensure payment is made before the due date to avoid any late fees.</p>
+                <p>Regards,<br/>Smart LMS Admin</p>
+            </div>
+        `);
 
-        if (emailResult.success) {
-            // Mark as reminder sent (manually update db field if needed, relying on 'reminders_sent' schema)
-            // Assuming 'manual' type or similar, Fee model has 'due_soon', 'overdue', etc.
-            // We can use 'due_soon' or just log it.
-            await fee.markReminderSent('due_soon', null); // defaulting to due_soon for manual reminder
+        if (emailResult) {
+            await fee.markReminderSent('due_soon', null);
             return res.success({ emailResult }, 'Reminder sent successfully');
         } else {
             return res.error('Failed to send email', 'Email Error', 500);

@@ -1,8 +1,7 @@
 const express = require('express');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { User, Invite } = require('../models');
-const emailService = require('../services/email.service');
-const { generateInvitationTemplate } = emailService;
+const mailer = require('../services/mailer');
 const crypto = require('crypto');
 const { recordOrgEvent, EVENT_TYPES } = require('../utils/orgEvents');
 
@@ -58,12 +57,8 @@ router.post('/users/create-instructor', async (req, res) => {
     const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
     const setupLink = `${baseUrl}/accept-invite?token=${invite.token}`;
     try {
-      const html = generateInvitationTemplate(req.user.organization_id?.name || 'Your Organization', setupLink);
-      await emailService.sendEmail({
-        to: email,
-        subject: 'Smart LMS Instructor Invitation',
-        html
-      });
+      const html = mailer.generateInvitationTemplate(req.user.organization_id?.name || 'Your Organization', setupLink);
+      await mailer.sendEmail(email, 'Smart LMS Instructor Invitation', html);
     } catch (mailErr) {
       console.warn('Mail send failed, continuing:', mailErr.message);
     }
@@ -122,12 +117,8 @@ router.post('/users/create-student', async (req, res) => {
     const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
     const setupLink = `${baseUrl}/accept-invite?token=${invite.token}`;
     try {
-      const html = generateInvitationTemplate(req.user.organization_id?.name || 'Your Organization', setupLink);
-      await emailService.sendEmail({
-        to: email,
-        subject: 'Smart LMS Student Invitation',
-        html
-      });
+      const html = mailer.generateInvitationTemplate(req.user.organization_id?.name || 'Your Organization', setupLink);
+      await mailer.sendEmail(email, 'Smart LMS Student Invitation', html);
     } catch (mailErr) {
       console.warn('Mail send failed, continuing:', mailErr.message);
     }
