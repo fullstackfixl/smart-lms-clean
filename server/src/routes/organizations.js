@@ -3,7 +3,7 @@ const organizationService = require('../services/organizationService');
 const jwtUtils = require('../utils/jwt');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const { generateOTP } = require('../utils/otp');
-const emailService = require('../services/emailService');
+const emailService = require('../services/email.service');
 const VerificationOTP = require('../models/VerificationOTP');
 
 const router = express.Router();
@@ -25,7 +25,7 @@ router.post('/register/request-otp', async (req, res) => {
 
     // Extract domain from admin email
     const emailDomain = adminEmail.split('@')[1];
-    
+
     // Validate admin email domain matches organization domain
     if (emailDomain !== domain) {
       return res.error(
@@ -54,7 +54,7 @@ router.post('/register/request-otp', async (req, res) => {
 
     // Store OTP with registration data
     await VerificationOTP.findOneAndDelete({ email: adminEmail.toLowerCase() });
-    
+
     const verificationRecord = new VerificationOTP({
       email: adminEmail.toLowerCase(),
       otp,
@@ -607,6 +607,17 @@ router.patch('/:id/users/:userId/role', authMiddleware, requireRole(['org_admin'
   } catch (error) {
     console.error('Update role error:', error);
     res.error(error.message, 'Failed to update role', 400);
+  }
+});
+
+// Get list of active organizations (public/basic)
+router.get('/', async (req, res) => {
+  try {
+    const Organization = require('../models/Organization');
+    const organizations = await Organization.find({ isActive: true }).select('name domain code type');
+    res.json({ success: true, data: { organizations }, message: 'Organizations retrieved successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

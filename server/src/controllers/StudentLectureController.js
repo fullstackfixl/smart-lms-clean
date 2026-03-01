@@ -3,6 +3,10 @@ const LectureProgress = require('../models/LectureProgress');
 const QuizResult = require('../models/QuizResult');
 const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
+const User = require('../models/User');
+const Quiz = require('../models/Quiz');
+const QuizAttempt = require('../models/QuizAttempt');
+const crypto = require('crypto');
 
 class StudentLectureController {
   /**
@@ -375,44 +379,108 @@ class StudentLectureController {
   }
 
   /**
-   * Helper method to check if course is completed
+   * Helper method to check if course is completed (quiz-gated)
    */
   async checkCourseCompletion(userId, courseId, currentLectureId) {
     try {
-      // Get all lectures in the course with organization isolation
+      const user = await User.findById(userId).lean();
+      if (!user) return false;
+
+      const orgId = user.organization_id;
+
+      // 1. Count total active lectures
       const totalLectures = await Lesson.countDocuments({
         course_id: courseId,
-        organization_id: (await User.findById(userId)).organization_id, // Safer lookup
+        organization_id: orgId,
         isActive: true
       });
 
-      // Get completed lectures
+      // 2. Count completed lectures by this student
       const completedLectures = await LectureProgress.countDocuments({
         user_id: userId,
         course_id: courseId,
         completed: true
       });
 
-      // Check if all lectures are completed
-      if (completedLectures >= totalLectures) {
-        // Update enrollment status with organization isolation
-        const enrollment = await Enrollment.findOne({
-          student_id: userId,
-          course_id: courseId,
-          organization_id: (await User.findById(userId)).organization_id
-        });
+      if (completedLectures < totalLectures) return false; // Still has lectures to finish
 
-        if (enrollment && enrollment.status !== 'completed') {
-          enrollment.status = 'completed';
-          enrollment.completedAt = new Date();
-          enrollment.progress.completionPercentage = 100;
-          await enrollment.save();
+      // 3. Check quiz gating: all published required quizzes must have a passing attempt
+      const requiredQuizzes = await Quiz.find({
+        course_id: courseId,
+        organization_id: orgId,
+        status: 'PUBLISHED',
+        required_for_completion: true,
+        is_active: true
+      }).select('_id pass_percentage title').lean();
 
-          return true;
+      if (requiredQuizzes.length > 0) {
+        for (const quiz of requiredQuizzes) {
+          // Check if student has a passing attempt on this quiz
+          const passingAttempt = await QuizAttempt.findOne({
+            quiz_id: quiz._id,
+            student_id: userId,
+            score: { $gte: quiz.pass_percentage }
+          }).lean();
+
+          if (!passingAttempt) {
+            console.log(`[completion] Student ${userId} has not passed required quiz "${quiz.title}" (${quiz._id})`);
+            return false; // Cannot complete course until this quiz is passed
+          }
         }
       }
 
-      return false;
+      // 4. All checks passed — mark enrollment complete
+      const enrollment = await Enrollment.findOne({
+        student_id: userId,
+        course_id: courseId,
+        organization_id: orgId
+      });
+
+      if (!enrollment || enrollment.status === 'completed') return false;
+
+      enrollment.status = 'completed';
+      enrollment.completedAt = new Date();
+      enrollment.progress.completionPercentage = 100;
+
+      // 5. Issue certificate
+      if (!enrollment.certificate?.issued) {
+        const certId = crypto.randomBytes(8).toString('hex').toUpperCase();
+        enrollment.certificate = {
+          issued: true,
+          issuedAt: new Date(),
+          certificateId: certId,
+          certificateUrl: `/certificates/${certId}`
+        };
+      }
+
+      await enrollment.save();
+
+      // 6. Notify student via Socket.io and in-app notification
+      try {
+        if (global.io) {
+          global.io.to(`user_${userId}`).emit('course_completed', {
+            course_id: courseId,
+            certificate_id: enrollment.certificate.certificateId,
+            message: 'Congratulations! You have completed the course!'
+          });
+        }
+
+        const Notification = require('../models/Notification');
+        await Notification.create({
+          user_id: userId,
+          organization_id: orgId,
+          type: 'course_completed',
+          title: '🎓 Course Completed!',
+          message: 'Congratulations! You have completed the course and your certificate is ready.',
+          link: enrollment.certificate.certificateUrl,
+          read: false
+        });
+      } catch (notifyErr) {
+        console.warn('[completion] Notification error (non-critical):', notifyErr.message);
+      }
+
+      console.log(`✅ [completion] Student ${userId} completed course ${courseId} — cert ${enrollment.certificate.certificateId}`);
+      return true;
     } catch (error) {
       console.error('Check course completion error:', error);
       return false;

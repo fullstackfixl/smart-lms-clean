@@ -59,7 +59,6 @@ const organizationApplicationSchema = new mongoose.Schema({
 });
 
 // Indexes
-organizationApplicationSchema.index({ subdomain: 1 }, { unique: true });
 organizationApplicationSchema.index({ admin_email: 1 });
 organizationApplicationSchema.index({ status: 1 });
 

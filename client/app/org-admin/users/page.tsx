@@ -228,8 +228,8 @@ export default function UsersPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${tab === t
-                ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
-                : "bg-slate-800/60 text-slate-400 hover:text-slate-200 border border-slate-700/50"
+              ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20"
+              : "bg-slate-800/60 text-slate-400 hover:text-slate-200 border border-slate-700/50"
               }`}
           >
             {t === "users" ? `Users (${users.length})` : `Pending Invites (${invites.length})`}
@@ -345,15 +345,20 @@ export default function UsersPage() {
                             <button
                               onClick={() => handleToggleStatus(user._id, user.status === "active")}
                               className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium transition-colors ${user.status === "active"
-                                  ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                                  : "bg-slate-500/10 text-slate-500 hover:bg-slate-500/20"
+                                ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                                : "bg-slate-500/10 text-slate-500 hover:bg-slate-500/20"
                                 }`}
                             >
                               {user.status === "active" ? "● Active" : "○ Inactive"}
                             </button>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                            {new Date(user.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            {(() => {
+                              const raw = (user as any).createdAt || (user as any).created_at || (user as any).joinedAt
+                              if (!raw) return <span className="text-slate-600">—</span>
+                              const d = new Date(raw)
+                              return isNaN(d.getTime()) ? <span className="text-slate-600">—</span> : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                            })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
                             <button
@@ -492,10 +497,10 @@ export default function UsersPage() {
                         type="button"
                         onClick={() => setInviteRole(role)}
                         className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${inviteRole === role
-                            ? role === "instructor"
-                              ? "border-purple-500/60 bg-purple-500/10 text-purple-400"
-                              : "border-blue-500/60 bg-blue-500/10 text-blue-400"
-                            : "border-slate-700/50 bg-slate-800/30 text-slate-500 hover:border-slate-600"
+                          ? role === "instructor"
+                            ? "border-purple-500/60 bg-purple-500/10 text-purple-400"
+                            : "border-blue-500/60 bg-blue-500/10 text-blue-400"
+                          : "border-slate-700/50 bg-slate-800/30 text-slate-500 hover:border-slate-600"
                           }`}
                       >
                         {role === "instructor" ? <GraduationCap className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}

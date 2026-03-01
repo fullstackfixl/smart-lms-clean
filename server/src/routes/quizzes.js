@@ -208,6 +208,217 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
   }
 });
 
+// POST /api/quizzes/generate-ai - AI-powered quiz generation (Gemini primary → Groq fallback)
+router.post('/generate-ai', auth, checkInstructorPermission, async (req, res) => {
+  try {
+    const { course_id, topic, num_questions = 5, difficulty = 'medium' } = req.body;
+
+    if (!course_id || !topic) {
+      return res.status(400).json({ success: false, message: 'course_id and topic are required' });
+    }
+
+    // Verify course belongs to this org
+    const course = await Course.findOne({ _id: course_id, organization_id: req.user.organization_id });
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or access denied' });
+    }
+
+    const prompt = `Generate ${num_questions} multiple-choice quiz questions about "${topic}" for a course called "${course.title}".
+Difficulty: ${difficulty}.
+Return ONLY a valid JSON array. No markdown, no extra text, no code blocks. Format:
+[
+  {
+    "question": "Question text here?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correct_answer": 0,
+    "explanation": "Brief explanation"
+  }
+]
+correct_answer is the 0-based index of the correct option. Every question MUST have exactly 4 options.`;
+
+    const axios = require('axios');
+    let rawContent = null;
+    let usedProvider = '';
+
+    // ─── 1. Try Gemini Flash (primary) ─────────────────────────────────────────
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      try {
+        console.log('[generate-ai] Trying Gemini Flash...');
+        const gemRes = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+          {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+          },
+          { headers: { 'Content-Type': 'application/json' }, timeout: 30000 }
+        );
+        rawContent = gemRes.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (rawContent) {
+          usedProvider = 'Gemini Flash';
+          console.log('[generate-ai] ✅ Gemini succeeded');
+        }
+      } catch (gemErr) {
+        console.warn('[generate-ai] Gemini failed:', gemErr.response?.data?.error?.message || gemErr.message);
+      }
+    }
+
+    // ─── 2. Fallback: Groq with current active model ────────────────────────────
+    if (!rawContent) {
+      const groqKey = process.env.GROQ_API_KEY;
+      if (!groqKey) {
+        return res.status(500).json({ success: false, message: 'No AI API keys configured. Set GEMINI_API_KEY or GROQ_API_KEY in .env' });
+      }
+      console.log('[generate-ai] Trying Groq llama-3.3-70b-versatile...');
+      try {
+        const groqRes = await axios.post(
+          'https://api.groq.com/openai/v1/chat/completions',
+          {
+            model: 'llama-3.3-70b-versatile', // Current active model (replaces deprecated llama3-8b-8192)
+            messages: [
+              { role: 'system', content: 'You are a quiz creator. Return ONLY valid JSON arrays. No markdown, no code blocks.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 4096
+          },
+          {
+            headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+            timeout: 30000
+          }
+        );
+        rawContent = groqRes.data?.choices?.[0]?.message?.content?.trim();
+        if (rawContent) {
+          usedProvider = 'Groq (llama-3.3-70b-versatile)';
+          console.log('[generate-ai] ✅ Groq succeeded');
+        }
+      } catch (groqErr) {
+        console.error('[generate-ai] Groq failed:', groqErr.response?.data || groqErr.message);
+        return res.status(500).json({
+          success: false,
+          message: groqErr.response?.data?.error?.message || 'Both AI providers failed. Try again.'
+        });
+      }
+    }
+
+    if (!rawContent) {
+      return res.status(500).json({ success: false, message: 'AI returned an empty response' });
+    }
+
+    // ─── Parse JSON (strip markdown code fences if present) ───────────────────
+    let questions;
+    try {
+      const jsonStr = rawContent
+        .replace(/^```json\s*/i, '').replace(/^```\s*/i, '')
+        .replace(/```\s*$/i, '').trim();
+      // Extract first JSON array if there's extra text
+      const match = jsonStr.match(/\[[\s\S]*\]/);
+      questions = JSON.parse(match ? match[0] : jsonStr);
+    } catch (parseErr) {
+      console.error('[generate-ai] JSON parse error. Content was:', rawContent.slice(0, 300));
+      return res.status(500).json({ success: false, message: 'AI response was not valid JSON. Please try again.' });
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(500).json({ success: false, message: 'AI did not return a valid questions array' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: { questions, course_id, topic },
+      message: `Generated ${questions.length} questions successfully via ${usedProvider}`
+    });
+
+  } catch (error) {
+    console.error('[generate-ai] Unexpected error:', error.message);
+    return res.status(500).json({ success: false, message: 'AI quiz generation failed unexpectedly' });
+  }
+});
+
+// PATCH /api/quizzes/:id/publish - Publish a draft quiz
+router.patch('/:id/publish', auth, checkInstructorPermission, async (req, res) => {
+  try {
+    const quiz = await Quiz.findOne({
+      _id: req.params.id,
+      organization_id: req.user.organization_id
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ success: false, message: 'Quiz not found' });
+    }
+
+    // Only the creating instructor or org_admin can publish
+    if (quiz.instructor_id.toString() !== req.user._id.toString() && req.user.role !== 'org_admin') {
+      return res.status(403).json({ success: false, message: 'Only the quiz creator or org admin can publish' });
+    }
+
+    if (quiz.status === 'PUBLISHED') {
+      return res.status(400).json({ success: false, message: 'Quiz is already published' });
+    }
+
+    quiz.status = 'PUBLISHED';
+    await quiz.save();
+
+    // === Broadcast to all enrolled students in this org via Socket.io ===
+    try {
+      if (global.io) {
+        global.io.to(`organization_${req.user.organization_id}`).emit('quiz_published', {
+          quiz_id: quiz._id,
+          title: quiz.title,
+          course_id: quiz.course_id,
+          instructor: req.user.name
+        });
+      }
+
+      // Create in-app notifications for enrolled students
+      const Enrollment = require('../models/Enrollment');
+      const Notification = require('../models/Notification');
+      const enrollments = await Enrollment.find({
+        course_id: quiz.course_id,
+        organization_id: req.user.organization_id,
+        status: 'active'
+      }).select('student_id');
+
+      if (enrollments.length > 0) {
+        const notifications = enrollments.map(e => ({
+          user_id: e.student_id,
+          organization_id: req.user.organization_id,
+          type: 'quiz_available',
+          title: 'New Quiz Available',
+          message: `A new quiz "${quiz.title}" has been published in your course.`,
+          link: `/student/courses/${quiz.course_id}`,
+          read: false
+        }));
+        await Notification.insertMany(notifications, { ordered: false });
+      }
+    } catch (notifyErr) {
+      console.warn('[quiz/publish] Notification error (non-critical):', notifyErr.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: quiz,
+      message: 'Quiz published successfully and students notified'
+    });
+  } catch (error) {
+    console.error('[quiz/publish] Error:', error.message);
+    return res.status(500).json({ success: false, message: 'Failed to publish quiz' });
+  }
+});
+
+// PATCH /api/quizzes/:id/unpublish - Revert quiz to draft
+router.patch('/:id/unpublish', auth, checkInstructorPermission, async (req, res) => {
+  try {
+    const quiz = await Quiz.findOne({ _id: req.params.id, organization_id: req.user.organization_id });
+    if (!quiz) return res.status(404).json({ success: false, message: 'Quiz not found' });
+    quiz.status = 'DRAFT';
+    await quiz.save();
+    return res.status(200).json({ success: true, data: quiz, message: 'Quiz reverted to draft' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to unpublish quiz' });
+  }
+});
+
 // GET /api/quizzes - List quizzes with filtering
 router.get('/', auth, async (req, res) => {
   try {
@@ -909,7 +1120,7 @@ router.post('/:id/submit', auth, [
   body('answers.*.question_index').isInt({ min: 0 }).withMessage('Valid question index is required'),
   body('answers.*.selected_option').isInt({ min: 0 }).withMessage('Valid selected option is required'),
   body('answers.*.time_spent_seconds').optional().isInt({ min: 0 }).withMessage('Time spent must be non-negative'),
-  body('started_at').isISO8601().withMessage('Valid start time is required')
+  body('started_at').optional().isISO8601().withMessage('Valid start time is required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -947,20 +1158,28 @@ router.post('/:id/submit', auth, [
       });
     }
 
-    // Check enrollment
+    // Check enrollment — include both active and completed (completed = finished course)
     const enrollment = await Enrollment.findOne({
       student_id: req.user._id,
       course_id: quiz.course_id,
       organization_id: req.user.organization_id,
-      status: 'active'
+      status: { $in: ['active', 'completed'] }
     });
 
     if (!enrollment) {
-      return res.status(403).json({
-        success: false,
-        error: 'Enrollment required',
-        message: 'You must be enrolled in this course to submit the quiz'
+      // Also try without organization_id in case org wasn't set during enrollment
+      const enrollmentFallback = await Enrollment.findOne({
+        student_id: req.user._id,
+        course_id: quiz.course_id,
+        status: { $in: ['active', 'completed'] }
       });
+      if (!enrollmentFallback) {
+        return res.status(403).json({
+          success: false,
+          error: 'Enrollment required',
+          message: 'You must be enrolled in this course to submit the quiz'
+        });
+      }
     }
 
     // Check attempt limit
@@ -988,13 +1207,27 @@ router.post('/:id/submit', auth, [
       });
     }
 
+    // ── NORMALIZE ANSWERS ─────────────────────────────────────────────────────
+    // Frontend sends plain index array: [0, 2, 1, 3]
+    // Backend expects: [{ question_index, selected_option }]
+    // Support both formats:
+    let normalizedAnswers = answers;
+    if (answers.length > 0 && typeof answers[0] !== 'object') {
+      // Plain array of indices — convert to object format
+      normalizedAnswers = answers.map((selectedOption, idx) => ({
+        question_index: idx,
+        selected_option: selectedOption,
+        time_spent_seconds: 0
+      }));
+    }
+
     // ── MANUAL GRADING ──────────────────────────────────────────
-    const startTime = new Date(started_at);
+    const startTime = started_at ? new Date(started_at) : new Date(Date.now() - 60000); // fallback: 1min ago
     const submitTime = new Date();
     const timeTakenSeconds = Math.max(0, Math.round((submitTime - startTime) / 1000));
 
     // Grade each answer against the quiz's correct_answer
-    const gradedAnswers = answers.map((ans) => {
+    const gradedAnswers = normalizedAnswers.map((ans) => {
       const question = quiz.questions[ans.question_index];
       const isCorrect = question ? ans.selected_option === question.correct_answer : false;
       return {

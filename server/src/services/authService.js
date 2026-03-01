@@ -145,6 +145,17 @@ class AuthService {
       if (adminNotifyEmail) {
         const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
         const listLink = `${baseUrl}/platform/applications?status=pending`;
+        const subject = `New Organization Application: ${organizationName}`;
+        const html = `
+          <h2>New Application Received</h2>
+          <p><strong>Organization:</strong> ${organizationName}</p>
+          <p><strong>Admin:</strong> ${adminName} (${adminEmail})</p>
+          <p><strong>Type:</strong> ${organizationType}</p>
+          <p><strong>Plan:</strong> ${selectedPlan}</p>
+          <div style="margin-top: 20px;">
+            <a href="${listLink}" style="background: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review Application</a>
+          </div>
+        `;
         await emailService.sendEmail({
           to: adminNotifyEmail,
           subject,
@@ -235,6 +246,13 @@ class AuthService {
     try {
       const adminNotifyEmail = process.env.SUPPORT_EMAIL || process.env.EMAIL_USER;
       if (adminNotifyEmail) {
+        const subject = `Organization Created: ${organization.name}`;
+        const html = `
+          <h2>Organization Onboarding Complete</h2>
+          <p><strong>Organization:</strong> ${organization.name}</p>
+          <p><strong>Admin:</strong> ${admin.name} (${admin.email})</p>
+          <p>The organization is now active and the administrator has set their password.</p>
+        `;
         await emailService.sendEmail({
           to: adminNotifyEmail,
           subject,
@@ -357,6 +375,7 @@ class AuthService {
       const baseUrl = (process.env.CLIENT_URL || 'https://smart-lms-clean.vercel.app').replace(/\/$/, '');
       const acceptLink = `${baseUrl}/accept-invite?token=${token}`;
       const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+      const subject = `Invitation to join ${orgName} as ${roleLabel}`;
       const { generateInvitationTemplate } = emailService;
       const html = generateInvitationTemplate(orgName, acceptLink);
       await emailService.sendEmail({

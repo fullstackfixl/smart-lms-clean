@@ -594,6 +594,17 @@ export const instructorApi = {
       method: "DELETE",
       token,
     }),
+  // AI-powered quiz generation
+  generateAIQuiz: (token: string, data: { course_id: string; topic: string; num_questions?: number; difficulty?: string }) =>
+    apiRequest("/api/quizzes/generate-ai", { method: "POST", token, body: data }),
+  // Publish / Unpublish quiz
+  publishQuiz: (token: string, quizId: string) =>
+    apiRequest(`/api/quizzes/${quizId}/publish`, { method: "PATCH", token }),
+  unpublishQuiz: (token: string, quizId: string) =>
+    apiRequest(`/api/quizzes/${quizId}/unpublish`, { method: "PATCH", token }),
+  // List quizzes for a course
+  listCourseQuizzes: (token: string, courseId: string) =>
+    apiRequest(`/api/quizzes?course_id=${courseId}`, { token }),
 
   // Students & analytics
   getStudents: (token: string, courseId: string) =>
@@ -601,13 +612,6 @@ export const instructorApi = {
   getAnalytics: (token: string, courseId: string) =>
     apiRequest(`/instructor/courses/${courseId}/analytics`, { token }),
 
-  // Quizzes
-  generateAIQuiz: (token: string, courseId: string, data: { prompt: string; numberOfQuestions?: number; difficulty?: string }) =>
-    apiRequest(`/instructor/courses/${courseId}/quizzes/generate`, {
-      method: "POST",
-      token,
-      body: data,
-    }),
 
   // Announcements
   listAnnouncements: (token: string, courseId: string) =>

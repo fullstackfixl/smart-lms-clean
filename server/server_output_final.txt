@@ -1,0 +1,337 @@
+Starting Smart LMS Server...
+NODE_ENV: development
+PORT: 5000
+[2026-03-01T08:21:28.064Z] 📦 Loading routes...
+[2026-03-01T08:21:28.070Z]   - auth
+[2026-03-01T08:21:28.448Z]   - health
+[2026-03-01T08:21:28.449Z]   - public
+[2026-03-01T08:21:28.451Z]   - organizations
+[2026-03-01T08:21:28.455Z]   - platform
+[2026-03-01T08:21:28.460Z]   - platform-api
+[2026-03-01T08:21:28.461Z]   - payments
+[2026-03-01T08:21:28.798Z]   - upload
+  - courses
+  - sections
+  - lessons
+  - enrollments
+  - users
+  - parent
+  - quizzes
+  - gamification
+  - certificates
+  - translate
+  - analytics
+  - notifications
+  - fees
+  - attendance
+  - grades
+  - timetable
+  - events
+  - errors
+  - instructor
+  - instructor uploads
+  - instructor-live-classes
+  - admin
+  - forums
+  - messages
+  - question-banks
+  - admin-grades
+  - admin-timetable
+  - admin-fees
+  - instructor-video
+  - org-users
+  - org-features
+  - student-lectures
+  - student-registration
+  - student
+  - live-classes-simple
+  - api (generic REST routes)
+✨ All routes loaded successfully
+Connecting to MongoDB...
+🔌 [DB] Connecting (attempt 1)...
+(node:45856) [MONGOOSE] Warning: Duplicate schema index on {"token":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:45856) [MONGOOSE] Warning: Duplicate schema index on {"subdomain":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+(node:45856) [MONGOOSE] Warning: Duplicate schema index on {"type":1} found. This is often due to declaring an index using both "index: true" and "schema.index()". Please remove the duplicate index definition.
+✅ [DB] Connected: ac-apuhx1s-shard-00-02.r9k9vap.mongodb.net
+MongoDB connected successfully
+✅ Server running on port 5000
+✅ Socket.io initialized
+✅ Environment: development
+📥 [2026-03-01T08:21:44.454Z] GET /
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:21:44.464Z] GET /api/health
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:21:44.481Z] POST /auth/login
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:21:44.696Z] POST /auth/apply-organization
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:21:44.701Z] GET /api/courses
+   Origin: http://localhost:3000
+🔐 [Auth] GET /
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:44.704Z] GET /api/organizations
+   Origin: http://localhost:3000
+   Headers: {
+  "accept": "application/json, text/plain, */*",
+  "content-type": "application/json",
+  "origin": "http://localhost:3000",
+  "user-agent": "axios/1.13.5",
+  "accept-encoding": "gzip, compress, deflate, br",
+  "host": "localhost:5000",
+  "connection": "keep-alive"
+}
+📥 [2026-03-01T08:21:44.708Z] GET /api/analytics/dashboard
+   Origin: http://localhost:3000
+🔐 [Auth] GET /dashboard
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:44.711Z] POST /api/payments/razorpay/create-order
+   Origin: http://localhost:3000
+🔐 [Auth] POST /razorpay/create-order
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:44.715Z] POST /api/upload/local
+   Origin: http://localhost:3000
+🔐 [Auth] POST /local
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:44.718Z] GET /api/quizzes/student
+   Origin: http://localhost:3000
+🔐 [Auth] GET /student
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:44.720Z] GET /student
+   Origin: http://localhost:3000
+🔐 [Auth] GET /
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:56.483Z] GET /
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:21:56.488Z] GET /api/health
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:21:56.491Z] POST /auth/login
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:21:56.588Z] POST /auth/apply-organization
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:21:56.591Z] GET /api/courses
+   Origin: http://localhost:3000
+🔐 [Auth] GET /
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:56.593Z] GET /api/organizations
+   Origin: http://localhost:3000
+   Headers: {
+  "accept": "application/json, text/plain, */*",
+  "content-type": "application/json",
+  "origin": "http://localhost:3000",
+  "user-agent": "axios/1.13.5",
+  "accept-encoding": "gzip, compress, deflate, br",
+  "host": "localhost:5000",
+  "connection": "keep-alive"
+}
+📥 [2026-03-01T08:21:56.595Z] GET /api/analytics/dashboard
+   Origin: http://localhost:3000
+🔐 [Auth] GET /dashboard
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:56.598Z] POST /api/payments/razorpay/create-order
+   Origin: http://localhost:3000
+🔐 [Auth] POST /razorpay/create-order
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:56.601Z] POST /api/upload/local
+   Origin: http://localhost:3000
+🔐 [Auth] POST /local
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:56.603Z] GET /api/quizzes/student
+   Origin: http://localhost:3000
+🔐 [Auth] GET /student
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:21:56.605Z] GET /student
+   Origin: http://localhost:3000
+🔐 [Auth] GET /
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:22:12.330Z] GET /
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:22:12.336Z] GET /api/health
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:22:12.339Z] POST /auth/login
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:22:12.429Z] POST /auth/apply-organization
+   Origin: http://localhost:3000
+📥 [2026-03-01T08:22:12.431Z] GET /api/courses
+   Origin: http://localhost:3000
+🔐 [Auth] GET /
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:22:12.433Z] GET /api/organizations
+   Origin: http://localhost:3000
+   Headers: {
+  "accept": "application/json, text/plain, */*",
+  "content-type": "application/json",
+  "origin": "http://localhost:3000",
+  "user-agent": "axios/1.13.5",
+  "accept-encoding": "gzip, compress, deflate, br",
+  "host": "localhost:5000",
+  "connection": "keep-alive"
+}
+📥 [2026-03-01T08:22:12.435Z] GET /api/analytics/dashboard
+   Origin: http://localhost:3000
+🔐 [Auth] GET /dashboard
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:22:12.437Z] POST /api/payments/razorpay/create-order
+   Origin: http://localhost:3000
+🔐 [Auth] POST /razorpay/create-order
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:22:12.440Z] POST /api/upload/local
+   Origin: http://localhost:3000
+🔐 [Auth] POST /local
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:22:12.443Z] GET /api/quizzes/student
+   Origin: http://localhost:3000
+🔐 [Auth] GET /student
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:22:12.444Z] GET /student
+   Origin: http://localhost:3000
+🔐 [Auth] GET /
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: MISSING
+❌ [Auth] No token provided
+📥 [2026-03-01T08:23:20.190Z] DELETE /platform/organizations/69a3e75b04ed90602b8a1674
+   Origin: http://localhost:3000
+🔌 [Platform Router] DELETE /organizations/69a3e75b04ed90602b8a1674
+🔐 [Auth] DELETE /organizations/69a3e75b04ed90602b8a1674
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:20.526Z] GET /platform/organizations
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations
+🔐 [Auth] GET /organizations
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:22.423Z] GET /platform/organizations/stats
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations/stats
+🔐 [Auth] GET /organizations/stats
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:25.397Z] DELETE /platform/organizations/69a33a17bf30d26dc89d15e5
+   Origin: http://localhost:3000
+🔌 [Platform Router] DELETE /organizations/69a33a17bf30d26dc89d15e5
+🔐 [Auth] DELETE /organizations/69a33a17bf30d26dc89d15e5
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:25.697Z] GET /platform/organizations
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations
+🔐 [Auth] GET /organizations
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:27.040Z] GET /platform/organizations/stats
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations/stats
+🔐 [Auth] GET /organizations/stats
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:29.486Z] DELETE /platform/organizations/69a3e6e404ed90602b8a1652
+   Origin: http://localhost:3000
+🔌 [Platform Router] DELETE /organizations/69a3e6e404ed90602b8a1652
+🔐 [Auth] DELETE /organizations/69a3e6e404ed90602b8a1652
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:30.202Z] GET /platform/organizations
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations
+🔐 [Auth] GET /organizations
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:31.240Z] GET /platform/organizations/stats
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations/stats
+🔐 [Auth] GET /organizations/stats
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:33.634Z] DELETE /platform/organizations/69a33ac9bf30d26dc89d16d4
+   Origin: http://localhost:3000
+🔌 [Platform Router] DELETE /organizations/69a33ac9bf30d26dc89d16d4
+🔐 [Auth] DELETE /organizations/69a33ac9bf30d26dc89d16d4
+🔐 [Auth] Authorization header: MISSING
+🔐 [Auth] Token from cookie: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:33.923Z] GET /platform/organizations
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations
+🔐 [Auth] GET /organizations
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:34.801Z] GET /platform/organizations/stats
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations/stats
+🔐 [Auth] GET /organizations/stats
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+📥 [2026-03-01T08:23:37.227Z] GET /platform/organizations
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations
+🔐 [Auth] GET /organizations
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+📥 [2026-03-01T08:23:37.229Z] GET /platform/organizations/stats
+   Origin: http://localhost:3000
+🔌 [Platform Router] GET /organizations/stats
+🔐 [Auth] GET /organizations/stats
+🔐 [Auth] Authorization header: Bearer eyJhbGciOiJIU...
+🔐 [Auth] Token from header: eyJhbGciOiJIUzI1NiIs...
+🔐 [Auth] Token decoded, userId: 69955de2251152a00f5b8008
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin
+✅ [Auth] Authenticated: platform@admin.com Role: platform_admin

@@ -169,24 +169,60 @@ export const generateAIQuiz = async (data: {
   difficulty: string;
   numQuestions: number
 }): Promise<ApiResponse> => {
-  const response = await apiClient.post('/api/quizzes/generate-ai', {
-    courseId: data.courseId,
-    prompt: data.prompt,
-    difficulty: data.difficulty,
-    numberOfQuestions: data.numQuestions  // Fix: backend expects 'numberOfQuestions'
-  })
-  return response.data
+  try {
+    const response = await apiClient.post('/api/quizzes/generate-ai', {
+      course_id: data.courseId,      // Backend expects course_id (snake_case)
+      topic: data.prompt,            // Backend expects topic, not prompt
+      difficulty: data.difficulty,
+      num_questions: data.numQuestions  // Backend expects num_questions
+    })
+    // Normalize: backend returns { success, data: { questions, course_id, topic } }
+    // Page expects { success, data: { quiz: { title, questions } } }
+    const raw = response.data
+    if (raw.success && raw.data?.questions) {
+      return {
+        success: true,
+        data: {
+          quiz: {
+            title: `AI Quiz: ${data.prompt.slice(0, 40)}`,
+            questions: raw.data.questions,
+            course_id: raw.data.course_id,
+            _id: null  // Draft, not saved yet — use null
+          }
+        }
+      }
+    }
+    return raw
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error.response?.data?.message || error.message || 'AI generation failed'
+    }
+  }
 }
 
 export const publishQuiz = async (quizId: string): Promise<ApiResponse> => {
-  const response = await apiClient.post(`/api/quizzes/publish/${quizId}`)
+  // PATCH /api/quizzes/:id/publish (not POST)
+  const response = await apiClient.patch(`/api/quizzes/${quizId}/publish`)
   return response.data
 }
 
 export const getInstructorQuizzes = async (courseId?: string): Promise<ApiResponse> => {
-  const params = courseId ? { courseId } : {}
-  const response = await apiClient.get('/api/quizzes/instructor', { params })
-  return response.data
+  // Use the standard quizzes list endpoint which scopes by organization + instructor
+  const params: Record<string, string> = {}
+  if (courseId) params.course_id = courseId
+  try {
+    const response = await apiClient.get('/api/quizzes', { params })
+    // Backend may return { success, data: [...quiz] } or { success, data: { quizzes: [...] } }
+    const raw = response.data
+    if (raw.success) {
+      const quizList = raw.data?.quizzes || raw.data || []
+      return { success: true, data: quizList }
+    }
+    return raw
+  } catch {
+    return { success: true, data: [] } // Return empty on error to not crash the page
+  }
 }
 
 // ============================================

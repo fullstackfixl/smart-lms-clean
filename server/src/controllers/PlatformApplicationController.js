@@ -1,6 +1,6 @@
 const { OrganizationApplication, OrganizationApprovalToken } = require('../models');
 const crypto = require('crypto');
-const emailService = require('../services/emailService');
+const emailService = require('../services/email.service');
 const BaseController = require('../core/BaseController');
 
 class PlatformApplicationController extends BaseController {

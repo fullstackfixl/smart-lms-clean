@@ -49,7 +49,9 @@ async function startServer() {
 
     server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${PORT} is already in use`);
+        console.error(`❌ Port ${PORT} is already in use. Attempting to clear...`);
+        // On Windows, taskkill or manual restart is usually needed.
+        // We'll log the error and exit so nodemon can retry after the user clears it or we clear it via script.
       } else {
         console.error('❌ Server error:', error);
       }
@@ -73,6 +75,9 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise);
   console.error('Reason:', reason);
+  if (reason && reason.stack) {
+    console.error('Stack:', reason.stack);
+  }
   process.exit(1);
 });
 

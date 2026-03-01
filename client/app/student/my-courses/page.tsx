@@ -20,15 +20,23 @@ export default function MyCourses() {
     const fetchMyCourses = useCallback(async () => {
         setLoading(true)
         try {
-            const r = await fetch(`${API_URL}/api/courses/my-courses`, {
+            const r = await fetch(`${API_URL}/student/my-courses`, {
                 headers: { Authorization: `Bearer ${getToken()}` },
                 credentials: "include"
             })
             const data = await r.json()
             if (data.success) {
-                // Handle both flattened and nested formats
+                // /student/my-courses returns: { courses: [{ enrollmentId, course, progress, status, enrolledAt }] }
                 const rawList = data.data?.courses || data.data || []
-                setEnrolled(rawList)
+                // Normalize to shape the CourseCard expects: { course: {...}, progress: number }
+                const normalized = rawList.map((item: any) => {
+                    if (item.course) return item  // already nested
+                    // Flat format fallback
+                    return { course: item, progress: item.progress || 0 }
+                })
+                setEnrolled(normalized)
+            } else {
+                toast.error(data.message || "Failed to load your courses")
             }
         } catch (e) {
             toast.error("Failed to load your courses")

@@ -1,0 +1,38 @@
+﻿≡ƒÜÇ Starting COMPREHENSIVE API & CONNECTIVITY Verification...
+
+≡ƒôí Testing: Root Health [GET /]
+Γ£à Root Health: SUCCESS (200)
+
+≡ƒôí Testing: API Health [GET /api/health]
+Γ£à API Health: SUCCESS (200)
+
+≡ƒôí Testing: Auth Login (Probe) [POST /auth/login]
+Γ£à Auth Login (Probe): REACHABLE (401 - Invalid email or password)
+
+≡ƒôí Testing: Apply Org (Probe) [POST /auth/apply-organization]
+Γ£à Apply Org (Probe): REACHABLE (400 - "adminName" length must be at least 2 characters long)
+
+≡ƒôí Testing: Public Courses [GET /api/courses]
+Γ£à Public Courses: REACHABLE (401 - Authentication required)
+
+≡ƒôí Testing: Organizations [GET /api/organizations]
+Γ¥î Organizations: NOT FOUND (404)
+
+≡ƒôí Testing: Analytics Dashboard [GET /api/analytics/dashboard]
+Γ£à Analytics Dashboard: REACHABLE (401 - Authentication required)
+
+≡ƒôí Testing: Payments Razorpay [POST /api/payments/razorpay/create-order]
+Γ£à Payments Razorpay: REACHABLE (401 - Authentication required)
+
+≡ƒôí Testing: Upload Local [POST /api/upload/local]
+Γ£à Upload Local: REACHABLE (401 - Authentication required)
+
+≡ƒôí Testing: Quizzes Student [GET /api/quizzes/student]
+Γ£à Quizzes Student: REACHABLE (401 - Authentication required)
+
+≡ƒôí Testing: Student Lectures [GET /student]
+Γ£à Student Lectures: REACHABLE (401 - Authentication required)
+
+-------------------------------------------
+≡ƒÅü Summary: 10 PASSED, 1 FAILED
+-------------------------------------------

@@ -1,7 +1,8 @@
 const express = require('express');
 const { Course, Section, Lesson, Enrollment, User, Organization } = require('../models');
 const { authMiddleware, optionalAuth, orgAccessMiddleware, requireRole } = require('../middleware/auth');
-const { sendEnrollmentEmail } = require('../utils/email');
+const emailService = require('../utils/emailService');
+const { sendEnrollmentEmail } = emailService;
 const moduleGuard = require('../middleware/moduleGuard');
 
 const router = express.Router();

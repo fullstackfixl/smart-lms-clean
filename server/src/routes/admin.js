@@ -1422,7 +1422,8 @@ router.post('/fees/reminder', async (req, res) => {
     }
 
     // Send reminder email (implement email service)
-    const sendEmail = require('../utils/email');
+    const emailService = require('../utils/emailService');
+    const { sendEmail } = emailService;
     await sendEmail({
       to: fee.student_id.email,
       subject: 'Fee Payment Reminder - Smart LMS',

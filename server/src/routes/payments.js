@@ -5,37 +5,36 @@ const { createOrder, verifyPaymentSignature, getPayment } = require('../config/r
 const { createPaymentIntent, createCustomer, getPaymentIntent } = require('../config/stripe');
 const { Organization, User } = require('../models');
 const notificationService = require('../utils/notificationService');
-
-const notificationService = require('../utils/notificationService');
 const moduleGuard = require('../middleware/moduleGuard');
 
 const router = express.Router();
 
 // Apply module guard to payment creation and verification
-router.use(['/razorpay/create-order', '/razorpay/verify', '/stripe/create-payment-intent', '/stripe/verify'], authMiddleware, moduleGuard('COURSE_SALES'));
-try {
-  const { amount, currency = 'INR', receipt } = req.body;
+// Razorpay: Create order
+router.post('/razorpay/create-order', authMiddleware, async (req, res) => {
+  try {
+    const { amount, currency = 'INR', receipt } = req.body;
 
-  if (!amount || amount <= 0) {
-    return res.error('Invalid amount', 'Amount must be greater than 0', 400);
+    if (!amount || amount <= 0) {
+      return res.error('Invalid amount', 'Amount must be greater than 0', 400);
+    }
+
+    const order = await createOrder(amount, currency, receipt, {
+      organization_id: req.user.organization_id.toString(),
+      user_id: req.user._id.toString()
+    });
+
+    res.success({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID
+    }, 'Razorpay order created successfully');
+
+  } catch (error) {
+    console.error('Razorpay create order error:', error);
+    res.error(error.message, 'Failed to create Razorpay order', 500);
   }
-
-  const order = await createOrder(amount, currency, receipt, {
-    organization_id: req.user.organization_id.toString(),
-    user_id: req.user._id.toString()
-  });
-
-  res.success({
-    orderId: order.id,
-    amount: order.amount,
-    currency: order.currency,
-    keyId: process.env.RAZORPAY_KEY_ID
-  }, 'Razorpay order created successfully');
-
-} catch (error) {
-  console.error('Razorpay create order error:', error);
-  res.error(error.message, 'Failed to create Razorpay order', 500);
-}
 });
 
 // Razorpay: Verify payment

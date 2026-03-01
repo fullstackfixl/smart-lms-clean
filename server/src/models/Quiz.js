@@ -105,6 +105,10 @@ const quizSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  required_for_completion: {
+    type: Boolean,
+    default: true // Student must pass this quiz to complete the course
+  },
   created_at: {
     type: Date,
     default: Date.now

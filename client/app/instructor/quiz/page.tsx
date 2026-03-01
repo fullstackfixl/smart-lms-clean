@@ -111,12 +111,50 @@ export default function InstructorQuizPage() {
     }
   }
 
-  async function handlePublish(quizId: string) {
+  async function handlePublish(quizId: string | null) {
     try {
-      const res = await publishQuiz(quizId)
+      setGenerating(true)
+
+      let targetId = quizId
+
+      // If not saved yet (_id is null), save it first via POST /api/quizzes
+      if (!targetId) {
+        if (!courseId || !generatedQuiz) {
+          toast.error("Missing course or quiz data")
+          setGenerating(false)
+          return
+        }
+        const token = typeof window !== "undefined"
+          ? (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))
+          : null
+
+        const { API_URL } = await import("@/lib/config")
+        const saveRes = await fetch(`${API_URL}/api/quizzes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            course_id: courseId,
+            title: generatedQuiz.title || `AI Quiz: ${prompt.slice(0, 40)}`,
+            description: `AI-generated quiz on: ${prompt}`,
+            questions: generatedQuiz.questions,
+            pass_percentage: 60,
+            max_attempts: 3
+          })
+        })
+        const saveJson = await saveRes.json()
+        if (!saveJson.success) {
+          toast.error(saveJson.message || "Failed to save quiz")
+          setGenerating(false)
+          return
+        }
+        targetId = saveJson.data._id
+        toast.success("Quiz saved! Publishing now...")
+      }
+
+      const res = await publishQuiz(targetId!)
       if (res.success) {
-        toast.success("Quiz published successfully!")
-        loadInitialData() // Refresh list
+        toast.success("🎉 Quiz published! Students will be notified.")
+        loadInitialData()
         setGeneratedQuiz(null)
         setShowGenerator(false)
       } else {
@@ -124,6 +162,8 @@ export default function InstructorQuizPage() {
       }
     } catch (error) {
       toast.error("Failed to publish quiz")
+    } finally {
+      setGenerating(false)
     }
   }
 

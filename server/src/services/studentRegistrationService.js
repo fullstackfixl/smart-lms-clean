@@ -1,7 +1,7 @@
 const { Organization, User } = require('../models');
 const VerificationOTP = require('../models/VerificationOTP');
 const { generateOTP } = require('../utils/otp');
-const emailService = require('./emailService');
+const emailService = require('./email.service');
 const bcrypt = require('bcryptjs');
 const jwtUtils = require('../utils/jwt');
 

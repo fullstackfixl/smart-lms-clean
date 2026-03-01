@@ -74,44 +74,42 @@ app.get('/api/health', (req, res) => {
 });
 
 
-
 // Load routes safely
 try {
   const responseMiddleware = require('./middleware/response');
   app.use(responseMiddleware);
 
-  console.log('📦 Loading routes...');
+  console.log(`[${new Date().toISOString()}] 📦 Loading routes...`);
 
-  console.log('  - auth');
+  console.log(`[${new Date().toISOString()}]   - auth`);
   const authRoutes = require('./routes/auth');
   app.use('/auth', authRoutes);
 
-  console.log('  - health');
+  console.log(`[${new Date().toISOString()}]   - health`);
   const healthRoutes = require('./routes/health');
   app.use('/', healthRoutes);
 
-  console.log('  - public');
+  console.log(`[${new Date().toISOString()}]   - public`);
   const publicRoutes = require('./routes/public');
   app.use('/api', publicRoutes);
 
-  console.log('  - organizations');
+  console.log(`[${new Date().toISOString()}]   - organizations`);
   const organizationRoutes = require('./routes/organizations');
   app.use('/api/organizations', organizationRoutes);
 
-
-  console.log('  - platform');
+  console.log(`[${new Date().toISOString()}]   - platform`);
   const platformRoutes = require('./routes/platform');
   app.use('/platform', platformRoutes);
 
-  console.log('  - platform-api');
+  console.log(`[${new Date().toISOString()}]   - platform-api`);
   const platformApiRoutes = require('./routes/platformApi');
   app.use('/api/platform', platformApiRoutes);
 
-  console.log('  - payments');
-  const paymentRoutes = require('./api/routes/payment.routes');
-  app.use('/payments', paymentRoutes);
+  console.log(`[${new Date().toISOString()}]   - payments`);
+  const paymentRoutes = require('./routes/payments');
+  app.use('/api/payments', paymentRoutes);
 
-  console.log('  - upload');
+  console.log(`[${new Date().toISOString()}]   - upload`);
   const uploadRoutes = require('./routes/upload');
   app.use('/api/upload', uploadRoutes);
 

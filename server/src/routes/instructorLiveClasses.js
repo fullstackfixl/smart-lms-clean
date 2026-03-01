@@ -4,7 +4,8 @@ const LiveClass = require('../models/LiveClass');
 const User = require('../models/User');
 const Course = require('../models/Course');
 const { authMiddleware, requireRole } = require('../middleware/auth');
-const sendEmail = require('../utils/email');
+const emailService = require('../utils/emailService');
+const { sendEmail } = emailService;
 
 // Helper: try to resolve socketService safely (it may not be initialized yet)
 let socketService = null;
