@@ -446,7 +446,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
     setAIGenerating(true)
     try {
-      const res = await instructorApi.generateAIQuiz(authToken, courseId, aiForm)
+      const res = await instructorApi.generateAIQuiz(authToken, {
+        course_id: courseId,
+        topic: aiForm.prompt,
+        num_questions: aiForm.numberOfQuestions,
+        difficulty: aiForm.difficulty
+      })
       if (res.success) {
         toast.success("AI Quiz generated successfully and saved as Draft!")
         setShowAIDialog(false)
