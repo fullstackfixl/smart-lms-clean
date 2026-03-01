@@ -1,4 +1,4 @@
-import { API_URL as API_BASE } from "@/lib/config"
+import { API_URL as API_BASE } from '../lib/config'
 
 // Simplified API file with CSRF completely removed
 

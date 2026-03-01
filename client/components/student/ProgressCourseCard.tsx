@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Play, Clock, BookOpen } from "lucide-react"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { Card } from '../../components/ui/card'
+import { Button } from '../../components/ui/button'
+import { Progress } from '../../components/ui/progress'
+import { cn } from '../../lib/utils'
 
 interface ProgressCourseCardProps {
   title: string

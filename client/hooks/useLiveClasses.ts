@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { liveClassApi } from '@/lib/api'
-import { useAuth } from '@/lib/auth-context'
+import { liveClassApi } from '../lib/api'
+import { useAuth } from '../lib/auth-context'
 import { toast } from 'sonner'
 
 export interface LiveClass {

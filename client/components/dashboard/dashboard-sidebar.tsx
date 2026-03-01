@@ -12,9 +12,9 @@ import {
   ClipboardList, UserCheck, Home, Sparkles, Upload,
   FileQuestion, MessageSquare, TrendingUp,
 } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
-import { getDashboardRoute } from "@/lib/role-redirect"
-import { cn } from "@/lib/utils"
+import { useAuth } from '../../lib/auth-context'
+import { getDashboardRoute } from '../../lib/role-redirect'
+import { cn } from '../../lib/utils'
 
 interface NavItem {
   label: string

@@ -18,7 +18,7 @@ import {
   ChevronDown,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,10 +26,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '../../components/ui/dropdown-menu'
 import { ThemeToggle } from "./theme-toggle"
-import { cn, getInitials } from "@/lib/utils"
-import { SIDEBAR_WIDTH } from "@/lib/constants"
+import { cn, getInitials } from '../../lib/utils'
+import { SIDEBAR_WIDTH } from '../../lib/constants'
 
 interface User {
   id: string

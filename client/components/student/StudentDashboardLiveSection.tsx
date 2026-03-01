@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Video, Clock, Calendar, Loader2, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { liveClassApi } from '@/lib/api'
-import { useAuth } from '@/lib/auth-context'
+import { Button } from '../../components/ui/button'
+import { liveClassApi } from '../../lib/api'
+import { useAuth } from '../../lib/auth-context'
 import { toast } from 'sonner'
 import { format, parseISO, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns'
 

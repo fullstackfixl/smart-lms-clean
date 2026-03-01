@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from '../../lib/utils'
 
 interface MetricCardProps {
   title: string

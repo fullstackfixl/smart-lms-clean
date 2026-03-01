@@ -1,12 +1,12 @@
 "use client"
 
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from '../../lib/auth-context'
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '../../components/ui/dropdown-menu'
 import { ChevronDown, User, LogOut } from "lucide-react"
 
 export function StudentHeader() {

@@ -19,8 +19,8 @@ import {
   Video,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/auth-context"
+import { cn } from '../../lib/utils'
+import { useAuth } from '../../lib/auth-context'
 
 const navItems = [
   { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },

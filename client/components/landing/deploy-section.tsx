@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Cloud, Server, Download, ArrowRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from '../../components/ui/button'
 import Link from "next/link"
 
 const deployOptions = [

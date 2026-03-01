@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { notificationApi } from '@/lib/api'
-import { useAuth } from '@/lib/auth-context'
+import { notificationApi } from '../lib/api'
+import { useAuth } from '../lib/auth-context'
 import { toast } from 'sonner'
 
 export interface Notification {

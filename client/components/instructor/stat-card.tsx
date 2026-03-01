@@ -2,8 +2,8 @@
 
 import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react"
 import { motion } from "framer-motion"
-import { Card } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+import { Card } from '../../components/ui/card'
+import { cn } from '../../lib/utils'
 
 interface StatCardProps {
   label: string

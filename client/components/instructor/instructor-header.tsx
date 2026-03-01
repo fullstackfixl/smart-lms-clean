@@ -1,7 +1,7 @@
 "use client"
 
 import { Bell, User } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from '../../components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,8 +9,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+} from '../../components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '../../components/ui/avatar'
 import { ThemeToggle } from "./theme-toggle"
 
 interface InstructorHeaderProps {

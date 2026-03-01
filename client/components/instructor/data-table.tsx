@@ -8,8 +8,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { cn } from "@/lib/utils"
+} from '../../components/ui/table'
+import { cn } from '../../lib/utils'
 
 export interface DataTableColumn<T> {
   key: keyof T | string

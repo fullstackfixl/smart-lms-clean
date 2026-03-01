@@ -6,17 +6,17 @@ import {
     User, Mail, Phone, MapPin, Calendar, Edit2, Save, X,
     Loader2, AlertCircle, Shield, GraduationCap, BookOpen, Award
 } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { Label } from '../../components/ui/label'
+import { Textarea } from '../../components/ui/textarea'
+import { Badge } from '../../components/ui/badge'
+import { Card, CardContent } from '../../components/ui/card'
+import { Skeleton } from '../../components/ui/skeleton'
 import { toast } from "sonner"
-import { useAuth } from "@/lib/auth-context"
-import { API_URL as API } from "@/lib/config"
+import { useAuth } from '../../lib/auth-context'
+import { API_URL as API } from '../../lib/config'
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")

@@ -18,8 +18,8 @@ import {
   Bell,
   BarChart3,
 } from 'lucide-react'
-import { useAuth } from '@/lib/auth-context'
-import { cn } from '@/lib/utils'
+import { useAuth } from '../../lib/auth-context'
+import { cn } from '../../lib/utils'
 
 interface NavItem {
   label: string

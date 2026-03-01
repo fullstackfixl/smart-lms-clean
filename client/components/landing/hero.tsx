@@ -14,7 +14,7 @@ interface Stats {
   coursesCompleted: number
 }
 
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../lib/config'
 
 function StatCard({
   icon: Icon,

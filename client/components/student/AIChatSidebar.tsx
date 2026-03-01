@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Send, Sparkles, Loader2, User, X, MessageSquare, Bot } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
+import { ScrollArea } from '../../components/ui/scroll-area'
+import { Avatar, AvatarFallback } from '../../components/ui/avatar'
+import { Badge } from '../../components/ui/badge'
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -24,7 +24,7 @@ interface AIChatSidebarProps {
     onClose: () => void
 }
 
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../lib/config'
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")

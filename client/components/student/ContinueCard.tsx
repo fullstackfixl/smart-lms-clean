@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion"
 import { Play, Clock, BookOpen } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from '../../components/ui/button'
+import { cn } from '../../lib/utils'
 
 interface ContinueCardProps {
   title: string

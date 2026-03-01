@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, Bell, ChevronDown, Settings, LogOut } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from '../../lib/auth-context'
 
 export function PlatformNavbar() {
   const router = useRouter()

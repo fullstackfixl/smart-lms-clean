@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, Check, CheckCheck, Video, Award, AlertCircle, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { useNotifications } from '@/hooks/useNotifications'
+import { Button } from '../../components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover'
+import { ScrollArea } from '../../components/ui/scroll-area'
+import { useNotifications } from '../../hooks/useNotifications'
 import { formatDistanceToNow } from 'date-fns'
-import { cn } from '@/lib/utils'
+import { cn } from '../../lib/utils'
 
 export function NotificationBell() {
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications()
