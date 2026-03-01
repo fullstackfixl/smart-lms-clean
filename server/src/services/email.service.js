@@ -51,7 +51,33 @@ class EmailService {
         const { to, subject, text, html } = mailOptions;
 
         try {
-            // Try Resend first if API key exists
+            // Priority 1: Brevo (if API key exists)
+            if (process.env.BREVO_API_KEY) {
+                try {
+                    const response = await axios.post('https://api.brevo.com/v3/smtp/email', {
+                        sender: {
+                            name: 'Smart LMS',
+                            email: process.env.EMAIL_FROM || 'noreply@smartlms.com'
+                        },
+                        to: [{ email: to }],
+                        subject: subject,
+                        htmlContent: html || text
+                    }, {
+                        headers: {
+                            'api-key': process.env.BREVO_API_KEY,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (response.status === 201 || response.status === 200) {
+                        console.log(`📧 [Email] Sent via Brevo to ${to}`);
+                        return true;
+                    }
+                } catch (brevoErr) {
+                    console.warn('⚠️ [Email] Brevo failed, checking next provider:', brevoErr.response?.data || brevoErr.message);
+                }
+            }
+
+            // Priority 2: Resend (if API key exists)
             if (process.env.RESEND_API_KEY) {
                 try {
                     const response = await axios.post('https://api.resend.com/emails', {
@@ -74,7 +100,8 @@ class EmailService {
                 }
             }
 
-            // Default to Nodemailer
+            // Priority 3: Nodemailer (Gmail/SMTP)
+            // In production, we only use this as a last resort if API keys fail
             const info = await this.transporter.sendMail({
                 from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
                 to,
@@ -86,7 +113,7 @@ class EmailService {
             console.log(`📧 [Email] Sent via Nodemailer to ${to} | MessageID: ${info.messageId}`);
             return true;
         } catch (error) {
-            console.error('❌ [Email] Send failed:', error.message);
+            console.error('❌ [Email] All providers failed:', error.message);
             return false;
         }
     }
@@ -111,6 +138,10 @@ class EmailService {
             case 'otp':
                 html = this.generateOtpTemplate(data.otp || data.token);
                 subject = 'Your Smart LMS Authentication Code';
+                break;
+            case 'user_creation':
+                html = this.generateUserCreationTemplate(data.name, data.email, data.password, data.loginUrl || data.link);
+                subject = 'Welcome to Smart LMS - Account Created';
                 break;
             default:
                 html = `<p>${data.message || 'No content'}</p>`;
