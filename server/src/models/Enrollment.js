@@ -18,7 +18,7 @@ const enrollmentSchema = new mongoose.Schema({
   },
   enrollmentType: {
     type: String,
-    enum: ['free', 'paid'],
+    enum: ['free', 'paid', 'marketplace'],
     required: true
   },
   status: {

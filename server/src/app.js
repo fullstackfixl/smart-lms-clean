@@ -37,7 +37,13 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    if (req.originalUrl.includes('webhook')) {
+      req.rawBody = buf;
+    }
+  }
+}));
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     console.error('❌ [JSON PARSE ERROR]:', err.message);
@@ -111,6 +117,10 @@ try {
   console.log(`[${new Date().toISOString()}]   - payments`);
   const paymentRoutes = require('./routes/payments');
   app.use('/api/payments', paymentRoutes);
+
+  console.log(`[${new Date().toISOString()}]   - marketplace`);
+  const marketplaceRoutes = require('./routes/marketplace');
+  app.use('/api/marketplace', marketplaceRoutes);
 
   console.log(`[${new Date().toISOString()}]   - upload`);
   const uploadRoutes = require('./routes/upload');

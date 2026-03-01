@@ -12,13 +12,15 @@ interface Course {
   title: string
   description?: string
   price?: number
+  marketplacePrice?: number
   category?: string
   level?: string
   thumbnail?: string
   enrollmentCount?: number
   rating?: { average?: number; count?: number }
-  instructor?: { profile?: { fullName?: string; avatar?: string } }
-  instructor_id?: { profile?: { fullName?: string } }
+  instructor?: { profile?: { firstName?: string; lastName?: string; fullName?: string; avatar?: string } }
+  instructor_id?: { profile?: { firstName?: string; lastName?: string; fullName?: string } }
+  organization_id?: { name: string }
 }
 
 const CATEGORIES = ["All", "AI & ML", "Web Development", "Data Science", "Design", "Business", "Mobile Dev"]
@@ -56,8 +58,9 @@ function CourseCard({ course, i }: { course: Course; i: number }) {
   const instructor =
     course.instructor?.profile?.fullName ||
     (course.instructor_id as any)?.profile?.fullName ||
+    `${course.instructor_id?.profile?.firstName || ""} ${course.instructor_id?.profile?.lastName || ""}`.trim() ||
     "Instructor"
-  const price = course.price ?? 0
+  const price = course.marketplacePrice ?? course.price ?? 0
   const rating = course.rating?.average ?? 0
   const enrolled = course.enrollmentCount ?? 0
   const isFree = price === 0
@@ -69,7 +72,7 @@ function CourseCard({ course, i }: { course: Course; i: number }) {
       viewport={{ once: true }}
       transition={{ duration: 0.45, delay: i * 0.07 }}
     >
-      <Link href="/register">
+      <Link href={`/course/${course._id}`}>
         <div
           className="group flex h-full flex-col overflow-hidden rounded-2xl transition-all duration-300"
           style={{
@@ -159,7 +162,7 @@ function CourseCard({ course, i }: { course: Course; i: number }) {
                 ) : (
                   <>
                     <Tag className="h-3.5 w-3.5" style={{ color: "#FF9900" }} />
-                    <span className="text-white">${price}</span>
+                    <span className="text-white">₹{price}</span>
                   </>
                 )}
               </span>
@@ -183,12 +186,15 @@ export function CourseShowcase() {
   const [activeCategory, setActiveCategory] = useState("All")
 
   useEffect(() => {
-    fetch(`${API_URL}/api/public/courses?limit=8`)
+    fetch(`${API_URL}/api/marketplace/courses`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.success) setCourses(data.data?.courses || [])
+        if (data.success) setCourses(data.data || [])
       })
-      .catch(() => setCourses([]))
+      .catch((err) => {
+        console.error("Failed to fetch marketplace courses:", err)
+        setCourses([])
+      })
       .finally(() => setLoading(false))
   }, [])
 

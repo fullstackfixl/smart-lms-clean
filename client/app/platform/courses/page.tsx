@@ -18,6 +18,8 @@ interface Course {
     status: "draft" | "published" | "archived"
     isGloballyPublished: boolean
     globallyPublishedAt?: string
+    isPublishedToMarketplace?: boolean
+    marketplacePrice?: number
     category: string
     level: string
     price: number
@@ -125,6 +127,35 @@ export default function PlatformCoursesPage() {
                 )
             } else {
                 pushToast("error", data.message || "Failed to update")
+            }
+        } catch {
+            pushToast("error", "Network error")
+        } finally {
+            setToggling(null)
+        }
+    }
+
+    const publishToMarketplace = async (courseId: string, price: number, publish: boolean) => {
+        if (!token) return
+        setToggling(courseId)
+        try {
+            const res = await fetch(`${API}/platform/courses/${courseId}/marketplace`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ price, publish }),
+            })
+            const data = await res.json()
+            if (data.success) {
+                pushToast("success", data.message)
+                setCourses((prev) =>
+                    prev.map((c) =>
+                        c._id === courseId
+                            ? { ...c, isPublishedToMarketplace: publish, marketplacePrice: price }
+                            : c
+                    )
+                )
+            } else {
+                pushToast("error", data.message || "Failed to update marketplace status")
             }
         } catch {
             pushToast("error", "Network error")
@@ -263,6 +294,7 @@ export default function PlatformCoursesPage() {
                                     <th className="px-4 py-3.5 text-left">Status</th>
                                     <th className="px-4 py-3.5 text-center">Enrolled</th>
                                     <th className="px-4 py-3.5 text-center">Landing Page</th>
+                                    <th className="px-4 py-3.5 text-center">Marketplace</th>
                                     <th className="px-4 py-3.5 text-center">Action</th>
                                 </tr>
                             </thead>
@@ -322,35 +354,52 @@ export default function PlatformCoursesPage() {
                                         </td>
                                         {/* Landing page badge */}
                                         <td className="px-4 py-4 text-center">
-                                            {course.isGloballyPublished ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-orange-500/15 text-orange-400">
-                                                    <Globe className="w-3 h-3" /> Live
-                                                </span>
+                                            {course.isPublishedToMarketplace ? (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/15 text-emerald-400">
+                                                        ₹{course.marketplacePrice}
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Public</span>
+                                                </div>
                                             ) : (
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-slate-700/50 text-slate-500">
-                                                    <EyeOff className="w-3 h-3" /> Hidden
+                                                    —
                                                 </span>
                                             )}
                                         </td>
                                         {/* Action */}
                                         <td className="px-4 py-4 text-center">
-                                            <button
-                                                onClick={() => toggleGlobalPublish(course)}
-                                                disabled={toggling === course._id || course.status !== "published"}
-                                                title={course.status !== "published" ? "Instructor must publish the course first" : ""}
-                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${course.isGloballyPublished
-                                                    ? "bg-slate-700 text-slate-300 hover:bg-red-900/40 hover:text-red-400"
-                                                    : "bg-orange-500/15 text-orange-400 hover:bg-orange-500/30"
-                                                    }`}
-                                            >
-                                                {toggling === course._id ? (
-                                                    <RefreshCw className="w-3 h-3 animate-spin" />
-                                                ) : course.isGloballyPublished ? (
-                                                    <><EyeOff className="w-3 h-3" /> Unpublish</>
-                                                ) : (
-                                                    <><Globe2 className="w-3 h-3" /> Publish to Landing</>
-                                                )}
-                                            </button>
+                                            <div className="flex flex-col gap-2 items-center">
+                                                <button
+                                                    onClick={() => toggleGlobalPublish(course)}
+                                                    disabled={toggling === course._id || course.status !== "published"}
+                                                    title={course.status !== "published" ? "Instructor must publish the course first" : ""}
+                                                    className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed ${course.isGloballyPublished
+                                                        ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                                                        : "bg-orange-500/15 text-orange-400 hover:bg-orange-500/30"
+                                                        }`}
+                                                >
+                                                    {toggling === course._id ? (
+                                                        <RefreshCw className="w-3 h-3 animate-spin" />
+                                                    ) : course.isGloballyPublished ? (
+                                                        <><EyeOff className="w-3 h-3" /> Hide</>
+                                                    ) : (
+                                                        <><Globe2 className="w-3 h-3" /> Show on Landing</>
+                                                    )}
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        const p = prompt("Enter Marketplace Price (₹):", String(course.marketplacePrice || course.price || 0))
+                                                        if (p !== null) {
+                                                            publishToMarketplace(course._id, parseFloat(p), !course.isPublishedToMarketplace)
+                                                        }
+                                                    }}
+                                                    disabled={toggling === course._id || course.status !== "published"}
+                                                    className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 ${course.isPublishedToMarketplace ? "bg-emerald-900/40 text-emerald-400 hover:bg-emerald-900/60" : "bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/30"}`}
+                                                >
+                                                    {course.isPublishedToMarketplace ? "Manage Price" : "Publish to Marketplace"}
+                                                </button>
+                                            </div>
                                         </td>
                                     </motion.tr>
                                 ))}

@@ -81,22 +81,12 @@ router.get('/users', (req, res) => res.json({ success: true, data: [] }));
 router.get('/users/:id', (req, res) => res.json({ success: true, data: {} }));
 router.patch('/users/:id/status', (req, res) => res.json({ success: true, data: {} }));
 
-// --- Courses Platform Review ---
-router.get('/courses', async (req, res) => {
-    try {
-        const { page = 1, limit = 20 } = req.query;
-        const [courses, total] = await Promise.all([
-            Course.find({ is_deleted: false })
-                .populate('organization_id', 'name code')
-                .populate('instructor_id', 'name email')
-                .sort({ createdAt: -1 })
-                .skip((page - 1) * limit)
-                .limit(limit)
-                .lean(),
-            Course.countDocuments({ is_deleted: false })
-        ]);
-        res.json({ success: true, data: { courses, pagination: { total, pages: Math.ceil(total / limit), current: page } } });
-    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+const platformCourseController = require('../controllers/PlatformCourseController');
+
+// --- Courses Platform Review & Marketplace ---
+router.get('/courses', platformCourseController.listCourses.bind(platformCourseController));
+router.get('/courses/stats', platformCourseController.getStats.bind(platformCourseController));
+router.patch('/courses/:id/global-publish', platformCourseController.toggleGlobalPublish.bind(platformCourseController));
+router.patch('/courses/:id/marketplace', platformCourseController.publishToMarketplace.bind(platformCourseController));
 
 module.exports = router;

@@ -101,7 +101,26 @@ const courseSchema = new mongoose.Schema({
   students: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  // Marketplace fields
+  isPublishedToMarketplace: {
+    type: Boolean,
+    default: false
+  },
+  marketplacePrice: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  marketplaceStatus: {
+    type: String,
+    enum: ['DRAFT', 'PUBLISHED'],
+    default: 'DRAFT'
+  },
+  publishedByPlatformAdmin: {
+    type: Boolean,
+    default: false
+  }
 }, {
   timestamps: true
 });
