@@ -117,14 +117,6 @@ const userSchema = new mongoose.Schema({
     type: [String],
     select: false // Don't include in queries by default
   },
-  created_at: {
-    type: Date,
-    default: Date.now
-  },
-  updated_at: {
-    type: Date,
-    default: Date.now
-  },
   inviteToken: {
     type: String,
     select: false
@@ -146,8 +138,9 @@ const userSchema = new mongoose.Schema({
   },
   resetPasswordExpires: {
     type: Date,
-    select: false
   }
+}, {
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });
 
 // Indexes
@@ -193,11 +186,6 @@ userSchema.methods.restore = function () {
   return this.save();
 };
 
-// Update updated_at timestamp before saving
-userSchema.pre('save', function (next) {
-  this.updated_at = Date.now();
-  next();
-});
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

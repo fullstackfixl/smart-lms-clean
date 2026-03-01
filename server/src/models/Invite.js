@@ -30,10 +30,8 @@ const inviteSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    created_at: {
-        type: Date,
-        default: Date.now
-    }
+}, {
+    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });
 
 // Index for expiring tokens

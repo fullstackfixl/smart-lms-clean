@@ -380,7 +380,7 @@ router.get('/users/invites', async (req, res) => {
       organization_id: orgId,
       used: false,
       expires_at: { $gt: new Date() }
-    }).sort({ created_at: -1 }).lean();
+    }).sort({ createdAt: -1 }).lean();
     res.success({ invites }, 'Pending invitations fetched');
   } catch (error) {
     console.error('[Invites] GET /users/invites error:', error.message);

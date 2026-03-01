@@ -419,6 +419,7 @@ export default function UsersPage() {
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Email</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Role</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Sent At</th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Expires</th>
                       <th className="px-6 py-4 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Action</th>
                     </tr>
@@ -438,6 +439,9 @@ export default function UsersPage() {
                           <span className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium ${ROLE_COLORS[inv.role] || "bg-slate-500/10 text-slate-400"}`}>
                             {inv.role.charAt(0).toUpperCase() + inv.role.slice(1)}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-400">
+                          {inv.created_at || (inv as any).createdAt ? new Date(inv.created_at || (inv as any).createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-400">
                           {new Date(inv.expires_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
