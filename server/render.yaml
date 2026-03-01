@@ -20,12 +20,14 @@ services:
         value: 7d
       - key: CLIENT_URL
         value: https://smart-lms-clean.vercel.app
+      # Cloudinary
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      # Email
       - key: EMAIL_SERVICE
         value: gmail
       - key: EMAIL_USER
@@ -34,11 +36,28 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      # Brevo (email backup)
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: Instatute LMS
+      # Resend (email fallback)
+      - key: RESEND_API_KEY
+        sync: false
+      # AI
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      # Payments
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
+      # Features
       - key: ENABLE_NOTIFICATIONS
-        value: "false"
+        value: "true"

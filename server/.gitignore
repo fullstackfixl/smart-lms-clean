@@ -20,10 +20,7 @@ pids
 *.seed
 *.pid.lock
 
-# Directory for instrumented libs
-lib-cov
-
-# Coverage directory
+# Coverage
 coverage/
 .nyc_output
 
@@ -42,5 +39,25 @@ Thumbs.db
 *.swo
 *~
 
-# Test files
+# Test / debug output files (not needed in deployment)
+*.txt
+test_*.js
+verify-*.js
+verify_*.js
+quiz_*.js
+seed-*.js
+*_debug.log
+*_test.js
+*_check.txt
 test-results/
+comprehensive_*.js
+tmp_*.js
+list_*.js
+fix-*.js
+ensure-*.js
+fix_*.js
+debug_*.log
+admin_*.log
+router_dump.*
+create-platform-admin.js
+list-users.js

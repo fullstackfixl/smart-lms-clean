@@ -48,12 +48,15 @@ app.use((err, req, res, next) => {
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Log all requests
+// Log requests — verbose only in development, minimal in production
+const isProduction = process.env.NODE_ENV === 'production';
 app.use((req, res, next) => {
-  console.log(`📥 [${new Date().toISOString()}] ${req.method} ${req.path}`);
-  console.log(`   Origin: ${req.headers.origin || 'none'}`);
-  if (req.path.startsWith('/api/org')) {
-    console.log(`   Headers:`, JSON.stringify(req.headers, null, 2));
+  if (!isProduction) {
+    console.log(`📥 [${new Date().toISOString()}] ${req.method} ${req.path}`);
+    console.log(`   Origin: ${req.headers.origin || 'none'}`);
+    if (req.path.startsWith('/api/org')) {
+      console.log(`   Headers:`, JSON.stringify(req.headers, null, 2));
+    }
   }
   next();
 });
