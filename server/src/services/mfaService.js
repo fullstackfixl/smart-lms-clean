@@ -2,7 +2,7 @@ const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
 const User = require('../models/User');
 const crypto = require('crypto');
-const mailer = require('./mailer');
+const emailService = require('./email.service');
 
 /**
  * Multi-Factor Authentication Service
@@ -238,8 +238,13 @@ class MFAService {
     return user && user.mfa_enabled === true;
   }
   async sendOTPEmail(email, token) {
-    const html = mailer.generateOtpTemplate(token);
-    return mailer.sendEmail(email, 'Your Smart LMS Authentication Code', html);
+    const { generateOtpTemplate } = emailService;
+    const html = generateOtpTemplate(token);
+    return emailService.sendEmail({
+      to: email,
+      subject: 'Your Smart LMS Authentication Code',
+      html
+    });
   }
 }
 

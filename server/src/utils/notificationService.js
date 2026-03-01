@@ -1,6 +1,6 @@
 const Notification = require('../models/Notification');
 const User = require('../models/User');
-// Email handled via mailer service inline
+const emailService = require('./emailService');
 const pushNotificationService = require('./pushNotificationService');
 const logger = require('./logger');
 const {
@@ -236,20 +236,21 @@ class NotificationService {
    * Send email notification directly (no queue)
    */
   async queueEmailNotification(user, data, options) {
-    const mailer = require('../services/mailer');
     const config = getNotificationConfig(data.type);
-    const subject = data.title || config.name || 'Smart LMS Notification';
-    const html = `
-      <div style="font-family: sans-serif; padding: 20px;">
-        <h2>${subject}</h2>
-        <p>${data.message || ''}</p>
-        <hr/>
-        <p style="font-size: 12px; color: #666;">Sent by Smart LMS</p>
-      </div>
-    `;
+    const emailData = {
+      to: user.email,
+      templateName: config.template,
+      data: {
+        ...data.templateData,
+        studentName: user.profile?.firstName + ' ' + user.profile?.lastName,
+        organizationName: data.organizationName || 'Smart LMS'
+      },
+      notificationId: data.notificationId
+    };
 
+    // Send directly without queue
     try {
-      const result = await mailer.sendEmail(user.email, subject, html);
+      const result = await emailService.sendTemplatedEmail(emailData);
       return { success: true, messageId: result.messageId };
     } catch (error) {
       logger.error('Failed to send email notification:', error);

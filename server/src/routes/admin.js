@@ -18,7 +18,8 @@ const Batch = require('../models/Batch');
 const TestSeries = require('../models/TestSeries');
 const AcademicYear = require('../models/AcademicYear');
 const Invite = require('../models/Invite');
-const mailer = require('../services/mailer');
+const emailService = require('../services/email.service');
+const { generateInvitationTemplate } = emailService;
 const { recordOrgEvent, EVENT_TYPES } = require('../utils/orgEvents');
 
 
@@ -408,8 +409,12 @@ router.post('/users/resend-invite/:inviteId', async (req, res) => {
     const orgName = org?.name || 'Your Organization';
 
     try {
-      const html = mailer.generateInvitationTemplate(orgName, acceptLink);
-      await mailer.sendEmail(invite.email, `Reminder: Join ${orgName} as ${roleLabel} — Smart LMS`, html);
+      const html = generateInvitationTemplate(orgName, acceptLink);
+      await emailService.sendEmail({
+        to: invite.email,
+        subject: `Reminder: Join ${orgName} as ${roleLabel} — Smart LMS`,
+        html
+      });
     } catch (mailErr) {
       console.warn('Mail send failed, continuing:', mailErr.message);
     }

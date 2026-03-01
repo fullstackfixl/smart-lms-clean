@@ -3,7 +3,7 @@ const LiveClass = require('../models/LiveClass');
 const Course = require('../models/Course');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
-const mailer = require('../services/mailer');
+const emailService = require('../utils/emailService');
 
 class LiveClassController extends BaseController {
   constructor() {
@@ -158,7 +158,10 @@ class LiveClassController extends BaseController {
               day: 'numeric'
             });
 
-            await mailer.sendEmail(student.email, `Live Class Scheduled: ${title}`, `
+            await emailService.sendPlainEmail({
+              to: student.email,
+              subject: `Live Class Scheduled: ${title}`,
+              html: `
                 <!DOCTYPE html>
                 <html>
                 <head>
@@ -252,7 +255,30 @@ class LiveClassController extends BaseController {
                   </div>
                 </body>
                 </html>
-              `);
+              `,
+              text: `
+Live Class Scheduled
+
+Hello ${student.name},
+
+${user.name} has scheduled a live class for ${course.title}.
+
+Class Details:
+- Title: ${title}
+${description ? `- Description: ${description}\n` : ''}- Date: ${formattedDate}
+- Time: ${start_time}
+- Duration: ${duration_minutes} minutes
+- Course: ${course.title}
+- Instructor: ${user.name}
+
+JOIN MEETING:
+${liveClass.meeting_url}
+
+Please join the class on time. You can also access the meeting from your dashboard.
+
+Visit: ${process.env.CLIENT_URL || 'http://localhost:3000'}/student/live-classes
+              `
+            });
           } catch (error) {
             console.error(`Failed to notify student ${student.email}:`, error.message);
           }

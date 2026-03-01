@@ -4,7 +4,7 @@ const LiveClass = require('../models/LiveClass');
 const User = require('../models/User');
 const Course = require('../models/Course');
 const { authMiddleware, requireRole } = require('../middleware/auth');
-const mailer = require('../services/mailer');
+const sendEmail = require('../utils/email');
 
 // Helper: try to resolve socketService safely (it may not be initialized yet)
 let socketService = null;
@@ -20,6 +20,9 @@ async function notifyOrgStudents(liveClass, instructor, course) {
             role: 'student',
             isActive: { $ne: false }
         };
+
+        // If liveClass or instructor has organization_code, we can use it for double validation
+        // but organization_id is the primary reliable link.
 
         const students = await User.find(query).select('name email organization_code');
 
@@ -64,17 +67,19 @@ async function notifyOrgStudents(liveClass, instructor, course) {
       </div>
     `;
 
-        // Send emails asynchronously
+        // Send emails asynchronously — do NOT await, failures are logged only
         console.log(`[LiveClass] Attempting to notify ${students.length} students for class: ${liveClass.title}`);
-        for (const s of students) {
-            try {
-                await mailer.sendEmail(s.email, `📹 New Live Class: ${liveClass.title}`, emailHtml(s.name));
-            } catch (err) {
-                console.error(`❌ [LiveClass] Email failed for ${s.email}:`, err.message);
-            }
-        }
-        console.log(`✅ [LiveClass] Emails dispatch completed for ${students.length} students`);
-
+        const emailPromises = students.map(s =>
+            sendEmail({ to: s.email, subject: `📹 New Live Class: ${liveClass.title}`, html: emailHtml(s.name) })
+                .catch(err => {
+                    console.error(`❌ [LiveClass] Email failed for ${s.email}:`, err.message);
+                    return { success: false, email: s.email };
+                })
+        );
+        Promise.all(emailPromises).then((results) => {
+            const successCount = results.filter(r => r !== undefined && r.success !== false).length;
+            console.log(`✅ [LiveClass] Emails dispatched: ${successCount} successful, ${students.length - successCount} failed`);
+        });
 
         // Socket broadcast to org room
         if (socketService && socketService.io) {

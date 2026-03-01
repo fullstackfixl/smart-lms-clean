@@ -52,11 +52,15 @@ router.put('/applications/:id/reject', platformApplicationController.rejectAppli
 // --- Email Diagnostics ---
 router.get('/email/test', async (req, res) => {
     try {
-        const mailer = require('../services/mailer');
+        const emailService = require('../services/email.service');
         const to = req.query.to;
         let testSend = null;
         if (to) {
-            testSend = await mailer.sendEmail(to.toString(), 'Smart LMS Email Test', '<p><strong>Smart LMS</strong> email configuration is working.</p>');
+            testSend = await emailService.sendEmail({
+                to: to.toString(),
+                subject: 'Smart LMS Email Test',
+                html: '<p><strong>Smart LMS</strong> email configuration is working.</p>'
+            });
         }
         res.json({ success: true, data: { testSend } });
     } catch (err) {

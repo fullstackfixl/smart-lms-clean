@@ -4,7 +4,7 @@ const { authMiddleware: auth } = require('../middleware/auth');
 const LiveClass = require('../models/LiveClass');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
-const mailer = require('../services/mailer');
+const emailService = require('../utils/emailService');
 const router = express.Router();
 
 // Validation middleware
@@ -257,14 +257,15 @@ router.post('/', auth, checkInstructorPermission, validateLiveClassCreation, asy
 </div>
 </body></html>`;
 
-        for (const payload of emailPayloads) {
-          try {
-            await mailer.sendEmail(payload.to, payload.subject, payload.html);
-          } catch (err) {
-            console.error(`[LiveClass] Failed to notify ${payload.to}:`, err.message);
-          }
-        }
-        console.log(`[LiveClass] Notification loop completed for students for live class "${title}"`);
+        const emailPayloads = students.map(student => ({
+          to: student.email,
+          subject: `📹 Live Class Scheduled: ${title} — ${dateStr} at ${start_time}`,
+          html: makeHtml(student.name || 'Student'),
+          text: `Hi ${student.name || 'Student'},\n\nA live class has been scheduled:\n\nClass: ${title}\nCourse: ${courseTitle}\nInstructor: ${instructorName}\nDate: ${dateStr}\nTime: ${start_time} (${timezone})\nDuration: ${duration_minutes} minutes\n\nLog in to join when the class goes live.\n\nSmart LMS`
+        }));
+
+        const result = await emailService.sendBulkEmails(emailPayloads, 20, 500);
+        console.log(`[LiveClass] Notified ${result.successful}/${result.total} students for live class "${title}"`);
       } catch (emailErr) {
         // Never crash the app over email failures
         console.error('[LiveClass] Failed to send student notifications:', emailErr.message);

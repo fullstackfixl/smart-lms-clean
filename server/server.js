@@ -7,16 +7,6 @@ console.log('PORT:', process.env.PORT);
 
 const connectDB = require('./src/config/database');
 const app = require('./src/app');
-const { transporter } = require('./src/services/mailer');
-
-// Verify transporter on server start
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("SMTP Error:", error);
-  } else {
-    console.log("SMTP Server is ready to send emails");
-  }
-});
 
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;

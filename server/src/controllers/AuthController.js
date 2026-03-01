@@ -129,7 +129,8 @@ class AuthController {
             const User = require('../models/User');
             const VerificationOTP = require('../models/VerificationOTP');
             const { generateOTP } = require('../utils/otp');
-            const mailer = require('../services/mailer');
+            const emailService = require('../services/email.service');
+            const { generateOtpTemplate } = emailService;
             const org = await Organization.findOne({ subdomain: orgSubdomain.toLowerCase() });
             if (!org) {
                 return res.status(404).json({ success: false, message: 'Organization not found' });
@@ -154,9 +155,13 @@ class AuthController {
             });
             await verificationRecord.save();
             const subject = 'Verify Your Registration - Smart LMS';
-            const html = mailer.generateOtpTemplate(otp);
+            const html = generateOtpTemplate(otp);
 
-            const emailSent = await mailer.sendEmail(email, subject, html);
+            const emailSent = await emailService.sendEmail({
+                to: email,
+                subject,
+                html
+            });
             res.status(200).json({
                 success: true,
                 message: 'Verification code sent to your email',
@@ -244,7 +249,8 @@ class AuthController {
             }
             const VerificationOTP = require('../models/VerificationOTP');
             const { generateOTP } = require('../utils/otp');
-            const mailer = require('../services/mailer');
+            const emailService = require('../services/email.service');
+            const { generateOtpTemplate } = emailService;
             const record = await VerificationOTP.findOne({
                 email: email.toLowerCase(),
                 verified: false,
@@ -259,8 +265,12 @@ class AuthController {
             record.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
             await record.save();
             const subject = 'Your new verification code - Smart LMS';
-            const html = mailer.generateOtpTemplate(otp);
-            const emailSent = await mailer.sendEmail(email, subject, html);
+            const html = generateOtpTemplate(otp);
+            const emailSent = await emailService.sendEmail({
+                to: email,
+                subject,
+                html
+            });
             res.status(200).json({
                 success: true,
                 data: emailSent ? {} : { otp, emailFailed: true },

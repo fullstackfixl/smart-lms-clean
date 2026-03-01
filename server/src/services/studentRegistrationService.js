@@ -1,7 +1,7 @@
 const { Organization, User } = require('../models');
 const VerificationOTP = require('../models/VerificationOTP');
 const { generateOTP } = require('../utils/otp');
-const mailer = require('./mailer');
+const emailService = require('./emailService');
 const bcrypt = require('bcryptjs');
 const jwtUtils = require('../utils/jwt');
 
@@ -64,11 +64,18 @@ class StudentRegistrationService {
     });
     await verification.save();
 
+    const emailService = require('./email.service');
+    const { generateOtpTemplate } = emailService;
+
     // Send email using new centralized system
     const subject = 'Verify Your Student Registration - Smart LMS';
-    const html = mailer.generateOtpTemplate(otp);
+    const html = generateOtpTemplate(otp);
 
-    const emailSent = await mailer.sendEmail(email, subject, html);
+    const emailSent = await emailService.sendEmail({
+      to: email,
+      subject,
+      html
+    });
 
     return emailSent ? {} : { otp, emailFailed: true };
   }
