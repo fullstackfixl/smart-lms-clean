@@ -52,14 +52,10 @@ class PlatformOrganizationController extends BaseController {
 
       // 4. Notify User of Account Creation
       try {
-        const emailService = require('../services/email.service');
-        const { generateUserCreationTemplate } = emailService;
-        const html = generateUserCreationTemplate(adminName, 'Organization Admin', name);
-        await emailService.sendEmail({
-          to: adminEmail,
-          subject: 'Welcome to Smart LMS - Account Created',
-          html
-        });
+        const { sendEmail } = require('../services/mailer');
+        const emailTemplates = require('../services/email.service');
+        const html = emailTemplates.generateUserCreationTemplate(adminName, 'Organization Admin', name);
+        await sendEmail(adminEmail, 'Welcome to Smart LMS - Account Created', html);
       } catch (notifyErr) {
         console.warn('⚠️ User creation notification failed:', notifyErr.message);
       }
@@ -129,12 +125,10 @@ class PlatformOrganizationController extends BaseController {
 
       let emailSent = false;
       try {
-        const html = generateInvitationTemplate(orgName, setupLink);
-        emailSent = await emailService.sendEmail({
-          to: adminEmail,
-          subject: `You're invited to join ${orgName} - Smart LMS`,
-          html
-        });
+        const { sendEmail } = require('../services/mailer');
+        const emailTemplates = require('../services/email.service');
+        const html = emailTemplates.generateInvitationTemplate(orgName, setupLink);
+        emailSent = await sendEmail(adminEmail, `You're invited to join ${orgName} - Smart LMS`, html);
       } catch (emailError) {
         console.error('📧 [PORTAL] Failed to send invitation email:', emailError.message);
       }

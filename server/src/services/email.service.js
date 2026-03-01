@@ -2,83 +2,85 @@ const nodemailer = require("nodemailer");
 
 /**
  * Centralized Email Service for Smart LMS
- * Implements Nodemailer with Gmail SMTP and Resend fallback.
+ * Uses Gmail service mode with App Password
  */
 
-// Initialize Nodemailer Transporter
+// Initialize Nodemailer Transporter with Gmail service
 const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-        user: process.env.SMTP_EMAIL,
-        pass: process.env.SMTP_PASS
-    }
+  service: "gmail",
+  auth: {
+    user: process.env.SMTP_EMAIL,
+    pass: process.env.SMTP_PASS
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
-// Verify Transporter Connection
-(async () => {
-    try {
-        await transporter.verify();
-        console.log("✅ [EMAIL SERVICE] SMTP Transport verified and ready");
-    } catch (error) {
-        console.error("❌ [EMAIL SERVICE] SMTP Transport verification failed:", error.message);
-        console.log("💡 [EMAIL SERVICE] Fallback to API-based providers (Resend) will be used if needed.");
-    }
-})();
+// Verify Transporter Connection (non-blocking)
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ [EMAIL SERVICE] SMTP Error:", error.message);
+    console.log("💡 [EMAIL SERVICE] Make sure SMTP_EMAIL and SMTP_PASS are set correctly");
+    console.log("💡 [EMAIL SERVICE] Use Gmail App Password (16 characters) not regular password");
+  } else {
+    console.log("✅ [EMAIL SERVICE] SMTP Server is ready to send emails");
+  }
+});
 
 /**
- * Main function to send email via Nodemailer or Resend fallback
+ * Main function to send email via Nodemailer with Resend fallback
  */
 async function sendEmail({ to, subject, html, text }) {
-    try {
-        // 1. Primary: SMTP via Nodemailer
-        await transporter.sendMail({
-            from: `"Smart LMS" <${process.env.SMTP_EMAIL}>`,
-            to,
+  try {
+    // 1. Primary: Gmail SMTP via Nodemailer
+    const info = await transporter.sendMail({
+      from: `"Smart LMS" <${process.env.SMTP_EMAIL}>`,
+      to,
+      subject,
+      html,
+      text: text || "Please view this email in an HTML-capable client."
+    });
+    
+    console.log(`✅ [EMAIL SERVICE] Email sent via Gmail SMTP to: ${to} | MessageID: ${info.messageId}`);
+    return true;
+  } catch (error) {
+    console.warn(`⚠️ [EMAIL SERVICE] Gmail SMTP failed for ${to}, attempting Resend fallback...`);
+    console.error("Gmail SMTP Error:", error.message);
+
+    // 2. Fallback: Resend API (if SMTP blocked on Render)
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.RESEND_API_KEY}`
+          },
+          body: JSON.stringify({
+            from: process.env.EMAIL_FROM || "onboarding@resend.dev",
+            to: [to],
             subject,
-            html,
-            text: text || "Please view this email in an HTML-capable client."
+            html
+          })
         });
-        console.log(`✅ [EMAIL SERVICE] Email sent via SMTP to: ${to}`);
-        return true;
-    } catch (error) {
-        console.warn(`⚠️ [EMAIL SERVICE] SMTP failed for ${to}, attempting Resend fallback...`);
-        console.error("Nodemailer Error:", error.message);
 
-        // 2. Fallback: Resend API
-        if (process.env.RESEND_API_KEY) {
-            try {
-                const response = await fetch("https://api.resend.com/emails", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${process.env.RESEND_API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        from: process.env.EMAIL_FROM || "onboarding@resend.dev",
-                        to: [to],
-                        subject,
-                        html
-                    })
-                });
-
-                const data = await response.json();
-                if (response.ok) {
-                    console.log(`✅ [EMAIL SERVICE] Email sent via Resend API to: ${to}`);
-                    return true;
-                } else {
-                    console.error("❌ [EMAIL SERVICE] Resend API Error:", data.message || data);
-                }
-            } catch (resendError) {
-                console.error("❌ [EMAIL SERVICE] Resend Fetch Error:", resendError.message);
-            }
+        const data = await response.json();
+        if (response.ok) {
+          console.log(`✅ [EMAIL SERVICE] Email sent via Resend API to: ${to}`);
+          return true;
+        } else {
+          console.error("❌ [EMAIL SERVICE] Resend API Error:", data.message || data);
         }
-
-        // 3. Last Resort: Logging
-        console.error(`❌ [EMAIL SERVICE] All delivery methods failed for ${to}`);
-        return false;
+      } catch (resendError) {
+        console.error("❌ [EMAIL SERVICE] Resend Fetch Error:", resendError.message);
+      }
     }
+
+    // 3. Last Resort: Log failure but don't crash
+    console.error(`❌ [EMAIL SERVICE] All delivery methods failed for ${to}`);
+    return false;
+  }
 }
 
 /**
@@ -86,7 +88,7 @@ async function sendEmail({ to, subject, html, text }) {
  */
 
 function generateOtpTemplate(otp) {
-    return `
+  return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
       <h2 style="color: #2563eb;">Email Verification</h2>
       <p>Your verification code for Smart LMS is:</p>
@@ -100,7 +102,7 @@ function generateOtpTemplate(otp) {
 }
 
 function generateInvitationTemplate(orgName, link) {
-    return `
+  return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
       <h2 style="color: #2563eb;">Organization Invitation</h2>
       <p>Hello,</p>
@@ -115,7 +117,7 @@ function generateInvitationTemplate(orgName, link) {
 }
 
 function generatePasswordResetTemplate(link) {
-    return `
+  return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
       <h2 style="color: #2563eb;">Reset Your Password</h2>
       <p>We received a request to reset your password for Smart LMS.</p>
@@ -130,7 +132,7 @@ function generatePasswordResetTemplate(link) {
 }
 
 function generateUserCreationTemplate(name, role, orgName) {
-    return `
+  return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
       <h2 style="color: #2563eb;">Welcome to Smart LMS</h2>
       <p>Hello ${name},</p>
@@ -144,9 +146,10 @@ function generateUserCreationTemplate(name, role, orgName) {
 }
 
 module.exports = {
-    sendEmail,
-    generateOtpTemplate,
-    generateInvitationTemplate,
-    generatePasswordResetTemplate,
-    generateUserCreationTemplate
+  sendEmail,
+  generateOtpTemplate,
+  generateInvitationTemplate,
+  generatePasswordResetTemplate,
+  generateUserCreationTemplate,
+  transporter // Export for verification in server.js if needed
 };

@@ -1,6 +1,7 @@
 const { OrganizationApplication, OrganizationApprovalToken } = require('../models');
 const crypto = require('crypto');
-const emailService = require('../services/emailService');
+const { sendEmail } = require('../services/mailer');
+const emailTemplates = require('../services/email.service');
 const BaseController = require('../core/BaseController');
 
 class PlatformApplicationController extends BaseController {
@@ -143,18 +144,16 @@ class PlatformApplicationController extends BaseController {
             application.status = 'approved';
             await application.save();
 
-            const { generateInvitationTemplate } = emailService;
-
             // Send approval email with link (acts as invitation for org admin)
-            const baseUrl = process.env.CLIENT_URL || 'https://smartlms.com';
-            const setupLink = `${baseUrl.replace(/\/$/, '')}/complete-registration?token=${token}`;
+            const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
+            const setupLink = `${baseUrl}/complete-registration?token=${token}`;
 
-            const html = generateInvitationTemplate(application.organization_name || 'Your organization', setupLink);
-            const emailSent = await emailService.sendEmail({
-                to: application.admin_email,
-                subject: 'Organization Application Approved - Smart LMS',
-                html
-            });
+            const html = emailTemplates.generateInvitationTemplate(application.organization_name || 'Your organization', setupLink);
+            const emailSent = await sendEmail(application.admin_email, 'Organization Application Approved - Smart LMS', html);
+
+
+
+
 
             if (!emailSent) {
                 console.warn('⚠️ [PlatformApplication] Approval email failed to send.');
