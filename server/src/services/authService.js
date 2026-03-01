@@ -446,7 +446,7 @@ class AuthService {
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    const resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    const resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
 
     await User.findByIdAndUpdate(user._id, {
       resetPasswordToken,
@@ -454,7 +454,7 @@ class AuthService {
     });
 
     const baseUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
-    const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
+    const resetLink = `${baseUrl}/reset-password/${resetToken}`;
 
     const { generatePasswordResetTemplate } = emailService;
     const html = generatePasswordResetTemplate(resetLink);

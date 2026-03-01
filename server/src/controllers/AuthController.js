@@ -421,7 +421,8 @@ class AuthController {
      */
     async resetPassword(req, res) {
         try {
-            const { token, password } = req.body;
+            const { token } = req.params;
+            const { password } = req.body;
             if (!token || !password) {
                 return res.status(400).json({ success: false, message: 'Token and password are required' });
             }

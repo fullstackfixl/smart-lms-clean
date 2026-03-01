@@ -34,7 +34,7 @@ router.post('/register/resend-otp', authController.resendRegistrationOtp);
 
 // Password Management
 router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+router.post('/reset-password/:token', authController.resetPassword);
 
 // Accept Invite
 router.post('/accept-invite', authController.acceptInvite);

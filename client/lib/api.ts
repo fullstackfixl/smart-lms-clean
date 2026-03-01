@@ -107,8 +107,8 @@ export const authApi = {
     apiRequest("/auth/logout", { method: "POST", token }),
   forgotPassword: (email: string) =>
     apiRequest("/auth/forgot-password", { method: "POST", body: { email } }),
-  resetPassword: (data: { token: string; password: string }) =>
-    apiRequest("/auth/reset-password", { method: "POST", body: data }),
+  resetPassword: (token: string, password: string) =>
+    apiRequest(`/auth/reset-password/${token}`, { method: "POST", body: { password } }),
   getMe: (token: string) =>
     apiRequest("/auth/me", { token }),
   updateMe: (token: string, data: Record<string, unknown>) =>
