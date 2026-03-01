@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { Award, Download, ExternalLink, Calendar, BookOpen } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
 import { toast } from "sonner"
 import Link from "next/link"
 
-import { API_URL as API } from "@/lib/config"
+import { API_URL as API } from '../../../lib/config'
 const getToken = () =>
   typeof window !== "undefined"
     ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")

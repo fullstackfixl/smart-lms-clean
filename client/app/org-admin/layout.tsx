@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
-import { useAuth } from "@/lib/auth-context"
-import { adminApi } from "@/lib/api"
+import { ProtectedRoute } from '../../components/auth/ProtectedRoute'
+import { useAuth } from '../../lib/auth-context'
+import { adminApi } from '../../lib/api'
 import { motion, AnimatePresence } from "framer-motion"
 import {
   LayoutDashboard,

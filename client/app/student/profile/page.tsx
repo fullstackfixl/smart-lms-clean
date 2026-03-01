@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { User, Mail, Calendar, MapPin, AlertCircle, Edit } from "lucide-react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Skeleton } from '../../../components/ui/skeleton'
+import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
 import { toast } from "sonner"
-import { getProfile, updateProfile, updateAvatar } from "@/lib/services/studentApi"
-import { getInitials } from "@/lib/utils"
+import { getProfile, updateProfile, updateAvatar } from '../../../lib/services/studentApi'
+import { getInitials } from '../../../lib/utils'
 
 interface UserProfile {
   _id: string
@@ -357,5 +357,5 @@ function InfoItem({ icon: Icon, label, value, color }: any) {
     </div>
   )
 }
-import { Card, CardContent } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+import { Card, CardContent } from '../../../components/ui/card'
+import { cn } from '../../../lib/utils'

@@ -7,8 +7,8 @@ import {
   Mail, UserCheck, Users, GraduationCap, X, Send, Shield,
   RefreshCw, Clock, CheckCircle2, Plus
 } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
-import { API_URL } from "@/lib/config"
+import { useAuth } from '../../../lib/auth-context'
+import { API_URL } from '../../../lib/config'
 import { toast } from "sonner"
 
 interface OrgUser {

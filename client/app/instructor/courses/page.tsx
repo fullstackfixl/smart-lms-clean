@@ -7,24 +7,24 @@ import {
   Plus, Search, Filter, BookOpen, Users, Eye, Edit, Trash2,
   Loader2, MoreVertical, CheckCircle, XCircle, Clock
 } from "lucide-react"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { API_URL } from "@/lib/config"
+import { Card, CardContent, CardFooter, CardHeader } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Input } from '../../../components/ui/input'
+import { API_URL } from '../../../lib/config'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '../../../components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '../../../components/ui/select'
 import { toast } from "sonner"
 
 interface Course {

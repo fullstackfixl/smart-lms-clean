@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Bell, BookOpen, User, AlertCircle } from "lucide-react"
-import { PageHeader } from "@/components/instructor/page-header"
-import { EmptyState } from "@/components/instructor/empty-state"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { cn, formatRelativeTime } from "@/lib/utils"
-import { getNotifications, markNotificationRead, markAllNotificationsRead } from "@/lib/services/instructorApi"
+import { PageHeader } from '../../../components/instructor/page-header'
+import { EmptyState } from '../../../components/instructor/empty-state'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Card } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { cn, formatRelativeTime } from '../../../lib/utils'
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../../../lib/services/instructorApi'
 import { toast } from "sonner"
 
 interface Notification {

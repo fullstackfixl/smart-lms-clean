@@ -3,28 +3,28 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Plus, Search, BookOpen, MoreVertical, Edit, Copy, Trash2, BarChart3 } from "lucide-react"
-import { PageHeader } from "@/components/instructor/page-header"
-import { DataTable, DataTableColumn } from "@/components/instructor/data-table"
-import { EmptyState } from "@/components/instructor/empty-state"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { PageHeader } from '../../../components/instructor/page-header'
+import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
+import { EmptyState } from '../../../components/instructor/empty-state'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '../../../components/ui/select'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
-import { cn, formatCurrency } from "@/lib/utils"
-import { getCourses, deleteCourse, publishCourse } from "@/lib/services/instructorApi"
+} from '../../../components/ui/dropdown-menu'
+import { Badge } from '../../../components/ui/badge'
+import { Card } from '../../../components/ui/card'
+import { cn, formatCurrency } from '../../../lib/utils'
+import { getCourses, deleteCourse, publishCourse } from '../../../lib/services/instructorApi'
 import { toast } from "sonner"
 
 interface Course {

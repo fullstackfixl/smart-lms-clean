@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Trophy, Award, Medal, Crown, Star, Loader2 } from "lucide-react"
-import { leaderboardApi } from "@/lib/services/orgAdminApi"
+import { leaderboardApi } from '../../../lib/services/orgAdminApi'
 import { toast } from "sonner"
 
 export default function LeaderboardPage() {

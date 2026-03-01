@@ -14,9 +14,9 @@ import {
     ArrowLeft,
     Sparkles
 } from "lucide-react"
-import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Progress } from '../../../../components/ui/progress'
+import { Button } from '../../../../components/ui/button'
+import { cn } from '../../../../lib/utils'
 import Link from "next/link"
 import { toast } from "sonner"
 import {
@@ -24,10 +24,10 @@ import {
     AccordionContent,
     AccordionItem,
     AccordionTrigger,
-} from "@/components/ui/accordion"
-import AIChatSidebar from "@/components/student/AIChatSidebar"
+} from '../../../../components/ui/accordion'
+import AIChatSidebar from '../../../../components/student/AIChatSidebar'
 import { useSearchParams } from "next/navigation"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../../lib/config'
 
 const getToken = () =>
     typeof window !== "undefined"

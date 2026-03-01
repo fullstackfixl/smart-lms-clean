@@ -6,10 +6,10 @@ import {
   BookOpen, Plus, Edit, Trash2, GripVertical, Video,
   FileText, CheckCircle, Eye, ArrowLeft, Save
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from '../../../../components/ui/button'
+import { Input } from '../../../../components/ui/input'
+import { Label } from '../../../../components/ui/label'
+import { Textarea } from '../../../../components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -17,24 +17,24 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from '../../../../components/ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '../../../../components/ui/select'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion"
-import { useAuth } from "@/lib/auth-context"
-import { instructorApi } from "@/lib/api"
+} from '../../../../components/ui/accordion'
+import { useAuth } from '../../../../lib/auth-context'
+import { instructorApi } from '../../../../lib/api'
 import { toast } from "sonner"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../../lib/config'
 
 interface Lesson {
   _id: string

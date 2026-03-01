@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Building2, Plus, Search, Filter, Edit, Trash2, Eye, CheckCircle, XCircle, RefreshCw, MoreVertical, Clock, Copy, Check } from "lucide-react"
-import { platformApi } from "@/lib/api"
+import { platformApi } from '../../../lib/api'
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from '../../../lib/auth-context'
 
 interface Organization {
   _id: string

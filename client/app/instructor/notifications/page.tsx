@@ -5,19 +5,19 @@ import {
   Bell, Check, CheckCheck, Trash2, Filter, AlertCircle,
   Info, CheckCircle2, XCircle, Clock
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from '../../../components/ui/button'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
+} from '../../../components/ui/select'
+import { Badge } from '../../../components/ui/badge'
+import { Skeleton } from '../../../components/ui/skeleton'
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
-import { API_URL } from "@/lib/config"
+import { cn } from '../../../lib/utils'
+import { API_URL } from '../../../lib/config'
 
 interface Notification {
   _id: string

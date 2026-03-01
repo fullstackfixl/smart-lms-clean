@@ -5,12 +5,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Eye, EyeOff, Loader2, ArrowLeft, Mail } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '../../../components/ui/input-otp'
 import { toast } from "sonner"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../lib/config'
 
 export default function RegisterPage() {
   const [step, setStep] = useState<"details" | "otp">("details")

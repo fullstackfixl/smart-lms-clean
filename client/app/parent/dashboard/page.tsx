@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Plus, Users, GraduationCap, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useAuth } from "@/lib/auth-context"
-import { parentApi } from "@/lib/api"
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card'
+import { useAuth } from '../../../lib/auth-context'
+import { parentApi } from '../../../lib/api'
 import { toast } from "sonner"
 
 export default function ParentDashboard() {

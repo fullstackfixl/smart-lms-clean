@@ -7,12 +7,12 @@ import {
   Radio, BookOpen, Bell, RefreshCw, Users, CheckCircle2,
   XCircle, ChevronRight, Mic, Monitor, Lock
 } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
+import { Card, CardContent } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Progress } from '../../../components/ui/progress'
 import { toast } from "sonner"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../lib/config'
 
 const getToken = () =>
   typeof window !== "undefined"

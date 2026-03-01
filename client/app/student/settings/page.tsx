@@ -3,10 +3,10 @@
 import { motion } from "framer-motion"
 import { Sun, Moon, Monitor, Bell, Lock, User, Globe } from "lucide-react"
 import { useTheme } from "next-themes"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Label } from '../../../components/ui/label'
+import { Switch } from '../../../components/ui/switch'
+import { Button } from '../../../components/ui/button'
+import { cn } from '../../../lib/utils'
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()

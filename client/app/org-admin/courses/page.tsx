@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Search, Plus, Edit, Trash2, Users, Clock, DollarSign, Eye, Loader2, AlertCircle } from "lucide-react"
-import { getCourses, publishCourse, assignInstructor } from "@/lib/services/orgAdminApi"
+import { getCourses, publishCourse, assignInstructor } from '../../../lib/services/orgAdminApi'
 import { toast } from "sonner"
 
 interface Course {

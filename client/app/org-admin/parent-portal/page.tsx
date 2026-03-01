@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Link2, Users, Search, Loader2, X, GraduationCap, UserPlus, Plus } from "lucide-react"
-import { adminApi } from "@/lib/api"
-import { useAuth } from "@/lib/auth-context"
+import { adminApi } from '../../../lib/api'
+import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 
 interface Family {

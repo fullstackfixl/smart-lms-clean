@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import RegisterPage from './page'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '../../../lib/auth-context'
 
 // Mock Next.js router
 vi.mock('next/navigation', () => ({
@@ -22,7 +22,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock auth context
-vi.mock('@/lib/auth-context', () => ({
+vi.mock('../../../lib/auth-context', () => ({
   useAuth: vi.fn(),
 }))
 

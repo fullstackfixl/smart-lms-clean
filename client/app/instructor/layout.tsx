@@ -1,10 +1,10 @@
 "use client"
 
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
-import { InstructorSidebar } from "@/components/instructor/instructor-sidebar"
-import { InstructorHeader } from "@/components/instructor/instructor-header"
-import { ThemeProvider } from "@/components/theme-provider"
-import { useAuth } from "@/lib/auth-context"
+import { ProtectedRoute } from '../../components/auth/ProtectedRoute'
+import { InstructorSidebar } from '../../components/instructor/instructor-sidebar'
+import { InstructorHeader } from '../../components/instructor/instructor-header'
+import { ThemeProvider } from '../../components/theme-provider'
+import { useAuth } from '../../lib/auth-context'
 
 export default function InstructorLayout({
   children,

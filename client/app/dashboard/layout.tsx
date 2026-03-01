@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
+import { DashboardSidebar } from '../../components/dashboard/dashboard-sidebar'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (

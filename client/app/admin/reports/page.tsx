@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from '../../../lib/auth-context'
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { BarChart3, TrendingUp, Users, BookOpen, DollarSign } from "lucide-react"
-import { adminApi } from "@/lib/api"
+import { adminApi } from '../../../lib/api'
 
 export default function ReportsPage() {
   const { user, token, loading } = useAuth()

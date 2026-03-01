@@ -8,15 +8,15 @@ import {
   ChevronDown, ChevronUp, BookOpen, Mail, Calendar,
   BarChart3, Loader2, RefreshCw, Filter, Hash, Star
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useAuth } from "@/lib/auth-context"
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Badge } from '../../../components/ui/badge'
+import { Progress } from '../../../components/ui/progress'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../lib/config'
 
 interface QuestionReview {
   questionText: string

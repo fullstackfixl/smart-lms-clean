@@ -3,15 +3,15 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Plus, Video, Edit, Trash2, ExternalLink } from "lucide-react"
-import { PageHeader } from "@/components/instructor/page-header"
-import { DataTable, DataTableColumn } from "@/components/instructor/data-table"
-import { EmptyState } from "@/components/instructor/empty-state"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import { getLiveClasses, cancelLiveClass } from "@/lib/services/instructorApi"
-import { CreateLiveClassModal } from "@/components/live-classes/CreateLiveClassModal"
+import { PageHeader } from '../../../components/instructor/page-header'
+import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
+import { EmptyState } from '../../../components/instructor/empty-state'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Card } from '../../../components/ui/card'
+import { cn } from '../../../lib/utils'
+import { getLiveClasses, cancelLiveClass } from '../../../lib/services/instructorApi'
+import { CreateLiveClassModal } from '../../../components/live-classes/CreateLiveClassModal'
 import { toast } from "sonner"
 
 interface LiveClass {

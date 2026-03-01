@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Calendar, Users, CheckCircle2, XCircle, Clock, Search, Filter, ChevronRight, Loader2, AlertCircle } from "lucide-react"
-import { attendanceApi, getCourses } from "@/lib/services/orgAdminApi"
-import { useAuth } from "@/lib/auth-context"
+import { attendanceApi, getCourses } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 import { format } from "date-fns"
 

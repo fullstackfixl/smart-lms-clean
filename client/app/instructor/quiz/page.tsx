@@ -16,17 +16,17 @@ import {
   ChevronRight,
   Zap
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { Textarea } from '../../../components/ui/textarea'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '../../../components/ui/select'
 import {
   Card,
   CardContent,
@@ -34,15 +34,15 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+} from '../../../components/ui/card'
+import { Badge } from '../../../components/ui/badge'
 import { toast } from "sonner"
 import {
   generateAIQuiz,
   publishQuiz,
   getInstructorQuizzes,
   getCourses
-} from "@/lib/services/instructorApi"
+} from '../../../lib/services/instructorApi'
 
 export default function InstructorQuizPage() {
   const [courses, setCourses] = useState<any[]>([])
@@ -128,7 +128,7 @@ export default function InstructorQuizPage() {
           ? (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))
           : null
 
-        const { API_URL } = await import("@/lib/config")
+        const { API_URL } = await import('../../../lib/config')
         const saveRes = await fetch(`${API_URL}/api/quizzes`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

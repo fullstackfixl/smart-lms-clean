@@ -14,12 +14,12 @@ import {
     Award,
     Loader2
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
+import { Button } from '../../../../../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../../../components/ui/card'
+import { Badge } from '../../../../../components/ui/badge'
+import { Progress } from '../../../../../components/ui/progress'
 import { toast } from "sonner"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../../../lib/config'
 
 interface DetailedAnswer {
     questionIndex: number

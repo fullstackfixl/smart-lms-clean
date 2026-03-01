@@ -18,12 +18,12 @@ import {
     Trophy,
     Loader2
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Badge } from '../../../components/ui/badge'
 import { toast } from "sonner"
-import { platformApi } from "@/lib/api"
-import { useAuth } from "@/lib/auth-context"
+import { platformApi } from '../../../lib/api'
+import { useAuth } from '../../../lib/auth-context'
 
 interface Application {
     _id: string

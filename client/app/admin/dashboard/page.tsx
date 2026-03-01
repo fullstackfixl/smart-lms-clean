@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from '../../../lib/auth-context'
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
 import { Users, BookOpen, DollarSign, Calendar, GraduationCap, TrendingUp, Settings, FileText } from "lucide-react"
-import { adminApi } from "@/lib/api"
+import { adminApi } from '../../../lib/api'
 
 export default function OrgAdminDashboard() {
   const { user, token, loading } = useAuth()

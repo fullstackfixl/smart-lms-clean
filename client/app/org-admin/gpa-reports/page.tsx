@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { BarChart3, TrendingDown, Users, GraduationCap, Building2, AlertTriangle, Loader2 } from "lucide-react"
-import { gpaApi } from "@/lib/services/orgAdminApi"
-import { DataTable, DataTableColumn } from "@/components/instructor/data-table"
+import { gpaApi } from '../../../lib/services/orgAdminApi'
+import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 
 export default function GPAReportsPage() {

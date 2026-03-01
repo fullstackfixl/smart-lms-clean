@@ -2,7 +2,7 @@ import React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import { Toaster } from "sonner"
-import { Providers } from "@/components/providers"
+import { Providers } from '../components/providers'
 
 import "./globals.css"
 

@@ -3,9 +3,9 @@
 import { useState, useEffect, use } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, Edit, Trash2, CheckCircle, XCircle, Building2, Mail, Phone, MapPin, Calendar, Users, RefreshCw } from "lucide-react"
-import { platformApi } from "@/lib/api"
+import { platformApi } from '../../../../lib/api'
 import { useRouter, useParams } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from '../../../../lib/auth-context'
 
 interface Organization {
   _id: string

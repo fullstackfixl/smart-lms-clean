@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Download, TrendingUp, Users, BookOpen, DollarSign, Calendar, Loader2, AlertCircle } from "lucide-react"
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { getAnalyticsOverview, getRevenueAnalytics, getDashboardMetrics } from "@/lib/services/orgAdminApi"
+import { getAnalyticsOverview, getRevenueAnalytics, getDashboardMetrics } from '../../../lib/services/orgAdminApi'
 import { toast } from "sonner"
 
 export default function ReportsPage() {

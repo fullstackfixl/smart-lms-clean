@@ -1,7 +1,7 @@
 "use client"
 
-import { InstructorSidebar } from "@/components/instructor/instructor-sidebar-new"
-import { SIDEBAR_WIDTH } from "@/lib/constants"
+import { InstructorSidebar } from '../../components/instructor/instructor-sidebar-new'
+import { SIDEBAR_WIDTH } from '../../lib/constants'
 
 // Mock user data - replace with actual auth context
 const mockUser = {

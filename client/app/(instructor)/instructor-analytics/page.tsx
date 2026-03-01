@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion"
 import { BarChart3 } from "lucide-react"
-import { Card } from "@/components/ui/card"
-import { EmptyState } from "@/components/instructor/empty-state"
+import { Card } from '../../../components/ui/card'
+import { EmptyState } from '../../../components/instructor/empty-state'
 
 export default function InstructorAnalyticsPage() {
   return (

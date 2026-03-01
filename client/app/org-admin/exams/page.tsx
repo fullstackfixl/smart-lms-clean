@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { GraduationCap, Calendar, FileText, Search, Plus, Filter, Download, Loader2, Edit2, Trash2 } from "lucide-react"
-import { gradeApi, getCourses } from "@/lib/services/orgAdminApi"
-import { DataTable, DataTableColumn } from "@/components/instructor/data-table"
+import { gradeApi, getCourses } from '../../../lib/services/orgAdminApi'
+import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 import { format } from "date-fns"
 

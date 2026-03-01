@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, LayoutGrid, ListTree, Edit2, Trash2, Loader2, X, Users } from "lucide-react"
-import { schoolGradeApi } from "@/lib/services/orgAdminApi"
-import { DataTable, DataTableColumn } from "@/components/instructor/data-table"
+import { schoolGradeApi } from '../../../lib/services/orgAdminApi'
+import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 
 interface GradeLevel {

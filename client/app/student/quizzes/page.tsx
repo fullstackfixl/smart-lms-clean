@@ -18,15 +18,15 @@ import {
   Star
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { EmptyState } from "@/components/student/EmptyState"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Badge } from '../../../components/ui/badge'
+import { Progress } from '../../../components/ui/progress'
+import { Tabs, TabsList, TabsTrigger } from '../../../components/ui/tabs'
+import { EmptyState } from '../../../components/student/EmptyState'
 import { toast } from "sonner"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../lib/config'
 
 interface Quiz {
   _id: string

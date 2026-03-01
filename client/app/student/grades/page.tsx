@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion"
 import { GraduationCap } from "lucide-react"
-import { EmptyState } from "@/components/student/EmptyState"
-import { Card } from "@/components/ui/card"
+import { EmptyState } from '../../../components/student/EmptyState'
+import { Card } from '../../../components/ui/card'
 
 export default function GradesPage() {
   return (

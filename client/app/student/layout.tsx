@@ -1,8 +1,8 @@
 "use client"
 
-import { StudentSidebar } from "@/components/student/StudentSidebar"
-import { StudentHeader } from "@/components/student/StudentHeader"
-import { useAuth } from "@/lib/auth-context"
+import { StudentSidebar } from '../../components/student/StudentSidebar'
+import { StudentHeader } from '../../components/student/StudentHeader'
+import { useAuth } from '../../lib/auth-context'
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()

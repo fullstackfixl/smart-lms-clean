@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, Save, RefreshCw } from "lucide-react"
-import { platformApi } from "@/lib/api"
+import { platformApi } from '../../../../../lib/api'
 import { useRouter, useParams } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from '../../../../../lib/auth-context'
 
 interface Organization {
   _id: string

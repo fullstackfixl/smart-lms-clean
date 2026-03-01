@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Users, BookOpen, UserCheck, DollarSign, TrendingUp, TrendingDown, Activity, Loader2, CalendarDays } from "lucide-react"
-import { StatCard } from "@/components/org-admin/stat-card"
+import { StatCard } from '../../../components/org-admin/stat-card'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
-import { getDashboardMetrics, getDashboardActivities, getOrgEvents } from "@/lib/services/orgAdminApi"
+import { getDashboardMetrics, getDashboardActivities, getOrgEvents } from '../../../lib/services/orgAdminApi'
 import { toast } from "sonner"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from '../../../lib/auth-context'
 import { io } from "socket.io-client"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../lib/config'
 
 export default function OrgAdminDashboard() {
   const { user } = useAuth()

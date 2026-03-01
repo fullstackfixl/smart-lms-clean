@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Trophy, AlertCircle, Medal, Crown, Award } from "lucide-react"
-import { EmptySection } from "@/components/student/EmptySection"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { EmptySection } from '../../../components/student/EmptySection'
+import { Skeleton } from '../../../components/ui/skeleton'
+import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
 import { toast } from "sonner"
-import { getLeaderboard } from "@/lib/services/studentApi"
-import { getInitials } from "@/lib/utils"
+import { getLeaderboard } from '../../../lib/services/studentApi'
+import { getInitials } from '../../../lib/utils'
 
 interface LeaderboardEntry {
   _id: string

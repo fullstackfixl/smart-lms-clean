@@ -3,11 +3,11 @@
 import React, { useState } from "react"
 import { motion } from "framer-motion"
 import { Key, Loader2, Copy, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useAuth } from "@/lib/auth-context"
+import { Button } from '../../../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card'
+import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../lib/config'
 
 export default function StudentParentCodePage() {
     const { user, token } = useAuth()

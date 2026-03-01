@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Calendar, Edit2, Trash2, Loader2, AlertCircle, X, Check } from "lucide-react"
-import { academicYearApi } from "@/lib/services/orgAdminApi"
-import { DataTable, DataTableColumn } from "@/components/instructor/data-table"
+import { academicYearApi } from '../../../lib/services/orgAdminApi'
+import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 import { format } from "date-fns"
 

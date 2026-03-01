@@ -1,7 +1,7 @@
 "use client"
 
 import { Settings } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 
 export default function PlatformConfigPage() {
   return (

@@ -7,10 +7,10 @@ import {
     ChevronDown, RefreshCw, CheckCircle, XCircle, AlertCircle,
     Building2, User, Calendar, Users,
 } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from '../../../lib/auth-context'
 import { useRouter } from "next/navigation"
 
-import { API_URL as API } from "@/lib/config"
+import { API_URL as API } from '../../../lib/config'
 
 interface Course {
     _id: string

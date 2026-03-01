@@ -7,17 +7,17 @@ import {
   Users, Search, Download, TrendingUp, Clock, Award,
   Mail, Calendar, CheckCircle, Activity
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { useAuth } from "@/lib/auth-context"
-import { instructorApi } from "@/lib/api"
+} from '../../../components/ui/select'
+import { useAuth } from '../../../lib/auth-context'
+import { instructorApi } from '../../../lib/api'
 import { toast } from "sonner"
 
 interface Course {

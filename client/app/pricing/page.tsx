@@ -4,7 +4,7 @@ import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Check, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from '../../components/ui/button'
 import { toast } from "sonner"
 
 const plans = [

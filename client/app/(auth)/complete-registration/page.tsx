@@ -6,11 +6,11 @@ import React, { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { Eye, EyeOff, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
 import { toast } from "sonner"
-import { authApi } from "@/lib/api"
+import { authApi } from '../../../lib/api'
 
 export default function CompleteRegistrationPage() {
   const router = useRouter()

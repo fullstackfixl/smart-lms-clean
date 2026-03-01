@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, use } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../../lib/config'
 import { motion } from "framer-motion"
 
 import {
@@ -19,11 +19,11 @@ import {
   ChevronLeft,
   Loader2
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from '../../../../components/ui/button'
+import { Progress } from '../../../../components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../components/ui/tabs'
+import { Card } from '../../../../components/ui/card'
+import { Badge } from '../../../../components/ui/badge'
 import { toast } from "sonner"
 
 interface Question {

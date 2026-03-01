@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback, useRef, use } from "react"
 import { motion } from "framer-motion"
 import { Download, Share2, Printer, Award, ArrowLeft, ShieldCheck, CheckCircle2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from '../../../../components/ui/button'
 import { toast } from "sonner"
 import Link from "next/link"
-import { cn } from "@/lib/utils"
+import { cn } from '../../../../lib/utils'
 
-import { API_URL as API } from "@/lib/config"
+import { API_URL as API } from '../../../../lib/config'
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")

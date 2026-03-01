@@ -8,7 +8,7 @@ import {
   Lock, ChevronDown, ChevronRight, Video, FileText,
   Download, Award, ArrowLeft
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from '../../../../components/ui/button'
 import Link from "next/link"
 
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {

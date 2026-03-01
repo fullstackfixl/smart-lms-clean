@@ -11,12 +11,12 @@ import {
   Clock,
   ArrowRight,
 } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { useAuth } from "@/lib/auth-context"
-import { API_URL } from "@/lib/config"
+import { Card, CardContent } from '../../../components/ui/card'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Progress } from '../../../components/ui/progress'
+import { useAuth } from '../../../lib/auth-context'
+import { API_URL } from '../../../lib/config'
 import Link from "next/link"
 import { toast } from "sonner"
 

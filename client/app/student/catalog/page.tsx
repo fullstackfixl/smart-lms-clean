@@ -2,19 +2,19 @@
 
 import { useState, useEffect } from "react"
 import { Search, BookOpen, Users, Star, Clock, ChevronLeft, ChevronRight, Award } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
+} from '../../../components/ui/select'
+import { Badge } from '../../../components/ui/badge'
+import { Skeleton } from '../../../components/ui/skeleton'
 
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../lib/config'
 import { toast } from "sonner"
 import Link from "next/link"
 import { motion } from "framer-motion"

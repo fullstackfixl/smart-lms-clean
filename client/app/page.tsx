@@ -1,8 +1,8 @@
-import { Navbar } from "@/components/landing/navbar"
-import { Hero } from "@/components/landing/hero"
-import { CourseShowcase } from "@/components/landing/course-showcase"
-import { Features } from "@/components/landing/features"
-import { CTASection, Footer } from "@/components/landing/footer"
+import { Navbar } from '../components/landing/navbar'
+import { Hero } from '../components/landing/hero'
+import { CourseShowcase } from '../components/landing/course-showcase'
+import { Features } from '../components/landing/features'
+import { CTASection, Footer } from '../components/landing/footer'
 
 export const metadata = {
   title: "Smart LMS – AI-Powered Learning Platform for Institutes & Colleges",

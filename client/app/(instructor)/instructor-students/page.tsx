@@ -3,17 +3,17 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Download, Search, Users, Mail, User } from "lucide-react"
-import { PageHeader } from "@/components/instructor/page-header"
-import { DataTable, DataTableColumn } from "@/components/instructor/data-table"
-import { EmptyState } from "@/components/instructor/empty-state"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card } from "@/components/ui/card"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
-import { getInitials, formatRelativeTime } from "@/lib/utils"
-import { getCourses, getCourseStudents } from "@/lib/services/instructorApi"
+import { PageHeader } from '../../../components/instructor/page-header'
+import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
+import { EmptyState } from '../../../components/instructor/empty-state'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Card } from '../../../components/ui/card'
+import { Avatar, AvatarFallback } from '../../../components/ui/avatar'
+import { Progress } from '../../../components/ui/progress'
+import { getInitials, formatRelativeTime } from '../../../lib/utils'
+import { getCourses, getCourseStudents } from '../../../lib/services/instructorApi'
 import { toast } from "sonner"
 
 interface Student {

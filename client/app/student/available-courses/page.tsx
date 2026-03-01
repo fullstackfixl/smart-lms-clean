@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { Search, Filter, BookOpen } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import CourseCard from "@/components/student/CourseCard"
+import { Input } from '../../../components/ui/input'
+import { Button } from '../../../components/ui/button'
+import CourseCard from '../../../components/student/CourseCard'
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../lib/config'
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")

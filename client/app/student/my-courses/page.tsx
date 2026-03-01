@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { BookOpen, CheckCircle, Clock } from "lucide-react"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import CourseCard from "@/components/student/CourseCard"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs'
+import CourseCard from '../../../components/student/CourseCard'
 import { toast } from "sonner"
 
-import { API_URL } from "@/lib/config"
+import { API_URL } from '../../../lib/config'
 const getToken = () =>
     typeof window !== "undefined"
         ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")

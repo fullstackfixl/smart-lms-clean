@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { Building2, Lock, ShieldCheck, MapPin, Phone, Upload, CheckCircle2, AlertCircle } from "lucide-react"
-import { platformApi } from "@/lib/api"
+import { platformApi } from '../../../lib/api'
 
 function SetupForm() {
     const searchParams = useSearchParams()

@@ -1,7 +1,7 @@
 "use client"
 
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
-import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
+import { ProtectedRoute } from '../../components/auth/ProtectedRoute'
+import { DashboardSidebar } from '../../components/dashboard/dashboard-sidebar'
 
 export default function AdminLayout({
   children,

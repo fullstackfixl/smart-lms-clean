@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { CalendarDays, AlertCircle, Clock, MapPin, Users } from "lucide-react"
-import { EmptySection } from "@/components/student/EmptySection"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
+import { EmptySection } from '../../../components/student/EmptySection'
+import { Skeleton } from '../../../components/ui/skeleton'
+import { Button } from '../../../components/ui/button'
 import { toast } from "sonner"
-import { getEvents, registerForEvent } from "@/lib/services/studentApi"
+import { getEvents, registerForEvent } from '../../../lib/services/studentApi'
 
 interface Event {
   _id: string

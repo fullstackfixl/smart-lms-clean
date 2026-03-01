@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ShieldCheck, Mail, BookOpen, Edit2, Loader2, X, Award } from "lucide-react"
-import { trainerApi } from "@/lib/services/orgAdminApi"
-import { DataTable, DataTableColumn } from "@/components/instructor/data-table"
+import { trainerApi } from '../../../lib/services/orgAdminApi'
+import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 
 export default function TrainersPage() {

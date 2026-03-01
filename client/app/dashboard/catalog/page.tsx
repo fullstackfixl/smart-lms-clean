@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Search, Filter, Star, Users, Clock, Play } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useAuth } from "@/lib/auth-context"
-import { courseApi } from "@/lib/api"
+import { Input } from '../../../components/ui/input'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { useAuth } from '../../../lib/auth-context'
+import { courseApi } from '../../../lib/api'
 import Link from "next/link"
 
 export default function CatalogPage() {

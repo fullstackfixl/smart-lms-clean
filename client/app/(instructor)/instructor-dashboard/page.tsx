@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { BookOpen, Users, Video, TrendingUp, Plus, Upload, FileText, Calendar } from "lucide-react"
-import { PageHeader } from "@/components/instructor/page-header"
-import { StatCard } from "@/components/instructor/stat-card"
-import { EmptyState } from "@/components/instructor/empty-state"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import { getDashboardOverview } from "@/lib/services/instructorApi"
+import { PageHeader } from '../../../components/instructor/page-header'
+import { StatCard } from '../../../components/instructor/stat-card'
+import { EmptyState } from '../../../components/instructor/empty-state'
+import { Button } from '../../../components/ui/button'
+import { Card } from '../../../components/ui/card'
+import { cn } from '../../../lib/utils'
+import { getDashboardOverview } from '../../../lib/services/instructorApi'
 import { toast } from "sonner"
 
 interface DashboardData {

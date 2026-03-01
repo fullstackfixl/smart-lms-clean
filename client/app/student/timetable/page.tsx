@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Calendar, AlertCircle, Clock, MapPin, User } from "lucide-react"
-import { EmptySection } from "@/components/student/EmptySection"
-import { Skeleton } from "@/components/ui/skeleton"
+import { EmptySection } from '../../../components/student/EmptySection'
+import { Skeleton } from '../../../components/ui/skeleton'
 import { toast } from "sonner"
-import { getTimetable } from "@/lib/services/studentApi"
+import { getTimetable } from '../../../lib/services/studentApi'
 
 interface TimetableEntry {
   _id: string

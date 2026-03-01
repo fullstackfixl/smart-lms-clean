@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from "react"
 import { Upload, Video, FileText, File, CheckCircle2, Loader2, AlertCircle, X } from "lucide-react"
 import { useDropzone } from "react-dropzone"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { API_URL } from "@/lib/config"
-import { Textarea } from "@/components/ui/textarea"
-import { Progress } from "@/components/ui/progress"
+import { Button } from '../../../components/ui/button'
+import { Card } from '../../../components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Input } from '../../../components/ui/input'
+import { Label } from '../../../components/ui/label'
+import { API_URL } from '../../../lib/config'
+import { Textarea } from '../../../components/ui/textarea'
+import { Progress } from '../../../components/ui/progress'
 import { toast } from "sonner"
 
 interface Course {

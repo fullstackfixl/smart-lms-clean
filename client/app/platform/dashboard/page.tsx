@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Building2, Users, BookOpen, TrendingUp, Activity, ArrowRight, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { platformApi } from "@/lib/api"
-import { useAuth } from "@/lib/auth-context"
+import { platformApi } from '../../../lib/api'
+import { useAuth } from '../../../lib/auth-context'
 
 interface DashboardStats {
     organizations: {

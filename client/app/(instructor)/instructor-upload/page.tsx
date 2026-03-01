@@ -3,12 +3,12 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Upload, CheckCircle, XCircle } from "lucide-react"
-import { PageHeader } from "@/components/instructor/page-header"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { PageHeader } from '../../../components/instructor/page-header'
+import { Button } from '../../../components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Card } from '../../../components/ui/card'
+import { Progress } from '../../../components/ui/progress'
+import { cn } from '../../../lib/utils'
 
 export default function UploadContentPage() {
   const [selectedCourse, setSelectedCourse] = useState<string>('')
