@@ -67,20 +67,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check
-app.get('/', (req, res) => {
-  res.json({ success: true, message: 'Server running', timestamp: new Date().toISOString() });
-});
-
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'API running',
-    timestamp: new Date().toISOString(),
-    cors: 'enabled',
-    env: process.env.NODE_ENV
-  });
-});
+// Health check moved to router level or bottom if needed
+// Basic check for load balancers
+app.get('/ping', (req, res) => res.send('pong'));
 
 
 // Load routes safely

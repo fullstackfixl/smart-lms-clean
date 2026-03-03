@@ -1,6 +1,6 @@
 const express = require('express');
 const { authMiddleware, requireRole } = require('../middleware/auth');
-const { requireOrganization } = require('../middleware/orgProtection');
+const requireOrganization = require('../middleware/orgProtection');
 const { enforceOrgIsolation } = require('../middleware/orgIsolation');
 const InstructorController = require('../controllers/InstructorController');
 

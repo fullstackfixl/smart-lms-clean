@@ -1,6 +1,6 @@
 const express = require('express');
 const { authMiddleware, requireRole } = require('../middleware/auth');
-const { requireOrganization } = require('../middleware/orgProtection');
+const requireOrganization = require('../middleware/orgProtection');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Course = require('../models/Course');
