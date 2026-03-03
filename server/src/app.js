@@ -204,7 +204,7 @@ try {
 
   console.log('  - instructor');
   const instructorRoutes = require('./routes/instructor');
-  app.use('/instructor', requireOrganization, instructorRoutes);
+  app.use('/instructor', instructorRoutes);
 
   console.log('  - instructor uploads');
   const instructorUploadRoutes = require('./routes/videoUpload');
@@ -216,7 +216,7 @@ try {
 
   console.log('  - admin');
   const adminRoutes = require('./routes/admin');
-  app.use('/api/admin', requireOrganization, adminRoutes);
+  app.use('/api/admin', adminRoutes);
 
   console.log('  - forums');
   const forumRoutes = require('./routes/forums');
@@ -264,7 +264,7 @@ try {
 
   console.log('  - student');
   const studentRoutes = require('./routes/student');
-  app.use('/student', requireOrganization, studentRoutes);
+  app.use('/student', studentRoutes);
 
   console.log('  - live-classes-simple');
   const liveClassesSimpleRoutes = require('./routes/liveClassesSimple');

@@ -1,5 +1,6 @@
 const express = require('express');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const { requireOrganization } = require('../middleware/orgProtection');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const Course = require('../models/Course');
@@ -23,8 +24,8 @@ const { generateInvitationTemplate } = emailService;
 const { recordOrgEvent, EVENT_TYPES } = require('../utils/orgEvents');
 
 
-// All routes require org_admin role
-router.use(authMiddleware, requireRole(['org_admin']));
+// All routes require org_admin role and organization
+router.use(authMiddleware, requireRole(['org_admin']), requireOrganization);
 
 // --- Get enabled modules for this organization ---
 router.get('/modules', async (req, res) => {

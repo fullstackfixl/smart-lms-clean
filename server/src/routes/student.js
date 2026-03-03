@@ -1,10 +1,14 @@
 const express = require('express');
 const { Course, Section, Lesson, Enrollment, User, Organization, Certificate, Quiz, QuizSubmission } = require('../models');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const { requireOrganization } = require('../middleware/orgProtection');
 const { cloudinaryUpload, handleUploadError } = require('../middleware/upload');
 const { uploadToCloudinary } = require('../config/cloudinary');
 
 const router = express.Router();
+
+// All student routes require organization
+router.use(requireOrganization);
 
 // ─────────────────────────────────────────────────────────────
 // GET /student/profile  — returns name, email + enrollment stats
