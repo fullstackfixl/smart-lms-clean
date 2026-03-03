@@ -1,6 +1,6 @@
 const express = require('express');
 const marketplaceController = require('../controllers/MarketplaceController');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -8,7 +8,7 @@ const { verifyStripeWebhook, validateWebhookOrganization } = require('../middlew
 
 // Public Routes
 router.get('/courses', marketplaceController.listCourses.bind(marketplaceController));
-router.get('/courses/:id', marketplaceController.getCourseDetails.bind(marketplaceController));
+router.get('/courses/:id', optionalAuth, marketplaceController.getCourseDetails.bind(marketplaceController));
 
 // Protected Marketplace Routes (Checkout)
 router.post('/create-checkout-session', authMiddleware, marketplaceController.createCheckoutSession.bind(marketplaceController));

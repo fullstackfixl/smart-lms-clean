@@ -21,6 +21,9 @@ const completeRegistrationLimiter = rateLimit({
 
 // Unified Login
 router.post('/login', authController.login);
+router.get('/google', authController.googleLogin);
+router.get('/google/callback', authController.googleCallback);
+router.post('/firebase-login', authController.firebaseLogin);
 
 // Organization Onboarding
 router.post('/apply-organization', applyOrgLimiter, authController.applyOrganization);

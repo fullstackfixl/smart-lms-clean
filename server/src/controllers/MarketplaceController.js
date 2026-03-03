@@ -43,9 +43,17 @@ class MarketplaceController extends BaseController {
                 return res.error('Course not found or not available in marketplace', 'Not Found', 404);
             }
 
-            // TODO: Fetch sections/lessons for preview if needed
+            // check if user is already enrolled
+            let isEnrolled = false;
+            if (req.user) {
+                const enrollment = await Enrollment.findOne({
+                    student_id: req.user._id,
+                    course_id: id
+                });
+                isEnrolled = !!enrollment;
+            }
 
-            return res.success(course, 'Course details retrieved successfully');
+            return res.success({ ...course, isEnrolled }, 'Course details retrieved successfully');
         } catch (err) {
             return res.error(err.message, 'Failed to fetch course details', 500);
         }

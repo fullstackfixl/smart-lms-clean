@@ -491,6 +491,61 @@ class AuthService {
 
     return true;
   }
+
+  /**
+   * Social Login (Google/Auth0)
+   */
+  async socialLogin(profile) {
+    const { email, name, providerId, provider } = profile;
+
+    if (!email) {
+      throw new ValidationError('Email is required from social provider');
+    }
+
+    // Find user by email
+    let user = await User.findOne({ email: email.toLowerCase() }).populate('organization_id');
+
+    if (!user) {
+      // Create new student if user doesn't exist
+      user = new User({
+        name: name || email.split('@')[0],
+        email: email.toLowerCase(),
+        role: 'student', // Default role for marketplace users
+        status: 'active',
+        email_verified: true,
+        socialProvider: {
+          name: provider || 'google',
+          id: providerId
+        }
+      });
+      await user.save();
+      console.log(`👤 [AuthService] Created new social user: ${email}`);
+    } else {
+      // Update social provider info if not set
+      if (!user.socialProvider || !user.socialProvider.id) {
+        user.socialProvider = {
+          name: provider || 'google',
+          id: providerId
+        };
+        await user.save();
+      }
+      console.log(`👤 [AuthService] Social login for existing user: ${email}`);
+    }
+
+    // Generate token
+    const token = jwtUtils.generateToken({
+      user_id: user._id,
+      role: user.role,
+      organization_id: user.organization_id?._id || user.organization_id
+    });
+
+    return {
+      token,
+      role: user.role,
+      redirectUrl: this.getRedirectUrl(user.role),
+      user: user.toPublicJSON()
+    };
+  }
 }
 
 module.exports = new AuthService();

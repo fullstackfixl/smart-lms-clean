@@ -39,6 +39,7 @@ interface AuthContextType {
   verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; error?: string; redirectUrl?: string; data?: any }>
   resendOtp: (email: string) => Promise<{ success: boolean; error?: string; data?: any }>
   logout: () => void
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string; redirectUrl?: string }>
   isAuthenticated: boolean
 }
 
@@ -51,15 +52,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Try sessionStorage first, then localStorage as backup
-    const savedToken = typeof window !== "undefined"
-      ? (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))
-      : null
+    // Try URL parameter first (for social login callbacks), then sessionStorage/localStorage
+    const urlParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "")
+    const urlToken = urlParams.get("token")
 
-    console.log("🔐 [AuthContext] Checking saved token:", !!savedToken)
+    const savedToken = urlToken || (typeof window !== "undefined"
+      ? (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))
+      : null)
+
+    console.log("🔐 [AuthContext] Checking saved token:", !!savedToken, urlToken ? "(from URL)" : "")
 
     if (savedToken) {
       setToken(savedToken)
+
+      // If token was in URL, save it to storage and clean up URL
+      if (urlToken && typeof window !== "undefined") {
+        window.sessionStorage.setItem("instatute_token", urlToken)
+        window.localStorage.setItem("instatute_token", urlToken)
+        const newUrl = window.location.pathname + window.location.search.replace(/[?&]token=[^&]+/, "").replace(/^&/, "?")
+        window.history.replaceState({}, "", newUrl)
+      }
+
       console.log("🔐 [AuthContext] Fetching user data with token...")
 
       authApi.getMe(savedToken).then((res) => {
@@ -124,6 +137,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     console.error("❌ [AuthContext] Login failed:", res.error)
     return { success: false, error: res.error || "Login failed" }
+  }, [])
+
+  const loginWithGoogle = useCallback(async () => {
+    try {
+      const { signInWithPopup, GoogleAuthProvider } = await import("firebase/auth")
+      const { auth, googleProvider } = await import("./firebase")
+
+      const result = await signInWithPopup(auth, googleProvider)
+      const idToken = await result.user.getIdToken()
+
+      const res = await fetch(`${API_URL}/api/auth/firebase-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken })
+      })
+
+      const data = await res.json()
+
+      if (data.success && data.data) {
+        const { token: newToken, user: userData, organization: orgData } = data.data
+        setToken(newToken)
+        setUser(userData)
+        if (orgData) setOrganization(orgData)
+
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem("instatute_token", newToken)
+          window.localStorage.setItem("instatute_token", newToken)
+        }
+
+        const redirectUrl = data.data.redirectUrl || getDashboardRoute(userData.role)
+        return { success: true, redirectUrl }
+      }
+      return { success: false, error: data.message || "Google login failed" }
+    } catch (error: any) {
+      console.error("❌ [AuthContext] Google login error:", error)
+      return { success: false, error: error.message || "Google login failed" }
+    }
   }, [])
 
   const register = useCallback(async (data: any) => {
@@ -248,6 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyOtp,
         resendOtp,
         logout,
+        loginWithGoogle,
         isAuthenticated: !!user && !!token,
       }}
     >

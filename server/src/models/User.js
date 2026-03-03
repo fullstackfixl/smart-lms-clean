@@ -138,6 +138,10 @@ const userSchema = new mongoose.Schema({
   },
   resetPasswordExpires: {
     type: Date,
+  },
+  socialProvider: {
+    name: { type: String, enum: ['google', 'facebook', 'auth0'] },
+    id: { type: String }
   }
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }

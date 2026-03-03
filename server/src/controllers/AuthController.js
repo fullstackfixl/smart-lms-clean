@@ -438,6 +438,97 @@ class AuthController {
             });
         }
     }
+
+    /**
+     * Redirect to Google Auth (Mock/Placeholder)
+     */
+    async googleLogin(req, res) {
+        const { returnUrl } = req.query;
+        // In a real implementation with passport or similar, this would redirect to Google
+        // For now, we'll redirect to our mock callback with some mock data if no real config is present
+        const baseUrl = (process.env.API_URL || 'http://localhost:5000').replace(/\/$/, '');
+        const callbackUrl = `${baseUrl}/auth/google/callback?email=google_user@example.com&name=Google%20User&providerId=google_123&returnUrl=${encodeURIComponent(returnUrl || '')}`;
+
+        console.log(`🚀 [Auth] Redirecting to Google Auth (Mock): ${callbackUrl}`);
+        res.redirect(callbackUrl);
+    }
+
+    /**
+     * Handle Google Callback
+     */
+    async googleCallback(req, res) {
+        try {
+            const { email, name, providerId, returnUrl } = req.query;
+
+            if (!email) {
+                return res.status(400).json({ success: false, message: 'Google authentication failed' });
+            }
+
+            const result = await authService.socialLogin({
+                email,
+                name,
+                providerId,
+                provider: 'google'
+            });
+
+            // Set cookie
+            const jwtUtils = require('../utils/jwt');
+            jwtUtils.setTokenCookie(res, result.token);
+
+            // Redirect back to frontend
+            const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+            const redirectPath = returnUrl || result.redirectUrl || '/dashboard';
+            const finalRedirect = `${clientUrl}${redirectPath.startsWith('/') ? '' : '/'}${redirectPath}${redirectPath.includes('?') ? '&' : '?'}token=${result.token}`;
+
+            console.log(`✅ [Auth] Google Login Success: ${email}. Redirecting to: ${finalRedirect}`);
+            res.redirect(finalRedirect);
+        } catch (error) {
+            console.error('❌ [Auth] Google Callback Error:', error);
+            const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+            res.redirect(`${clientUrl}/login?error=${encodeURIComponent(error.message)}`);
+        }
+    }
+
+    /**
+     * Handle Firebase Social Login
+     */
+    async firebaseLogin(req, res) {
+        try {
+            const { idToken } = req.body;
+            if (!idToken) {
+                return res.status(400).json({ success: false, message: 'Firebase ID token is required' });
+            }
+
+            const { verifyIdToken } = require('../utils/firebase');
+            const decodedToken = await verifyIdToken(idToken);
+
+            if (!decodedToken || !decodedToken.email) {
+                return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+            }
+
+            const result = await authService.socialLogin({
+                email: decodedToken.email,
+                name: decodedToken.name || decodedToken.email.split('@')[0],
+                providerId: decodedToken.uid,
+                provider: decodedToken.firebase?.sign_in_provider || 'google'
+            });
+
+            // Set cookie
+            const jwtUtils = require('../utils/jwt');
+            jwtUtils.setTokenCookie(res, result.token);
+
+            res.status(200).json({
+                success: true,
+                data: result
+            });
+        } catch (error) {
+            console.error('❌ [Auth] Firebase Login Error:', error);
+            res.status(401).json({
+                success: false,
+                message: error.message || 'Firebase authentication failed'
+            });
+        }
+    }
 }
 
 module.exports = new AuthController();

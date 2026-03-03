@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "../../../lib/auth-context"
 import { API_URL } from "../../../lib/config"
+import { toast } from "sonner"
 
 interface Course {
     _id: string
@@ -25,6 +26,7 @@ interface Course {
         profile?: { firstName: string; lastName: string; bio?: string; avatar?: string }
     }
     organization_id?: { name: string; description?: string }
+    isEnrolled?: boolean
 }
 
 export default function CourseDetailsPage() {
@@ -40,7 +42,13 @@ export default function CourseDetailsPage() {
     useEffect(() => {
         async function fetchDetails() {
             try {
-                const res = await fetch(`${API_URL}/api/marketplace/courses/${id}`)
+                const headers: Record<string, string> = {}
+                if (token) {
+                    headers["Authorization"] = `Bearer ${token}`
+                }
+                const res = await fetch(`${API_URL}/api/marketplace/courses/${id}`, {
+                    headers
+                })
                 const data = await res.json()
                 if (data.success) {
                     setCourse(data.data)
@@ -54,12 +62,18 @@ export default function CourseDetailsPage() {
             }
         }
         fetchDetails()
-    }, [id])
+    }, [id, token])
 
     const handlePurchase = async () => {
         if (!isAuthenticated) {
             // Redirect to register/login with return url
-            router.push(`/login?returnUrl=/course/${id}`)
+            const returnUrl = `/course/${id}`
+            router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`)
+            return
+        }
+
+        if (course?.isEnrolled) {
+            router.push(`/student/courses/${id}`)
             return
         }
 
@@ -77,10 +91,13 @@ export default function CourseDetailsPage() {
             if (data.success && data.data?.url) {
                 window.location.href = data.data.url // Redirect to Stripe
             } else {
-                alert(data.message || "Failed to initiate payment")
+                if (data.message === "You are already enrolled in this course") {
+                    setCourse(prev => prev ? { ...prev, isEnrolled: true } : null)
+                }
+                toast.error(data.message || "Failed to initiate payment")
             }
         } catch (err) {
-            alert("Network error. Please try again.")
+            toast.error("Network error. Please try again.")
         } finally {
             setBuying(false)
         }
@@ -259,6 +276,11 @@ export default function CourseDetailsPage() {
                                     >
                                         {buying ? (
                                             <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : course.isEnrolled ? (
+                                            <>
+                                                <Play className="w-5 h-5 fill-current" />
+                                                Go to Course
+                                            </>
                                         ) : (
                                             <>
                                                 <ShoppingCart className="w-5 h-5" />
