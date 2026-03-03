@@ -3,6 +3,7 @@
 import { StudentSidebar } from '../../components/student/StudentSidebar'
 import { StudentHeader } from '../../components/student/StudentHeader'
 import { useAuth } from '../../lib/auth-context'
+import { ProtectedRoute } from '../../components/auth/ProtectedRoute'
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -16,16 +17,18 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
-      <StudentSidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative md:ml-[240px]">
-        <StudentHeader />
-        <main className="flex-1 overflow-y-auto mt-16">
-          <div className="max-w-[1200px] mx-auto p-4 md:p-8">
-            {children}
-          </div>
-        </main>
+    <ProtectedRoute allowedRoles={["student"]}>
+      <div className="flex h-screen overflow-hidden bg-white">
+        <StudentSidebar />
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative md:ml-[240px]">
+          <StudentHeader />
+          <main className="flex-1 overflow-y-auto mt-16">
+            <div className="max-w-[1200px] mx-auto p-4 md:p-8">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </ProtectedRoute>
   )
 }

@@ -15,6 +15,7 @@ class AuthService {
       'org_admin': '/org-admin/dashboard',
       'instructor': '/instructor/dashboard',
       'student': '/student/dashboard',
+      'public_student': '/public/dashboard',
       'parent': '/parent/dashboard',
       'support_staff': '/support/dashboard'
     };
@@ -510,7 +511,7 @@ class AuthService {
       user = new User({
         name: name || email.split('@')[0],
         email: email.toLowerCase(),
-        role: 'student', // Default role for marketplace users
+        role: 'public_student', // Default role for marketplace users without org
         status: 'active',
         email_verified: true,
         socialProvider: {
@@ -519,7 +520,7 @@ class AuthService {
         }
       });
       await user.save();
-      console.log(`👤 [AuthService] Created new social user: ${email}`);
+      console.log(`👤 [AuthService] Created new public student: ${email}`);
     } else {
       // Update social provider info if not set
       if (!user.socialProvider || !user.socialProvider.id) {

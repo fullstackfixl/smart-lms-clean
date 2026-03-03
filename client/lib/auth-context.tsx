@@ -131,7 +131,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Use backend redirect URL if available, otherwise calculate it
-      const redirectUrl = (res.data as any).redirectUrl || getDashboardRoute(userData.role)
+      let redirectUrl = (res.data as any).redirectUrl || getDashboardRoute(userData.role)
+
+      if (typeof window !== "undefined") {
+        const storedRedirect = window.localStorage.getItem("postLoginRedirect")
+        if (storedRedirect && storedRedirect.startsWith("/course/")) {
+          redirectUrl = storedRedirect
+          window.localStorage.removeItem("postLoginRedirect")
+          console.log("🎯 [AuthContext] Using stored redirect:", redirectUrl)
+        }
+      }
+
       console.log("🔐 [AuthContext] Redirect URL:", redirectUrl)
 
       return { success: true, redirectUrl }
@@ -167,7 +177,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           window.localStorage.setItem("instatute_token", newToken)
         }
 
-        const redirectUrl = data.data.redirectUrl || getDashboardRoute(userData.role)
+        let redirectUrl = data.data.redirectUrl || getDashboardRoute(userData.role)
+
+        if (typeof window !== "undefined") {
+          const storedRedirect = window.localStorage.getItem("postLoginRedirect")
+          if (storedRedirect && storedRedirect.startsWith("/course/")) {
+            redirectUrl = storedRedirect
+            window.localStorage.removeItem("postLoginRedirect")
+            console.log("🎯 [AuthContext] Using stored redirect:", redirectUrl)
+          }
+        }
+
         return { success: true, redirectUrl }
       }
       return { success: false, error: data.message || "Google login failed" }

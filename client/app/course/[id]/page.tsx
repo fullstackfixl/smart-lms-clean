@@ -66,9 +66,12 @@ export default function CourseDetailsPage() {
 
     const handlePurchase = async () => {
         if (!isAuthenticated) {
-            // Redirect to register/login with return url
-            const returnUrl = `/course/${id}`
-            router.push(`/login?returnUrl=${encodeURIComponent(returnUrl)}`)
+            // Store current path for redirect after login
+            if (typeof window !== "undefined") {
+                window.localStorage.setItem("postLoginRedirect", window.location.pathname)
+            }
+            // Redirect to register/login
+            router.push(`/login`)
             return
         }
 

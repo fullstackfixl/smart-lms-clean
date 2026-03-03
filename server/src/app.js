@@ -22,7 +22,7 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, Postman, curl, etc.)
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.indexOf(origin) !== -1 || (origin && origin.endsWith('.vercel.app'))) {
       callback(null, true);
     } else {
       console.log('❌ [CORS] Blocked origin:', origin);
@@ -86,6 +86,7 @@ app.get('/api/health', (req, res) => {
 // Load routes safely
 try {
   const responseMiddleware = require('./middleware/response');
+  const requireOrganization = require('./middleware/orgProtection');
   app.use(responseMiddleware);
 
   console.log(`[${new Date().toISOString()}] 📦 Loading routes...`);
@@ -203,7 +204,7 @@ try {
 
   console.log('  - instructor');
   const instructorRoutes = require('./routes/instructor');
-  app.use('/instructor', instructorRoutes);
+  app.use('/instructor', requireOrganization, instructorRoutes);
 
   console.log('  - instructor uploads');
   const instructorUploadRoutes = require('./routes/videoUpload');
@@ -215,7 +216,7 @@ try {
 
   console.log('  - admin');
   const adminRoutes = require('./routes/admin');
-  app.use('/api/admin', adminRoutes);
+  app.use('/api/admin', requireOrganization, adminRoutes);
 
   console.log('  - forums');
   const forumRoutes = require('./routes/forums');
@@ -263,7 +264,7 @@ try {
 
   console.log('  - student');
   const studentRoutes = require('./routes/student');
-  app.use('/student', studentRoutes);
+  app.use('/student', requireOrganization, studentRoutes);
 
   console.log('  - live-classes-simple');
   const liveClassesSimpleRoutes = require('./routes/liveClassesSimple');

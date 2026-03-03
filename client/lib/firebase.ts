@@ -1,6 +1,10 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
+if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+    console.error("❌ Firebase API Key is missing! Check your environment variables.");
+}
+
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,

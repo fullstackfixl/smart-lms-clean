@@ -5,6 +5,8 @@ export function getDashboardRoute(role: string): string {
   switch (role) {
     case 'student':
       return '/student/dashboard'
+    case 'public_student':
+      return '/public/dashboard'
     case 'instructor':
       return '/instructor/dashboard'
     case 'org_admin':

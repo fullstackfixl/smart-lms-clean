@@ -3,6 +3,7 @@
 import { useEffect, ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from '../../lib/auth-context'
+import { getDashboardRoute } from "../../lib/role-redirect"
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -26,15 +27,7 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo = "/login" }
       // Authenticated but wrong role - redirect to appropriate dashboard
       if (user && !allowedRoles.includes(user.role)) {
         console.log("⚠️ [ProtectedRoute] Wrong role:", user.role, "allowed:", allowedRoles)
-        // Redirect based on role
-        const roleRoutes: Record<string, string> = {
-          student: "/student/dashboard",
-          instructor: "/instructor/dashboard",
-          org_admin: "/admin/dashboard",
-          platform_admin: "/platform",
-          parent: "/parent/dashboard",
-        }
-        router.push(roleRoutes[user.role] || "/dashboard")
+        router.push(getDashboardRoute(user.role))
       }
     }
   }, [user, loading, isAuthenticated, router, allowedRoles, redirectTo])
