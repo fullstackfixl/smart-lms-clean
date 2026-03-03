@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { useRouter } from "next/navigation"
 import { authApi } from "./api"
 import { getDashboardRoute } from "./role-redirect"
+import { API_URL } from "./config"
 
 interface User {
   _id: string
