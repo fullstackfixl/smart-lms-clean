@@ -82,6 +82,7 @@ class AuthService {
         _id: user.organization_id._id || user.organization_id,
         name: user.organization_id.name,
         type: user.organization_id.type,
+        email: user.organization_id.email,
         modulesEnabled: user.organization_id.modulesEnabled || []
       } : null
     };
@@ -207,11 +208,13 @@ class AuthService {
     const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    const orgType = application.organization_type || 'School';
+    const orgType = (application.organization_type || 'SCHOOL').toUpperCase();
+    const adminEmail = application.admin_email.toLowerCase();
 
     // 1. Create Organization with modules from application
     const organization = new Organization({
       name: application.organization_name,
+      email: adminEmail,
       subdomain: application.subdomain,
       plan: application.selected_plan,
       type: orgType,
@@ -220,7 +223,7 @@ class AuthService {
       status: 'active'
     });
     await organization.save();
-    console.log(`📋 [Registration] Created org "${organization.name}" type="${orgType}" modules=[${organization.modulesEnabled.join(', ')}]`);
+    console.log(`📋 [Registration] Created org "${organization.name}" type="${orgType}" adminEmail="${adminEmail}" modules=[${organization.modulesEnabled.join(', ')}]`);
 
     // 2. Create Org Admin User
     const admin = new User({

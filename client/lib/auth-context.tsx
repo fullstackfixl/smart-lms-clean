@@ -80,8 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (res.success && res.data) {
           // Handle both nested and flat response formats
           const userData = (res.data as any).user || res.data
+          const orgData = (res.data as any).organization || null
           setUser(userData as User)
-          console.log("✅ [AuthContext] User authenticated:", userData.email, "Role:", userData.role)
+          if (orgData) setOrganization(orgData)
+          console.log("✅ [AuthContext] User authenticated:", userData.email, "Role:", userData.role, "OrgType:", orgData?.type)
         } else {
           console.error("❌ [AuthContext] Failed to get user data:", res.error)
           window.sessionStorage.removeItem("instatute_token")
@@ -96,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(null)
         setLoading(false)
       })
+
     } else {
       console.log("⚠️ [AuthContext] No saved token found")
       setLoading(false)

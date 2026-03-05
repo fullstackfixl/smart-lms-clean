@@ -127,24 +127,25 @@ export default function OrgAdminDashboard() {
     },
   ]
 
-  // Add type-specific stats
-  const orgType = metrics.organizationType;
-  if (orgType === 'School') {
+  // Add type-specific stats (DB stores uppercase types: COLLEGE, SCHOOL, INSTITUTE, ONLINE_ACADEMY)
+  const orgType = (metrics.organizationType || '').toUpperCase();
+  if (orgType === 'SCHOOL') {
     stats.push(
       { title: "Grade Levels", value: metrics.metrics.gradeLevels || 0, icon: Activity, gradient: "from-indigo-500 to-blue-500" },
       { title: "Sections", value: metrics.metrics.sections || 0, icon: Activity, gradient: "from-slate-500 to-slate-700" }
     );
-  } else if (orgType === 'College') {
+  } else if (orgType === 'COLLEGE') {
     stats.push(
       { title: "Departments", value: metrics.metrics.departments || 0, icon: Activity, gradient: "from-indigo-500 to-purple-500" },
       { title: "Semesters", value: metrics.metrics.semesters || 0, icon: Activity, gradient: "from-emerald-500 to-teal-500" }
     );
-  } else if (orgType === 'Institute') {
+  } else if (orgType === 'INSTITUTE') {
     stats.push(
       { title: "Batches", value: metrics.metrics.batches || 0, icon: Activity, gradient: "from-orange-500 to-amber-500" },
       { title: "Test Series", value: metrics.metrics.testSeries || 0, icon: Activity, gradient: "from-rose-500 to-red-500" }
     );
   }
+
 
   const userDistribution = [
     { name: "Students", value: metrics.metrics.totalStudents, color: "#3b82f6" },

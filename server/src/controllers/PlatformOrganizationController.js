@@ -22,7 +22,8 @@ class PlatformOrganizationController extends BaseController {
 
       // Lookup template for the requested type so we can seed modules
       const OrgTemplate = require('../models/OrgTemplate');
-      const template = await OrgTemplate.findOne({ type });
+      const upperType = type.toUpperCase();
+      const template = await OrgTemplate.findOne({ type: upperType });
 
       // 1. Create Organization
       const organization = new Organization({
@@ -31,7 +32,7 @@ class PlatformOrganizationController extends BaseController {
         subdomain: subdomain.toLowerCase(),
         plan,
         status: 'active',
-        type: type.toUpperCase(), // Ensure uppercase to match model enum
+        type: upperType,
         modulesEnabled: template ? template.modulesEnabled : [],
         templateVersion: template ? template._id : undefined
       });
@@ -95,12 +96,19 @@ class PlatformOrganizationController extends BaseController {
       // Generating a temporary subdomain/slug from name if not provided
       const subdomain = orgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
+      // Lookup template for the requested type so we can seed modules
+      const OrgTemplate = require('../models/OrgTemplate');
+      const upperType = orgType.toUpperCase();
+      const template = await OrgTemplate.findOne({ type: upperType });
+
       const organization = new Organization({
         name: orgName,
         email: adminEmail.toLowerCase(),
-        type: orgType.toUpperCase(),
+        type: upperType,
         subdomain: `${subdomain}-${Math.random().toString(36).substring(2, 7)}`, // Ensure uniqueness for now
         status: 'pending',
+        modulesEnabled: template ? template.modulesEnabled : [],
+        templateVersion: template ? template._id : undefined,
         created_by: req.user?._id
       });
       await organization.save();

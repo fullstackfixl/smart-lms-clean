@@ -382,9 +382,32 @@ class AuthController {
                     message: 'Authentication required'
                 });
             }
+
+            // Populate organization to return type + modules in same response
+            let organization = null;
+            if (req.user.organization_id) {
+                const Organization = require('../models/Organization');
+                const orgId = req.user.organization_id?._id || req.user.organization_id;
+                const org = await Organization.findById(orgId).select('name type modulesEnabled status plan subdomain');
+                if (org) {
+                    organization = {
+                        _id: org._id,
+                        name: org.name,
+                        type: org.type,
+                        modulesEnabled: org.modulesEnabled || [],
+                        status: org.status,
+                        plan: org.plan,
+                        subdomain: org.subdomain
+                    };
+                }
+            }
+
             res.status(200).json({
                 success: true,
-                data: { user: req.user.toPublicJSON ? req.user.toPublicJSON() : req.user }
+                data: {
+                    user: req.user.toPublicJSON ? req.user.toPublicJSON() : req.user,
+                    organization
+                }
             });
         } catch (error) {
             res.status(500).json({
@@ -393,6 +416,7 @@ class AuthController {
             });
         }
     }
+
 
     /**
      * Forgot password request

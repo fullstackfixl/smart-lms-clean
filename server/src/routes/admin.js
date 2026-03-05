@@ -209,17 +209,17 @@ router.get('/dashboard/metrics', async (req, res) => {
 
     // Type-specific metrics
     const org = await Organization.findById(orgId).select('type').lean();
-    const orgType = org?.type || 'School';
+    const orgType = (org?.type || 'SCHOOL').toUpperCase();
     const typeSpecific = {};
 
-    if (orgType === 'School') {
+    if (orgType === 'SCHOOL') {
       typeSpecific.gradeLevels = await GradeLevel.countDocuments({ organization_id: orgId });
       typeSpecific.sections = await GradeSection.countDocuments({ organization_id: orgId });
       typeSpecific.academicYears = await AcademicYear.countDocuments({ organization_id: orgId });
-    } else if (orgType === 'College') {
+    } else if (orgType === 'COLLEGE') {
       typeSpecific.departments = await Department.countDocuments({ organization_id: orgId });
       typeSpecific.semesters = await Semester.countDocuments({ organization_id: orgId });
-    } else if (orgType === 'Institute') {
+    } else if (orgType === 'INSTITUTE') {
       typeSpecific.batches = await Batch.countDocuments({ organization_id: orgId });
       typeSpecific.testSeries = await TestSeries.countDocuments({ organization_id: orgId });
     }

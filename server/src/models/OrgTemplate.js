@@ -9,7 +9,7 @@ const orgTemplateSchema = new mongoose.Schema({
     type: {
         type: String,
         required: [true, 'Organization type is required'],
-        enum: ['School', 'College', 'Institute', 'Online Academy', 'Coaching'],
+        enum: ['SCHOOL', 'COLLEGE', 'INSTITUTE', 'ONLINE_ACADEMY', 'COACHING'],
         unique: true
     },
     modulesEnabled: [{

@@ -64,63 +64,17 @@ class PlatformApplicationController extends BaseController {
                 return res.error(`Application status is ${application.status}`, 'Validation Error', 400);
             }
 
-            // Module mapping based on strictly defined specification
-            const moduleMapping = {
-                'SCHOOL': [
-                    "ACADEMIC_YEAR",
-                    "GRADES_SECTIONS",
-                    "ATTENDANCE",
-                    "EXAMS",
-                    "PARENT_PORTAL",
-                    "COURSES",
-                    "REPORTS",
-                    "TIMETABLE",
-                    "EVENTS",
-                    "LIVE_CLASSES"
-                ],
-                'COLLEGE': [
-                    "DEPARTMENTS",
-                    "SEMESTERS",
-                    "SUBJECTS",
-                    "GPA_REPORTS",
-                    "COURSES",
-                    "EXAMS",
-                    "TIMETABLE",
-                    "EVENTS",
-                    "LIVE_CLASSES",
-                    "REPORTS"
-                ],
-                'INSTITUTE': [
-                    "BATCHES",
-                    "TEST_SERIES",
-                    "TRAINERS",
-                    "COURSES",
-                    "LEADERBOARDS",
-                    "TIMETABLE",
-                    "EVENTS",
-                    "LIVE_CLASSES",
-                    "REPORTS",
-                    "FEES"
-                ],
-                'ONLINE_ACADEMY': [
-                    "PUBLIC_CATALOG",
-                    "COUPONS",
-                    "COURSE_SALES",
-                    "CERTIFICATES",
-                    "STUDENT_ANALYTICS",
-                    "LIVE_CLASSES",
-                    "REPORTS"
-                ]
-            };
+            const orgType = (application.organization_type || 'SCHOOL').toUpperCase();
 
-            // Default to SCHOOL if type is missing (legacy applications)
-            if (!application.organization_type) {
-                console.log(`⚠️  [Approval] Application ${application._id} missing type, defaulting to SCHOOL`);
-                application.organization_type = 'SCHOOL';
+            // Lookup template for the requested type so we can seed modules
+            const OrgTemplate = require('../models/OrgTemplate');
+            const template = await OrgTemplate.findOne({ type: orgType });
+
+            if (!template) {
+                console.warn(`⚠️ [Approval] No template found for type: ${orgType}, defaulting to empty modules`);
             }
 
-            const orgType = application.organization_type.toUpperCase();
-            const modulesEnabled = moduleMapping[orgType] || moduleMapping['SCHOOL'];
+            const modulesEnabled = template ? template.modulesEnabled : [];
 
             console.log(`📋 [Approval] Assigning modules for ${orgType}: ${modulesEnabled.join(', ')}`);
 
