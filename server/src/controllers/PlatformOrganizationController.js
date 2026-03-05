@@ -27,10 +27,11 @@ class PlatformOrganizationController extends BaseController {
       // 1. Create Organization
       const organization = new Organization({
         name,
+        email: adminEmail.toLowerCase(),
         subdomain: subdomain.toLowerCase(),
         plan,
         status: 'active',
-        type,
+        type: type.toUpperCase(), // Ensure uppercase to match model enum
         modulesEnabled: template ? template.modulesEnabled : [],
         templateVersion: template ? template._id : undefined
       });
@@ -96,10 +97,11 @@ class PlatformOrganizationController extends BaseController {
 
       const organization = new Organization({
         name: orgName,
-        type: orgType,
+        email: adminEmail.toLowerCase(),
+        type: orgType.toUpperCase(),
         subdomain: `${subdomain}-${Math.random().toString(36).substring(2, 7)}`, // Ensure uniqueness for now
         status: 'pending',
-        created_by: req.user._id
+        created_by: req.user?._id
       });
       await organization.save();
 
@@ -225,12 +227,39 @@ class PlatformOrganizationController extends BaseController {
     }
   }
 
+  async getOrganizationStats(req, res) {
+    try {
+      const [total, active, suspended, basic, premium] = await Promise.all([
+        Organization.countDocuments({ is_deleted: { $ne: true } }),
+        Organization.countDocuments({ is_deleted: { $ne: true }, status: 'active' }),
+        Organization.countDocuments({ is_deleted: { $ne: true }, status: 'suspended' }),
+        Organization.countDocuments({ is_deleted: { $ne: true }, plan: 'basic' }),
+        Organization.countDocuments({ is_deleted: { $ne: true }, plan: 'premium' })
+      ]);
+
+      return this.sendSuccess(res, {
+        stats: {
+          total,
+          active,
+          suspended,
+          byPlan: {
+            basic,
+            premium
+          }
+        }
+      }, 'Organization statistics retrieved successfully');
+    } catch (error) {
+      console.error('Get organization stats error:', error);
+      return this.sendError(res, error.message, 500);
+    }
+  }
+
   async getOrganizationDetails(req, res) {
     try {
       const organization = await Organization.findById(req.params.id).lean();
 
       if (!organization) {
-        return res.error('Organization not found', 'Not found', 404);
+        return this.sendError(res, 'Organization not found', 404);
       }
 
       // Get additional stats

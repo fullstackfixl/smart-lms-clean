@@ -58,7 +58,7 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
     try {
       const response = await platformApi.getOrg(token, id)
       if (response.success && response.data) {
-        setOrganization((response.data as any).organization)
+        setOrganization(response.data as any)
       }
     } catch (error) {
       console.error("Failed to load organization:", error)
@@ -68,12 +68,12 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
   }
 
   const handleStatusToggle = async () => {
-    if (!organization) return
+    if (!organization || !token) return
 
     setActionLoading(true)
     try {
       const newStatus = organization.status === 'active' ? 'suspended' : 'active'
-      const response = await platformApi.updateOrgStatus(id, newStatus)
+      const response = await platformApi.updateOrgStatus(token, id, newStatus)
 
       if (response.success) {
         await loadOrganization()
@@ -89,9 +89,10 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
   }
 
   const handleDelete = async () => {
+    if (!token) return
     setActionLoading(true)
     try {
-      const response = await platformApi.deleteOrg(id)
+      const response = await platformApi.deleteOrg(token, id)
 
       if (response.success) {
         router.push('/platform/organizations')
@@ -156,8 +157,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
             onClick={handleStatusToggle}
             disabled={actionLoading}
             className={`flex h-11 items-center gap-2 rounded-xl px-6 text-sm font-medium shadow-lg transition-all hover:scale-105 ${organization.status === 'active'
-                ? 'bg-red-600 text-white shadow-red-500/20 hover:bg-red-500'
-                : 'bg-green-600 text-white shadow-green-500/20 hover:bg-green-500'
+              ? 'bg-red-600 text-white shadow-red-500/20 hover:bg-red-500'
+              : 'bg-green-600 text-white shadow-green-500/20 hover:bg-green-500'
               }`}
           >
             {organization.status === 'active' ? (
@@ -196,8 +197,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
         transition={{ delay: 0.1 }}
       >
         <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${organization.status === 'active'
-            ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-            : 'bg-red-500/10 text-red-400 border border-red-500/20'
+          ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+          : 'bg-red-500/10 text-red-400 border border-red-500/20'
           }`}>
           {organization.status === 'active' ? (
             <CheckCircle className="h-4 w-4" />
@@ -270,8 +271,8 @@ export default function OrganizationDetailPage({ params }: { params: Promise<{ i
             <div>
               <div className="text-sm text-gray-400 mb-2">Plan</div>
               <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium ${organization.plan === 'premium'
-                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                  : 'bg-slate-800/50 text-gray-400 border border-slate-700/50'
+                ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                : 'bg-slate-800/50 text-gray-400 border border-slate-700/50'
                 }`}>
                 {organization.plan.charAt(0).toUpperCase() + organization.plan.slice(1)}
               </span>

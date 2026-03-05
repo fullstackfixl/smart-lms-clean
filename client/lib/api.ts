@@ -351,7 +351,7 @@ export const gamificationApi = {
 // Platform Admin APIs
 export const platformApi = {
   // Organizations
-  createOrg: async (data: {
+  createOrg: async (token: string, data: {
     name: string
     email: string
     phone?: string
@@ -366,6 +366,7 @@ export const platformApi = {
   }) => {
     return apiRequest("/platform/organizations", {
       method: "POST",
+      token,
       body: data
     })
   },
@@ -387,7 +388,7 @@ export const platformApi = {
   getOrg: (token: string, id: string) =>
     apiRequest(`/platform/organizations/${id}`, { token }),
 
-  updateOrg: async (id: string, data: {
+  updateOrg: async (token: string, id: string, data: {
     name?: string
     email?: string
     phone?: string
@@ -402,26 +403,30 @@ export const platformApi = {
   }) => {
     return apiRequest(`/platform/organizations/${id}`, {
       method: "PUT",
+      token,
       body: data
     })
   },
 
-  updateOrgStatus: async (id: string, status: 'active' | 'suspended') => {
+  updateOrgStatus: async (token: string, id: string, status: 'active' | 'suspended') => {
     return apiRequest(`/platform/organizations/${id}/status`, {
       method: "PATCH",
+      token,
       body: { status }
     })
   },
 
-  deleteOrg: async (id: string) => {
+  deleteOrg: async (token: string, id: string) => {
     return apiRequest(`/platform/organizations/${id}`, {
-      method: "DELETE"
+      method: "DELETE",
+      token
     })
   },
 
-  restoreOrg: async (id: string) => {
+  restoreOrg: async (token: string, id: string) => {
     return apiRequest(`/platform/organizations/${id}/restore`, {
-      method: "POST"
+      method: "POST",
+      token
     })
   },
 

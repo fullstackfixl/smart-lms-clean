@@ -37,10 +37,16 @@ const organizationSchema = new mongoose.Schema({
   plan: {
     type: String,
     enum: {
-      values: ['free', 'basic', 'pro', 'enterprise'],
-      message: 'Plan must be free, basic, pro, or enterprise'
+      values: ['free', 'basic', 'premium', 'pro', 'enterprise'],
+      message: 'Plan must be free, basic, premium, pro, or enterprise'
     },
     default: 'free'
+  },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    required: [true, 'Contact email is required']
   },
   status: {
     type: String,

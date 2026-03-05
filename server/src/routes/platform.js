@@ -27,17 +27,7 @@ router.get('/analytics/revenue', platformAnalyticsController.getDashboardStats.b
 
 // --- Organizations Management ---
 router.get('/organizations', platformOrganizationController.listOrganizations.bind(platformOrganizationController));
-router.get('/organizations/stats', async (req, res) => {
-    // Simple stats for organizations list view
-    try {
-        const { Organization } = require('../models');
-        const [total, active] = await Promise.all([
-            Organization.countDocuments({ is_deleted: false }),
-            Organization.countDocuments({ is_deleted: false, status: 'active' })
-        ]);
-        res.json({ success: true, data: { total, active } });
-    } catch (err) { res.status(500).json({ success: false, message: err.message }); }
-});
+router.get('/organizations/stats', platformOrganizationController.getOrganizationStats.bind(platformOrganizationController));
 router.get('/organizations/:id', platformOrganizationController.getOrganizationDetails.bind(platformOrganizationController));
 router.post('/organizations', platformOrganizationController.createOrganization.bind(platformOrganizationController));
 router.put('/organizations/:id', platformOrganizationController.updateOrganization.bind(platformOrganizationController));

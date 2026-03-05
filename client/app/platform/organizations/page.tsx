@@ -66,9 +66,10 @@ export default function OrganizationsPage() {
       })
 
       if (response.success && response.data) {
-        setOrganizations((response.data as any).organizations || [])
-        if ((response.data as any).pagination) {
-          setTotalPages((response.data as any).pagination.totalPages || 1)
+        const data = response.data as any
+        setOrganizations(data.organizations || [])
+        if (data.pagination) {
+          setTotalPages(data.pagination.totalPages || 1)
         }
       }
     } catch (error) {
@@ -92,10 +93,11 @@ export default function OrganizationsPage() {
   }
 
   const handleStatusToggle = async (id: string, currentStatus: string) => {
+    if (!token) return
     setActionLoading(id)
     try {
       const newStatus = currentStatus === 'active' ? 'suspended' : 'active'
-      const response = await platformApi.updateOrgStatus(id, newStatus)
+      const response = await platformApi.updateOrgStatus(token, id, newStatus)
 
       if (response.success) {
         await loadOrganizations()
@@ -112,9 +114,10 @@ export default function OrganizationsPage() {
   }
 
   const handleDelete = async (id: string) => {
+    if (!token) return
     setActionLoading(id)
     try {
-      const response = await platformApi.deleteOrg(id)
+      const response = await platformApi.deleteOrg(token, id)
 
       if (response.success) {
         setShowDeleteModal(null)

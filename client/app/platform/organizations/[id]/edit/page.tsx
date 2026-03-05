@@ -55,7 +55,7 @@ export default function EditOrganizationPage() {
     try {
       const response = await platformApi.getOrg(token, id)
       if (response.success && response.data) {
-        const org = (response.data as any).organization
+        const org = response.data as any
         setFormData({
           name: org.name || "",
           email: org.email || "",
@@ -80,12 +80,13 @@ export default function EditOrganizationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!token) return
     setSaving(true)
     setError("")
 
     try {
-      const response = await platformApi.updateOrg(id, formData)
-      
+      const response = await platformApi.updateOrg(token, id, formData)
+
       if (response.success) {
         router.push(`/platform/organizations/${id}`)
       } else {
@@ -199,7 +200,7 @@ export default function EditOrganizationPage() {
 
           <div className="border-t border-slate-800/50 pt-6">
             <h3 className="text-lg font-semibold text-gray-200 mb-4">Address Information</h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">

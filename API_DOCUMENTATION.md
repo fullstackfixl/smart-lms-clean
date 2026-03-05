@@ -114,6 +114,19 @@ This document provides a comprehensive reference of the API endpoints available 
 
 ---
 
+## 9. Jitsi Meeting Attendance (Automated)
+**Base Path:** `/api/attendance`
+
+| Method | Endpoint | Auth | Role | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| POST | `/join` | JWT | Student | Record meeting join event (captures `joinTime`) |
+| POST | `/leave` | JWT | Student | Record leave event & calculate status (60% rule) |
+| GET | `/class/:classId` | JWT | Instructor | Get participant details for a specific session |
+| GET | `/student/course/:courseId` | JWT | Student | Get personal attendance summary and history |
+| PATCH | `/:id/override` | JWT | Instructor | Manually set status to 'present' or 'absent' |
+
+---
+
 > [!NOTE]
 > All JWT authenticated requests must include the header `Authorization: Bearer <token>`.
 > Most routes return JSON in the format: `{ success: true, data: ..., message: "..." }`.
