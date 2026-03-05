@@ -12,12 +12,14 @@ import {
   Settings,
   LogOut,
   GraduationCap,
+  Users,
   Menu,
   X,
   FileText,
   Bell,
   BarChart3,
   Calendar,
+  ClipboardList,
 } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
 import { cn } from '../../lib/utils'
@@ -32,8 +34,9 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/instructor/dashboard', icon: LayoutDashboard },
   { label: 'Manage Courses', href: '/instructor/courses', icon: BookOpen },
-  { label: 'Students', href: '/instructor/students', icon: GraduationCap },
+  { label: 'Students', href: '/instructor/students', icon: Users },
   { label: 'Live Classes', href: '/instructor/live-classes', icon: Video },
+  { label: 'Quiz Management', href: '/instructor/quiz', icon: ClipboardList },
   { label: 'Analytics', href: '/instructor/analytics', icon: BarChart3 },
   { label: 'Submissions', href: '/instructor/submissions', icon: FileText },
   { label: 'Notifications', href: '/instructor/notifications', icon: Bell },

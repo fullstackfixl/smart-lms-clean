@@ -116,15 +116,18 @@ export default function InstructorDashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+            <Card className="overflow-hidden border-0 bg-slate-900/40 backdrop-blur-xl border border-slate-800/50">
+              <CardContent className="p-6 relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <BookOpen className="h-16 w-16" />
+                </div>
+                <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total Courses</p>
-                    <p className="text-3xl font-bold">{data.totalCourses}</p>
+                    <p className="text-xs font-bold text-blue-400 uppercase tracking-tighter mb-1">Total Courses</p>
+                    <p className="text-4xl font-black text-white">{data.totalCourses}</p>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                    <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <BookOpen className="h-7 w-7 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -136,15 +139,18 @@ export default function InstructorDashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+            <Card className="overflow-hidden border-0 bg-slate-900/40 backdrop-blur-xl border border-slate-800/50">
+              <CardContent className="p-6 relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <Users className="h-16 w-16" />
+                </div>
+                <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total Students</p>
-                    <p className="text-3xl font-bold">{data.totalStudents}</p>
+                    <p className="text-xs font-bold text-emerald-400 uppercase tracking-tighter mb-1">Total Students</p>
+                    <p className="text-4xl font-black text-white">{data.totalStudents}</p>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                    <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <Users className="h-7 w-7 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -156,15 +162,18 @@ export default function InstructorDashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+            <Card className="overflow-hidden border-0 bg-slate-900/40 backdrop-blur-xl border border-slate-800/50">
+              <CardContent className="p-6 relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <Video className="h-16 w-16" />
+                </div>
+                <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Total Lectures</p>
-                    <p className="text-3xl font-bold">{data.totalLectures}</p>
+                    <p className="text-xs font-bold text-purple-400 uppercase tracking-tighter mb-1">Total Lectures</p>
+                    <p className="text-4xl font-black text-white">{data.totalLectures}</p>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                    <Video className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                    <Video className="h-7 w-7 text-white" />
                   </div>
                 </div>
               </CardContent>
@@ -176,15 +185,18 @@ export default function InstructorDashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+            <Card className="overflow-hidden border-0 bg-slate-900/40 backdrop-blur-xl border border-slate-800/50">
+              <CardContent className="p-6 relative">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <TrendingUp className="h-16 w-16" />
+                </div>
+                <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Completion Rate</p>
-                    <p className="text-3xl font-bold">{Math.round(data.completionRate)}%</p>
+                    <p className="text-xs font-bold text-orange-400 uppercase tracking-tighter mb-1">Completion Rate</p>
+                    <p className="text-4xl font-black text-white">{Math.round(data.completionRate)}%</p>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-600 to-orange-400 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                    <TrendingUp className="h-7 w-7 text-white" />
                   </div>
                 </div>
               </CardContent>

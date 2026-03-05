@@ -1,7 +1,7 @@
 "use client"
 
 import { ProtectedRoute } from '../../components/auth/ProtectedRoute'
-import { InstructorSidebar } from '../../components/instructor/instructor-sidebar'
+import { InstructorSidebar } from '../../components/instructor/InstructorSidebar'
 import { InstructorHeader } from '../../components/instructor/instructor-header'
 import { ThemeProvider } from '../../components/theme-provider'
 import { useAuth } from '../../lib/auth-context'
