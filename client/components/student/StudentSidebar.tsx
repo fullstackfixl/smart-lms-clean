@@ -24,6 +24,7 @@ import {
   X,
   Search,
   Video,
+  ClipboardCheck,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from '../../lib/utils'
@@ -38,6 +39,7 @@ const navItems = [
   { label: 'Certificates', href: '/student/certificates', icon: Award, module: 'CERTIFICATES' },
   { label: 'Leaderboard', href: '/student/leaderboard', icon: Trophy, module: 'LEADERBOARDS' },
   { label: 'Timetable', href: '/student/timetable', icon: Calendar, module: 'TIMETABLE' },
+  { label: 'Attendance', href: '/student/attendance', icon: ClipboardCheck, collegeOnly: true },
   { label: 'Events', href: '/student/events', icon: CalendarDays, module: 'EVENTS' },
   { label: 'Academic Transcript', href: '/student/transcript', icon: GraduationCap, collegeOnly: true },
 ]
@@ -59,65 +61,98 @@ export function StudentSidebar() {
   })
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-[#F5F5F5] border-r border-slate-200 shadow-sm">
+    <div className="flex h-full flex-col bg-slate-900/50 backdrop-blur-xl border-r border-slate-800/50">
       {/* Brand */}
-      <div className="p-6">
-        <Link href="/student/dashboard" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[#4CAF50] flex items-center justify-center shadow-sm">
-            <span className="text-white font-bold text-lg">S</span>
-          </div>
-          <span className="text-xl font-bold text-slate-800 tracking-tight">Smart LMS</span>
-        </Link>
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-800/50">
+        <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 shadow-lg shadow-emerald-500/20">
+          <BookOpen className="h-6 w-6 text-white" />
+          <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-blue-500 ring-2 ring-slate-900" />
+        </div>
+        <div>
+          <span className="text-lg font-bold text-slate-100">
+            Smart<span className="text-emerald-500">LMS</span>
+          </span>
+          <p className="text-[10px] font-medium text-slate-500">Learner Portal</p>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
-        {filteredItems.map((item) => {
-          const isActive = pathname === item.href
-          const Icon = item.icon
+      {/* User Profile */}
+      {user && (
+        <div className="mx-4 mt-4 rounded-xl border border-slate-800/50 bg-emerald-500/5 p-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-500 text-base font-bold text-white shadow-md">
+              {user.name?.charAt(0) || 'S'}
+              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-slate-900 bg-green-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-slate-100">{user.name}</p>
+              <p className="truncate text-xs text-emerald-500/80 font-medium">Student</p>
+            </div>
+          </div>
+        </div>
+      )}
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all group",
-                isActive
-                  ? "bg-[#4CAF50] text-white shadow-md shadow-green-500/20"
-                  : "text-slate-600 hover:bg-slate-200 hover:text-slate-900"
-              )}
-              onClick={() => setIsMobileOpen(false)}
-            >
-              <Icon
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-3 py-6">
+        <div className="flex flex-col gap-1">
+          {filteredItems.map((item) => {
+            const isActive = pathname === item.href
+            const Icon = item.icon
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsMobileOpen(false)}
                 className={cn(
-                  "h-5 w-5",
-                  isActive ? "text-white" : "text-[#FFC107] group-hover:text-[#FFB300]"
+                  'group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
+                  isActive
+                    ? 'bg-gradient-to-r from-emerald-600/20 to-emerald-500/10 text-emerald-500 shadow-sm'
+                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'
                 )}
-                strokeWidth={2}
-              />
-              <span>{item.label}</span>
-            </Link>
-          )
-        })}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeTabStudent"
+                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-emerald-600/20 to-emerald-500/10 border border-emerald-500/20"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <Icon
+                  className={cn(
+                    'relative z-10 h-5 w-5 shrink-0 transition-transform duration-200',
+                    isActive ? 'scale-110 text-emerald-500' : 'group-hover:scale-105'
+                  )}
+                />
+                <span className="relative z-10">{item.label}</span>
+                {isActive && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-emerald-500 rounded-l-full" />
+                )}
+              </Link>
+            )
+          })}
+        </div>
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-4 border-t border-slate-200 bg-[#FAFAFA]">
+      <div className="border-t border-slate-800/50 p-4">
         <Link
           href="/student/profile"
           className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all mb-1",
-            pathname === '/student/profile' ? "bg-slate-200 text-slate-900" : "text-slate-600 hover:bg-slate-200"
+            'flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all',
+            pathname === '/student/profile'
+              ? 'bg-slate-800 text-slate-100'
+              : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-100'
           )}
         >
-          <User className="h-5 w-5 text-slate-400" strokeWidth={2} />
+          <User className="h-5 w-5" />
           <span>Profile</span>
         </Link>
         <button
           onClick={() => logout()}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all w-full text-left"
+          className="mt-1 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-400 transition-all hover:bg-red-500/10 hover:text-red-400"
         >
-          <LogOut className="h-5 w-5 text-slate-400 group-hover:text-red-500" strokeWidth={2} />
+          <LogOut className="h-5 w-5" />
           <span>Logout</span>
         </button>
       </div>
