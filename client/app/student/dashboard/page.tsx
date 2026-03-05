@@ -361,9 +361,11 @@ export default function StudentDashboard() {
                     <span>{new Date(lc.scheduled_date).toLocaleDateString()} at {lc.start_time}</span>
                   </div>
                   {lc.canJoin && (
-                    <Button size="sm" className="w-full mt-3 bg-[#4CAF50] hover:bg-[#388E3C] h-8 text-xs">
-                      Join Now
-                    </Button>
+                    <Link href={`/student/live-classes/${lc._id}/meeting`} className="w-full">
+                      <Button size="sm" className="w-full mt-3 bg-[#4CAF50] hover:bg-[#388E3C] h-8 text-xs">
+                        Join Now
+                      </Button>
+                    </Link>
                   )}
                 </div>
               ))

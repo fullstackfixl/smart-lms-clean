@@ -6,6 +6,8 @@ const Attendance = require('../models/Attendance');
 const Course = require('../models/Course');
 const User = require('../models/User');
 const Enrollment = require('../models/Enrollment');
+const MeetingAttendance = require('../models/MeetingAttendance');
+const LiveClass = require('../models/LiveClass');
 const notificationService = require('../utils/notificationService');
 
 const router = express.Router();
@@ -768,6 +770,274 @@ router.post('/auto-mark-from-live-class', [
       error: error.message,
       message: 'Failed to auto-mark attendance from live class'
     });
+  }
+});
+
+
+/**
+ * POST /api/attendance/join
+ * Track student join event
+ */
+router.post('/join', [
+  auth,
+  body('studentId').isMongoId().withMessage('Valid student ID is required'),
+  body('classId').isMongoId().withMessage('Valid class ID is required'),
+  body('courseId').isMongoId().withMessage('Valid course ID is required'),
+  body('joinTime').isISO8601().withMessage('Valid join time is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const { studentId, classId, courseId, joinTime } = req.body;
+    const { organization_id } = req.user;
+
+    // Import models here to ensure they are available for these new routes
+    const MeetingAttendance = require('../models/MeetingAttendance');
+    const Enrollment = require('../models/Enrollment');
+
+    // Security: ensure student is enrolled in the course
+    const enrollment = await Enrollment.findOne({
+      student_id: studentId,
+      course_id: courseId,
+      organization_id: organization_id,
+      status: 'active'
+    });
+
+    if (!enrollment && req.user.role === 'student') {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not enrolled in this course'
+      });
+    }
+
+    // Find or create attendance record
+    let attendance = await MeetingAttendance.findOne({ studentId, classId });
+
+    if (!attendance) {
+      attendance = new MeetingAttendance({
+        studentId,
+        classId,
+        courseId,
+        organizationId: organization_id,
+        joinTime: new Date(joinTime),
+        date: new Date(),
+        status: 'absent'
+      });
+    } else {
+      // Keep earliest join time
+      if (new Date(joinTime) < attendance.joinTime) {
+        attendance.joinTime = new Date(joinTime);
+      }
+    }
+
+    attendance.lastUpdate = new Date();
+    await attendance.save();
+
+    res.json({
+      success: true,
+      data: attendance,
+      message: 'Join event recorded'
+    });
+  } catch (error) {
+    console.error('Attendance join error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/attendance/leave
+ * Track student leave event and calculate status
+ */
+router.post('/leave', [
+  auth,
+  body('studentId').isMongoId().withMessage('Valid student ID is required'),
+  body('classId').isMongoId().withMessage('Valid class ID is required'),
+  body('leaveTime').isISO8601().withMessage('Valid leave time is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const { studentId, classId, leaveTime } = req.body;
+    const { organization_id } = req.user;
+
+    // Security: Find record and ensure it belongs to the organization
+    let attendance = await MeetingAttendance.findOne({
+      studentId,
+      classId,
+      organizationId: organization_id
+    });
+
+    if (!attendance) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance record not found. Participant must join before leaving.'
+      });
+    }
+
+    // Update leave time (keep latest)
+    const newLeaveTime = new Date(leaveTime);
+    if (!attendance.leaveTime || newLeaveTime > attendance.leaveTime) {
+      attendance.leaveTime = newLeaveTime;
+    }
+
+    // Calculate duration
+    const duration = Math.round((attendance.leaveTime - attendance.joinTime) / (1000 * 60));
+    attendance.duration = duration;
+
+    // Calculate status based on 60% rule
+    const liveClass = await LiveClass.findById(classId);
+    if (liveClass) {
+      const classDuration = liveClass.duration_minutes || 60; // Default if not set
+      if (duration >= (0.6 * classDuration)) {
+        attendance.status = 'present';
+      } else {
+        attendance.status = 'absent';
+      }
+    }
+
+    attendance.lastUpdate = new Date();
+    await attendance.save();
+
+    res.json({
+      success: true,
+      data: attendance,
+      message: 'Leave event recorded and attendance calculated'
+    });
+  } catch (error) {
+    console.error('Attendance leave error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/attendance/class/:classId
+ * Get attendance for a specific class (Instructors only)
+ */
+router.get('/class/:classId', auth, async (req, res) => {
+  try {
+    const { classId } = req.params;
+    const { organization_id, role, _id: userId } = req.user;
+
+    // Import models here to ensure they are available for these new routes
+    const MeetingAttendance = require('../models/MeetingAttendance');
+    const LiveClass = require('../models/LiveClass');
+
+    if (!['instructor', 'org_admin'].includes(role)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const liveClass = await LiveClass.findById(classId);
+    if (!liveClass) {
+      return res.status(404).json({ success: false, message: 'Class not found' });
+    }
+
+    // Security: Check organization isolation
+    if (liveClass.organization_id.toString() !== organization_id.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const attendance = await MeetingAttendance.find({
+      classId,
+      organizationId: organization_id
+    })
+      .populate('studentId', 'full_name email avatar')
+      .sort({ studentId: 1 });
+
+    res.json({
+      success: true,
+      data: attendance
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/attendance/student/course/:courseId
+ * Course-wise attendance for students
+ */
+router.get('/student/course/:courseId', auth, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const studentId = req.user._id;
+    const { organization_id } = req.user;
+
+    // Import models here to ensure they are available for these new routes
+    const MeetingAttendance = require('../models/MeetingAttendance');
+    const LiveClass = require('../models/LiveClass');
+
+    const attendanceRecords = await MeetingAttendance.find({
+      studentId,
+      courseId,
+      organizationId: organization_id
+    }).populate('classId', 'title scheduled_date start_time');
+
+    const totalClasses = await LiveClass.countDocuments({
+      course_id: courseId,
+      status: 'completed'
+    });
+
+    const presentCount = attendanceRecords.filter(r => r.status === 'present').length;
+    const attendancePercentage = totalClasses > 0 ? Math.round((presentCount / totalClasses) * 100) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        records: attendanceRecords,
+        summary: {
+          totalClasses,
+          presentCount,
+          attendancePercentage
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * PATCH /api/attendance/:id/override
+ * Manual override for instructors
+ */
+router.patch('/:id/override', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const { role, organization_id } = req.user;
+
+    if (!['instructor', 'org_admin'].includes(role)) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    if (!['present', 'absent'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const attendance = await MeetingAttendance.findOne({
+      _id: id,
+      organizationId: organization_id
+    });
+    if (!attendance) {
+      return res.status(404).json({ success: false, message: 'Attendance record not found' });
+    }
+
+    attendance.status = status;
+    await attendance.save();
+
+    res.json({
+      success: true,
+      data: attendance,
+      message: 'Attendance status overridden successfully'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

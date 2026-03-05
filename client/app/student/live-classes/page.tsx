@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Video, Calendar, Clock, User, Loader2, ExternalLink,
@@ -178,8 +179,8 @@ export default function StudentLiveClassesPage() {
             key={f}
             onClick={() => setFilter(f)}
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all capitalize ${filter === f
-                ? "bg-purple-600 text-white shadow-md shadow-purple-200"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              ? "bg-purple-600 text-white shadow-md shadow-purple-200"
+              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
           >
             {f === "live" ? "🔴 Live Now" : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -236,9 +237,9 @@ export default function StudentLiveClassesPage() {
                   }`}>
                   {/* Status strip */}
                   <div className={`h-1.5 w-full ${lc.isLive ? "bg-gradient-to-r from-green-400 to-emerald-500 animate-pulse" :
-                      lc.status === "completed" ? "bg-slate-300" :
-                        lc.status === "cancelled" ? "bg-red-400" :
-                          "bg-gradient-to-r from-purple-400 to-indigo-500"
+                    lc.status === "completed" ? "bg-slate-300" :
+                      lc.status === "cancelled" ? "bg-red-400" :
+                        "bg-gradient-to-r from-purple-400 to-indigo-500"
                     }`} />
 
                   <CardContent className="p-6">
@@ -332,20 +333,20 @@ export default function StudentLiveClassesPage() {
                             <XCircle className="h-4 w-4" /> Cancelled
                           </Button>
                         ) : lc.meeting_url ? (
-                          <a href={lc.meeting_url} target="_blank" rel="noopener noreferrer">
+                          <Link href={`/student/live-classes/${lc._id}/meeting`}>
                             <Button
                               className={`gap-2 rounded-xl font-bold shadow-md transition-all ${lc.canJoin
-                                  ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-200"
-                                  : "bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-purple-200"
+                                ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-green-200"
+                                : "bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-purple-200"
                                 }`}
                             >
                               {lc.canJoin ? (
                                 <><Radio className="h-4 w-4 animate-pulse" /> Join Now</>
                               ) : (
-                                <><Monitor className="h-4 w-4" /> View Link</>
+                                <><Monitor className="h-4 w-4" /> View Meeting</>
                               )}
                             </Button>
-                          </a>
+                          </Link>
                         ) : (
                           <Button disabled variant="outline" className="gap-2 rounded-xl opacity-60">
                             <Lock className="h-4 w-4" /> Link TBA
