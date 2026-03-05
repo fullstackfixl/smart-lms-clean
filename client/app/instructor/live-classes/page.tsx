@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-  Video, Calendar, Clock, Link, BookOpen, Plus, Trash2,
+  Video, Calendar, Clock, Link as LinkIcon, BookOpen, Plus, Trash2,
   Loader2, CheckCircle, AlertCircle, ChevronLeft, Users
 } from "lucide-react"
 import { Button } from '../../../components/ui/button'
@@ -240,7 +241,7 @@ export default function InstructorLiveClassesPage() {
                     </div>
                     <div>
                       <Label>
-                        <Link className="inline h-3.5 w-3.5 mr-1" />
+                        <LinkIcon className="inline h-3.5 w-3.5 mr-1" />
                         Meeting Link
                       </Label>
                       <Input
@@ -337,19 +338,24 @@ export default function InstructorLiveClassesPage() {
                           {lc.meeting_url && (
                             <a href={lc.meeting_url} target="_blank" rel="noopener noreferrer"
                               className="flex items-center gap-1 text-purple-600 hover:underline">
-                              <Link className="h-3.5 w-3.5" /> Join Link
+                              <LinkIcon className="h-3.5 w-3.5" /> Join Link
                             </a>
                           )}
                         </div>
                       </div>
-                      {lc.status === "scheduled" && isUpcoming && (
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/instructor/live-classes/${lc._id}/attendance`}>
+                          <Button size="sm" variant="outline" className="gap-2 border-purple-200 text-purple-600 hover:bg-purple-50">
+                            <Users className="h-4 w-4" /> Attendance
+                          </Button>
+                        </Link>
+                        {lc.status === "scheduled" && isUpcoming && (
                           <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             onClick={() => handleCancel(lc._id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

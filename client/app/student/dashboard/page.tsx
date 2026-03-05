@@ -386,9 +386,11 @@ export default function StudentDashboard() {
                       <span>{lc.start_time}</span>
                     </div>
                     {lc.canJoin && (
-                      <Button size="sm" className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 h-9 font-bold shadow-lg shadow-emerald-600/20">
-                        Join Live Session
-                      </Button>
+                      <Link href={`/student/live-classes/${lc._id}/meeting`} className="w-full">
+                        <Button size="sm" className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 h-9 font-bold shadow-lg shadow-emerald-600/20">
+                          Join Live Session
+                        </Button>
+                      </Link>
                     )}
                   </div>
                 ))

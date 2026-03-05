@@ -24,7 +24,7 @@ import {
   X,
   Search,
   Video,
-  ClipboardCheck,
+  Users,
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from '../../lib/utils'
@@ -39,7 +39,7 @@ const navItems = [
   { label: 'Certificates', href: '/student/certificates', icon: Award, module: 'CERTIFICATES' },
   { label: 'Leaderboard', href: '/student/leaderboard', icon: Trophy, module: 'LEADERBOARDS' },
   { label: 'Timetable', href: '/student/timetable', icon: Calendar, module: 'TIMETABLE' },
-  { label: 'Attendance', href: '/student/attendance', icon: ClipboardCheck, collegeOnly: true },
+  { label: 'Attendance', href: '/student/attendance', icon: Users },
   { label: 'Events', href: '/student/events', icon: CalendarDays, module: 'EVENTS' },
   { label: 'Academic Transcript', href: '/student/transcript', icon: GraduationCap, collegeOnly: true },
 ]
