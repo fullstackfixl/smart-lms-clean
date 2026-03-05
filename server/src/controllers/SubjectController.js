@@ -4,6 +4,11 @@ const Subject = require('../models/Subject');
 class SubjectController extends BaseController {
     constructor() {
         super(Subject);
+        this.create = this.create.bind(this);
+        this.getAll = this.getAll.bind(this);
+        this.getById = this.getById.bind(this);
+        this.update = this.update.bind(this);
+        this.delete = this.delete.bind(this);
     }
 
     async create(req, res) {
@@ -11,18 +16,18 @@ class SubjectController extends BaseController {
         try {
             const subject = new Subject(req.body);
             await subject.save();
-            return res.success(subject, 'Subject created successfully', 201);
+            return this.sendSuccess(res, subject, 'Subject created successfully', 201);
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 
     async getAll(req, res) {
         try {
             const subjects = await Subject.find({ organization_id: req.user.organization_id }).sort({ name: 1 });
-            return res.success(subjects);
+            return this.sendSuccess(res, subjects);
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 
@@ -32,10 +37,10 @@ class SubjectController extends BaseController {
                 _id: req.params.id,
                 organization_id: req.user.organization_id
             });
-            if (!subject) return res.error('Subject not found', 'Not Found', 404);
-            return res.success(subject);
+            if (!subject) return this.sendError(res, 'Subject not found', 404);
+            return this.sendSuccess(res, subject);
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 
@@ -46,10 +51,10 @@ class SubjectController extends BaseController {
                 req.body,
                 { new: true, runValidators: true }
             );
-            if (!subject) return res.error('Subject not found', 'Not Found', 404);
-            return res.success(subject, 'Subject updated successfully');
+            if (!subject) return this.sendError(res, 'Subject not found', 404);
+            return this.sendSuccess(res, subject, 'Subject updated successfully');
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 
@@ -59,10 +64,10 @@ class SubjectController extends BaseController {
                 _id: req.params.id,
                 organization_id: req.user.organization_id
             });
-            if (!subject) return res.error('Subject not found', 'Not Found', 404);
-            return res.success(null, 'Subject deleted successfully');
+            if (!subject) return this.sendError(res, 'Subject not found', 404);
+            return this.sendSuccess(res, null, 'Subject deleted successfully');
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 }

@@ -13,3 +13,8 @@ export const getApiUrl = (): string => {
 }
 
 export const API_URL = getApiUrl();
+
+export const getToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token');
+};

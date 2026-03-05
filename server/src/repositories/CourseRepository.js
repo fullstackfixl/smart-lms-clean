@@ -11,12 +11,42 @@ class CourseRepository extends BaseRepository {
     if (organizationId) {
       filter.organization_id = organizationId;
     }
-    return await this.model.findOne(filter);
+    return await this.model.findOne(filter)
+      .populate('subject_id')
+      .populate('semester_id')
+      .populate('department_id');
   }
 
   async findAll(filters = {}, pagination = {}, organizationId) {
     const baseFilters = { ...filters, is_deleted: false };
-    return super.findAll(baseFilters, pagination, organizationId);
+    const { limit = 10, offset = 0, sortBy = 'createdAt', sortOrder = 'desc' } = pagination;
+
+    const query = { ...baseFilters };
+    if (organizationId) {
+      query.organization_id = organizationId;
+    }
+
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const documents = await this.model
+      .find(query)
+      .populate('subject_id')
+      .populate('semester_id')
+      .populate('department_id')
+      .sort(sort)
+      .limit(limit)
+      .skip(offset);
+
+    const total = await this.model.countDocuments(query);
+
+    return {
+      data: documents,
+      total,
+      limit,
+      offset,
+      pages: Math.ceil(total / limit)
+    };
   }
 
   async findByInstructor(instructorId, organizationId) {

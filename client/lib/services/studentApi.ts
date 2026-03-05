@@ -157,6 +157,29 @@ export const getGrades = async (): Promise<ApiResponse> => {
   return response.data
 }
 
+// ============================================
+// COLLEGE ACADEMIC
+// ============================================
+export const getTranscript = async (): Promise<ApiResponse> => {
+  const response = await apiClient.get('/student/transcript')
+  return response.data
+}
+
+export const getAcademicOverview = async (): Promise<ApiResponse> => {
+  const response = await apiClient.get('/student/academic-overview')
+  return response.data
+}
+
+export const getAcademicAttendance = async (): Promise<ApiResponse> => {
+  const response = await apiClient.get('/student/academic-attendance')
+  return response.data
+}
+
+export const getSemesters = async (): Promise<ApiResponse> => {
+  const response = await apiClient.get('/student/semesters')
+  return response.data
+}
+
 export const getCourseGrades = async (courseId: string): Promise<ApiResponse> => {
   const token = typeof window !== 'undefined'
     ? window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')

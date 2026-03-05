@@ -346,4 +346,22 @@ export const deleteNotification = async (notificationId: string): Promise<ApiRes
   return response.data
 }
 
+// ============================================
+// COLLEGE ACADEMIC
+// ============================================
+export const getGradebook = async (courseId: string): Promise<ApiResponse> => {
+  const response = await apiClient.get(`/instructor/gradebook/${courseId}`)
+  return response.data
+}
+
+export const updateMarks = async (data: any): Promise<ApiResponse> => {
+  const response = await apiClient.post('/instructor/gradebook/marks', data)
+  return response.data
+}
+
+export const getAttendanceSummary = async (): Promise<ApiResponse> => {
+  const response = await apiClient.get('/instructor/attendance/summary')
+  return response.data
+}
+
 export default apiClient

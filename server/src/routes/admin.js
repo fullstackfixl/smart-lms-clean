@@ -476,7 +476,8 @@ router.post('/users', async (req, res) => {
     // Create user
     const newUser = new User({
       email: email.toLowerCase(),
-      password,
+      name: fullName, // Required top-level field
+      password_hash: password, // Will be hashed by pre-save hook
       profile: { fullName, phone },
       role,
       organization_id: organizationId,
@@ -491,7 +492,9 @@ router.post('/users', async (req, res) => {
     }, 'User created successfully');
 
   } catch (error) {
-    console.error('Create user error:', error);
+    console.error('❌ [admin.js] Create user error:', error);
+    console.error('   Path:', req.originalUrl);
+    console.error('   Body:', JSON.stringify(req.body, null, 2));
     res.error(error.message, 'Failed to create user', 500);
   }
 });

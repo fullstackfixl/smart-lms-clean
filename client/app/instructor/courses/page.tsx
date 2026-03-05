@@ -37,6 +37,9 @@ interface Course {
   status: 'draft' | 'published' | 'archived'
   enrollmentCount: number
   createdAt: string
+  course_credits?: number
+  subject_id?: { name: string, code: string }
+  semester_id?: { name: string, number: number }
 }
 
 export default function InstructorCoursesPage() {
@@ -283,6 +286,24 @@ export default function InstructorCoursesPage() {
                           {course.level}
                         </Badge>
                       </div>
+
+                      {/* Academic Info Row */}
+                      {course.course_credits !== undefined && (
+                        <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-2 gap-2">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Semester</span>
+                            <span className="text-xs font-semibold text-primary">Sem {course.semester_id?.number || 'N/A'}</span>
+                          </div>
+                          <div className="flex flex-col text-right">
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Credits</span>
+                            <span className="text-xs font-semibold text-emerald-600">{course.course_credits} Cr</span>
+                          </div>
+                          <div className="col-span-2 flex flex-col mt-1">
+                            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Subject</span>
+                            <span className="text-xs font-medium truncate italic">{course.subject_id?.name || 'N/A'}</span>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
 
                     <CardFooter className="p-4 pt-0 flex gap-2">

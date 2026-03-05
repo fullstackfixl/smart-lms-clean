@@ -37,7 +37,7 @@ router.post('/create', authMiddleware, requireRole(['instructor']), async (req, 
 });
 
 // Create course (instructor/admin only)
-router.post('/', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.post('/', authMiddleware, requireRole(['org_admin', 'instructor']), async (req, res) => {
   try {
     const { title, description, price = 0, category, level = 'beginner', thumbnail, tags = [] } = req.body;
 
@@ -98,7 +98,7 @@ router.get('/', optionalAuth, async (req, res) => {
     const filter = { isActive: true };
 
     // Status filter - only published courses for public access
-    if (req.user && (req.user.role === 'teacher' || req.user.role === 'admin')) {
+    if (req.user && (req.user.role === 'org_admin' || req.user.role === 'instructor')) {
       // Instructors can see their own courses in any status
       if (status === 'all') {
         filter.instructor_id = req.user._id;
@@ -120,7 +120,7 @@ router.get('/', optionalAuth, async (req, res) => {
         filter.organization_id = req.user.organization_id;
 
         // They can see published courses, OR their own draft courses if they are instructors
-        if (req.user.role === 'teacher' || req.user.role === 'admin') {
+        if (req.user.role === 'org_admin' || req.user.role === 'instructor') {
           if (status !== 'published') {
             // For non-published, ensure they are the instructor or admin
             // (Already handled by the status filter block above, but implicit here)
@@ -336,7 +336,7 @@ router.get('/:id', optionalAuth, async (req, res) => {
 });
 
 // Update course (instructor/admin only)
-router.put('/:id', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.put('/:id', authMiddleware, requireRole(['org_admin', 'instructor']), async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -380,7 +380,7 @@ router.put('/:id', authMiddleware, requireRole(['teacher', 'admin']), async (req
 });
 
 // Soft delete course (instructor/admin only)
-router.delete('/:id', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.delete('/:id', authMiddleware, requireRole(['org_admin', 'instructor']), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -412,7 +412,7 @@ router.delete('/:id', authMiddleware, requireRole(['teacher', 'admin']), async (
 });
 
 // Publish/Unpublish course
-router.patch('/:id/status', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.patch('/:id/status', authMiddleware, requireRole(['org_admin', 'instructor']), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -722,7 +722,7 @@ router.post('/enroll/:courseId', authMiddleware, requireRole(['student']), async
 
 module.exports = router;
 // Get course analytics (instructor only)
-router.get('/:courseId/analytics', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.get('/:courseId/analytics', authMiddleware, requireRole(['org_admin', 'instructor']), async (req, res) => {
   try {
     const { courseId } = req.params;
 

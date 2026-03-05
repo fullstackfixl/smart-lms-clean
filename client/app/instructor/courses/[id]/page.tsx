@@ -62,6 +62,10 @@ interface Course {
   status: string
   category: string
   level: string
+  course_credits?: number
+  subject_id?: { name: string, code: string }
+  semester_id?: { name: string, number: number }
+  department_id?: { name: string, code: string }
 }
 
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -552,6 +556,44 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </Button>
         </div>
       </div>
+
+      {/* College Academic Info Panel */}
+      {course.course_credits !== undefined && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="h-4 w-4 text-blue-600" />
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Subject</span>
+            </div>
+            <p className="font-bold text-slate-800">{course.subject_id?.name || 'N/A'}</p>
+            <p className="text-xs text-blue-600/70 font-medium">{course.subject_id?.code || ''}</p>
+          </div>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Plus className="h-4 w-4 text-emerald-600" />
+              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Credits</span>
+            </div>
+            <p className="font-bold text-slate-800">{course.course_credits} Credits</p>
+            <p className="text-xs text-emerald-600/70 font-medium">Academic Weight</p>
+          </div>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Edit className="h-4 w-4 text-purple-600" />
+              <span className="text-xs font-bold text-purple-600 uppercase tracking-wider">Semester</span>
+            </div>
+            <p className="font-bold text-slate-800">{course.semester_id?.name || 'N/A'}</p>
+            <p className="text-xs text-purple-600/70 font-medium">Semester {course.semester_id?.number || ''}</p>
+          </div>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Plus className="h-4 w-4 text-orange-600" />
+              <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">Department</span>
+            </div>
+            <p className="font-bold text-slate-800">{course.department_id?.name || 'N/A'}</p>
+            <p className="text-xs text-orange-600/70 font-medium">{course.department_id?.code || ''}</p>
+          </div>
+        </div>
+      )}
 
       {/* Modules & Lessons */}
       {modules.length === 0 ? (

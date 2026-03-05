@@ -1,7 +1,7 @@
 const BaseService = require('../core/BaseService');
 const EnrollmentRepository = require('../repositories/EnrollmentRepository');
 const CourseRepository = require('../repositories/CourseRepository');
-const { NotFoundError, ConflictError } = require('../core/errors');
+const { NotFoundError, ConflictError, AuthorizationError } = require('../core/errors');
 
 class EnrollmentService extends BaseService {
   constructor() {
@@ -25,13 +25,17 @@ class EnrollmentService extends BaseService {
     }
 
     // STRICT: Cross-org enrollment check (Service Layer)
-    if (course.organization_id.toString() !== organizationId.toString()) {
+    const courseOrgId = course.organization_id._id || course.organization_id;
+    const requesterOrgId = organizationId._id || organizationId;
+
+    if (courseOrgId.toString() !== requesterOrgId.toString()) {
       throw new AuthorizationError('You cannot enroll in a course from another organization');
     }
 
     return await this.repository.create({
       course_id: courseId,
       student_id: userId,
+      enrollmentType: course.price > 0 ? 'paid' : 'free',
       status: 'active',
       enrolledAt: new Date()
     }, organizationId);

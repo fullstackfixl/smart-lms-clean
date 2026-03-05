@@ -120,6 +120,23 @@ const courseSchema = new mongoose.Schema({
   publishedByPlatformAdmin: {
     type: Boolean,
     default: false
+  },
+  // Academic fields for COLLEGE
+  subject_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject'
+  },
+  semester_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Semester'
+  },
+  department_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Department'
+  },
+  course_credits: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

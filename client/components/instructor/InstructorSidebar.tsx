@@ -17,6 +17,7 @@ import {
   FileText,
   Bell,
   BarChart3,
+  Calendar,
 } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
 import { cn } from '../../lib/utils'
@@ -24,7 +25,8 @@ import { cn } from '../../lib/utils'
 interface NavItem {
   label: string
   href: string
-  icon: React.ElementType
+  icon: any
+  collegeOnly?: boolean
 }
 
 const navItems: NavItem[] = [
@@ -36,6 +38,8 @@ const navItems: NavItem[] = [
   { label: 'Submissions', href: '/instructor/submissions', icon: FileText },
   { label: 'Notifications', href: '/instructor/notifications', icon: Bell },
   { label: 'Upload Content', href: '/instructor/upload', icon: Upload },
+  { label: 'Gradebook', href: '/instructor/gradebook', icon: GraduationCap, collegeOnly: true },
+  { label: 'Attendance', href: '/instructor/attendance', icon: Calendar, collegeOnly: true },
 ]
 
 export function InstructorSidebar() {
@@ -78,7 +82,7 @@ export function InstructorSidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-6">
         <div className="flex flex-col gap-1">
-          {navItems.map((item) => {
+          {navItems.filter(item => !item.collegeOnly || user?.organizationType === 'COLLEGE').map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
             return (
               <Link

@@ -4,18 +4,20 @@ const BaseController = require('../core/BaseController');
 class PlatformOrganizationController extends BaseController {
   async createOrganization(req, res) {
     try {
+      console.log('🚀 [PlatformOrgController] createOrganization called');
+      console.log('   Body:', JSON.stringify(req.body, null, 2));
       const { name, subdomain, adminEmail, adminName, password, plan = 'basic', type = 'School' } = req.body;
 
       // Check if organization exists
       const existingOrg = await Organization.findOne({ subdomain: subdomain.toLowerCase() });
       if (existingOrg) {
-        return res.error('Subdomain already in use', 'Validation Error', 400);
+        return this.sendError(res, 'Subdomain already in use', 400);
       }
 
       // Check if admin user exists
       const existingUser = await User.findOne({ email: adminEmail.toLowerCase() });
       if (existingUser) {
-        return res.error('Admin email already registered', 'Validation Error', 400);
+        return this.sendError(res, 'Admin email already registered', 400);
       }
 
       // Lookup template for the requested type so we can seed modules
@@ -64,13 +66,13 @@ class PlatformOrganizationController extends BaseController {
         console.warn('⚠️ User creation notification failed:', notifyErr.message);
       }
 
-      return res.success({
+      return this.sendSuccess(res, {
         organization,
         admin: admin.toPublicJSON()
       }, 'Organization and Admin created successfully', 201);
     } catch (error) {
       console.error('Create organization error:', error);
-      return res.error(error.message, 'Failed to create organization', 400);
+      return this.sendError(res, error.message, 500, { stack: error.stack });
     }
   }
 
@@ -79,13 +81,13 @@ class PlatformOrganizationController extends BaseController {
       const { orgName, orgType, adminName, adminEmail } = req.body;
 
       if (!orgName || !orgType || !adminName || !adminEmail) {
-        return res.error('All fields are required', 'Validation Error', 400);
+        return this.sendError(res, 'All fields are required', 400);
       }
 
       // Check if admin user exists
       const existingUser = await User.findOne({ email: adminEmail.toLowerCase() });
       if (existingUser) {
-        return res.error('Admin email already registered', 'Conflict', 409);
+        return this.sendError(res, 'Admin email already registered', 409);
       }
 
       // 1. Create Organization with status PENDING
@@ -139,7 +141,7 @@ class PlatformOrganizationController extends BaseController {
         console.error('📧 [PORTAL] Failed to send invitation email:', emailError.message);
       }
 
-      return res.success({
+      return this.sendSuccess(res, {
         organization: {
           id: organization._id,
           name: organization.name,
@@ -153,7 +155,7 @@ class PlatformOrganizationController extends BaseController {
         : 'Organization created but invitation email failed. You can copy the setup link below.', 201);
     } catch (error) {
       console.error('Create organization with invite error:', error);
-      return res.error(error.message, 'Failed to create organization', 500);
+      return this.sendError(res, error.message, 500);
     }
   }
 
@@ -207,7 +209,7 @@ class PlatformOrganizationController extends BaseController {
         })
       );
 
-      return res.success({
+      return this.sendSuccess(res, {
         organizations: orgsWithCounts,
         pagination: {
           total,
@@ -219,7 +221,7 @@ class PlatformOrganizationController extends BaseController {
       }, 'Organizations retrieved successfully');
     } catch (error) {
       console.error('Get organizations error:', error);
-      return res.error(error.message, 'Failed to retrieve organizations', 500);
+      return this.sendError(res, error.message, 500);
     }
   }
 
@@ -235,14 +237,14 @@ class PlatformOrganizationController extends BaseController {
       const userCount = await User.countDocuments({ organization_id: organization._id });
       const courseCount = await Course.countDocuments({ organization_id: organization._id });
 
-      return res.success({
+      return this.sendSuccess(res, {
         ...organization,
         userCount,
         courseCount
       }, 'Organization retrieved successfully');
     } catch (error) {
       console.error('Get organization error:', error);
-      return res.error(error.message, 'Failed to retrieve organization', 500);
+      return this.sendError(res, error.message, 500);
     }
   }
 
@@ -255,13 +257,13 @@ class PlatformOrganizationController extends BaseController {
       );
 
       if (!organization) {
-        return res.error('Organization not found', 'Not found', 404);
+        return this.sendError(res, 'Organization not found', 404);
       }
 
-      return res.success(organization, 'Organization updated successfully');
+      return this.sendSuccess(res, organization, 'Organization updated successfully');
     } catch (error) {
       console.error('Update organization error:', error);
-      return res.error(error.message, 'Failed to update organization', 400);
+      return this.sendError(res, error.message, 400);
     }
   }
 
@@ -274,13 +276,13 @@ class PlatformOrganizationController extends BaseController {
       );
 
       if (!organization) {
-        return res.error('Organization not found', 'Not found', 404);
+        return this.sendError(res, 'Organization not found', 404);
       }
 
-      return res.success(organization, 'Organization suspended successfully');
+      return this.sendSuccess(res, organization, 'Organization suspended successfully');
     } catch (error) {
       console.error('Suspend organization error:', error);
-      return res.error(error.message, 'Failed to suspend organization', 400);
+      return this.sendError(res, error.message, 400);
     }
   }
 
@@ -293,13 +295,13 @@ class PlatformOrganizationController extends BaseController {
       );
 
       if (!organization) {
-        return res.error('Organization not found', 'Not found', 404);
+        return this.sendError(res, 'Organization not found', 404);
       }
 
-      return res.success(organization, 'Organization activated successfully');
+      return this.sendSuccess(res, organization, 'Organization activated successfully');
     } catch (error) {
       console.error('Activate organization error:', error);
-      return res.error(error.message, 'Failed to activate organization', 400);
+      return this.sendError(res, error.message, 400);
     }
   }
 
@@ -308,7 +310,7 @@ class PlatformOrganizationController extends BaseController {
       const organization = await Organization.findById(req.params.id);
 
       if (!organization) {
-        return res.error('Organization not found', 'Not found', 404);
+        return this.sendError(res, 'Organization not found', 404);
       }
 
       // Soft delete
@@ -317,10 +319,10 @@ class PlatformOrganizationController extends BaseController {
       organization.deleted_by = req.user._id;
       await organization.save();
 
-      return res.success(organization, 'Organization deleted successfully');
+      return this.sendSuccess(res, organization, 'Organization deleted successfully');
     } catch (error) {
       console.error('Delete organization error:', error);
-      return res.error(error.message, 'Failed to delete organization', 400);
+      return this.sendError(res, error.message, 400);
     }
   }
 }

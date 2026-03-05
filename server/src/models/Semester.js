@@ -12,12 +12,13 @@ const semesterSchema = new mongoose.Schema({
         required: true, // e.g., "Fall 2024", "Semester 1"
         trim: true
     },
-    academic_year_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'AcademicYear'
-    },
     startDate: Date,
     endDate: Date,
+    number: {
+        type: Number,
+        required: true,
+        default: 1
+    },
     isCurrent: {
         type: Boolean,
         default: false

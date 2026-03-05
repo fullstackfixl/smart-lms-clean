@@ -1,6 +1,13 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+interface NavItem {
+  label: string
+  href: string
+  icon: any
+  module?: string
+  collegeOnly?: boolean
+}
 import {
   LayoutDashboard,
   BookOpen,
@@ -32,6 +39,7 @@ const navItems = [
   { label: 'Leaderboard', href: '/student/leaderboard', icon: Trophy, module: 'LEADERBOARDS' },
   { label: 'Timetable', href: '/student/timetable', icon: Calendar, module: 'TIMETABLE' },
   { label: 'Events', href: '/student/events', icon: CalendarDays, module: 'EVENTS' },
+  { label: 'Academic Transcript', href: '/student/transcript', icon: GraduationCap, collegeOnly: true },
 ]
 
 export function StudentSidebar() {
@@ -41,8 +49,11 @@ export function StudentSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
   const filteredItems = navItems.filter(item => {
-    if (item.module) {
-      return user?.modulesEnabled?.includes(item.module)
+    if (item.module && !user?.modulesEnabled?.includes(item.module)) {
+      return false
+    }
+    if (item.collegeOnly && user?.organizationType !== 'COLLEGE') {
+      return false
     }
     return true
   })

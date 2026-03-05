@@ -4,6 +4,11 @@ const Semester = require('../models/Semester');
 class SemesterController extends BaseController {
     constructor() {
         super(Semester);
+        this.create = this.create.bind(this);
+        this.getAll = this.getAll.bind(this);
+        this.getById = this.getById.bind(this);
+        this.update = this.update.bind(this);
+        this.delete = this.delete.bind(this);
     }
 
     async create(req, res) {
@@ -11,18 +16,18 @@ class SemesterController extends BaseController {
         try {
             const semester = new Semester(req.body);
             await semester.save();
-            return res.success(semester, 'Semester created successfully', 201);
+            return this.sendSuccess(res, semester, 'Semester created successfully', 201);
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 
     async getAll(req, res) {
         try {
             const semesters = await Semester.find({ organization_id: req.user.organization_id }).sort({ number: 1 });
-            return res.success(semesters);
+            return this.sendSuccess(res, semesters);
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 
@@ -32,10 +37,10 @@ class SemesterController extends BaseController {
                 _id: req.params.id,
                 organization_id: req.user.organization_id
             });
-            if (!semester) return res.error('Semester not found', 'Not Found', 404);
-            return res.success(semester);
+            if (!semester) return this.sendError(res, 'Semester not found', 404);
+            return this.sendSuccess(res, semester);
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 
@@ -46,10 +51,10 @@ class SemesterController extends BaseController {
                 req.body,
                 { new: true, runValidators: true }
             );
-            if (!semester) return res.error('Semester not found', 'Not Found', 404);
-            return res.success(semester, 'Semester updated successfully');
+            if (!semester) return this.sendError(res, 'Semester not found', 404);
+            return this.sendSuccess(res, semester, 'Semester updated successfully');
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 
@@ -59,10 +64,10 @@ class SemesterController extends BaseController {
                 _id: req.params.id,
                 organization_id: req.user.organization_id
             });
-            if (!semester) return res.error('Semester not found', 'Not Found', 404);
-            return res.success(null, 'Semester deleted successfully');
+            if (!semester) return this.sendError(res, 'Semester not found', 404);
+            return this.sendSuccess(res, null, 'Semester deleted successfully');
         } catch (error) {
-            return res.error(error.message);
+            return this.sendError(res, error.message);
         }
     }
 }

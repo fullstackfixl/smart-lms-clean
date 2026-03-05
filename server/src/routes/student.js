@@ -1069,5 +1069,125 @@ router.post('/quiz/:quizId/submit', authMiddleware, requireRole(['student']), as
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COLLEGE ACADEMIC — TRANSCRIPT  (GET /student/transcript)
+// Only available for COLLEGE org students
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/transcript', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const AcademicRecord = require('../models/AcademicRecord');
+    const CollegeAcademicController = require('../controllers/CollegeAcademicController');
+    return CollegeAcademicController.getTranscript(req, res);
+  } catch (error) {
+    res.error(error.message, 'Failed to get transcript', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COLLEGE ACADEMIC — ACADEMIC OVERVIEW  (GET /student/academic-overview)
+// Returns current semester, total credits, GPA, attendance %
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/academic-overview', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const AcademicRecord = require('../models/AcademicRecord');
+    const Semester = require('../models/Semester');
+    const Attendance = require('../models/Attendance');
+    const mongoose = require('mongoose');
+    const orgId = req.user.organization_id;
+    const studentId = req.user._id;
+
+    // Current semester
+    const currentSemester = await Semester.findOne({
+      organization_id: orgId,
+      isCurrent: true
+    }).lean();
+
+    // All academic records for this student
+    const records = await AcademicRecord.find({
+      student_id: studentId,
+      organization_id: orgId
+    }).populate('semester_id', 'name number');
+
+    let totalCredits = 0;
+    let totalQP = 0;
+    records.forEach(r => {
+      totalCredits += r.credits || 0;
+      totalQP += (r.gpa_points || 0) * (r.credits || 0);
+    });
+    const cgpa = totalCredits > 0 ? parseFloat((totalQP / totalCredits).toFixed(2)) : 0;
+
+    // Attendance percentage
+    const attStats = await Attendance.aggregate([
+      { $match: { organization_id: new mongoose.Types.ObjectId(orgId), student_id: new mongoose.Types.ObjectId(studentId) } },
+      { $group: { _id: null, total: { $sum: 1 }, present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } } } }
+    ]);
+    const attPct = attStats[0] && attStats[0].total > 0
+      ? parseFloat(((attStats[0].present / attStats[0].total) * 100).toFixed(1))
+      : 0;
+
+    return res.success({
+      currentSemester: currentSemester || null,
+      totalCreditsEnrolled: totalCredits,
+      cgpa,
+      gpa: cgpa, // For compatibility
+      attendancePercentage: attPct
+    }, 'Academic overview retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to get academic overview', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /student/semesters — returns all semesters for the current organization
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/semesters', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const CollegeAcademicController = require('../controllers/CollegeAcademicController');
+    return CollegeAcademicController.getSemesters(req, res);
+  } catch (error) {
+    res.error(error.message, 'Failed to get semesters', 500);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STUDENT ACADEMIC ATTENDANCE  (GET /student/academic-attendance)
+// Course-wise attendance summary
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/academic-attendance', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const Attendance = require('../models/Attendance');
+    const mongoose = require('mongoose');
+    const orgId = req.user.organization_id;
+    const studentId = req.user._id;
+
+    const stats = await Attendance.aggregate([
+      { $match: { organization_id: new mongoose.Types.ObjectId(orgId), student_id: new mongoose.Types.ObjectId(studentId) } },
+      {
+        $group: {
+          _id: '$course_id',
+          total: { $sum: 1 },
+          present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } }
+        }
+      },
+      {
+        $lookup: { from: 'courses', localField: '_id', foreignField: '_id', as: 'course' }
+      },
+      { $unwind: { path: '$course', preserveNullAndEmpty: true } },
+      {
+        $project: {
+          courseTitle: { $ifNull: ['$course.title', 'Unknown Course'] },
+          total: 1,
+          present: 1,
+          percentage: { $multiply: [{ $divide: ['$present', '$total'] }, 100] }
+        }
+      }
+    ]);
+
+    return res.success({ attendance: stats }, 'Attendance retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to get attendance', 500);
+  }
+});
+
 module.exports = router;
 

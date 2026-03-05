@@ -21,6 +21,14 @@ const subjectSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Department'
     },
+    semester_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Semester'
+    },
+    credits: {
+        type: Number,
+        default: 0
+    },
     description: String,
     isActive: {
         type: Boolean,

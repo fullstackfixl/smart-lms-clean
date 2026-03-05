@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { toast } from "sonner"
-import { API_URL } from '../../../lib/config'
+import { API_URL, getToken } from '../../../lib/config'
+import { useAuth } from '../../../lib/auth-context'
 
 interface DashboardData {
   totalCourses: number
@@ -24,9 +25,14 @@ interface DashboardData {
     total: number
     completed: number
   }
+  attendanceStats?: {
+    overallPercentage: number
+    atRiskStudents: number
+  }
 }
 
 export default function InstructorDashboardPage() {
+  const { user } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -38,7 +44,7 @@ export default function InstructorDashboardPage() {
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
-      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      const token = getToken()
       if (!token) {
         toast.error('Please login first')
         router.push('/login')
@@ -185,6 +191,46 @@ export default function InstructorDashboardPage() {
             </Card>
           </motion.div>
         </div>
+
+        {/* College Attendance Summary */}
+        {user?.organizationType === 'COLLEGE' && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-8"
+          >
+            <Card className="bg-gradient-to-r from-slate-900 to-slate-800 text-white border-0 overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-8 opacity-10">
+                <Users className="h-32 w-32" />
+              </div>
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div>
+                    <h2 className="text-xl font-bold mb-2">College Attendance Summary</h2>
+                    <p className="text-slate-400 text-sm">Real-time tracking for active courses</p>
+                  </div>
+                  <div className="flex gap-8">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-green-400">{data.attendanceStats?.overallPercentage || 0}%</p>
+                      <p className="text-xs text-slate-400">Avg. Attendance</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-red-400">{data.attendanceStats?.atRiskStudents || 0}</p>
+                      <p className="text-xs text-slate-400">At-Risk Students</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                    onClick={() => router.push('/instructor/attendance')}
+                  >
+                    Manage Attendance
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

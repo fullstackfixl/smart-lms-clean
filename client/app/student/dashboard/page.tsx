@@ -10,6 +10,8 @@ import {
   ChevronRight,
   Clock,
   ArrowRight,
+  TrendingUp,
+  Award
 } from "lucide-react"
 import { Card, CardContent } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -39,15 +41,20 @@ export default function StudentDashboard() {
   const [enrolled, setEnrolled] = useState<any[]>([])
   const [liveClasses, setLiveClasses] = useState<any[]>([])
   const [orgCourses, setOrgCourses] = useState<any[]>([])
+  const [academicOverview, setAcademicOverview] = useState<any>(null)
+  const [semesters, setSemesters] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedSemester, setSelectedSemester] = useState<string>("all")
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true)
     try {
-      const [myCourses, live, available] = await Promise.allSettled([
+      const [myCourses, live, available, academic, sems] = await Promise.allSettled([
         apiFetch("/api/courses/my-courses"),
         apiFetch("/student/live-classes"),
-        apiFetch("/api/courses/student?limit=4")
+        apiFetch("/api/courses/student?limit=4"),
+        user?.organizationType === 'COLLEGE' ? apiFetch("/student/academic-overview") : Promise.resolve({ success: false }),
+        user?.organizationType === 'COLLEGE' ? apiFetch("/student/semesters") : Promise.resolve({ success: false })
       ])
 
       if (myCourses.status === "fulfilled" && myCourses.value.success) {
@@ -59,12 +66,18 @@ export default function StudentDashboard() {
       if (available.status === "fulfilled" && available.value.success) {
         setOrgCourses(available.value.data?.courses || available.value.data || [])
       }
+      if (academic.status === "fulfilled" && academic.value.success) {
+        setAcademicOverview(academic.value.data)
+      }
+      if (sems.status === "fulfilled" && sems.value.success) {
+        setSemesters(sems.value.data || [])
+      }
     } catch (e) {
       toast.error("Failed to load dashboard data")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user?.organizationType])
 
   useEffect(() => {
     fetchDashboardData()
@@ -113,6 +126,68 @@ export default function StudentDashboard() {
         <div className="mb-2">
           {/* Greeting handled by StudentHeader, but we can add a subtle subtext here if needed */}
         </div>
+
+        {/* College Academic Overview */}
+        {user?.organizationType === 'COLLEGE' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-800">Academic Overview</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-medium">Semester</span>
+                <select
+                  value={selectedSemester}
+                  onChange={(e) => setSelectedSemester(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#4CAF50]/20"
+                >
+                  <option value="all">All Semesters</option>
+                  {semesters.map((s) => (
+                    <option key={s._id} value={s.number}>
+                      Semester {s.number}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="bg-white border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center mb-2">
+                    <BookOpen className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Current Sem</p>
+                  <p className="text-xl font-bold text-slate-800">{academicOverview?.currentSemester?.number || '-'}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-white border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="h-8 w-8 rounded-lg bg-purple-50 flex items-center justify-center mb-2">
+                    <TrendingUp className="h-4 w-4 text-purple-500" />
+                  </div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Total Credits</p>
+                  <p className="text-xl font-bold text-slate-800">{academicOverview?.totalCredits || 0}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-white border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="h-8 w-8 rounded-lg bg-green-50 flex items-center justify-center mb-2">
+                    <Award className="h-4 w-4 text-green-500" />
+                  </div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">CGPA</p>
+                  <p className="text-xl font-bold text-[#4CAF50]">{academicOverview?.cgpa?.toFixed(2) || '0.00'}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-white border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center mb-2">
+                    <Clock className="h-4 w-4 text-orange-500" />
+                  </div>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Attendance</p>
+                  <p className="text-xl font-bold text-slate-800">{academicOverview?.attendancePercentage?.toFixed(0) || '0'}%</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
 
         {/* Guided Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

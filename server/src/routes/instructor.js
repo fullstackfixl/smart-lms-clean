@@ -63,6 +63,60 @@ router.patch('/notifications/:id/read', ...requireInstructor, (req, res, next) =
 router.patch('/notifications/read-all', ...requireInstructor, (req, res, next) => InstructorController.markAllNotificationsRead(req, res, next));
 router.delete('/notifications/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteNotification(req, res, next));
 
+// ============================================
+// COLLEGE GRADEBOOK (COLLEGE orgs only)
+// ============================================
+const CollegeAcademicController = require('../controllers/CollegeAcademicController');
+
+router.get('/gradebook/:courseId', ...requireInstructor, (req, res) => CollegeAcademicController.getGradebook(req, res));
+router.post('/gradebook/marks', ...requireInstructor, (req, res) => CollegeAcademicController.updateMarks(req, res));
+
+// Attendance summary for instructor dashboard (all orgs)
+router.get('/attendance/summary', ...requireInstructor, async (req, res) => {
+  try {
+    const Attendance = require('../models/Attendance');
+    const Course = require('../models/Course');
+    const mongoose = require('mongoose');
+    const orgId = req.user.organization_id;
+    const instructorId = req.user._id;
+
+    // Get courses taught by this instructor
+    const courses = await Course.find({ organization_id: orgId, instructor_id: instructorId }).select('_id title');
+    const courseIds = courses.map(c => c._id);
+
+    // Aggregate attendance per course
+    const stats = await Attendance.aggregate([
+      { $match: { organization_id: new mongoose.Types.ObjectId(orgId), course_id: { $in: courseIds } } },
+      {
+        $group: {
+          _id: { course_id: '$course_id', student_id: '$student_id' },
+          total: { $sum: 1 },
+          present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.course_id',
+          totalStudents: { $sum: 1 },
+          avgPresent: { $avg: { $divide: ['$present', '$total'] } },
+          belowThreshold: {
+            $sum: { $cond: [{ $lt: [{ $divide: ['$present', '$total'] }, 0.75] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    const overall = stats.length > 0
+      ? (stats.reduce((a, s) => a + s.avgPresent, 0) / stats.length * 100).toFixed(1)
+      : 0;
+
+    const totalBelow = stats.reduce((a, s) => a + s.belowThreshold, 0);
+
+    return res.success({ overall: parseFloat(overall), studentsBelow75: totalBelow, byCourse: stats }, 'Attendance summary');
+  } catch (error) {
+    return res.error(error.message, 'Failed to fetch attendance summary', 500);
+  }
+});
 
 module.exports = router;
 

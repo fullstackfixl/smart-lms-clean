@@ -14,6 +14,10 @@ const liveClassController = require('../../controllers/liveClassController');
 const feeController = require('../../controllers/feeController');
 const parentController = require('../../controllers/parentController');
 const aiController = require('../../controllers/aiController');
+const collegeAcademicController = require('../../controllers/CollegeAcademicController');
+const departmentController = require('../../controllers/DepartmentController');
+const semesterController = require('../../controllers/SemesterController');
+const subjectController = require('../../controllers/SubjectController');
 
 const router = express.Router();
 
@@ -143,6 +147,19 @@ router.get('/parent/progress/:student_id', authMiddleware, enforceOrgIsolation, 
 router.get('/parent/attendance/:student_id', authMiddleware, enforceOrgIsolation, (req, res, next) => parentController.getChildAttendance(req, res, next));
 router.get('/parent/grades/:student_id', authMiddleware, enforceOrgIsolation, (req, res, next) => parentController.getChildGrades(req, res, next));
 router.get('/parent/fees/:student_id', authMiddleware, enforceOrgIsolation, (req, res, next) => parentController.getChildFees(req, res, next));
+
+// College Academic Layer APIs
+router.get('/academic/gradebook/:courseId', authMiddleware, requireRole(['instructor', 'org_admin']), enforceOrgIsolation, (req, res, next) => collegeAcademicController.getGradebook(req, res, next));
+router.post('/academic/marks', authMiddleware, requireRole(['instructor', 'org_admin']), enforceOrgIsolation, (req, res, next) => collegeAcademicController.updateMarks(req, res, next));
+router.get('/academic/transcript/:studentId?', authMiddleware, enforceOrgIsolation, (req, res, next) => collegeAcademicController.getTranscript(req, res, next));
+
+// Academic Structural Management (Admin/Instructor)
+router.post('/academic/departments', authMiddleware, requireRole(['org_admin']), enforceOrgIsolation, (req, res, next) => departmentController.create(req, res, next));
+router.get('/academic/departments', authMiddleware, enforceOrgIsolation, (req, res, next) => departmentController.getAll(req, res, next));
+router.post('/academic/semesters', authMiddleware, requireRole(['org_admin']), enforceOrgIsolation, (req, res, next) => semesterController.create(req, res, next));
+router.get('/academic/semesters', authMiddleware, enforceOrgIsolation, (req, res, next) => semesterController.getAll(req, res, next));
+router.post('/academic/subjects', authMiddleware, requireRole(['org_admin']), enforceOrgIsolation, (req, res, next) => subjectController.create(req, res, next));
+router.get('/academic/subjects', authMiddleware, enforceOrgIsolation, (req, res, next) => subjectController.getAll(req, res, next));
 
 // AI & Gamification APIs
 const aiRateLimit = require('express-rate-limit')({

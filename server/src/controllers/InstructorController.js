@@ -71,6 +71,42 @@ class InstructorController extends BaseController {
         ? (completedEnrollments.length / allEnrollments.length) * 100
         : 0;
 
+      // College-specific Attendance Stats
+      let attendanceStats = null;
+      if (user.organization_id && user.role === 'instructor') {
+        try {
+          const Attendance = require('../models/Attendance');
+          const stats = await Attendance.aggregate([
+            { $match: { organization_id: user.organization_id, course_id: { $in: courseIds } } },
+            {
+              $group: {
+                _id: { course_id: '$course_id', student_id: '$student_id' },
+                total: { $sum: 1 },
+                present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } }
+              }
+            },
+            {
+              $group: {
+                _id: null,
+                avgPresent: { $avg: { $divide: ['$present', '$total'] } },
+                belowThreshold: {
+                  $sum: { $cond: [{ $lt: [{ $divide: ['$present', '$total'] }, 0.75] }, 1, 0] }
+                }
+              }
+            }
+          ]);
+
+          if (stats.length > 0) {
+            attendanceStats = {
+              overallPercentage: parseFloat((stats[0].avgPresent * 100).toFixed(1)),
+              atRiskStudents: stats[0].belowThreshold
+            };
+          }
+        } catch (attErr) {
+          console.error('Attendance stats error:', attErr);
+        }
+      }
+
       return res.success({
         totalCourses,
         totalStudents,
@@ -81,7 +117,8 @@ class InstructorController extends BaseController {
         completionStats: {
           total: allEnrollments.length,
           completed: completedEnrollments.length
-        }
+        },
+        attendanceStats
       });
     } catch (error) {
       console.error('Dashboard overview error:', error);
