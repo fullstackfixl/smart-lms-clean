@@ -100,7 +100,7 @@ const validateQuizUpdate = [
 // Middleware to check instructor permissions
 const checkInstructorPermission = async (req, res, next) => {
   try {
-    if (!['instructor', 'teacher', 'admin', 'org_admin'].includes(req.user.role)) {
+    if (!['instructor', 'org_admin'].includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         error: 'Access denied',

@@ -153,12 +153,12 @@ quizAttemptSchema.methods.canUserAccess = function (user) {
   }
 
   // Check if user is instructor or admin
-  if (user.role === 'admin') {
+  if (user.role === 'org_admin') {
     return { canAccess: true, reason: 'admin_access' };
   }
 
   // For instructors, they can access attempts for their courses
-  if (user.role === 'teacher') {
+  if (user.role === 'instructor') {
     return { canAccess: true, reason: 'instructor_access' };
   }
 

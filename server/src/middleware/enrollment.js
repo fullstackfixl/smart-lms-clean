@@ -70,7 +70,7 @@ const checkLessonAccess = async (req, res, next) => {
     // Check prerequisites
     if (lesson.prerequisites && lesson.prerequisites.length > 0) {
       const completedLessons = enrollment.progress.completed_lessons.map(cl => cl.lesson_id.toString());
-      const unmetPrerequisites = lesson.prerequisites.filter(prereq => 
+      const unmetPrerequisites = lesson.prerequisites.filter(prereq =>
         !completedLessons.includes(prereq.toString())
       );
 
@@ -116,7 +116,7 @@ const checkCourseAccess = async (req, res, next) => {
     }
 
     // Check if user is the instructor or admin
-    if (course.instructor_id.toString() === req.user._id.toString() || req.user.role === 'admin') {
+    if (course.instructor_id.toString() === req.user._id.toString() || req.user.role === 'org_admin') {
       req.course = course;
       req.accessType = 'instructor';
       return next();
@@ -155,9 +155,9 @@ const checkOrganizationAccess = (resourceType = 'resource') => {
     try {
       // This middleware assumes the resource has organization_id field
       // and it's already loaded in a previous middleware or route handler
-      
+
       const resource = req[resourceType];
-      
+
       if (!resource) {
         return res.error('Resource not found', `${resourceType} not found`, 404);
       }

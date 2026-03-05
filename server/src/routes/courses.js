@@ -342,14 +342,17 @@ router.put('/:id', authMiddleware, requireRole(['org_admin', 'instructor']), asy
     const updates = req.body;
 
     // Find course and verify ownership
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: id,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'organization_id': req.user.organization_id, 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to edit it', 404);
@@ -385,14 +388,17 @@ router.delete('/:id', authMiddleware, requireRole(['org_admin', 'instructor']), 
     const { id } = req.params;
 
     // Find course and verify ownership
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: id,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'organization_id': req.user.organization_id, 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to delete it', 404);
@@ -422,14 +428,17 @@ router.patch('/:id/status', authMiddleware, requireRole(['org_admin', 'instructo
     }
 
     // Find course and verify ownership
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: id,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'organization_id': req.user.organization_id, 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to modify it', 404);
@@ -727,14 +736,17 @@ router.get('/:courseId/analytics', authMiddleware, requireRole(['org_admin', 'in
     const { courseId } = req.params;
 
     // Verify course exists and user has permission
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: courseId,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to view analytics', 404);
@@ -840,21 +852,24 @@ router.get('/:courseId/analytics', authMiddleware, requireRole(['org_admin', 'in
 });
 
 // Get progress reports for a course
-router.get('/:courseId/progress-report', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.get('/:courseId/progress-report', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { courseId } = req.params;
     const { format = 'json', page = 1, limit = 50 } = req.query;
     const skip = (page - 1) * limit;
 
     // Verify course exists and user has permission
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: courseId,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to view reports', 404);

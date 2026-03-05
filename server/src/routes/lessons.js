@@ -6,7 +6,7 @@ const cloudinary = require('../config/cloudinary');
 const router = express.Router();
 
 // Create lesson
-router.post('/:courseId/sections/:sectionId/lessons', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.post('/:courseId/sections/:sectionId/lessons', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { courseId, sectionId } = req.params;
     const { title, description, type, content, order, prerequisites = [], duration = 0, isPreview = false } = req.body;
@@ -16,14 +16,16 @@ router.post('/:courseId/sections/:sectionId/lessons', authMiddleware, requireRol
     }
 
     // Verify course and section exist and user has permission
-    const course = await Course.findOne({
+    const query = {
       _id: courseId,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: req.user.organization_id
+    };
+
+    if (req.user.role === 'instructor') {
+      query.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(query);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to modify it', 404);
@@ -79,7 +81,7 @@ router.get('/:lessonId', authMiddleware, async (req, res) => {
 
     // Check if user can access this lesson
     const accessCheck = await lesson.canUserAccess(req.user);
-    
+
     if (!accessCheck.canAccess) {
       let message = 'You do not have access to this lesson';
       switch (accessCheck.reason) {
@@ -105,7 +107,7 @@ router.get('/:lessonId', authMiddleware, async (req, res) => {
 
     // Prepare lesson content based on type
     let lessonContent = { ...lesson.toObject() };
-    
+
     // For video lessons, generate signed URL if user has access
     if (lesson.type === 'video' && lesson.content.videoUrl) {
       try {
@@ -139,7 +141,7 @@ router.get('/:lessonId', authMiddleware, async (req, res) => {
 });
 
 // Update lesson
-router.put('/:lessonId', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.put('/:lessonId', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { lessonId } = req.params;
     const updates = req.body;
@@ -154,14 +156,17 @@ router.put('/:lessonId', authMiddleware, requireRole(['teacher', 'admin']), asyn
     }
 
     // Verify user has permission to modify the course
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: lesson.course_id,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Access denied', 'You do not have permission to modify this lesson', 403);
@@ -184,7 +189,7 @@ router.put('/:lessonId', authMiddleware, requireRole(['teacher', 'admin']), asyn
 });
 
 // Reorder lessons within a section
-router.put('/reorder', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.put('/reorder', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { sectionId, lessons } = req.body;
 
@@ -202,14 +207,16 @@ router.put('/reorder', authMiddleware, requireRole(['teacher', 'admin']), async 
       return res.error('Section not found', 'Section does not exist', 404);
     }
 
-    const course = await Course.findOne({
+    const query = {
       _id: section.course_id,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: req.user.organization_id
+    };
+
+    if (req.user.role === 'instructor') {
+      query.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(query);
 
     if (!course) {
       return res.error('Access denied', 'You do not have permission to modify this course', 403);
@@ -227,7 +234,7 @@ router.put('/reorder', authMiddleware, requireRole(['teacher', 'admin']), async 
 });
 
 // Delete lesson
-router.delete('/:lessonId', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.delete('/:lessonId', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { lessonId } = req.params;
 
@@ -241,14 +248,17 @@ router.delete('/:lessonId', authMiddleware, requireRole(['teacher', 'admin']), a
     }
 
     // Verify user has permission to modify the course
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: lesson.course_id,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Access denied', 'You do not have permission to modify this lesson', 403);
@@ -293,7 +303,7 @@ router.post('/:lessonId/complete', authMiddleware, async (req, res) => {
 
     // Check if user can access this lesson
     const accessCheck = await lesson.canUserAccess(req.user);
-    
+
     if (!accessCheck.canAccess) {
       return res.error('Access denied', 'You do not have access to this lesson', 403);
     }
@@ -348,7 +358,7 @@ router.get('/:lessonId/video-url', authMiddleware, async (req, res) => {
 
     // Check if user can access this lesson
     const accessCheck = await lesson.canUserAccess(req.user);
-    
+
     if (!accessCheck.canAccess) {
       return res.error('Access denied', 'You do not have access to this video', 403);
     }

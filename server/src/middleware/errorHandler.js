@@ -6,7 +6,7 @@ const notificationService = require('../utils/notificationService');
  * Handles all unhandled errors in the application
  */
 class ErrorHandler {
-  
+
   /**
    * Main error handling middleware
    * @param {Error} err - Error object
@@ -31,7 +31,7 @@ class ErrorHandler {
 
     // Determine error severity
     const severity = ErrorHandler.getErrorSeverity(err);
-    
+
     // Log based on severity
     if (severity === 'critical') {
       logger.error('CRITICAL ERROR', errorContext);
@@ -45,7 +45,7 @@ class ErrorHandler {
 
     // Determine response based on error type
     const errorResponse = ErrorHandler.formatErrorResponse(err);
-    
+
     // Don't expose internal errors in production
     if (process.env.NODE_ENV === 'production' && errorResponse.status >= 500) {
       errorResponse.error = 'Internal server error';
@@ -213,7 +213,7 @@ class ErrorHandler {
       // Find admin users to notify
       const User = require('../models/User');
       const admins = await User.find({
-        role: 'admin',
+        role: 'org_admin',
         is_active: true,
         organization_id: context.organizationId
       }).select('_id');

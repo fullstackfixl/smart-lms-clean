@@ -51,7 +51,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
 });
 
 // Link student to parent (org_admin only)
-router.post('/link-student', authMiddleware, requireRole(['admin', 'platform_admin']), async (req, res) => {
+router.post('/link-student', authMiddleware, requireRole(['org_admin', 'platform_admin']), async (req, res) => {
   try {
     const { parentId, studentId } = req.body;
 
@@ -137,7 +137,7 @@ router.get('/linked-students', authMiddleware, requireRole(['parent']), parentAc
 });
 
 // Get student progress (parent access)
-router.get('/student/:studentId/progress', authMiddleware, requireRole(['parent', 'admin', 'platform_admin']), parentAccessMiddleware, async (req, res) => {
+router.get('/student/:studentId/progress', authMiddleware, requireRole(['parent', 'org_admin', 'platform_admin']), parentAccessMiddleware, async (req, res) => {
   try {
     const { studentId } = req.params;
 

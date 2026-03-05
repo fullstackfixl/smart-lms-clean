@@ -146,7 +146,7 @@ quizSchema.methods.canUserAccess = async function (user) {
   }
 
   // Check if user is instructor or admin
-  if (user.role === 'admin' || this.instructor_id.toString() === user._id.toString()) {
+  if (user.role === 'org_admin' || this.instructor_id.toString() === user._id.toString()) {
     return { canAccess: true, reason: 'instructor_access' };
   }
 
@@ -240,9 +240,9 @@ quizSchema.pre('save', async function (next) {
         return next(new Error('Instructor must belong to the same organization'));
       }
 
-      // Verify instructor has teacher or admin role
-      if (!['instructor', 'teacher', 'admin', 'org_admin'].includes(instructor.role)) {
-        return next(new Error('User must be an instructor, teacher, or admin to create quizzes'));
+      // Verify instructor has instructor or admin role
+      if (!['instructor', 'org_admin'].includes(instructor.role)) {
+        return next(new Error('User must be an instructor or admin to create quizzes'));
       }
 
     } catch (error) {

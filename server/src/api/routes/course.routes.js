@@ -5,38 +5,38 @@ const { enforceOrgIsolation } = require('../../middleware/orgIsolation');
 
 const router = express.Router();
 
-router.post('/', 
-  authMiddleware, 
-  requireRole(['teacher', 'admin']), 
+router.post('/',
+  authMiddleware,
+  requireRole(['instructor', 'org_admin']),
   enforceOrgIsolation,
   courseController.createCourse
 );
 
-router.get('/', 
+router.get('/',
   courseController.getCourses
 );
 
-router.get('/:id', 
+router.get('/:id',
   courseController.getCourseById
 );
 
-router.put('/:id', 
-  authMiddleware, 
-  requireRole(['teacher', 'admin']), 
+router.put('/:id',
+  authMiddleware,
+  requireRole(['instructor', 'org_admin']),
   enforceOrgIsolation,
   courseController.updateCourse
 );
 
-router.delete('/:id', 
-  authMiddleware, 
-  requireRole(['teacher', 'admin']), 
+router.delete('/:id',
+  authMiddleware,
+  requireRole(['instructor', 'org_admin']),
   enforceOrgIsolation,
   courseController.deleteCourse
 );
 
-router.post('/:id/publish', 
-  authMiddleware, 
-  requireRole(['teacher', 'admin']), 
+router.post('/:id/publish',
+  authMiddleware,
+  requireRole(['instructor', 'org_admin']),
   enforceOrgIsolation,
   courseController.publishCourse
 );

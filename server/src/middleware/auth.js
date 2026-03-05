@@ -202,10 +202,15 @@ const optionalAuth = async (req, res, next) => {
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.userId).select('-password');
+      const userId = decoded.userId || decoded.user_id;
+      const user = await User.findById(userId).select('-password').populate('organization_id');
 
       if (user && user.isActive) {
         req.user = user;
+        // Attach modulesEnabled for moduleGuard middleware
+        if (user.organization_id && user.organization_id.modulesEnabled) {
+          req.user.modulesEnabled = user.organization_id.modulesEnabled;
+        }
       }
     }
 

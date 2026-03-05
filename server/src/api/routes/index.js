@@ -22,7 +22,7 @@ const subjectController = require('../../controllers/SubjectController');
 const router = express.Router();
 
 // Course Management APIs
-router.post('/courses', authMiddleware, requireRole(['teacher', 'admin']), enforceOrgIsolation, (req, res, next) => courseController.createCourse(req, res, next));
+router.post('/courses', authMiddleware, requireRole(['instructor', 'org_admin']), enforceOrgIsolation, (req, res, next) => courseController.createCourse(req, res, next));
 router.get('/courses', (req, res, next) => courseController.getCourses(req, res, next));
 // Spec: Get Courses For Student (avoid collision with /courses/:id)
 router.get('/courses/student', authMiddleware, requireRole(['student']), async (req, res) => {

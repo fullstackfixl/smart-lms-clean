@@ -3,7 +3,7 @@ const crypto = require('crypto');
 
 // Generate UUID v4 compatible string
 const generateUUID = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
@@ -39,7 +39,7 @@ const certificateSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    default: function() {
+    default: function () {
       return `CERT-${Date.now()}-${generateUUID().substring(0, 8).toUpperCase()}`;
     }
   },
@@ -112,7 +112,7 @@ const certificateSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    default: function() {
+    default: function () {
       return `VER-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     }
   },
@@ -141,19 +141,19 @@ certificateSchema.index({ certificate_id: 1, verification_code: 1 });
 certificateSchema.index({ student_id: 1, course_id: 1 }, { unique: true });
 
 // Virtual for certificate display name
-certificateSchema.virtual('display_name').get(function() {
+certificateSchema.virtual('display_name').get(function () {
   return `Certificate of Completion - ${this.course_title}`;
 });
 
 // Virtual for certificate validity period (certificates are valid for 2 years)
-certificateSchema.virtual('expires_at').get(function() {
+certificateSchema.virtual('expires_at').get(function () {
   const expiryDate = new Date(this.issued_date);
   expiryDate.setFullYear(expiryDate.getFullYear() + 2);
   return expiryDate;
 });
 
 // Virtual for certificate status
-certificateSchema.virtual('status').get(function() {
+certificateSchema.virtual('status').get(function () {
   if (!this.is_active) return 'revoked';
   if (!this.pdf_generated) return 'pending';
   if (this.pdf_generation_error) return 'error';
@@ -162,7 +162,7 @@ certificateSchema.virtual('status').get(function() {
 });
 
 // Instance method to check if user can access certificate
-certificateSchema.methods.canUserAccess = function(user) {
+certificateSchema.methods.canUserAccess = function (user) {
   // Check if user belongs to same organization
   if (this.organization_id.toString() !== user.organization_id.toString()) {
     return { canAccess: false, reason: 'organization_mismatch' };
@@ -174,12 +174,12 @@ certificateSchema.methods.canUserAccess = function(user) {
   }
 
   // Check if user is admin
-  if (user.role === 'admin') {
+  if (user.role === 'org_admin') {
     return { canAccess: true, reason: 'admin_access' };
   }
 
   // Check if user is the course instructor
-  if (user.role === 'teacher') {
+  if (user.role === 'instructor') {
     return { canAccess: true, reason: 'instructor_access' };
   }
 
@@ -187,7 +187,7 @@ certificateSchema.methods.canUserAccess = function(user) {
 };
 
 // Instance method to generate certificate data for PDF
-certificateSchema.methods.getCertificateData = function() {
+certificateSchema.methods.getCertificateData = function () {
   return {
     certificate_id: this.certificate_id,
     verification_code: this.verification_code,
@@ -206,7 +206,7 @@ certificateSchema.methods.getCertificateData = function() {
 };
 
 // Instance method to mark PDF as generated
-certificateSchema.methods.markPdfGenerated = function(filePath, fileUrl) {
+certificateSchema.methods.markPdfGenerated = function (filePath, fileUrl) {
   this.pdf_file_path = filePath;
   this.pdf_file_url = fileUrl;
   this.pdf_generated = true;
@@ -215,36 +215,36 @@ certificateSchema.methods.markPdfGenerated = function(filePath, fileUrl) {
 };
 
 // Instance method to mark PDF generation as failed
-certificateSchema.methods.markPdfGenerationFailed = function(error) {
+certificateSchema.methods.markPdfGenerationFailed = function (error) {
   this.pdf_generated = false;
   this.pdf_generation_error = error;
   return this.save();
 };
 
 // Static method to find certificates by student with organization isolation
-certificateSchema.statics.findByStudent = function(studentId, organizationId, options = {}) {
+certificateSchema.statics.findByStudent = function (studentId, organizationId, options = {}) {
   const query = {
     student_id: studentId,
     organization_id: organizationId,
     is_active: true
   };
-  
+
   return this.find(query, null, options).sort({ issued_date: -1 });
 };
 
 // Static method to find certificates by course with organization isolation
-certificateSchema.statics.findByCourse = function(courseId, organizationId, options = {}) {
+certificateSchema.statics.findByCourse = function (courseId, organizationId, options = {}) {
   const query = {
     course_id: courseId,
     organization_id: organizationId,
     is_active: true
   };
-  
+
   return this.find(query, null, options).sort({ issued_date: -1 });
 };
 
 // Static method to verify certificate authenticity
-certificateSchema.statics.verifyCertificate = function(certificateId, verificationCode) {
+certificateSchema.statics.verifyCertificate = function (certificateId, verificationCode) {
   return this.findOne({
     certificate_id: certificateId,
     verification_code: verificationCode,
@@ -253,7 +253,7 @@ certificateSchema.statics.verifyCertificate = function(certificateId, verificati
 };
 
 // Static method to get certificate statistics for organization
-certificateSchema.statics.getOrganizationStats = async function(organizationId) {
+certificateSchema.statics.getOrganizationStats = async function (organizationId) {
   const stats = await this.aggregate([
     {
       $match: {
@@ -302,56 +302,56 @@ certificateSchema.statics.getOrganizationStats = async function(organizationId) 
 };
 
 // Pre-save middleware to validate organization consistency
-certificateSchema.pre('save', async function(next) {
+certificateSchema.pre('save', async function (next) {
   if (this.isNew) {
     try {
       // Verify student belongs to same organization
       const User = mongoose.model('User');
       const student = await User.findById(this.student_id);
-      
+
       if (!student) {
         return next(new Error('Student not found'));
       }
-      
+
       if (student.organization_id.toString() !== this.organization_id.toString()) {
         return next(new Error('Student must belong to the same organization'));
       }
-      
+
       // Verify course belongs to same organization
       const Course = mongoose.model('Course');
       const course = await Course.findById(this.course_id);
-      
+
       if (!course) {
         return next(new Error('Course not found'));
       }
-      
+
       if (course.organization_id.toString() !== this.organization_id.toString()) {
         return next(new Error('Course must belong to the same organization'));
       }
-      
+
       // Verify enrollment exists and belongs to same organization
       const Enrollment = mongoose.model('Enrollment');
       const enrollment = await Enrollment.findById(this.enrollment_id);
-      
+
       if (!enrollment) {
         return next(new Error('Enrollment not found'));
       }
-      
+
       if (enrollment.organization_id.toString() !== this.organization_id.toString()) {
         return next(new Error('Enrollment must belong to the same organization'));
       }
-      
+
       // Verify enrollment matches student and course
       if (enrollment.student_id.toString() !== this.student_id.toString() ||
-          enrollment.course_id.toString() !== this.course_id.toString()) {
+        enrollment.course_id.toString() !== this.course_id.toString()) {
         return next(new Error('Enrollment must match student and course'));
       }
-      
+
     } catch (error) {
       return next(error);
     }
   }
-  
+
   next();
 });
 

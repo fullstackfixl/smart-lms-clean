@@ -219,7 +219,7 @@ liveClassSchema.methods.canAccessRecording = async function (user) {
   }
 
   // Check if user is admin - always has access
-  if (user.role === 'admin' && this.recording.access_permissions.organization_admins) {
+  if (user.role === 'org_admin' && this.recording.access_permissions.organization_admins) {
     return { canAccess: true, reason: 'admin_access' };
   }
 
@@ -319,7 +319,7 @@ liveClassSchema.methods.canUserAccess = async function (user) {
   }
 
   // Check if user is instructor or admin
-  if (user.role === 'admin' || this.instructor_id.toString() === user._id.toString()) {
+  if (user.role === 'org_admin' || this.instructor_id.toString() === user._id.toString()) {
     return { canAccess: true, reason: 'instructor_access' };
   }
 
@@ -520,7 +520,7 @@ liveClassSchema.pre('save', async function (next) {
       }
 
       // Verify instructor has instructor, org_admin, or platform_admin role
-      if (!['instructor', 'org_admin', 'admin', 'platform_admin', 'platformAdmin'].includes(instructor.role)) {
+      if (!['instructor', 'org_admin', 'platform_admin'].includes(instructor.role)) {
         console.error('❌ [LiveClass Pre-Save] Invalid instructor role:', instructor.role);
         return next(new Error('User must be an instructor or admin to create live classes'));
       }

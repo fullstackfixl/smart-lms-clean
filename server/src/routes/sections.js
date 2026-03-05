@@ -1,11 +1,11 @@
 const express = require('express');
 const { Course, Section, Lesson } = require('../models');
-const { authMiddleware, requireRole } = require('../middleware/auth');
+const { authMiddleware, optionalAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Create section
-router.post('/:courseId/sections', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.post('/:courseId/sections', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { courseId } = req.params;
     const { title, description, order } = req.body;
@@ -15,21 +15,24 @@ router.post('/:courseId/sections', authMiddleware, requireRole(['teacher', 'admi
     }
 
     // Verify course exists and user has permission
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: courseId,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to modify it', 404);
     }
 
     const section = new Section({
-      organization_id: req.user.organization_id,
+      organization_id: orgId,
       course_id: courseId,
       title,
       description,
@@ -47,7 +50,7 @@ router.post('/:courseId/sections', authMiddleware, requireRole(['teacher', 'admi
 });
 
 // Get sections for a course
-router.get('/:courseId/sections', async (req, res) => {
+router.get('/:courseId/sections', optionalAuth, async (req, res) => {
   try {
     const { courseId } = req.params;
 
@@ -95,20 +98,23 @@ router.get('/:courseId/sections', async (req, res) => {
 });
 
 // Update section
-router.put('/:courseId/sections/:sectionId', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.put('/:courseId/sections/:sectionId', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { courseId, sectionId } = req.params;
     const updates = req.body;
 
     // Verify course and section exist and user has permission
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: courseId,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to modify it', 404);
@@ -140,7 +146,7 @@ router.put('/:courseId/sections/:sectionId', authMiddleware, requireRole(['teach
 });
 
 // Reorder sections
-router.put('/:courseId/sections/reorder', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.put('/:courseId/sections/reorder', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { courseId } = req.params;
     const { sections } = req.body;
@@ -150,14 +156,17 @@ router.put('/:courseId/sections/reorder', authMiddleware, requireRole(['teacher'
     }
 
     // Verify course exists and user has permission
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: courseId,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to modify it', 404);
@@ -175,19 +184,22 @@ router.put('/:courseId/sections/reorder', authMiddleware, requireRole(['teacher'
 });
 
 // Delete section
-router.delete('/:courseId/sections/:sectionId', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.delete('/:courseId/sections/:sectionId', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { courseId, sectionId } = req.params;
 
     // Verify course and section exist and user has permission
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: courseId,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to modify it', 404);

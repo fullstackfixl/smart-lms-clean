@@ -299,21 +299,24 @@ router.get('/my', authMiddleware, async (req, res) => {
 });
 
 // Get course enrollments (instructor only)
-router.get('/:courseId/enrollments', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.get('/:courseId/enrollments', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { courseId } = req.params;
     const { status, page = 1, limit = 20 } = req.query;
     const skip = (page - 1) * limit;
 
     // Verify course exists and user has permission
-    const course = await Course.findOne({
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courseQuery = {
       _id: courseId,
-      organization_id: req.user.organization_id,
-      $or: [
-        { instructor_id: req.user._id },
-        { 'req.user.role': 'admin' }
-      ]
-    });
+      organization_id: orgId
+    };
+
+    if (req.user.role !== 'org_admin') {
+      courseQuery.instructor_id = req.user._id;
+    }
+
+    const course = await Course.findOne(courseQuery);
 
     if (!course) {
       return res.error('Course not found', 'Course does not exist or you do not have permission to view enrollments', 404);
@@ -363,7 +366,7 @@ router.get('/:courseId/enrollments', authMiddleware, requireRole(['teacher', 'ad
 });
 
 // Update enrollment status (instructor/admin only)
-router.put('/:enrollmentId/status', authMiddleware, requireRole(['teacher', 'admin']), async (req, res) => {
+router.put('/:enrollmentId/status', authMiddleware, requireRole(['instructor', 'org_admin']), async (req, res) => {
   try {
     const { enrollmentId } = req.params;
     const { status } = req.body;
@@ -384,7 +387,7 @@ router.put('/:enrollmentId/status', authMiddleware, requireRole(['teacher', 'adm
       return res.error('Access denied', 'You do not have permission to modify this enrollment', 403);
     }
 
-    if (req.user.role !== 'admin' && enrollment.course_id.instructor_id.toString() !== req.user._id.toString()) {
+    if (req.user.role !== 'org_admin' && enrollment.course_id.instructor_id.toString() !== req.user._id.toString()) {
       return res.error('Access denied', 'You do not have permission to modify this enrollment', 403);
     }
 
@@ -415,7 +418,7 @@ router.get('/:enrollmentId/progress', authMiddleware, async (req, res) => {
     // Check if user has permission to view this enrollment
     const canView = enrollment.student_id._id.toString() === req.user._id.toString() ||
       (enrollment.course_id.organization_id.toString() === req.user.organization_id.toString() &&
-        (req.user.role === 'admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
+        (req.user.role === 'org_admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
 
     if (!canView) {
       return res.error('Access denied', 'You do not have permission to view this enrollment progress', 403);
@@ -459,7 +462,7 @@ router.post('/:enrollmentId/check-completion', authMiddleware, async (req, res) 
     // Check if user has permission to check this enrollment
     const canCheck = enrollment.student_id._id.toString() === req.user._id.toString() ||
       (enrollment.course_id.organization_id.toString() === req.user.organization_id.toString() &&
-        (req.user.role === 'admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
+        (req.user.role === 'org_admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
 
     if (!canCheck) {
       return res.error('Access denied', 'You do not have permission to check this enrollment', 403);
@@ -545,7 +548,7 @@ router.get('/:enrollmentId/certificate', authMiddleware, async (req, res) => {
     // Check if user has permission to access this certificate
     const canAccess = enrollment.student_id._id.toString() === req.user._id.toString() ||
       (enrollment.course_id.organization_id.toString() === req.user.organization_id.toString() &&
-        (req.user.role === 'admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
+        (req.user.role === 'org_admin' || enrollment.course_id.instructor_id.toString() === req.user._id.toString()));
 
     if (!canAccess) {
       return res.error('Access denied', 'You do not have permission to access this certificate', 403);

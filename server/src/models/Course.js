@@ -230,7 +230,10 @@ courseSchema.methods.canUserAccess = function (user) {
   }
 
   // Organization members can access their org courses
-  if (user.organization_id && user.organization_id.toString() === this.organization_id.toString()) {
+  const userOrgId = user.organization_id?._id || user.organization_id;
+  const courseOrgId = this.organization_id?._id || this.organization_id;
+
+  if (userOrgId && courseOrgId && userOrgId.toString() === courseOrgId.toString()) {
     return true;
   }
 
