@@ -17,7 +17,7 @@ export function PlatformNavbar() {
 
   const initials = (user as any)?.name
     ? (user as any).name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-    : "PA"
+    : "??"
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50">

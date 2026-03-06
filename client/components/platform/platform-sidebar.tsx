@@ -33,8 +33,10 @@ export function PlatformSidebar() {
 
   const isAdmin = user?.role === 'platform_admin'
   const filteredNav = navigation.filter(item => !item.adminOnly || isAdmin)
-  const roleLabel = isAdmin ? 'Platform Admin' : 'Platform Staff'
-  const initials = user?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'PA'
+  const roleLabel = isAdmin ? 'Platform Admin' : user ? 'Platform Staff' : 'Loading...'
+  const initials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : '??'
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 w-[260px] bg-slate-950/95 backdrop-blur-xl border-r border-slate-800/50">

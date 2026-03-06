@@ -23,8 +23,13 @@ const connectDB = async () => {
     return;
   }
 
-  // Clean URI: remove appName param which can cause auth issues in some setups
-  let mongoUri = process.env.MONGODB_URI || "mongodb+srv://dushyant4665fixlsolution_db_user:7358ABmkGBLRMP8D@cluster0.r9k9vap.mongodb.net/smart-lms?retryWrites=true&w=majority";
+  // Clean URI from environment variable
+  let mongoUri = process.env.MONGODB_URI;
+
+  if (!mongoUri) {
+    console.error('❌ [DB] MONGODB_URI is not defined in environment variables!');
+    process.exit(1);
+  }
 
   // Strip appName if present (can cause auth issues)
   mongoUri = mongoUri.replace(/[&?]appName=[^&]*/g, '');

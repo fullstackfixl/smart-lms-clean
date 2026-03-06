@@ -83,19 +83,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const orgData = (res.data as any).organization || null
           setUser(userData as User)
           if (orgData) setOrganization(orgData)
-          console.log("✅ [AuthContext] User authenticated:", userData.email, "Role:", userData.role, "OrgType:", orgData?.type)
+          console.log("✅ [AuthContext] User authenticated:", userData.email, "Role:", userData.role)
+          setLoading(false)
         } else {
-          console.error("❌ [AuthContext] Failed to get user data:", res.error)
-          window.sessionStorage.removeItem("instatute_token")
-          window.localStorage.removeItem("instatute_token")
-          setToken(null)
+          const errorMsg = res.error || ""
+          const isAuthError = errorMsg.toLowerCase().includes("auth") ||
+            errorMsg.toLowerCase().includes("token") ||
+            errorMsg.toLowerCase().includes("unauthorized") ||
+            errorMsg.toLowerCase().includes("not found")
+
+          if (isAuthError) {
+            console.error("❌ [AuthContext] Auth failed, clearing session:", errorMsg)
+            window.sessionStorage.removeItem("instatute_token")
+            window.localStorage.removeItem("instatute_token")
+            setToken(null)
+            setUser(null)
+          } else {
+            console.warn("⚠️ [AuthContext] Network/Server error (non-auth), preserving session:", errorMsg)
+          }
+          setLoading(false)
         }
-        setLoading(false)
       }).catch((error) => {
-        console.error("❌ [AuthContext] Error fetching user:", error)
-        window.sessionStorage.removeItem("instatute_token")
-        window.localStorage.removeItem("instatute_token")
-        setToken(null)
+        console.error("❌ [AuthContext] Fatal error fetching user:", error)
+        // Keep existing token if it's a network error
         setLoading(false)
       })
 
@@ -253,15 +263,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(() => {
+    console.log("🔐 [AuthContext] LOGOUT CALLED — Clearing all state and storage")
     if (token) {
-      authApi.logout(token)
+      authApi.logout(token).catch(e => console.log("Logout API failed (ignoring):", e))
     }
     setUser(null)
     setToken(null)
     setOrganization(null)
     window.sessionStorage.removeItem("instatute_token")
     window.localStorage.removeItem("instatute_token")
-    console.log("🔐 [AuthContext] Logged out, tokens cleared")
+    console.log("🔐 [AuthContext] Logout complete")
   }, [token])
 
   // Auto-refresh token before expiry
@@ -277,25 +288,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const nowSeconds = Math.floor(Date.now() / 1000)
           const remaining = expSeconds - nowSeconds
           if (remaining <= 120) {
+            console.log("🔄 [AuthContext] Token expiring soon (", remaining, "s), refreshing...")
             try {
               const res = await authApi.refresh(token)
               if (res.success && res.data) {
+                console.log("✅ [AuthContext] Token refreshed successfully")
                 const newToken = (res.data as any).token as string
                 setToken(newToken)
                 if (typeof window !== 'undefined') {
                   window.sessionStorage.setItem("instatute_token", newToken)
                   window.localStorage.setItem("instatute_token", newToken)
                 }
-                // Update expSeconds for next cycles
-                const np = newToken.split('.')[1]
-                const npayload = JSON.parse(typeof window !== 'undefined' ? atob(np) : Buffer.from(np, 'base64').toString('utf8'))
-                // Replace local variable
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                // expSeconds = npayload.exp // not reassignable; rely on token change triggering effect
+              } else {
+                console.error("❌ [AuthContext] Token refresh failed (res.success=false):", res.error)
               }
             } catch (e) {
-              // Silently ignore refresh errors to avoid forced logout
-              console.error("⚠️ [AuthContext] Token refresh failed:", e)
+              console.error("⚠️ [AuthContext] Token refresh error:", e)
             }
           }
         }, 30000)
