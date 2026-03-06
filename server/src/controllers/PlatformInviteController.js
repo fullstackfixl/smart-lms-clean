@@ -12,13 +12,21 @@ class PlatformInviteController extends BaseController {
                 return res.error('Token is required', 'Validation Error', 400);
             }
 
+            // inviteToken has select:false — must use +inviteToken to include it
             const user = await User.findOne({
                 inviteToken: token,
                 inviteTokenExpiry: { $gt: new Date() }
-            }).populate('organization_id');
+            })
+                .select('+inviteToken +inviteTokenExpiry')
+                .populate('organization_id', 'name type modulesEnabled status');
 
             if (!user) {
-                return res.error('Invalid or expired invitation token', 'Authentication Error', 401);
+                // Check if token exists but is expired
+                const expiredUser = await User.findOne({ inviteToken: token }).select('+inviteToken +inviteTokenExpiry');
+                if (expiredUser) {
+                    return res.error('Invitation link has expired. Please contact the platform administrator.', 'Token Expired', 410);
+                }
+                return res.error('Invalid invitation link. The link may have already been used.', 'Authentication Error', 401);
             }
 
             return res.success({
@@ -28,8 +36,8 @@ class PlatformInviteController extends BaseController {
                     role: user.role
                 },
                 organization: {
-                    name: user.organization_id.name,
-                    type: user.organization_id.type
+                    name: user.organization_id?.name || 'Your Organization',
+                    type: user.organization_id?.type || 'SCHOOL'
                 }
             }, 'Token verified successfully');
         } catch (error) {
@@ -52,7 +60,11 @@ class PlatformInviteController extends BaseController {
             }).select('+inviteToken +inviteTokenExpiry');
 
             if (!user) {
-                return res.error('Invalid or expired invitation token', 'Authentication Error', 401);
+                const expiredUser = await User.findOne({ inviteToken: token }).select('+inviteToken +inviteTokenExpiry');
+                if (expiredUser) {
+                    return res.error('Invitation link has expired (24h). Please contact the platform administrator.', 'Token Expired', 410);
+                }
+                return res.error('Invalid or already used invitation link.', 'Authentication Error', 401);
             }
 
             const organization = await Organization.findById(user.organization_id);
@@ -60,32 +72,36 @@ class PlatformInviteController extends BaseController {
                 return res.error('Organization not found', 'Not Found', 404);
             }
 
-            // Update User
-            user.password_hash = password; // Will be hashed by pre-save hook
+            // Update User — activate account
+            user.password_hash = password; // hashed by pre-save hook
             user.status = 'active';
             user.email_verified = true;
             user.inviteToken = undefined;
             user.inviteTokenExpiry = undefined;
             await user.save();
 
-            // Update Organization
+            // Activate Organization
             organization.status = 'active';
             if (address) {
-                if (typeof address === 'string') {
-                    organization.address = { street: address };
-                } else {
-                    organization.address = address;
-                }
+                organization.address = typeof address === 'string' ? { street: address } : address;
             }
-            organization.phone = phone || organization.phone;
+            if (phone) organization.phone = phone;
             await organization.save();
 
-            return res.success(null, 'Organization setup completed successfully. You can now login.');
+            return res.success({
+                organization: {
+                    name: organization.name,
+                    type: organization.type,
+                    modulesEnabled: organization.modulesEnabled || []
+                },
+                redirectUrl: '/login'
+            }, 'Organization setup completed successfully. You can now login.');
         } catch (error) {
             console.error('Complete setup error:', error);
             return res.error(error.message, 'Failed to complete setup', 500);
         }
     }
+
 }
 
 module.exports = new PlatformInviteController();

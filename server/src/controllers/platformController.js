@@ -3,6 +3,8 @@ const { User } = require('../models');
 class PlatformController {
   /**
    * Create the first platform admin (One-time use)
+   * SAFE: force=true only resets if same email already exists,
+   * never overwrites a different admin's email.
    */
   async createSuperAdmin(req, res) {
     try {
@@ -10,16 +12,6 @@ class PlatformController {
 
       if (!name || !email || !password) {
         return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
-      }
-
-      // Check if any platform admin already exists
-      const existingAdmin = await User.findOne({ role: 'platform_admin' });
-
-      if (existingAdmin && !force) {
-        return res.status(403).json({
-          success: false,
-          message: 'Platform admin already exists. Use force=true with secret to reset.'
-        });
       }
 
       // If force-resetting, require secret
@@ -30,25 +22,48 @@ class PlatformController {
         }
       }
 
-      if (existingAdmin && force) {
-        // Reset existing admin
-        const bcrypt = require('bcryptjs');
-        const hash = await bcrypt.hash(password, 10);
-        await User.updateOne(
-          { role: 'platform_admin' },
-          { $set: { email: email.toLowerCase(), password_hash: hash, name, status: 'active', email_verified: true } }
-        );
-        return res.status(200).json({
-          success: true,
-          message: 'Platform admin reset successfully',
-          data: { email: email.toLowerCase() }
+      // Check if a user with THIS email already exists
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+
+      if (existingUser) {
+        if (force) {
+          // Force-reset: only update THIS user (same email) — never touches other admins
+          const bcrypt = require('bcryptjs');
+          const hash = await bcrypt.hash(password, 10);
+          existingUser.password_hash = hash;
+          existingUser.name = name;
+          existingUser.role = 'platform_admin';
+          existingUser.status = 'active';
+          existingUser.email_verified = true;
+          await existingUser.save();
+          return res.status(200).json({
+            success: true,
+            message: 'Platform admin reset successfully',
+            data: { email: existingUser.email }
+          });
+        }
+        return res.status(409).json({
+          success: false,
+          message: 'A user with this email already exists'
         });
       }
 
+      // Guard: don't allow creating another admin without force
+      const existingAdmin = await User.findOne({ role: 'platform_admin' });
+      if (existingAdmin && !force) {
+        return res.status(403).json({
+          success: false,
+          message: 'Platform admin already exists. Use force=true with secret to create another.'
+        });
+      }
+
+      // Create new admin (hash password ourselves — don't rely on pre-save hook)
+      const bcrypt = require('bcryptjs');
+      const hash = await bcrypt.hash(password, 10);
       const newAdmin = new User({
         name,
         email: email.toLowerCase(),
-        password_hash: password, // Will be hashed by pre-save hook
+        password_hash: hash,
         role: 'platform_admin',
         organization_id: null,
         status: 'active',

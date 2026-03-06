@@ -17,8 +17,14 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo = "/login" }
 
   useEffect(() => {
     if (!loading) {
-      // Not authenticated - redirect to login
-      if (!isAuthenticated) {
+      // Before redirecting, verify there's truly no token in storage
+      // (prevents race conditions during auth state transitions)
+      const savedToken = typeof window !== 'undefined'
+        ? (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))
+        : null
+
+      // Not authenticated AND no saved token - redirect to login
+      if (!isAuthenticated && !savedToken) {
         console.log("⚠️ [ProtectedRoute] Not authenticated, redirecting to", redirectTo)
         router.push(redirectTo)
         return
@@ -34,6 +40,19 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo = "/login" }
 
   // Show loading state
   if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-500 border-r-transparent"></div>
+          <p className="mt-4 text-slate-400">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If we have a saved token but user hasn't loaded yet, show loading
+  if (!isAuthenticated && typeof window !== 'undefined' &&
+    (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950">
         <div className="text-center">

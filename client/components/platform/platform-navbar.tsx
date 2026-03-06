@@ -77,8 +77,8 @@ export function PlatformNavbar() {
                     className="absolute right-0 mt-2 w-64 bg-slate-900/95 backdrop-blur-xl border border-slate-800/50 rounded-xl shadow-xl overflow-hidden z-50"
                   >
                     <div className="p-4 border-b border-slate-800/50">
-                      <p className="text-sm font-medium text-slate-200">{user?.name || (user as any)?.full_name || "Platform Admin"}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{user?.email || "platform@admin.com"}</p>
+                      <p className="text-sm font-medium text-slate-200">{user?.name || (user as any)?.full_name || "Platform User"}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{user?.role === 'platform_staff' ? 'Platform Staff' : 'Platform Admin'} · {user?.email || ""}</p>
                     </div>
                     <div className="p-2">
                       <button

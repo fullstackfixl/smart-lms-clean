@@ -46,20 +46,29 @@ export default function PlatformDashboard() {
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
     useEffect(() => {
-        // Wait for auth to load
+        // Wait for auth to FULLY load before making any redirect decisions
         if (authLoading) {
             return
         }
 
-        // Check if user is authenticated and is platform admin
-        if (!token || !user) {
+        // Double-check: if we have a token in storage, don't redirect — auth might still be resolving
+        const savedToken = typeof window !== 'undefined'
+            ? (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))
+            : null
+
+        if (!token && !user && !savedToken) {
             console.log("❌ [DASHBOARD] No token or user, redirecting to login")
             router.push("/login")
             return
         }
 
-        if (user.role !== "platform_admin") {
-            console.log("❌ [DASHBOARD] User is not platform admin, redirecting")
+        // If token exists but user hasn't loaded yet, wait
+        if (!user) {
+            return
+        }
+
+        if (user.role !== "platform_admin" && user.role !== "platform_staff") {
+            console.log("❌ [DASHBOARD] User is not platform admin/staff, redirecting")
             router.push("/dashboard")
             return
         }
@@ -349,10 +358,10 @@ export default function PlatformDashboard() {
                                         </td>
                                         <td className="px-8 py-6">
                                             <span className={`text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${org.plan && org.plan.toLowerCase() === "enterprise"
-                                                    ? "bg-purple-500/20 text-purple-400 border border-purple-500/20"
-                                                    : org.plan && org.plan.toLowerCase() === "pro"
-                                                        ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/20"
-                                                        : "bg-slate-800/50 text-slate-500 border border-slate-700/50"
+                                                ? "bg-purple-500/20 text-purple-400 border border-purple-500/20"
+                                                : org.plan && org.plan.toLowerCase() === "pro"
+                                                    ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/20"
+                                                    : "bg-slate-800/50 text-slate-500 border border-slate-700/50"
                                                 }`}>
                                                 {org.plan || 'Standard'}
                                             </span>
@@ -398,8 +407,8 @@ function StatCard({ title, value, change, icon: Icon, gradient, delay }: any) {
                     </div>
                     {change !== 0 && (
                         <div className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-black tracking-tighter ${change >= 0
-                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/10"
-                                : "bg-red-500/10 text-red-400 border border-red-500/10"
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/10"
+                            : "bg-red-500/10 text-red-400 border border-red-500/10"
                             }`}>
                             {change >= 0 ? "+" : ""}{change}%
                         </div>

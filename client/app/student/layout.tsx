@@ -20,10 +20,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
     <ProtectedRoute allowedRoles={["student"]}>
       <div className="flex h-screen overflow-hidden bg-slate-950">
         <StudentSidebar />
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative md:ml-[240px]">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative md:ml-[220px]">
           <StudentHeader />
           <main className="flex-1 overflow-y-auto mt-16 scroll-smooth">
-            <div className="max-w-[1400px] mx-auto p-6 md:p-10">
+            <div className="max-w-[1400px] mx-auto p-6 md:p-8">
               {children}
             </div>
           </main>

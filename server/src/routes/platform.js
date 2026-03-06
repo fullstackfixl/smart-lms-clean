@@ -3,9 +3,11 @@ const platformApplicationController = require('../controllers/PlatformApplicatio
 const platformAnalyticsController = require('../controllers/PlatformAnalyticsController');
 const platformOrganizationController = require('../controllers/PlatformOrganizationController');
 const platformAdminsController = require('../controllers/PlatformAdminsController');
+const platformStaffController = require('../controllers/PlatformStaffController');
 const PlatformController = require('../controllers/platformController');
-const Course = require('../models/Course');
-const { authMiddleware, requirePlatformAdmin } = require('../middleware/auth');
+const platformCourseController = require('../controllers/PlatformCourseController');
+const { authMiddleware, requirePlatformAdmin, requirePlatformAccess } = require('../middleware/auth');
+const { activityLogger } = require('../middleware/activityLogger');
 const router = express.Router();
 
 router.use((req, res, next) => {
@@ -13,11 +15,13 @@ router.use((req, res, next) => {
     next();
 });
 
-// One-time super admin creation
+// One-time super admin creation (no auth)
 router.post('/create-super-admin', PlatformController.createSuperAdmin);
 
-// All routes below require platform_admin role
-router.use(authMiddleware, requirePlatformAdmin);
+// ══════════════════════════════════════════════════════════════════════════════
+// SHARED ROUTES — platform_admin + platform_staff
+// ══════════════════════════════════════════════════════════════════════════════
+router.use(authMiddleware, requirePlatformAccess, activityLogger);
 
 // --- Dashboard & Analytics ---
 router.get('/dashboard/stats', platformAnalyticsController.getDashboardStats.bind(platformAnalyticsController));
@@ -25,19 +29,25 @@ router.get('/analytics/overview', platformAnalyticsController.getDashboardStats.
 router.get('/analytics/global', platformAnalyticsController.getDashboardStats.bind(platformAnalyticsController));
 router.get('/analytics/revenue', platformAnalyticsController.getDashboardStats.bind(platformAnalyticsController));
 
-// --- Organizations Management ---
+// --- Organizations (read-only for staff) ---
 router.get('/organizations', platformOrganizationController.listOrganizations.bind(platformOrganizationController));
 router.get('/organizations/stats', platformOrganizationController.getOrganizationStats.bind(platformOrganizationController));
 router.get('/organizations/:id', platformOrganizationController.getOrganizationDetails.bind(platformOrganizationController));
-router.post('/organizations', platformOrganizationController.createOrganization.bind(platformOrganizationController));
-router.put('/organizations/:id', platformOrganizationController.updateOrganization.bind(platformOrganizationController));
-router.patch('/organizations/:id/status', platformOrganizationController.updateOrganization.bind(platformOrganizationController));
-router.delete('/organizations/:id', platformOrganizationController.deleteOrganization.bind(platformOrganizationController));
 
-// --- Organization Applications ---
+// --- Organization Applications (staff can approve/reject) ---
 router.get('/applications', platformApplicationController.getApplications);
 router.put('/applications/:id/approve', platformApplicationController.approveApplication);
 router.put('/applications/:id/reject', platformApplicationController.rejectApplication);
+
+// --- Courses (read & review for staff) ---
+router.get('/courses', platformCourseController.listCourses.bind(platformCourseController));
+router.get('/courses/stats', platformCourseController.getStats.bind(platformCourseController));
+router.patch('/courses/:id/global-publish', platformCourseController.toggleGlobalPublish.bind(platformCourseController));
+router.patch('/courses/:id/marketplace', platformCourseController.publishToMarketplace.bind(platformCourseController));
+
+// --- User Management (read-only for staff) ---
+router.get('/users', (req, res) => res.json({ success: true, data: [] }));
+router.get('/users/:id', (req, res) => res.json({ success: true, data: {} }));
 
 // --- Email Diagnostics ---
 router.get('/email/test', async (req, res) => {
@@ -57,26 +67,33 @@ router.get('/email/test', async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 });
-// --- Platform Admins ---
-router.get('/admins', platformAdminsController.getAll.bind(platformAdminsController));
-router.post('/admins', platformAdminsController.create.bind(platformAdminsController));
-router.patch('/admins/:id/status', platformAdminsController.updateStatus.bind(platformAdminsController));
 
-// --- System Configuration ---
-router.get('/config', (req, res) => res.json({ success: true, data: {} }));
-router.put('/config', (req, res) => res.json({ success: true, data: {} }));
+// ══════════════════════════════════════════════════════════════════════════════
+// ADMIN-ONLY ROUTES — platform_admin only
+// ══════════════════════════════════════════════════════════════════════════════
 
-// --- User Management (Platform-wide) ---
-router.get('/users', (req, res) => res.json({ success: true, data: [] }));
-router.get('/users/:id', (req, res) => res.json({ success: true, data: {} }));
-router.patch('/users/:id/status', (req, res) => res.json({ success: true, data: {} }));
+// --- Organizations (create, update, delete) ---
+router.post('/organizations', requirePlatformAdmin, platformOrganizationController.createOrganization.bind(platformOrganizationController));
+router.put('/organizations/:id', requirePlatformAdmin, platformOrganizationController.updateOrganization.bind(platformOrganizationController));
+router.patch('/organizations/:id/status', requirePlatformAdmin, platformOrganizationController.updateOrganization.bind(platformOrganizationController));
+router.delete('/organizations/:id', requirePlatformAdmin, platformOrganizationController.deleteOrganization.bind(platformOrganizationController));
 
-const platformCourseController = require('../controllers/PlatformCourseController');
+// --- Platform Admins Management ---
+router.get('/admins', requirePlatformAdmin, platformAdminsController.getAll.bind(platformAdminsController));
+router.post('/admins', requirePlatformAdmin, platformAdminsController.create.bind(platformAdminsController));
+router.patch('/admins/:id/status', requirePlatformAdmin, platformAdminsController.updateStatus.bind(platformAdminsController));
 
-// --- Courses Platform Review & Marketplace ---
-router.get('/courses', platformCourseController.listCourses.bind(platformCourseController));
-router.get('/courses/stats', platformCourseController.getStats.bind(platformCourseController));
-router.patch('/courses/:id/global-publish', platformCourseController.toggleGlobalPublish.bind(platformCourseController));
-router.patch('/courses/:id/marketplace', platformCourseController.publishToMarketplace.bind(platformCourseController));
+// --- Platform Staff Management (admin creates/manages staff) ---
+router.post('/staff/create', requirePlatformAdmin, platformStaffController.createStaff.bind(platformStaffController));
+router.get('/staff', requirePlatformAdmin, platformStaffController.listStaff.bind(platformStaffController));
+router.patch('/staff/:id/status', requirePlatformAdmin, platformStaffController.updateStaffStatus.bind(platformStaffController));
+router.get('/staff/logs', requirePlatformAdmin, platformStaffController.getActivityLogs.bind(platformStaffController));
+
+// --- User Status Updates (admin only) ---
+router.patch('/users/:id/status', requirePlatformAdmin, (req, res) => res.json({ success: true, data: {} }));
+
+// --- System Configuration (admin only) ---
+router.get('/config', requirePlatformAdmin, (req, res) => res.json({ success: true, data: {} }));
+router.put('/config', requirePlatformAdmin, (req, res) => res.json({ success: true, data: {} }));
 
 module.exports = router;

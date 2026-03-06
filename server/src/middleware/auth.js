@@ -99,8 +99,8 @@ const orgAccessMiddleware = (req, res, next) => {
     return next();
   }
 
-  // Platform admin can access all organizations
-  if (req.user.role === 'platformAdmin') {
+  // Platform admin and platform staff can access all organizations
+  if (req.user.role === 'platformAdmin' || req.user.role === 'platform_admin' || req.user.role === 'platform_staff') {
     req.canAccessAllOrganizations = true;
     return next();
   }
@@ -156,8 +156,8 @@ const requirePermission = (permission) => {
 
 // Multi-tenant data isolation middleware
 const multiTenantMiddleware = (req, res, next) => {
-  // Super admin and platform admin can access all data
-  if (req.user.role === 'superAdmin' || req.user.role === 'platformAdmin') {
+  // Super admin, platform admin, and platform staff can access all data
+  if (req.user.role === 'superAdmin' || req.user.role === 'platformAdmin' || req.user.role === 'platform_admin' || req.user.role === 'platform_staff') {
     return next();
   }
 
@@ -237,11 +237,29 @@ const requirePlatformAdmin = (req, res, next) => {
   next();
 };
 
+/**
+ * Middleware to require platform-level access (admin OR staff)
+ * Used for shared routes like viewing orgs, applications, analytics
+ */
+const requirePlatformAccess = (req, res, next) => {
+  if (!req.user) {
+    return res.error('Authentication required', 'Access denied', 401);
+  }
+
+  const platformRoles = ['platform_admin', 'platformAdmin', 'platform_staff'];
+  if (!platformRoles.includes(req.user.role)) {
+    return res.error('Platform access required', 'Access denied', 403);
+  }
+
+  next();
+};
+
 module.exports = {
   authMiddleware,
   requireRole,
   requirePermission,
   requirePlatformAdmin,
+  requirePlatformAccess,
   orgAccessMiddleware,
   parentAccessMiddleware,
   multiTenantMiddleware,

@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',
     required: function () {
-      return this.role !== 'platform_admin' && this.role !== 'platformAdmin' && this.role !== 'student';
+      return this.role !== 'platform_admin' && this.role !== 'platform_staff' && this.role !== 'platformAdmin' && this.role !== 'student';
     }
   },
   organization_code: {
@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['platform_admin', 'org_admin', 'instructor', 'student', 'parent', 'support_staff', 'public_student'],
+    enum: ['platform_admin', 'platform_staff', 'org_admin', 'instructor', 'student', 'parent', 'support_staff', 'public_student'],
     required: true
   },
   status: {

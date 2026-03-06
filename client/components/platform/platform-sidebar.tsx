@@ -11,21 +11,30 @@ import {
   Settings,
   GraduationCap,
   BookOpen,
+  Users,
 } from "lucide-react"
+import { useAuth } from '../../lib/auth-context'
 
 const navigation = [
   { name: "Dashboard", href: "/platform/dashboard", icon: LayoutDashboard },
   { name: "Organizations", href: "/platform/organizations", icon: Building2 },
   { name: "Applications", href: "/platform/applications", icon: ClipboardList },
   { name: "Courses", href: "/platform/courses", icon: BookOpen },
+  { name: "Users", href: "/platform/users", icon: Users },
   { name: "Analytics", href: "/platform/analytics", icon: BarChart3 },
-  { name: "Platform Admins", href: "/platform/admins", icon: Shield },
-  { name: "Settings", href: "/platform/settings", icon: Settings },
+  { name: "Platform Admins", href: "/platform/admins", icon: Shield, adminOnly: true },
+  { name: "Settings", href: "/platform/settings", icon: Settings, adminOnly: true },
 ]
 
 export function PlatformSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { user } = useAuth()
+
+  const isAdmin = user?.role === 'platform_admin'
+  const filteredNav = navigation.filter(item => !item.adminOnly || isAdmin)
+  const roleLabel = isAdmin ? 'Platform Admin' : 'Platform Staff'
+  const initials = user?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'PA'
 
   return (
     <aside className="fixed inset-y-0 left-0 z-50 w-[260px] bg-slate-950/95 backdrop-blur-xl border-r border-slate-800/50">
@@ -40,14 +49,14 @@ export function PlatformSidebar() {
               <span className="text-base font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                 Smart LMS
               </span>
-              <p className="text-[10px] text-slate-500 font-medium">Platform Admin</p>
+              <p className="text-[10px] text-slate-500 font-medium">{roleLabel}</p>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-          {navigation.map((item) => {
+          {filteredNav.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/platform" && pathname.startsWith(item.href))
             const Icon = item.icon
 
@@ -87,11 +96,11 @@ export function PlatformSidebar() {
         <div className="p-3 border-t border-slate-800/50">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-800/30">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
-              PA
+              {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-200 truncate">Platform Admin</p>
-              <p className="text-xs text-slate-500 truncate">platform@admin.com</p>
+              <p className="text-sm font-medium text-slate-200 truncate">{user?.name || roleLabel}</p>
+              <p className="text-xs text-slate-500 truncate">{user?.email || ''}</p>
             </div>
           </div>
         </div>

@@ -12,6 +12,7 @@ class AuthService {
   getRedirectUrl(role) {
     const redirects = {
       'platform_admin': '/platform/dashboard',
+      'platform_staff': '/platform/dashboard',
       'org_admin': '/org-admin/dashboard',
       'instructor': '/instructor/dashboard',
       'student': '/student/dashboard',
@@ -49,8 +50,8 @@ class AuthService {
       throw new AuthenticationError('Email not verified. Please complete setup.');
     }
 
-    // Check organization status (if not platform admin)
-    if (user.role !== 'platform_admin' && user.organization_id) {
+    // Check organization status (if not platform admin or staff)
+    if (user.role !== 'platform_admin' && user.role !== 'platform_staff' && user.organization_id) {
       const org = await Organization.findById(user.organization_id);
       if (!org || org.status !== 'active') {
         throw new AuthenticationError('Organization is suspended or inactive. Please contact your administrator.');

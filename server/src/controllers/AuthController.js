@@ -25,7 +25,8 @@ class AuthController {
                     token: result.token,
                     role: result.role,
                     redirectUrl: result.redirectUrl,
-                    user: result.user
+                    user: result.user,
+                    organization: result.organization || null
                 }
             });
         } catch (error) {

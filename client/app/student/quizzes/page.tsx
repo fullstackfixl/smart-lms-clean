@@ -3,348 +3,240 @@
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-  FileQuestion,
-  Search,
-  Clock,
-  BookOpen,
-  CheckCircle2,
-  ArrowRight,
-  Trophy,
-  HelpCircle,
-  Loader2,
-  Play,
-  RotateCcw,
-  XCircle,
-  Star
+  FileQuestion, Search, Clock, CheckCircle2, Trophy, Loader2, Play,
+  RotateCcw, XCircle, Star, Filter, ChevronRight, Send, ChevronLeft, Zap
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../../components/ui/card'
-import { Button } from '../../../components/ui/button'
-import { Input } from '../../../components/ui/input'
-import { Badge } from '../../../components/ui/badge'
-import { Progress } from '../../../components/ui/progress'
-import { Tabs, TabsList, TabsTrigger } from '../../../components/ui/tabs'
-import { EmptyState } from '../../../components/student/EmptyState'
 import { toast } from "sonner"
 import { API_URL } from '../../../lib/config'
 
 interface Quiz {
-  _id: string
-  title: string
-  description: string
-  total_marks: number
-  max_attempts: number
-  timer_minutes: number | null
-  pass_percentage: number
-  questions_count: number
+  _id: string; title: string; description: string
+  total_marks: number; max_attempts: number; timer_minutes: number | null
+  pass_percentage: number; questions_count: number
   questions: { question: string; options: string[] }[]
-  created_at: string
-  attemptsCount: number
-  attemptsLeft: number
-  bestScore: number | null
-  bestPercentage: number | null
-  hasPassed: boolean
-  course: {
-    _id: string
-    title: string
-    thumbnail?: string
-  } | null
-  instructor: {
-    _id: string
-    name: string
-  } | null
+  created_at: string; attemptsCount: number; attemptsLeft: number
+  bestScore: number | null; bestPercentage: number | null; hasPassed: boolean
+  course: { _id: string; title: string; thumbnail?: string } | null
+  instructor: { _id: string; name: string } | null
 }
 
+const getToken = () => typeof window !== "undefined"
+  ? window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token') : null
+
 export default function QuizzesPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
+  const [search, setSearch] = useState("")
   const [filter, setFilter] = useState("all")
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null)
+  const router = useRouter()
 
-  useEffect(() => {
-    fetchQuizzes()
-  }, [])
+  useEffect(() => { loadQuizzes() }, [])
 
-  const fetchQuizzes = async () => {
+  const loadQuizzes = async () => {
     setLoading(true)
     try {
-      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
+      const token = getToken()
       if (!token) { router.push('/login'); return }
-
-      const response = await fetch(`${API_URL}/api/quizzes/student`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-        credentials: 'include'
+      const res = await fetch(`${API_URL}/api/quizzes/student`, {
+        headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include'
       })
-
-      const data = await response.json()
-      if (data.success) {
-        setQuizzes(data.data || [])
-      } else {
-        toast.error(data.message || data.error || "Failed to load quizzes")
-      }
-    } catch (error) {
-      toast.error("Failed to connect to server")
-    } finally {
-      setLoading(false)
-    }
+      const data = await res.json()
+      if (data.success) setQuizzes(data.data || [])
+      else toast.error(data.message || "Failed to load quizzes")
+    } catch { toast.error("Connection error") }
+    finally { setLoading(false) }
   }
 
-  const filteredQuizzes = quizzes.filter(quiz => {
-    const matchesSearch = quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (quiz.course?.title || '').toLowerCase().includes(searchQuery.toLowerCase())
-
-    if (filter === "completed") return matchesSearch && quiz.hasPassed
-    if (filter === "pending") return matchesSearch && !quiz.hasPassed && quiz.attemptsLeft > 0
-    return matchesSearch
+  const filtered = quizzes.filter(q => {
+    const matchText = q.title.toLowerCase().includes(search.toLowerCase()) ||
+      (q.course?.title || '').toLowerCase().includes(search.toLowerCase())
+    if (filter === 'passed') return matchText && q.hasPassed
+    if (filter === 'pending') return matchText && !q.hasPassed && q.attemptsLeft > 0
+    if (filter === 'locked') return matchText && !q.hasPassed && q.attemptsLeft === 0
+    return matchText
   })
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.08 } }
-  }
-  const itemVariants = {
-    hidden: { opacity: 0, y: 24 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", bounce: 0.3 } }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="relative">
-          <div className="h-16 w-16 rounded-2xl bg-[#4CAF50]/10 flex items-center justify-center">
-            <FileQuestion className="h-8 w-8 text-[#4CAF50] animate-pulse" />
-          </div>
-          <Loader2 className="absolute -top-1 -right-1 h-6 w-6 animate-spin text-[#4CAF50]" />
-        </div>
-        <p className="text-slate-500 font-semibold text-lg">Loading quizzes...</p>
-      </div>
-    )
-  }
-
-  if (activeQuiz) {
-    return <QuizPlayer quiz={activeQuiz} onBack={() => { setActiveQuiz(null); fetchQuizzes() }} />
-  }
 
   const stats = {
     total: quizzes.length,
     passed: quizzes.filter(q => q.hasPassed).length,
-    pending: quizzes.filter(q => !q.hasPassed && q.attemptsLeft > 0).length
+    pending: quizzes.filter(q => !q.hasPassed && q.attemptsLeft > 0).length,
   }
 
+  if (activeQuiz) return <InlineQuizPlayer quiz={activeQuiz} onBack={() => { setActiveQuiz(null); loadQuizzes() }} />
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-1">
+        <FileQuestion className="h-7 w-7 text-emerald-400 animate-pulse" />
+      </div>
+      <p className="text-slate-500 text-sm font-medium">Loading quizzes...</p>
+    </div>
+  )
+
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-7 pb-12">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-6"
-      >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-1">
-            My <span className="text-[#4CAF50]">Quizzes</span>
+          <h1 className="text-2xl font-black text-white tracking-tight">
+            My <span className="text-emerald-400">Quizzes</span>
           </h1>
-          <p className="text-slate-500 text-base">
-            All assessments from your organization — attempt and track your progress.
-          </p>
+          <p className="text-sm text-slate-500 mt-0.5">Test your knowledge and track your progress</p>
         </div>
-        <div className="relative min-w-[280px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Search quizzes or courses..."
-            className="pl-10 h-11 border-slate-200 focus-visible:ring-[#4CAF50] rounded-xl bg-white shadow-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
+          <input
+            type="text"
+            placeholder="Search quizzes..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full sm:w-64 pl-9 pr-4 h-10 rounded-xl bg-white/4 border border-white/8 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/30"
           />
         </div>
-      </motion.div>
+      </div>
 
-      {/* Stats row */}
+      {/* Stats */}
       {quizzes.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-3 gap-4"
-        >
+        <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Total Quizzes", value: stats.total, color: "bg-blue-50 text-blue-700", icon: FileQuestion },
-            { label: "Passed", value: stats.passed, color: "bg-green-50 text-green-700", icon: CheckCircle2 },
-            { label: "Pending", value: stats.pending, color: "bg-orange-50 text-orange-700", icon: Clock },
-          ].map((stat) => (
-            <Card key={stat.label} className="border-0 shadow-sm rounded-2xl">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className={`h-12 w-12 rounded-xl ${stat.color.split(' ')[0]} flex items-center justify-center`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color.split(' ')[1]}`} />
-                </div>
-                <div>
-                  <p className="text-2xl font-extrabold text-slate-900">{stat.value}</p>
-                  <p className="text-xs text-slate-500 font-medium">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
+            { label: "Total", value: stats.total, color: "from-violet-500/12 to-purple-500/6", fg: "text-violet-300", icon: FileQuestion },
+            { label: "Passed", value: stats.passed, color: "from-emerald-500/15 to-teal-500/8", fg: "text-emerald-300", icon: CheckCircle2 },
+            { label: "Pending", value: stats.pending, color: "from-orange-500/12 to-amber-500/6", fg: "text-orange-300", icon: Clock },
+          ].map((s, i) => (
+            <motion.div key={i}
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+              className={`rounded-2xl p-4 bg-gradient-to-br ${s.color} border border-white/6`}>
+              <s.icon className={`h-4 w-4 ${s.fg} mb-2`} />
+              <p className={`text-2xl font-black ${s.fg}`}>{s.value}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">{s.label}</p>
+            </motion.div>
           ))}
-        </motion.div>
+        </div>
       )}
 
       {/* Filter Tabs */}
-      <div className="border-b pb-1">
-        <Tabs defaultValue="all" onValueChange={setFilter}>
-          <TabsList className="bg-transparent border-0 p-0 gap-2 h-auto">
-            {[
-              { value: "all", label: "All" },
-              { value: "pending", label: "Pending" },
-              { value: "completed", label: "Completed" }
-            ].map(tab => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="px-5 py-2.5 rounded-full text-sm font-semibold data-[state=active]:bg-[#4CAF50] data-[state=active]:text-white data-[state=inactive]:bg-slate-100 data-[state=inactive]:text-slate-600 border-0 shadow-none"
-              >
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+      <div className="flex gap-2 flex-wrap">
+        {[
+          { v: 'all', l: 'All' },
+          { v: 'pending', l: 'Pending' },
+          { v: 'passed', l: 'Passed' },
+          { v: 'locked', l: 'No Attempts' },
+        ].map(tab => (
+          <button
+            key={tab.v}
+            onClick={() => setFilter(tab.v)}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${filter === tab.v
+              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25'
+              : 'bg-white/4 text-slate-400 border border-white/6 hover:bg-white/8 hover:text-slate-200'
+              }`}
+          >
+            {tab.l}
+          </button>
+        ))}
       </div>
 
-      {/* Quiz Cards */}
-      {filteredQuizzes.length > 0 ? (
+      {/* Quiz Grid */}
+      {filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/8 p-12 text-center">
+          <FileQuestion className="h-10 w-10 text-slate-700 mx-auto mb-3" />
+          <p className="text-slate-500 font-medium">{search ? `No quizzes match "${search}"` : "No quizzes available yet."}</p>
+        </div>
+      ) : (
         <motion.div
-          variants={containerVariants}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } }}
+          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
         >
-          {filteredQuizzes.map((quiz) => (
-            <motion.div key={quiz._id} variants={itemVariants}>
-              <Card className="group h-full flex flex-col overflow-hidden border-0 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-2xl bg-white">
-                {/* Top color band with status */}
-                <div className={`h-2 w-full ${quiz.hasPassed ? 'bg-green-500' : quiz.attemptsLeft === 0 ? 'bg-red-400' : 'bg-[#4CAF50]'}`} />
+          {filtered.map(quiz => (
+            <motion.div
+              key={quiz._id}
+              variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { type: 'spring', bounce: 0.25 } } }}
+            >
+              <div className="group flex flex-col h-full rounded-2xl border border-white/6 overflow-hidden bg-white/3 hover:bg-white/5 transition-all hover:-translate-y-0.5">
+                {/* Status strip */}
+                <div className={`h-0.5 w-full ${quiz.hasPassed ? 'bg-emerald-500' : quiz.attemptsLeft === 0 ? 'bg-red-500' : 'bg-teal-500'}`} />
 
-                <CardHeader className="pb-3 pt-5">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex-1">
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                        {quiz.course?.title || "General Quiz"}
-                      </p>
-                      <CardTitle className="text-lg font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-[#4CAF50] transition-colors">
-                        {quiz.title}
-                      </CardTitle>
-                    </div>
-                    <div className="shrink-0">
-                      {quiz.hasPassed ? (
-                        <div className="h-10 w-10 rounded-xl bg-green-50 flex items-center justify-center">
-                          <Trophy className="h-5 w-5 text-green-600" />
-                        </div>
-                      ) : quiz.attemptsLeft === 0 ? (
-                        <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center">
-                          <XCircle className="h-5 w-5 text-red-500" />
-                        </div>
-                      ) : (
-                        <div className="h-10 w-10 rounded-xl bg-[#4CAF50]/10 flex items-center justify-center">
-                          <FileQuestion className="h-5 w-5 text-[#4CAF50]" />
-                        </div>
+                <div className="p-5 flex-1 flex flex-col gap-4">
+                  {/* Title & icon */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      {quiz.course && (
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-1 truncate">{quiz.course.title}</p>
                       )}
+                      <h3 className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors line-clamp-2">{quiz.title}</h3>
+                    </div>
+                    <div className={`shrink-0 h-9 w-9 rounded-xl flex items-center justify-center ${quiz.hasPassed ? 'bg-emerald-500/15' : quiz.attemptsLeft === 0 ? 'bg-red-500/10' : 'bg-teal-500/10'}`}>
+                      {quiz.hasPassed ? <Trophy className="h-4 w-4 text-yellow-400" /> : quiz.attemptsLeft === 0 ? <XCircle className="h-4 w-4 text-red-400" /> : <FileQuestion className="h-4 w-4 text-teal-400" />}
                     </div>
                   </div>
 
-                  {quiz.hasPassed && (
-                    <Badge className="bg-green-50 text-green-700 border border-green-200 text-xs w-fit">
-                      <CheckCircle2 className="h-3 w-3 mr-1" /> Passed
-                    </Badge>
-                  )}
-                  {!quiz.hasPassed && quiz.attemptsLeft === 0 && (
-                    <Badge variant="destructive" className="text-xs w-fit">No Attempts Left</Badge>
-                  )}
-                  {!quiz.hasPassed && quiz.attemptsLeft > 0 && (
-                    <Badge variant="secondary" className="text-xs w-fit bg-slate-100 text-slate-600">
-                      {quiz.attemptsLeft} attempt{quiz.attemptsLeft !== 1 ? 's' : ''} left
-                    </Badge>
-                  )}
-                </CardHeader>
-
-                <CardContent className="space-y-4 flex-grow">
-                  {/* Stats row */}
-                  <div className="grid grid-cols-3 gap-2 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <div className="text-center">
-                      <p className="text-xs text-slate-400 font-medium mb-0.5">Questions</p>
-                      <p className="font-extrabold text-slate-700">{quiz.questions_count}</p>
-                    </div>
-                    <div className="text-center border-x border-slate-200">
-                      <p className="text-xs text-slate-400 font-medium mb-0.5">Time</p>
-                      <p className="font-extrabold text-slate-700">
-                        {quiz.timer_minutes ? `${quiz.timer_minutes}m` : '∞'}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-slate-400 font-medium mb-0.5">Pass</p>
-                      <p className="font-extrabold text-slate-700">{quiz.pass_percentage}%</p>
-                    </div>
+                  {/* Status badge */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {quiz.hasPassed
+                      ? <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/12 px-2.5 py-0.5 rounded-full border border-emerald-500/20">✓ PASSED</span>
+                      : quiz.attemptsLeft === 0
+                        ? <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/15">NO ATTEMPTS LEFT</span>
+                        : <span className="text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2.5 py-0.5 rounded-full border border-teal-500/15">{quiz.attemptsLeft} attempt{quiz.attemptsLeft !== 1 ? 's' : ''} left</span>
+                    }
                   </div>
 
-                  {/* Best score */}
-                  {quiz.attemptsCount > 0 && quiz.bestPercentage !== null && (
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                          <Star className="h-3 w-3 text-amber-400" /> Best Score
-                        </span>
-                        <span className={`text-base font-extrabold ${quiz.hasPassed ? 'text-green-600' : 'text-slate-700'}`}>
-                          {quiz.bestPercentage}%
-                        </span>
+                  {/* Stats mini grid */}
+                  <div className="grid grid-cols-3 gap-2 bg-white/3 rounded-xl p-3 border border-white/5">
+                    {[
+                      { l: 'Questions', v: quiz.questions_count },
+                      { l: 'Time', v: quiz.timer_minutes ? `${quiz.timer_minutes}m` : '∞' },
+                      { l: 'Pass', v: `${quiz.pass_percentage}%` },
+                    ].map((s, i) => (
+                      <div key={i} className={`text-center ${i === 1 ? 'border-x border-white/5' : ''}`}>
+                        <p className="text-[10px] text-slate-600 mb-0.5">{s.l}</p>
+                        <p className="text-sm font-bold text-slate-200">{s.v}</p>
                       </div>
-                      <Progress
-                        value={quiz.bestPercentage}
-                        className={`h-2 ${quiz.hasPassed ? '[&>div]:bg-green-500' : '[&>div]:bg-slate-400'}`}
-                      />
+                    ))}
+                  </div>
+
+                  {/* Best score bar */}
+                  {quiz.attemptsCount > 0 && quiz.bestPercentage !== null && (
+                    <div>
+                      <div className="flex justify-between text-[10px] mb-1.5">
+                        <span className="text-slate-500 flex items-center gap-1"><Star className="h-3 w-3 text-yellow-500" /> Best Score</span>
+                        <span className={`font-bold ${quiz.hasPassed ? 'text-emerald-400' : 'text-slate-300'}`}>{quiz.bestPercentage}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-white/5">
+                        <div className={`h-full rounded-full ${quiz.hasPassed ? 'bg-emerald-500' : 'bg-slate-500'}`} style={{ width: `${quiz.bestPercentage}%` }} />
+                      </div>
                     </div>
                   )}
-                </CardContent>
+                </div>
 
-                <CardFooter className="p-4 pt-0">
-                  <Button
+                {/* Action button */}
+                <div className="px-5 pb-5">
+                  <button
                     onClick={() => setActiveQuiz(quiz)}
                     disabled={!quiz.hasPassed && quiz.attemptsLeft === 0}
-                    className={`w-full h-11 rounded-xl font-bold text-sm transition-all ${quiz.hasPassed
-                      ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 shadow-none'
-                      : 'bg-[#4CAF50] text-white hover:bg-[#43a047] shadow-lg shadow-green-500/20'
+                    className={`w-full h-10 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${quiz.hasPassed
+                      ? 'bg-white/6 text-slate-300 border border-white/8 hover:bg-white/10'
+                      : quiz.attemptsLeft === 0
+                        ? 'bg-white/3 text-slate-600 cursor-not-allowed border border-white/5'
+                        : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/20'
                       }`}
                   >
-                    {quiz.hasPassed ? (
-                      <><RotateCcw className="h-4 w-4 mr-2" />Retake</>
-                    ) : quiz.attemptsCount > 0 ? (
-                      <><Play className="h-4 w-4 mr-2" />Try Again</>
-                    ) : (
-                      <><Play className="h-4 w-4 mr-2" />Start Quiz<ArrowRight className="h-4 w-4 ml-2" /></>
-                    )}
-                  </Button>
-                </CardFooter>
-              </Card>
+                    {quiz.hasPassed ? <><RotateCcw className="h-4 w-4" /> Retake</> : quiz.attemptsCount > 0 ? <><Play className="h-4 w-4" /> Try Again</> : <><Play className="h-4 w-4" /> Start Quiz</>}
+                  </button>
+                </div>
+              </div>
             </motion.div>
           ))}
         </motion.div>
-      ) : (
-        <Card className="border-0 shadow-lg rounded-3xl">
-          <EmptyState
-            icon={FileQuestion}
-            title={searchQuery ? "No matching quizzes" : "No quizzes available yet"}
-            description={searchQuery
-              ? `No quizzes match "${searchQuery}"`
-              : "Your instructor hasn't published any quizzes yet. Check back soon!"
-            }
-          />
-        </Card>
       )}
     </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────
-// INLINE QUIZ PLAYER
-// ─────────────────────────────────────────────────────────────
-function QuizPlayer({ quiz, onBack }: { quiz: Quiz; onBack: () => void }) {
+// ─── Inline Quiz Player ────────────────────────────────────────────────────────
+function InlineQuizPlayer({ quiz, onBack }: { quiz: Quiz; onBack: () => void }) {
   const [currentQ, setCurrentQ] = useState(0)
   const [answers, setAnswers] = useState<number[]>(new Array(quiz.questions.length).fill(-1))
   const [timeLeft, setTimeLeft] = useState(quiz.timer_minutes ? quiz.timer_minutes * 60 : null)
@@ -352,206 +244,150 @@ function QuizPlayer({ quiz, onBack }: { quiz: Quiz; onBack: () => void }) {
   const [result, setResult] = useState<any>(null)
   const [startedAt] = useState(new Date().toISOString())
 
-  // Timer countdown
   useEffect(() => {
     if (!timeLeft || result) return
     if (timeLeft <= 0) { handleSubmit(); return }
-    const t = setInterval(() => setTimeLeft(prev => (prev !== null ? prev - 1 : null)), 1000)
+    const t = setInterval(() => setTimeLeft(p => p !== null ? p - 1 : null), 1000)
     return () => clearInterval(t)
   }, [timeLeft, result])
 
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60), s = secs % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
-
-  const handleSelect = (optIdx: number) => {
-    if (result) return
-    const next = [...answers]
-    next[currentQ] = optIdx
-    setAnswers(next)
-  }
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
+  const q = quiz.questions[currentQ]
+  const answered = answers.filter(a => a !== -1).length
 
   const handleSubmit = async () => {
     if (submitting || result) return
     setSubmitting(true)
     try {
-      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-
-      // Build answers array in the format the API expects
-      const answersPayload = answers.map((selectedOption, idx) => ({
-        question_index: idx,
-        selected_option: selectedOption === -1 ? 0 : selectedOption,
-        time_spent_seconds: 0
-      }))
-
+      const token = getToken()
       const res = await fetch(`${API_URL}/api/quizzes/${quiz._id}/submit`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ answers: answersPayload, started_at: startedAt })
+        body: JSON.stringify({
+          answers: answers.map((sel, idx) => ({ question_index: idx, selected_option: sel === -1 ? 0 : sel, time_spent_seconds: 0 })),
+          started_at: startedAt
+        })
       })
-
       const data = await res.json()
-      if (data.success) {
-        setResult(data.data)
-        toast.success('Quiz submitted!')
-      } else {
-        // If enrollment not found, show appropriate message
-        if (data.message?.includes('enrolled') || data.error?.includes('Enrollment')) {
-          toast.error('You need to enroll in this course to submit. Contact your instructor.')
-        } else {
-          toast.error(data.message || data.error || 'Submission failed')
-        }
-      }
-    } catch (e) {
-      toast.error('Submission failed. Check your connection.')
-    } finally {
-      setSubmitting(false)
-    }
+      if (data.success) { setResult(data.data); toast.success('Quiz submitted!') }
+      else toast.error(data.message || 'Submission failed')
+    } catch { toast.error('Submission failed') }
+    finally { setSubmitting(false) }
   }
 
-  const answeredCount = answers.filter(a => a !== -1).length
-  const progress = (answeredCount / quiz.questions.length) * 100
-  const q = quiz.questions[currentQ]
+  if (result) return (
+    <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="max-w-lg mx-auto space-y-5 pb-12">
+      <div className="rounded-2xl p-8 text-center border"
+        style={{
+          background: result.passed ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.07)',
+          borderColor: result.passed ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.18)'
+        }}>
+        {result.passed ? <Trophy className="h-14 w-14 text-yellow-400 mx-auto mb-4" /> : <XCircle className="h-14 w-14 text-red-400 mx-auto mb-4" />}
+        <h2 className="text-2xl font-black text-white mb-1">{result.passed ? '🎉 Passed!' : 'Quiz Complete'}</h2>
+        <p className="text-4xl font-black my-4" style={{ color: result.passed ? '#34d399' : '#f87171' }}>
+          {Math.round(result.percentage ?? result.score ?? 0)}%
+        </p>
+        <p className="text-sm text-slate-400">Need {quiz.pass_percentage}% to pass</p>
+        <button onClick={onBack} className="mt-6 px-8 py-2.5 rounded-xl bg-white/8 text-slate-300 font-semibold text-sm hover:bg-white/12 transition-colors">
+          Back to Quizzes
+        </button>
+      </div>
+    </motion.div>
+  )
 
-  if (result) {
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl mx-auto py-8 space-y-6">
-        <Card className={`border-2 rounded-3xl overflow-hidden ${result.passed ? 'border-green-400' : 'border-red-300'}`}>
-          <div className={`p-8 text-center ${result.passed ? 'bg-green-50' : 'bg-red-50'}`}>
-            <div className={`h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-4 ${result.passed ? 'bg-green-100' : 'bg-red-100'}`}>
-              {result.passed ? <Trophy className="h-10 w-10 text-green-600" /> : <XCircle className="h-10 w-10 text-red-500" />}
-            </div>
-            <h2 className="text-2xl font-extrabold text-slate-800 mb-1">
-              {result.passed ? '🎉 Congratulations!' : 'Quiz Completed'}
-            </h2>
-            <p className="text-slate-600 text-lg">
-              You scored <span className="font-extrabold text-slate-900">{Math.round(result.percentage ?? result.score ?? 0)}%</span>
-            </p>
-            {result.passed
-              ? <p className="text-green-600 font-semibold mt-1">You passed!</p>
-              : <p className="text-red-500 font-semibold mt-1">Keep practicing — you need {quiz.pass_percentage}% to pass</p>
-            }
-          </div>
-          <CardContent className="p-6 flex gap-3 justify-center">
-            <Button variant="outline" onClick={onBack} className="rounded-xl px-8">Back to Quizzes</Button>
-          </CardContent>
-        </Card>
-      </motion.div>
-    )
-  }
+  const isLow = (timeLeft || 0) < 60
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto pb-12 space-y-6">
-      {/* Header bar */}
-      <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm border p-4">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl mx-auto space-y-5 pb-12">
+      {/* Header */}
+      <div className="flex items-center justify-between rounded-2xl px-5 py-4 border border-white/6 bg-white/3">
         <div>
-          <button onClick={onBack} className="text-sm text-slate-400 hover:text-slate-700 transition-colors mb-1 flex items-center gap-1">
-            ← Back
-          </button>
-          <h2 className="font-bold text-slate-800 text-lg leading-tight line-clamp-1">{quiz.title}</h2>
-          <p className="text-xs text-slate-400">{quiz.course?.title}</p>
+          <button onClick={onBack} className="text-xs text-slate-500 hover:text-slate-300 transition-colors mb-1">← Back</button>
+          <h2 className="font-bold text-white text-sm">{quiz.title}</h2>
+          {quiz.course && <p className="text-[10px] text-slate-500">{quiz.course.title}</p>}
         </div>
         {timeLeft !== null && (
-          <div className={`px-5 py-2 rounded-full font-mono font-bold text-xl flex items-center gap-2 ${timeLeft < 60 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-[#4CAF50]/10 text-[#4CAF50]'}`}>
-            <Clock className="h-5 w-5" /> {formatTime(timeLeft)}
-          </div>
+          <motion.div
+            animate={isLow ? { scale: [1, 1.04, 1] } : {}}
+            transition={{ repeat: Infinity, duration: 1 }}
+            className={`px-4 py-2 rounded-xl font-mono font-bold text-sm flex items-center gap-2 ${isLow ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-white/6 text-emerald-300 border border-white/8'}`}
+          >
+            <Clock className="h-4 w-4" /> {fmt(timeLeft)}
+          </motion.div>
         )}
       </div>
 
       {/* Progress */}
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-xs font-semibold text-slate-500">
-          <span>{answeredCount}/{quiz.questions.length} answered</span>
-          <span>{Math.round(progress)}%</span>
+      <div>
+        <div className="flex justify-between text-[10px] text-slate-600 mb-1.5">
+          <span>{answered}/{quiz.questions.length} answered</span>
+          <span>{Math.round((answered / quiz.questions.length) * 100)}%</span>
         </div>
-        <Progress value={progress} className="h-2.5 rounded-full" />
+        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+          <motion.div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full" animate={{ width: `${(answered / quiz.questions.length) * 100}%` }} transition={{ duration: 0.3 }} />
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-6">
-        {/* Question navigator */}
-        <Card className="md:col-span-1 border-0 shadow-sm rounded-2xl hidden md:block">
-          <CardHeader className="p-4 pb-2"><CardTitle className="text-xs uppercase tracking-widest text-slate-400">Navigator</CardTitle></CardHeader>
-          <CardContent className="p-4 pt-0">
+      <div className="grid md:grid-cols-4 gap-5">
+        {/* Navigator */}
+        <div className="hidden md:block">
+          <div className="rounded-2xl p-4 border border-white/6 bg-white/3 sticky top-4">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-slate-600 mb-3">Navigator</p>
             <div className="grid grid-cols-4 gap-1.5">
               {quiz.questions.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentQ(idx)}
-                  className={`h-8 w-8 rounded-lg text-xs font-bold transition-all ${currentQ === idx
-                    ? 'bg-[#4CAF50] text-white shadow-md'
-                    : answers[idx] !== -1
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                    }`}
-                >
+                <button key={idx} onClick={() => setCurrentQ(idx)}
+                  className={`h-8 w-8 rounded-lg text-xs font-bold transition-all ${currentQ === idx ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25' : answers[idx] !== -1 ? 'bg-emerald-500/12 text-emerald-400 border border-emerald-500/15' : 'bg-white/4 text-slate-500 border border-white/5 hover:bg-white/8'}`}>
                   {idx + 1}
                 </button>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Question card */}
+        {/* Question */}
         <div className="md:col-span-3 space-y-4">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={currentQ}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.15 }}
-            >
-              <Card className="shadow-lg border-t-4 border-t-[#4CAF50] rounded-2xl">
-                <CardHeader className="pb-3">
-                  <Badge variant="secondary" className="w-fit mb-2 text-xs">Question {currentQ + 1}</Badge>
-                  <CardTitle className="text-lg font-bold leading-relaxed text-slate-800">
-                    {q.question}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {q.options.map((opt, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => handleSelect(idx)}
-                      className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all select-none ${answers[currentQ] === idx
-                        ? 'border-[#4CAF50] bg-[#4CAF50]/5 shadow-sm'
-                        : 'border-slate-100 hover:border-[#4CAF50]/40 hover:bg-slate-50'
-                        }`}
-                    >
-                      <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${answers[currentQ] === idx ? 'bg-[#4CAF50] text-white' : 'bg-slate-100 text-slate-600'}`}>
-                        {String.fromCharCode(65 + idx)}
+            <motion.div key={currentQ} initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -14 }} transition={{ duration: 0.16 }}>
+              <div className="rounded-2xl border border-white/6 bg-white/3 overflow-hidden">
+                <div className="px-5 pt-5 pb-4 border-b border-white/5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full">Q {currentQ + 1} of {quiz.questions.length}</span>
+                  <h3 className="text-sm font-semibold text-white mt-3 leading-relaxed">{q.question}</h3>
+                </div>
+                <div className="p-5 space-y-2.5">
+                  {q.options.map((opt, oi) => (
+                    <motion.button key={oi} whileTap={{ scale: 0.99 }}
+                      onClick={() => { const next = [...answers]; next[currentQ] = oi; setAnswers(next) }}
+                      className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left ${answers[currentQ] === oi ? 'border-emerald-500/40 bg-emerald-500/8 text-white' : 'border-white/6 bg-white/2 text-slate-300 hover:bg-white/5 hover:border-white/12 hover:text-white'}`}>
+                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-all ${answers[currentQ] === oi ? 'bg-emerald-500 text-white' : 'bg-white/6 text-slate-500'}`}>
+                        {String.fromCharCode(65 + oi)}
                       </div>
-                      <span className="font-medium text-slate-700">{opt}</span>
-                    </div>
+                      <span className="text-sm">{opt}</span>
+                      {answers[currentQ] === oi && <Zap className="h-4 w-4 text-emerald-400 ml-auto shrink-0" />}
+                    </motion.button>
                   ))}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           </AnimatePresence>
 
-          {/* Navigation */}
-          <div className="flex justify-between items-center bg-white rounded-xl shadow-sm border p-3">
-            <Button variant="outline" disabled={currentQ === 0} onClick={() => setCurrentQ(p => p - 1)} className="rounded-xl">
-              ← Prev
-            </Button>
-            {currentQ === quiz.questions.length - 1 ? (
-              <Button
-                onClick={handleSubmit}
-                disabled={submitting || answeredCount < quiz.questions.length}
-                className="bg-[#4CAF50] hover:bg-[#43a047] text-white rounded-xl px-8 font-bold shadow-lg"
-              >
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {answeredCount < quiz.questions.length
-                  ? `Answer ${quiz.questions.length - answeredCount} more`
-                  : 'Submit Quiz'}
-              </Button>
-            ) : (
-              <Button onClick={() => setCurrentQ(p => p + 1)} className="bg-slate-800 text-white rounded-xl">
-                Next →
-              </Button>
-            )}
+          <div className="flex justify-between items-center rounded-xl px-4 py-3 border border-white/6 bg-white/3">
+            <button onClick={() => setCurrentQ(p => p - 1)} disabled={currentQ === 0}
+              className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors px-3 py-2 rounded-lg hover:bg-white/4">
+              <ChevronLeft className="h-4 w-4" /> Prev
+            </button>
+            <span className="text-xs text-slate-600">{currentQ + 1}/{quiz.questions.length}</span>
+            {currentQ === quiz.questions.length - 1
+              ? <button onClick={handleSubmit} disabled={submitting}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-bold shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all">
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {answered < quiz.questions.length ? `${quiz.questions.length - answered} remaining` : 'Submit'}
+              </button>
+              : <button onClick={() => setCurrentQ(p => p + 1)}
+                className="flex items-center gap-1.5 text-sm font-semibold text-slate-400 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/4">
+                Next <ChevronRight className="h-4 w-4" />
+              </button>
+            }
           </div>
         </div>
       </div>

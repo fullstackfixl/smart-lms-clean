@@ -10,7 +10,7 @@ interface User {
   _id: string
   name: string
   email: string
-  role: "platform_admin" | "org_admin" | "instructor" | "student" | "parent" | "support"
+  role: "platform_admin" | "platform_staff" | "org_admin" | "instructor" | "student" | "parent" | "support"
   organization_id?: string
   modulesEnabled?: string[]
   organizationType?: string
