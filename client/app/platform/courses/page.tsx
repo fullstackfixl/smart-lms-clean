@@ -52,7 +52,7 @@ export default function PlatformCoursesPage() {
 
     useEffect(() => {
         if (authLoading) return
-        if (!token || user?.role !== "platform_admin") {
+        if (!token || (user?.role !== "platform_admin" && user?.role !== "platform_staff")) {
             router.push("/login")
         }
     }, [authLoading, token, user, router])
