@@ -16,7 +16,10 @@ import {
     Mail,
     Building2,
     Trophy,
-    Loader2
+    Loader2,
+    RefreshCw,
+    ShieldCheck,
+    ChevronLeft
 } from "lucide-react"
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -78,13 +81,12 @@ export default function PlatformApplicationsPage() {
                 if (setupLink) {
                     try {
                         await navigator.clipboard.writeText(setupLink)
-                        toast.success("Application approved! Link copied to clipboard and email sent.")
+                        toast.success("Application approved! Setup link copied.")
                     } catch {
-                        toast.success("Application approved! Email sent. Link available in console.")
-                        console.log("🔗 Setup link:", setupLink)
+                        toast.success("Application approved! Email dispatched.")
                     }
                 } else {
-                    toast.success("Application approved! Link sent to admin.")
+                    toast.success("Application approved! Invitation sent.")
                 }
                 fetchApplications()
             } else {
@@ -111,146 +113,132 @@ export default function PlatformApplicationsPage() {
     }
 
     return (
-        <div className="p-8 max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+        <div className="max-w-[1400px] mx-auto space-y-8 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-extrabold flex items-center gap-3 italic">
-                        <Building2 className="h-8 w-8 text-primary" />
-                        Organization Applications
-                    </h1>
-                    <p className="text-muted-foreground mt-1 text-sm font-medium">Review and manage incoming school requests</p>
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Organization Applications</h1>
+                    <p className="text-slate-500 text-[13px] mt-1 font-medium">Review and process onboarding requests from new institutional partners.</p>
                 </div>
 
-                <div className="flex items-center gap-2 bg-secondary/50 p-1.5 rounded-2xl border border-border">
-                    <Button
-                        variant={status === 'pending' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setStatus('pending')}
-                        className="rounded-xl h-10 px-6 font-bold"
-                    >
-                        Pending
-                    </Button>
-                    <Button
-                        variant={status === 'approved' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setStatus('approved')}
-                        className="rounded-xl h-10 px-6 font-bold"
-                    >
-                        Approved
-                    </Button>
-                    <Button
-                        variant={status === 'rejected' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setStatus('rejected')}
-                        className="rounded-xl h-10 px-6 font-bold"
-                    >
-                        Rejected
-                    </Button>
+                <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+                    <StatusTab 
+                        active={status === 'pending'} 
+                        onClick={() => setStatus('pending')} 
+                        label="Pending" 
+                        count={status === 'pending' ? applications.length : null}
+                    />
+                    <StatusTab 
+                        active={status === 'approved'} 
+                        onClick={() => setStatus('approved')} 
+                        label="Approved" 
+                    />
+                    <StatusTab 
+                        active={status === 'rejected'} 
+                        onClick={() => setStatus('rejected')} 
+                        label="Rejected" 
+                    />
                 </div>
             </div>
 
-            <div className="bg-card border border-border rounded-[2.5rem] overflow-hidden shadow-2xl shadow-primary/5">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-h-[500px]">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-secondary/40 border-b border-border">
-                                <th className="px-8 py-6 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Organization</th>
-                                <th className="px-8 py-6 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Type</th>
-                                <th className="px-8 py-6 text-left text-xs font-bold text-slate-500 uppercase tracking-widest">Admin Details</th>
-                                <th className="px-8 py-6 text-xs font-black uppercase tracking-widest text-muted-foreground">Plan</th>
-                                <th className="px-8 py-6 text-xs font-black uppercase tracking-widest text-muted-foreground">Date</th>
-                                <th className="px-8 py-6 text-xs font-black uppercase tracking-widest text-muted-foreground text-right">Actions</th>
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-50/50">
+                            <tr className="border-b border-slate-100">
+                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Institution</th>
+                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Classification</th>
+                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Administrator</th>
+                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Target Plan</th>
+                                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-slate-100">
                             <AnimatePresence mode="popLayout">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={6} className="py-20 text-center">
-                                            <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary opacity-50" />
+                                        <td colSpan={5} className="py-32 text-center text-slate-400">
+                                            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-[#2563EB] opacity-40" />
                                         </td>
                                     </tr>
                                 ) : applications.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="py-20 text-center text-muted-foreground font-medium italic">
-                                            No {status} applications found
+                                        <td colSpan={5} className="py-32 text-center px-4">
+                                            <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-4">
+                                                <Clock className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
+                                            </div>
+                                            <h3 className="text-[15px] font-bold text-slate-900 mb-1">No applications found</h3>
+                                            <p className="text-[13px] text-slate-500">There are no {status} requests at the moment.</p>
                                         </td>
                                     </tr>
                                 ) : (
                                     applications.map((app) => (
                                         <motion.tr
                                             key={app._id}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, scale: 0.95 }}
-                                            className="group border-b border-border/50 hover:bg-secondary/20 transition-colors"
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.98 }}
+                                            className="hover:bg-slate-50/80 transition-all group"
                                         >
-                                            <td className="px-8 py-6 whitespace-nowrap">
+                                            <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                                                    <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-[#2563EB]/5 group-hover:text-[#2563EB] transition-colors">
                                                         <Building2 className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <div className="text-sm font-bold text-foreground">{app.organization_name}</div>
-                                                        <div className="text-[10px] text-muted-foreground font-mono">/org/{app.subdomain}</div>
+                                                        <div className="text-[13px] font-bold text-slate-900">{app.organization_name}</div>
+                                                        <div className="text-[11px] text-slate-400 font-mono tracking-tight font-medium">/{app.subdomain}</div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-6 whitespace-nowrap">
-                                                <Badge variant="outline" className="bg-secondary/50 font-bold capitalize">
-                                                    {app.organization_type || 'School'}
-                                                </Badge>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 bg-slate-100 text-slate-500 border border-slate-200/50 rounded-lg">
+                                                    {app.organization_type || 'Institution'}
+                                                </span>
                                             </td>
-                                            <td className="px-8 py-6">
-                                                <div className="flex flex-col gap-0.5">
-                                                    <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <div className="text-[13px] font-bold text-slate-900 leading-none">
                                                         {app.admin_name}
                                                     </div>
-                                                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
-                                                        <Mail className="h-3.5 w-3.5" />
+                                                    <div className="text-[11px] text-slate-400 font-medium flex items-center gap-1 mt-1">
+                                                        <Mail className="h-3 w-3" />
                                                         {app.admin_email}
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-8 py-6">
-                                                <Badge variant="outline" className={`
-                          uppercase font-black text-[10px] tracking-widest px-3 py-1 rounded-full border-2 shadow-sm
-                          ${app.selected_plan === 'pro' ? 'border-primary text-primary bg-primary/5' : ''}
-                          ${app.selected_plan === 'enterprise' ? 'border-amber-500 text-amber-500 bg-amber-500/5' : ''}
-                          ${app.selected_plan === 'basic' ? 'border-muted text-muted-foreground' : ''}
-                        `}>
+                                            <td className="px-6 py-4">
+                                                <span className={`
+                                                    text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border shadow-sm
+                                                    ${app.selected_plan === 'pro' || app.selected_plan === 'premium' ? 'border-[#2563EB]/20 text-[#2563EB] bg-[#2563EB]/5' : ''}
+                                                    ${app.selected_plan === 'enterprise' ? 'border-amber-200 text-amber-600 bg-amber-50' : ''}
+                                                    ${app.selected_plan === 'basic' ? 'border-slate-200 text-slate-500 bg-white' : ''}
+                                                `}>
                                                     {app.selected_plan}
-                                                </Badge>
+                                                </span>
                                             </td>
-                                            <td className="px-8 py-6 text-sm font-medium text-muted-foreground">
-                                                {new Date(app.created_at).toLocaleDateString()}
-                                            </td>
-                                            <td className="px-8 py-6 text-right">
+                                            <td className="px-6 py-4 text-right">
                                                 {status === 'pending' ? (
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="h-10 px-4 rounded-xl font-bold border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white"
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            className="h-9 px-4 rounded-lg text-[12px] font-bold text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all border border-slate-200 bg-white"
                                                             onClick={() => handleReject(app._id)}
                                                         >
-                                                            <X className="h-4 w-4 mr-1.5" />
                                                             Reject
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            className="h-10 px-6 rounded-xl font-extrabold shadow-lg shadow-primary/20"
+                                                        </button>
+                                                        <button
+                                                            className="h-9 px-4 rounded-lg text-[12px] font-bold text-white bg-[#2563EB] hover:bg-[#1d4ed8] shadow-md shadow-blue-100 transition-all"
                                                             onClick={() => handleApprove(app._id)}
                                                         >
-                                                            <Check className="h-4 w-4 mr-1.5" />
-                                                            Approve
-                                                        </Button>
+                                                            Approve Request
+                                                        </button>
                                                     </div>
                                                 ) : (
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <Badge className={status === 'approved' ? 'bg-green-500' : 'bg-red-500'}>
+                                                    <div className="flex items-center justify-end">
+                                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                                                            status === 'approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'
+                                                        }`}>
                                                             {status}
-                                                        </Badge>
+                                                        </span>
                                                     </div>
                                                 )}
                                             </td>
@@ -263,5 +251,27 @@ export default function PlatformApplicationsPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+function StatusTab({ active, onClick, label, count }: any) {
+    return (
+        <button
+            onClick={onClick}
+            className={`
+                px-5 py-2 rounded-lg text-[12px] font-bold transition-all flex items-center gap-2
+                ${active 
+                    ? 'bg-[#2563EB]/5 text-[#2563EB] shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                }
+            `}
+        >
+            {label}
+            {count !== null && (
+                <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${active ? 'bg-[#2563EB] text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    {count}
+                </span>
+            )}
+        </button>
     )
 }

@@ -7,12 +7,12 @@ import { PlatformNavbar } from '../../components/platform/platform-navbar'
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute allowedRoles={["platform_admin", "platform_staff"]}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="min-h-screen bg-slate-50 font-sans">
         {/* Sidebar */}
         <PlatformSidebar />
 
         {/* Main Content Area */}
-        <div className="pl-[260px]">
+        <div className="pl-[280px]">
           {/* Navbar */}
           <PlatformNavbar />
 

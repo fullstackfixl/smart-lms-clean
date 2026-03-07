@@ -477,6 +477,20 @@ export const platformApi = {
     })
   },
 
+  // Users
+  listUsers: (token: string, params?: string) =>
+    apiRequest(`/platform/users${params ? `?${params}` : ""}`, { token }),
+
+  getUserStats: (token: string) =>
+    apiRequest("/platform/users/stats", { token }),
+
+  updateUserStatus: (token: string, id: string, isActive: boolean) =>
+    apiRequest(`/platform/users/${id}/status`, {
+      method: "PATCH",
+      token,
+      body: { isActive }
+    }),
+
   // Organization Applications
   listApplications: (token: string, status: string = 'pending') =>
     apiRequest(`/platform/applications?status=${status}`, { token }),

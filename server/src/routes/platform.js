@@ -46,7 +46,8 @@ router.patch('/courses/:id/global-publish', platformCourseController.toggleGloba
 router.patch('/courses/:id/marketplace', platformCourseController.publishToMarketplace.bind(platformCourseController));
 
 // --- User Management (read-only for staff) ---
-router.get('/users', (req, res) => res.json({ success: true, data: [] }));
+router.get('/users', PlatformController.listUsers.bind(PlatformController));
+router.get('/users/stats', PlatformController.getUserStats.bind(PlatformController));
 router.get('/users/:id', (req, res) => res.json({ success: true, data: {} }));
 
 // --- Email Diagnostics ---
@@ -90,7 +91,7 @@ router.patch('/staff/:id/status', requirePlatformAdmin, platformStaffController.
 router.get('/staff/logs', requirePlatformAdmin, platformStaffController.getActivityLogs.bind(platformStaffController));
 
 // --- User Status Updates (admin only) ---
-router.patch('/users/:id/status', requirePlatformAdmin, (req, res) => res.json({ success: true, data: {} }));
+router.patch('/users/:id/status', requirePlatformAdmin, PlatformController.updateUserStatus.bind(PlatformController));
 
 // --- System Configuration (admin only) ---
 router.get('/config', requirePlatformAdmin, (req, res) => res.json({ success: true, data: {} }));
