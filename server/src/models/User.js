@@ -70,6 +70,13 @@ const userSchema = new mongoose.Schema({
     },
     department: {
       type: String
+    },
+    program_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Program'
+    },
+    current_semester: {
+      type: Number
     }
   },
   preferences: {

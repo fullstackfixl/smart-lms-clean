@@ -184,6 +184,10 @@ try {
   const timetableRoutes = require('./routes/timetable');
   app.use('/api/timetable', timetableRoutes);
 
+  console.log('  - academic');
+  const academicRoutes = require('./routes/academic');
+  app.use('/api/academic', academicRoutes);
+
   console.log('  - events');
   const eventsRoutes = require('./routes/events');
   app.use('/api/events', eventsRoutes);
@@ -243,6 +247,7 @@ try {
   console.log('  - org-features');
   const orgFeaturesRoutes = require('./routes/orgFeatures');
   app.use('/api/org-features', orgFeaturesRoutes);
+  app.use('/api/org-admin', orgFeaturesRoutes);
 
   console.log('  - student-lectures');
   const studentLectureRoutes = require('./routes/studentLectures');

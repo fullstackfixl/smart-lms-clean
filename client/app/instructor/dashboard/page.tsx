@@ -29,6 +29,7 @@ interface DashboardData {
     overallPercentage: number
     atRiskStudents: number
   }
+  mySubjects?: any[]
 }
 
 export default function InstructorDashboardPage() {
@@ -66,7 +67,20 @@ export default function InstructorDashboardPage() {
       const result = await response.json()
 
       if (result.success) {
-        setData(result.data)
+        let dashboardData = result.data;
+
+        // Fetch subjects if College
+        if (user?.organizationType === 'COLLEGE') {
+          const subRes = await fetch(`${API_URL}/instructor/subjects`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const subData = await subRes.json();
+          if (subData.success) {
+            dashboardData.mySubjects = subData.data;
+          }
+        }
+
+        setData(dashboardData)
       } else {
         toast.error(result.message || 'Failed to load dashboard data')
       }
@@ -246,6 +260,61 @@ export default function InstructorDashboardPage() {
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* My Subjects (COLLEGE ONLY) */}
+          {user?.organizationType === 'COLLEGE' && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-purple-400" />
+                    My Assigned Subjects
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push('/instructor/subjects')}
+                  >
+                    View All
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!data.mySubjects || data.mySubjects.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>No subjects assigned yet</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {data.mySubjects.slice(0, 3).map((sub) => (
+                      <div
+                        key={sub._id}
+                        className="p-4 rounded-xl border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/instructor/subjects/${sub._id}`)}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                            <BookOpen className="h-5 w-5 text-purple-400" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm">{sub.name}</p>
+                            <p className="text-xs text-muted-foreground">{sub.code}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mt-4">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {sub.program_id?.name || 'Program'}
+                          </Badge>
+                          <span className="text-[10px] text-muted-foreground">Semester {sub.semester}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Upcoming Classes */}
           <Card>
             <CardHeader>

@@ -31,6 +31,7 @@ const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } }
 export default function StudentDashboard() {
   const { user } = useAuth()
   const [enrolled, setEnrolled] = useState<any[]>([])
+  const [subjects, setSubjects] = useState<any[]>([])
   const [liveClasses, setLiveClasses] = useState<any[]>([])
   const [orgCourses, setOrgCourses] = useState<any[]>([])
   const [academicOverview, setAcademicOverview] = useState<any>(null)
@@ -40,14 +41,16 @@ export default function StudentDashboard() {
   const fetchDashboardData = useCallback(async () => {
     setLoading(true)
     try {
-      const [myCourses, live, available, academic, sems] = await Promise.allSettled([
+      const [myCourses, mySubjects, live, available, academic, sems] = await Promise.allSettled([
         apiFetch("/api/courses/my-courses"),
+        user?.organizationType === 'COLLEGE' ? apiFetch("/student/subjects") : Promise.resolve({ success: false }),
         apiFetch("/student/live-classes"),
         apiFetch("/api/courses/student?limit=4"),
         user?.organizationType === 'COLLEGE' ? apiFetch("/student/academic-overview") : Promise.resolve({ success: false }),
         user?.organizationType === 'COLLEGE' ? apiFetch("/student/semesters") : Promise.resolve({ success: false })
       ])
       if (myCourses.status === "fulfilled" && myCourses.value.success) setEnrolled(myCourses.value.data?.courses || myCourses.value.data || [])
+      if (mySubjects.status === "fulfilled" && mySubjects.value.success) setSubjects(mySubjects.value.data || [])
       if (live.status === "fulfilled" && live.value.success) setLiveClasses(live.value.data?.classes || [])
       if (available.status === "fulfilled" && available.value.success) setOrgCourses(available.value.data?.courses || available.value.data || [])
       if (academic.status === "fulfilled" && academic.value.success) setAcademicOverview(academic.value.data)
@@ -148,6 +151,48 @@ export default function StudentDashboard() {
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Main Column */}
         <div className="lg:col-span-2 space-y-8">
+          {/* My Subjects (COLLEGE ONLY) */}
+          {isCollege && (
+            <motion.section {...fadeUp} transition={{ duration: 0.5, delay: 0.1 }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-purple-400" />
+                  My Subjects
+                </h2>
+                <Link href="/student/subjects" className="text-xs font-medium text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors">
+                  View all <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {loading
+                  ? [1, 2].map(i => <Skeleton key={i} className="h-20" />)
+                  : subjects.length === 0
+                    ? (
+                      <div className="sm:col-span-2 rounded-2xl border border-dashed border-white/8 p-6 text-center">
+                        <p className="text-sm text-slate-500">No subjects assigned for this semester.</p>
+                      </div>
+                    )
+                    : subjects.slice(0, 4).map((sub, i) => (
+                      <Link href={`/student/subjects/${sub._id}`} key={i}>
+                        <motion.div
+                          whileHover={{ y: -2 }}
+                          className="flex items-center gap-3 p-3.5 rounded-xl border border-white/5 bg-white/3 hover:bg-white/6 transition-all"
+                        >
+                          <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+                            <BookOpen className="h-5 w-5 text-purple-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-semibold text-slate-100 truncate">{sub.name}</p>
+                            <p className="text-[10px] text-slate-500 truncate">{sub.code || "No Code"}</p>
+                          </div>
+                        </motion.div>
+                      </Link>
+                    ))
+                }
+              </div>
+            </motion.section>
+          )}
+
           {/* Quick Links */}
           <motion.section {...fadeUp} transition={{ duration: 0.5, delay: 0.1 }}>
             <h2 className="text-base font-bold text-slate-100 mb-4 flex items-center gap-2">

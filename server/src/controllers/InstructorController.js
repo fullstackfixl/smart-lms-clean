@@ -71,18 +71,36 @@ class InstructorController extends BaseController {
         ? (completedEnrollments.length / allEnrollments.length) * 100
         : 0;
 
-      // College-specific Attendance Stats
+      // College or Course Attendance Stats
       let attendanceStats = null;
-      if (user.organization_id && user.role === 'instructor') {
+      if (user.organization_id && (user.role === 'instructor' || user.role === 'org_admin')) {
         try {
           const Attendance = require('../models/Attendance');
+          const Subject = require('../models/Subject');
+
+          // Get instructor's subjects if they exist
+          const subjects = await Subject.find({
+            instructor_id: user._id,
+            organization_id: user.organization_id
+          }).select('_id');
+          const subjectIds = subjects.map(s => s._id);
+
           const stats = await Attendance.aggregate([
-            { $match: { organization_id: user.organization_id, course_id: { $in: courseIds } } },
+            {
+              $match: {
+                organization_id: new mongoose.Types.ObjectId(user.organization_id),
+                $or: [
+                  { course_id: { $in: courseIds.map(id => new mongoose.Types.ObjectId(id)) } },
+                  { subjectId: { $in: subjectIds.map(id => new mongoose.Types.ObjectId(id)) } }
+                ]
+              }
+            },
+            { $unwind: '$attendance_records' },
             {
               $group: {
-                _id: { course_id: '$course_id', student_id: '$student_id' },
+                _id: '$attendance_records.student_id',
                 total: { $sum: 1 },
-                present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } }
+                present: { $sum: { $cond: [{ $in: ['$attendance_records.status', ['present', 'late']] }, 1, 0] } }
               }
             },
             {
@@ -98,9 +116,11 @@ class InstructorController extends BaseController {
 
           if (stats.length > 0) {
             attendanceStats = {
-              overallPercentage: parseFloat((stats[0].avgPresent * 100).toFixed(1)),
-              atRiskStudents: stats[0].belowThreshold
+              overallPercentage: parseFloat((stats[0].avgPresent * 100).toFixed(1)) || 0,
+              atRiskStudents: stats[0].belowThreshold || 0
             };
+          } else {
+            attendanceStats = { overallPercentage: 0, atRiskStudents: 0 };
           }
         } catch (attErr) {
           console.error('Attendance stats error:', attErr);

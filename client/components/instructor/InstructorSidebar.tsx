@@ -20,6 +20,7 @@ import {
   BarChart3,
   Calendar,
   ClipboardList,
+  Book,
 } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
 import { cn } from '../../lib/utils'
@@ -33,7 +34,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/instructor/dashboard', icon: LayoutDashboard },
-  { label: 'Manage Courses', href: '/instructor/courses', icon: BookOpen },
+  { label: 'My Subjects', href: '/instructor/subjects', icon: Book, collegeOnly: true },
+  { label: 'My Courses', href: '/instructor/courses', icon: BookOpen },
   { label: 'Students', href: '/instructor/students', icon: Users },
   { label: 'Live Classes', href: '/instructor/live-classes', icon: Video },
   { label: 'Quiz Management', href: '/instructor/quiz', icon: ClipboardList },

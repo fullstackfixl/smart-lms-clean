@@ -52,6 +52,48 @@ router.get('/modules', async (req, res) => {
   }
 });
 
+// Create course
+router.post('/courses', async (req, res) => {
+  try {
+    const organizationId = req.user.organization_id;
+    const { title, description, category, price = 0, level = 'beginner', thumbnail, tags = [] } = req.body;
+
+    if (!title || !description || !category) {
+      return res.error('Missing required fields', 'Title, description, and category are required', 400);
+    }
+
+    const course = new Course({
+      organization_id: organizationId,
+      title,
+      description,
+      category,
+      price: Math.max(0, parseFloat(price) || 0),
+      level,
+      instructor_id: req.user._id, // Initially assigned to admin who created it
+      thumbnail,
+      tags,
+      status: 'draft',
+      isActive: true
+    });
+
+    await course.save();
+
+    res.success({
+      course: await course.populate([
+        { path: 'instructor_id', select: 'profile.fullName email' },
+        { path: 'organization_id', select: 'name domain' }
+      ])
+    }, 'Course created successfully', 201);
+
+  } catch (error) {
+    console.error('Create course error:', error);
+    if (error.code === 11000) {
+      return res.error('Duplicate title', 'A course with this title already exists', 400);
+    }
+    res.error(error.message, 'Failed to create course', 500);
+  }
+});
+
 router.get('/dashboard/metrics', async (req, res) => {
   try {
     const organizationId = req.user.organization_id;

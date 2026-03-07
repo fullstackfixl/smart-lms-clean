@@ -9,6 +9,43 @@ class SubjectController extends BaseController {
         this.getById = this.getById.bind(this);
         this.update = this.update.bind(this);
         this.delete = this.delete.bind(this);
+        this.getInstructorSubjects = this.getInstructorSubjects.bind(this);
+        this.getStudentSubjects = this.getStudentSubjects.bind(this);
+    }
+
+    async getStudentSubjects(req, res) {
+        try {
+            const organizationId = req.user.organization_id?._id || req.user.organization_id;
+            const { program_id, current_semester } = req.user.profile || {};
+
+            if (!program_id || !current_semester) {
+                return this.sendSuccess(res, [], 'No academic program or semester assigned');
+            }
+
+            const subjects = await Subject.find({
+                program_id,
+                semester: current_semester,
+                organization_id: organizationId
+            }).populate('instructor_id', 'name email profile');
+
+            return this.sendSuccess(res, subjects);
+        } catch (error) {
+            return this.sendError(res, error.message);
+        }
+    }
+
+    async getInstructorSubjects(req, res) {
+        try {
+            const organizationId = req.user.organization_id?._id || req.user.organization_id;
+            const subjects = await Subject.find({
+                instructor_id: req.user._id,
+                organization_id: organizationId
+            }).populate('program_id', 'name code');
+
+            return this.sendSuccess(res, subjects);
+        } catch (error) {
+            return this.sendError(res, error.message);
+        }
     }
 
     async create(req, res) {
@@ -24,7 +61,15 @@ class SubjectController extends BaseController {
 
     async getAll(req, res) {
         try {
-            const subjects = await Subject.find({ organization_id: req.user.organization_id }).sort({ name: 1 });
+            const { program_id } = req.query;
+            const query = { organization_id: req.user.organization_id };
+            if (program_id) query.program_id = program_id;
+
+            const subjects = await Subject.find(query)
+                .populate('instructor_id', 'profile.fullName email')
+                .populate('contentCourseId', 'title')
+                .sort({ name: 1 });
+
             return this.sendSuccess(res, subjects);
         } catch (error) {
             return this.sendError(res, error.message);

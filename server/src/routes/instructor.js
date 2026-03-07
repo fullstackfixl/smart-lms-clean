@@ -3,6 +3,7 @@ const { authMiddleware, requireRole } = require('../middleware/auth');
 const requireOrganization = require('../middleware/orgProtection');
 const { enforceOrgIsolation } = require('../middleware/orgIsolation');
 const InstructorController = require('../controllers/InstructorController');
+const SubjectController = require('../controllers/SubjectController');
 
 const router = express.Router();
 
@@ -15,6 +16,9 @@ const requireInstructor = [
 
 // Dashboard Overview
 router.get('/dashboard/overview', ...requireInstructor, (req, res, next) => InstructorController.getDashboardOverview(req, res, next));
+
+// Subjects
+router.get('/subjects', ...requireInstructor, (req, res) => SubjectController.getInstructorSubjects(req, res));
 
 // Courses
 router.post('/courses', ...requireInstructor, (req, res, next) => InstructorController.createCourse(req, res, next));

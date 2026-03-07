@@ -34,6 +34,9 @@ const Department = require('./Department');
 const Batch = require('./Batch');
 const Semester = require('./Semester');
 const Subject = require('./Subject');
+const Program = require('./Program');
+const StudentCourseEnrollment = require('./StudentCourseEnrollment');
+const StudentSubjectEnrollment = require('./StudentSubjectEnrollment');
 const TestSeries = require('./TestSeries');
 const GradeLevel = require('./GradeLevel');
 const GradeSection = require('./GradeSection');
@@ -79,6 +82,9 @@ module.exports = {
   Batch,
   Semester,
   Subject,
+  Program,
+  StudentCourseEnrollment,
+  StudentSubjectEnrollment,
   TestSeries,
   GradeLevel,
   GradeSection,

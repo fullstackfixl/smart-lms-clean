@@ -183,7 +183,15 @@ export async function getCourses(params: GetCoursesParams = {}) {
   if (params.limit) queryParams.append('limit', params.limit.toString());
 
   const query = queryParams.toString();
+  // Regular LMS content courses
   return apiRequest(`/api/admin/courses${query ? `?${query}` : ''}`);
+}
+
+export async function createCourse(data: any) {
+  return apiRequest('/api/org-admin/courses', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
 }
 
 export async function getCourseById(courseId: string) {
@@ -409,7 +417,7 @@ export const semesterApi = {
 
 // Subjects
 export const subjectApi = {
-  list: () => orgFeatureRequest('subjects'),
+  list: (programId?: string) => orgFeatureRequest(`subjects${programId ? `?program_id=${programId}` : ''}`),
   create: (data: any) => orgFeatureRequest('subjects', 'POST', data),
   get: (id: string) => orgFeatureRequest(`subjects/${id}`),
   update: (id: string, data: any) => orgFeatureRequest(`subjects/${id}`, 'PUT', data),
@@ -418,12 +426,21 @@ export const subjectApi = {
 
 // Test Series
 export const testSeriesApi = {
-  list: () => orgFeatureRequest('test-series'),
-  create: (data: any) => orgFeatureRequest('test-series', 'POST', data),
-  get: (id: string) => orgFeatureRequest(`test-series/${id}`),
-  update: (id: string, data: any) => orgFeatureRequest(`test-series/${id}`, 'PUT', data),
   delete: (id: string) => orgFeatureRequest(`test-series/${id}`, 'DELETE'),
 }
+
+// Academic Programs (Academic Courses in Org Admin context)
+export const programApi = {
+  list: (params: any = {}) => {
+    const query = new URLSearchParams(params).toString();
+    // Academic Programs (Structural)
+    return apiRequest(`/api/org-admin/courses${query ? `?${query}` : ''}`);
+  },
+  create: (data: any) => apiRequest('/api/org-admin/courses', { method: 'POST', body: data }),
+  get: (id: string) => apiRequest(`/api/org-admin/courses/${id}`),
+  update: (id: string, data: any) => apiRequest(`/api/org-admin/courses/${id}`, { method: 'PUT', body: data }),
+  delete: (id: string) => apiRequest(`/api/org-admin/courses/${id}`, { method: 'DELETE' }),
+};
 
 export const schoolGradeApi = {
   listLevels: () => orgFeatureRequest('school-levels'),

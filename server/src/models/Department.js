@@ -17,11 +17,11 @@ const departmentSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    head_id: {
+    description: String,
+    createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
-    description: String,
     isActive: {
         type: Boolean,
         default: true

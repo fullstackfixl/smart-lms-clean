@@ -45,7 +45,17 @@ const attendanceSchema = new mongoose.Schema({
   course_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
-    required: true,
+    required: false, // Optional for backward compatibility
+    index: true
+  },
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
+    index: true
+  },
+  programId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Program',
     index: true
   },
   instructor_id: {
@@ -131,46 +141,59 @@ const attendanceSchema = new mongoose.Schema({
 
 // Compound indexes for efficient queries
 attendanceSchema.index({ organization_id: 1, course_id: 1, session_date: -1 });
+attendanceSchema.index({ organization_id: 1, subjectId: 1, session_date: -1 });
 attendanceSchema.index({ organization_id: 1, 'attendance_records.student_id': 1 });
 attendanceSchema.index({ course_id: 1, session_date: -1 });
+attendanceSchema.index({ subjectId: 1, session_date: -1 });
 attendanceSchema.index({ instructor_id: 1, session_date: -1 });
 attendanceSchema.index({ organization_id: 1, session_date: -1 });
 
 // Unique constraint to prevent duplicate sessions
-attendanceSchema.index({ 
-  course_id: 1, 
-  session_date: 1, 
-  start_time: 1 
-}, { unique: true });
+attendanceSchema.index({
+  subjectId: 1,
+  session_date: 1,
+  start_time: 1
+}, {
+  unique: true,
+  partialFilterExpression: { subjectId: { $exists: true } }
+});
+attendanceSchema.index({
+  course_id: 1,
+  session_date: 1,
+  start_time: 1
+}, {
+  unique: true,
+  partialFilterExpression: { course_id: { $exists: true } }
+});
 
 // Virtual for total students
-attendanceSchema.virtual('total_students').get(function() {
+attendanceSchema.virtual('total_students').get(function () {
   return this.attendance_records.length;
 });
 
 // Virtual for present count
-attendanceSchema.virtual('present_count').get(function() {
+attendanceSchema.virtual('present_count').get(function () {
   return this.attendance_records.filter(record => record.status === 'present').length;
 });
 
 // Virtual for absent count
-attendanceSchema.virtual('absent_count').get(function() {
+attendanceSchema.virtual('absent_count').get(function () {
   return this.attendance_records.filter(record => record.status === 'absent').length;
 });
 
 // Virtual for late count
-attendanceSchema.virtual('late_count').get(function() {
+attendanceSchema.virtual('late_count').get(function () {
   return this.attendance_records.filter(record => record.status === 'late').length;
 });
 
 // Virtual for attendance percentage
-attendanceSchema.virtual('attendance_percentage').get(function() {
+attendanceSchema.virtual('attendance_percentage').get(function () {
   if (this.total_students === 0) return 0;
   return Math.round((this.present_count / this.total_students) * 100);
 });
 
 // Virtual for session summary
-attendanceSchema.virtual('session_summary').get(function() {
+attendanceSchema.virtual('session_summary').get(function () {
   return {
     total_students: this.total_students,
     present: this.present_count,
@@ -182,14 +205,14 @@ attendanceSchema.virtual('session_summary').get(function() {
 });
 
 // Instance method to mark attendance for a student
-attendanceSchema.methods.markStudentAttendance = function(studentId, status, options = {}) {
+attendanceSchema.methods.markStudentAttendance = function (studentId, status, options = {}) {
   const { notes, late_minutes = 0, marked_by, auto_marked = false } = options;
-  
+
   // Find existing record
   const existingIndex = this.attendance_records.findIndex(
     record => record.student_id.toString() === studentId.toString()
   );
-  
+
   const attendanceData = {
     student_id: studentId,
     status,
@@ -199,7 +222,7 @@ attendanceSchema.methods.markStudentAttendance = function(studentId, status, opt
     marked_by,
     auto_marked
   };
-  
+
   if (existingIndex >= 0) {
     // Update existing record
     this.attendance_records[existingIndex] = attendanceData;
@@ -207,17 +230,17 @@ attendanceSchema.methods.markStudentAttendance = function(studentId, status, opt
     // Add new record
     this.attendance_records.push(attendanceData);
   }
-  
+
   return this.save();
 };
 
 // Instance method to bulk mark attendance
-attendanceSchema.methods.bulkMarkAttendance = function(attendanceData, markedBy) {
+attendanceSchema.methods.bulkMarkAttendance = function (attendanceData, markedBy) {
   attendanceData.forEach(({ student_id, status, notes, late_minutes }) => {
     const existingIndex = this.attendance_records.findIndex(
       record => record.student_id.toString() === student_id.toString()
     );
-    
+
     const recordData = {
       student_id,
       status,
@@ -227,33 +250,33 @@ attendanceSchema.methods.bulkMarkAttendance = function(attendanceData, markedBy)
       marked_by: markedBy,
       auto_marked: false
     };
-    
+
     if (existingIndex >= 0) {
       this.attendance_records[existingIndex] = recordData;
     } else {
       this.attendance_records.push(recordData);
     }
   });
-  
+
   return this.save();
 };
 
 // Instance method to get student attendance status
-attendanceSchema.methods.getStudentAttendance = function(studentId) {
+attendanceSchema.methods.getStudentAttendance = function (studentId) {
   return this.attendance_records.find(
     record => record.student_id.toString() === studentId.toString()
   );
 };
 
 // Instance method to auto-mark from live class
-attendanceSchema.methods.autoMarkFromLiveClass = async function(liveClassId) {
+attendanceSchema.methods.autoMarkFromLiveClass = async function (liveClassId) {
   const LiveClass = mongoose.model('LiveClass');
-  
+
   const liveClass = await LiveClass.findById(liveClassId);
   if (!liveClass || !liveClass.attendance || liveClass.attendance.length === 0) {
     return false;
   }
-  
+
   // Mark students who attended live class as present
   liveClass.attendance.forEach(attendanceRecord => {
     if (attendanceRecord.duration_minutes > 0) {
@@ -262,28 +285,28 @@ attendanceSchema.methods.autoMarkFromLiveClass = async function(liveClassId) {
         attendanceRecord.duration_minutes >= (this.total_duration_minutes * 0.5) ? 'present' : 'late',
         {
           notes: `Auto-marked from live class (${attendanceRecord.duration_minutes} minutes)`,
-          late_minutes: attendanceRecord.duration_minutes < (this.total_duration_minutes * 0.5) ? 
+          late_minutes: attendanceRecord.duration_minutes < (this.total_duration_minutes * 0.5) ?
             (this.total_duration_minutes - attendanceRecord.duration_minutes) : 0,
           auto_marked: true
         }
       );
     }
   });
-  
+
   this.auto_marked = true;
   this.live_class_id = liveClassId;
-  
+
   return this.save();
 };
 
 // Static method to find attendance by organization
-attendanceSchema.statics.findByOrganization = function(organizationId, filters = {}) {
+attendanceSchema.statics.findByOrganization = function (organizationId, filters = {}) {
   const query = {
     organization_id: organizationId,
     is_active: true,
     ...filters
   };
-  
+
   return this.find(query)
     .populate('course_id', 'title')
     .populate('instructor_id', 'full_name')
@@ -292,14 +315,14 @@ attendanceSchema.statics.findByOrganization = function(organizationId, filters =
 };
 
 // Static method to get student attendance summary
-attendanceSchema.statics.getStudentAttendanceSummary = async function(studentId, organizationId, filters = {}) {
+attendanceSchema.statics.getStudentAttendanceSummary = async function (studentId, organizationId, filters = {}) {
   const matchQuery = {
     organization_id: organizationId,
     'attendance_records.student_id': studentId,
     is_active: true,
     ...filters
   };
-  
+
   const attendanceData = await this.aggregate([
     { $match: matchQuery },
     { $unwind: '$attendance_records' },
@@ -321,14 +344,14 @@ attendanceSchema.statics.getStudentAttendanceSummary = async function(studentId,
       }
     }
   ]);
-  
+
   const totalSessions = await this.countDocuments({
     organization_id: organizationId,
     'attendance_records.student_id': studentId,
     is_active: true,
     ...filters
   });
-  
+
   const summary = {
     total_sessions: totalSessions,
     present: 0,
@@ -337,32 +360,32 @@ attendanceSchema.statics.getStudentAttendanceSummary = async function(studentId,
     excused: 0,
     attendance_percentage: 0
   };
-  
+
   attendanceData.forEach(item => {
     summary[item._id] = item.count;
   });
-  
+
   if (totalSessions > 0) {
     summary.attendance_percentage = Math.round(((summary.present + summary.late) / totalSessions) * 100);
   }
-  
+
   return summary;
 };
 
 // Static method to get course attendance statistics
-attendanceSchema.statics.getCourseAttendanceStats = async function(courseId, organizationId, dateRange = {}) {
+attendanceSchema.statics.getCourseAttendanceStats = async function (courseId, organizationId, dateRange = {}) {
   const matchQuery = {
     course_id: courseId,
     organization_id: organizationId,
     is_active: true
   };
-  
+
   if (dateRange.start) matchQuery.session_date = { $gte: dateRange.start };
   if (dateRange.end) {
     matchQuery.session_date = matchQuery.session_date || {};
     matchQuery.session_date.$lte = dateRange.end;
   }
-  
+
   const stats = await this.aggregate([
     { $match: matchQuery },
     { $unwind: '$attendance_records' },
@@ -423,23 +446,23 @@ attendanceSchema.statics.getCourseAttendanceStats = async function(courseId, org
     },
     { $sort: { attendance_percentage: -1 } }
   ]);
-  
+
   return stats;
 };
 
 // Static method to find students with low attendance
-attendanceSchema.statics.findLowAttendanceStudents = async function(organizationId, threshold = 75, dateRange = {}) {
+attendanceSchema.statics.findLowAttendanceStudents = async function (organizationId, threshold = 75, dateRange = {}) {
   const matchQuery = {
     organization_id: organizationId,
     is_active: true
   };
-  
+
   if (dateRange.start) matchQuery.session_date = { $gte: dateRange.start };
   if (dateRange.end) {
     matchQuery.session_date = matchQuery.session_date || {};
     matchQuery.session_date.$lte = dateRange.end;
   }
-  
+
   const lowAttendanceStudents = await this.aggregate([
     { $match: matchQuery },
     { $unwind: '$attendance_records' },
@@ -504,67 +527,67 @@ attendanceSchema.statics.findLowAttendanceStudents = async function(organization
     },
     { $sort: { attendance_percentage: 1 } }
   ]);
-  
+
   return lowAttendanceStudents;
 };
 
 // Pre-save middleware to validate session times
-attendanceSchema.pre('save', function(next) {
+attendanceSchema.pre('save', function (next) {
   // Validate that end_time is after start_time
   const startMinutes = this.timeToMinutes(this.start_time);
   const endMinutes = this.timeToMinutes(this.end_time);
-  
+
   if (endMinutes <= startMinutes) {
     return next(new Error('End time must be after start time'));
   }
-  
+
   // Calculate duration if not provided
   if (!this.total_duration_minutes) {
     this.total_duration_minutes = endMinutes - startMinutes;
   }
-  
+
   next();
 });
 
 // Helper method to convert time string to minutes
-attendanceSchema.methods.timeToMinutes = function(timeString) {
+attendanceSchema.methods.timeToMinutes = function (timeString) {
   const [hours, minutes] = timeString.split(':').map(Number);
   return hours * 60 + minutes;
 };
 
 // Pre-save middleware to validate organization consistency
-attendanceSchema.pre('save', async function(next) {
+attendanceSchema.pre('save', async function (next) {
   if (this.isNew) {
     try {
       // Verify course belongs to same organization
       const Course = mongoose.model('Course');
       const course = await Course.findById(this.course_id);
-      
+
       if (!course) {
         return next(new Error('Course not found'));
       }
-      
+
       if (course.organization_id.toString() !== this.organization_id.toString()) {
         return next(new Error('Course must belong to the same organization'));
       }
-      
+
       // Verify instructor belongs to same organization
       const User = mongoose.model('User');
       const instructor = await User.findById(this.instructor_id);
-      
+
       if (!instructor) {
         return next(new Error('Instructor not found'));
       }
-      
+
       if (instructor.organization_id.toString() !== this.organization_id.toString()) {
         return next(new Error('Instructor must belong to the same organization'));
       }
-      
+
     } catch (error) {
       return next(error);
     }
   }
-  
+
   next();
 });
 

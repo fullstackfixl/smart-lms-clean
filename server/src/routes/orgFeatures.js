@@ -11,6 +11,8 @@ const SchoolGradeController = require('../controllers/SchoolGradeController');
 const GPAReportController = require('../controllers/GPAReportController');
 const TrainerController = require('../controllers/TrainerController');
 const LeaderboardController = require('../controllers/LeaderboardController');
+const ProgramController = require('../controllers/ProgramController');
+const AcademicEnrollmentController = require('../controllers/AcademicEnrollmentController');
 const moduleGuard = require('../middleware/moduleGuard');
 
 // All routes require authentication and organization admin role
@@ -29,6 +31,13 @@ router.post('/departments', moduleGuard('DEPARTMENTS'), departmentController.cre
 router.get('/departments/:id', moduleGuard('DEPARTMENTS'), departmentController.getById);
 router.put('/departments/:id', moduleGuard('DEPARTMENTS'), departmentController.update);
 router.delete('/departments/:id', moduleGuard('DEPARTMENTS'), departmentController.delete);
+
+// Academic Program (Academic Course) Routes
+router.get('/courses', moduleGuard('DEPARTMENTS'), ProgramController.getAll);
+router.post('/courses', moduleGuard('DEPARTMENTS'), ProgramController.create);
+router.get('/courses/:id', moduleGuard('DEPARTMENTS'), ProgramController.getById);
+router.put('/courses/:id', moduleGuard('DEPARTMENTS'), ProgramController.update);
+router.delete('/courses/:id', moduleGuard('DEPARTMENTS'), ProgramController.delete);
 
 // Batch Routes
 router.get('/batches', moduleGuard('BATCHES'), batchController.getAll);
@@ -85,5 +94,9 @@ router.put('/trainers/:id/expertise', (req, res) => TrainerController.updateExpe
 router.use('/leaderboard', moduleGuard('LEADERBOARDS'));
 router.get('/leaderboard', (req, res) => LeaderboardController.getGlobalLeaderboard(req, res));
 router.get('/leaderboard/badges/:userId', (req, res) => LeaderboardController.getUserBadges(req, res));
+
+// Academic Enrollment Routes
+router.post('/enrollments/program', moduleGuard('DEPARTMENTS'), (req, res) => AcademicEnrollmentController.enrollInProgram(req, res));
+router.get('/enrollments/student/:studentId', moduleGuard('DEPARTMENTS'), (req, res) => AcademicEnrollmentController.getStudentAcademicProfile(req, res));
 
 module.exports = router;

@@ -4,11 +4,17 @@ const { authMiddleware, requireRole } = require('../middleware/auth');
 const requireOrganization = require('../middleware/orgProtection');
 const { cloudinaryUpload, handleUploadError } = require('../middleware/upload');
 const { uploadToCloudinary } = require('../config/cloudinary');
+const SubjectController = require('../controllers/SubjectController');
 
 const router = express.Router();
 
 // All student routes require organization
 router.use(requireOrganization);
+
+// ─────────────────────────────────────────────────────────────
+// GET /student/subjects
+// ─────────────────────────────────────────────────────────────
+router.get('/subjects', authMiddleware, requireRole(['student']), (req, res) => SubjectController.getStudentSubjects(req, res));
 
 // ─────────────────────────────────────────────────────────────
 // GET /student/profile  — returns name, email + enrollment stats

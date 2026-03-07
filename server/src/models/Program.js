@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const subjectSchema = new mongoose.Schema({
+const programSchema = new mongoose.Schema({
     organization_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Organization',
@@ -10,11 +10,6 @@ const subjectSchema = new mongoose.Schema({
     department_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Department',
-        required: true
-    },
-    program_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Program',
         required: true
     },
     name: {
@@ -27,17 +22,21 @@ const subjectSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    semester: {
+    duration_years: {
         type: Number,
-        required: true
+        required: true,
+        default: 3
     },
-    instructor_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+    total_semesters: {
+        type: Number,
+        required: true,
+        default: 6
     },
-    contentCourseId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Course'
+    description: String,
+    status: {
+        type: String,
+        enum: ['ACTIVE', 'DRAFT'],
+        default: 'ACTIVE'
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -51,6 +50,6 @@ const subjectSchema = new mongoose.Schema({
     timestamps: true
 });
 
-subjectSchema.index({ organization_id: 1, code: 1 }, { unique: true });
+programSchema.index({ organization_id: 1, code: 1 }, { unique: true });
 
-module.exports = mongoose.model('Subject', subjectSchema);
+module.exports = mongoose.model('Program', programSchema);

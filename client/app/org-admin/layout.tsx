@@ -125,13 +125,45 @@ export default function OrgAdminLayout({ children }: { children: React.ReactNode
   }, [token, organization])
 
   // Build dynamic nav from enabled modules
-  const dynamicNav = enabledModules
+  let dynamicNav = enabledModules
     .map(key => {
       const config = MODULE_CONFIG[key]
       if (!config) return null
+      // Remove Batches for COLLEGE
+      if (orgType === 'COLLEGE' && key === 'BATCHES') return null
       return { name: config.label, href: config.path, icon: config.icon }
     })
     .filter(Boolean) as { name: string; href: string; icon: any }[]
+
+  // For COLLEGE orgs, ensure specific items are present if enabled
+  if (orgType === 'COLLEGE') {
+    // Exact list requested: Departments, Programs, Subjects, Courses, Semesters, Exams, Timetable, Reports
+    const collegeModules = [
+      { key: 'DEPARTMENTS', label: 'Departments' },
+      { key: 'COURSES', label: 'Programs', path: '/org-admin/programs' }, // Map structural courses to Programs
+      { key: 'SUBJECTS', label: 'Subjects' },
+      { key: 'LMS_COURSES', label: 'Courses', path: '/org-admin/courses', icon: GraduationCap }, // Content courses
+      { key: 'SEMESTERS', label: 'Semesters' },
+      { key: 'EXAMS', label: 'Exams' },
+      { key: 'TIMETABLE', label: 'Timetable' },
+      { key: 'REPORTS', label: 'Reports' },
+    ];
+
+    dynamicNav = collegeModules
+      .map(m => {
+        const config = MODULE_CONFIG[m.key] || m;
+        // Check if this module is enabled (or it's our newly added LMS_COURSES alias)
+        if (enabledModules.includes(m.key) || m.key === 'LMS_COURSES') {
+          return {
+            name: m.label,
+            href: (m as any).path || config.path,
+            icon: (m as any).icon || config.icon
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as { name: string; href: string; icon: any }[];
+  }
 
   return (
     <ProtectedRoute allowedRoles={["org_admin"]}>

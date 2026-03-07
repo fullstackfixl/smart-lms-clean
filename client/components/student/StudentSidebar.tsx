@@ -20,6 +20,9 @@ import {
   Users,
   Zap,
   ChevronRight,
+  Book,
+  ClipboardCheck,
+  FileSpreadsheet
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from '../../lib/utils'
@@ -30,6 +33,7 @@ const navGroups = [
     label: "Learning",
     items: [
       { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
+      { label: 'My Subjects', href: '/student/subjects', icon: Book, collegeOnly: true },
       { label: 'Browse Courses', href: '/student/available-courses', icon: GraduationCap, module: 'COURSES' },
       { label: 'My Courses', href: '/student/my-courses', icon: BookOpen, module: 'COURSES' },
       { label: 'Live Classes', href: '/student/live-classes', icon: Video },
@@ -42,6 +46,8 @@ const navGroups = [
       { label: 'Certificates', href: '/student/certificates', icon: Award, module: 'CERTIFICATES' },
       { label: 'Leaderboard', href: '/student/leaderboard', icon: Trophy, module: 'LEADERBOARDS' },
       { label: 'Attendance', href: '/student/attendance', icon: Users },
+      { label: 'Exams', href: '/student/exams', icon: ClipboardCheck, collegeOnly: true },
+      { label: 'Results', href: '/student/results', icon: FileSpreadsheet, collegeOnly: true },
       { label: 'Transcript', href: '/student/transcript', icon: GraduationCap, collegeOnly: true },
     ]
   },
