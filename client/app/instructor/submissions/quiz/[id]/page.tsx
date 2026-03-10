@@ -20,6 +20,8 @@ import { Badge } from '../../../../../components/ui/badge'
 import { Progress } from '../../../../../components/ui/progress'
 import { toast } from "sonner"
 import { API_URL } from '../../../../../lib/config'
+import { cn } from "../../../../../lib/utils"
+
 
 interface DetailedAnswer {
     questionIndex: number
@@ -99,8 +101,9 @@ export default function InstructorQuizReviewPage({ params }: { params: Promise<{
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8">
+                <div className="h-16 w-16 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin shadow-inner" />
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] animate-pulse italic">Generating Analysis Report...</p>
             </div>
         )
     }
@@ -108,149 +111,179 @@ export default function InstructorQuizReviewPage({ params }: { params: Promise<{
     if (!submission) return null
 
     return (
-        <div className="min-h-screen bg-muted/30 p-4 md:p-8 pb-20">
-            <div className="max-w-4xl mx-auto space-y-6">
-                <Button variant="ghost" onClick={() => router.back()} className="mb-2">
-                    <ArrowLeft className="h-4 w-4 mr-2" /> Back to Submissions
+        <div className="min-h-screen bg-slate-50/30 p-4 md:p-12 pb-32">
+            <div className="max-w-5xl mx-auto space-y-12">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => router.back()} 
+                  className="rounded-xl h-12 px-6 font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-all gap-3"
+                >
+                    <ArrowLeft className="h-4 w-4" /> Back to Submissions
                 </Button>
 
                 {/* Overview Header */}
-                <div className="grid md:grid-cols-3 gap-6">
-                    <Card className="md:col-span-2">
-                        <CardHeader>
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <CardTitle className="text-2xl font-bold mb-1">{submission.quizId.title}</CardTitle>
-                                    <CardDescription>Course: {submission.courseId.title}</CardDescription>
+                <div className="grid lg:grid-cols-3 gap-8">
+                    <Card className="lg:col-span-2 rounded-[2.5rem] border-slate-100 shadow-sm overflow-hidden bg-white">
+                        <CardHeader className="p-10 pb-0">
+                            <div className="flex justify-between items-start gap-4">
+                                <div className="space-y-2">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest">
+                                       Assessment Details
+                                    </div>
+                                    <CardTitle className="text-3xl font-black text-slate-900 tracking-tight">{submission.quizId.title}</CardTitle>
+                                    <CardDescription className="text-sm font-medium italic text-slate-400">Course Bundle: {submission.courseId.title}</CardDescription>
                                 </div>
-                                <Badge variant={submission.passed ? "default" : "destructive"} className="text-sm px-4 py-1">
+                                <div className={cn(
+                                   "px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border shadow-sm",
+                                   submission.passed ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
+                                )}>
                                     {submission.passed ? "PASSED" : "FAILED"}
-                                </Badge>
+                                </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-6 py-4 border-t border-b mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <CardContent className="p-10 pt-8">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-8 py-8 border-t border-b border-slate-50 mb-10">
+                                <div className="flex items-center gap-5">
+                                    <div className="h-16 w-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-inner overflow-hidden">
                                         {submission.studentId.profile?.avatar ? (
-                                            <img src={submission.studentId.profile.avatar} alt="" className="h-full w-full rounded-full object-cover" />
+                                            <img src={submission.studentId.profile.avatar} alt="" className="h-full w-full object-cover" />
                                         ) : (
-                                            <User className="h-6 w-6 text-primary" />
+                                            <div className="text-xl font-black text-indigo-400">{submission.studentId.name.charAt(0)}</div>
                                         )}
                                     </div>
                                     <div>
-                                        <p className="font-bold">{submission.studentId.name}</p>
-                                        <p className="text-xs text-muted-foreground">{submission.studentId.email}</p>
+                                        <p className="text-lg font-black text-slate-900 leading-tight">{submission.studentId.name}</p>
+                                        <p className="text-[11px] font-bold text-slate-400 lowercase tracking-tight">{submission.studentId.email}</p>
                                     </div>
                                 </div>
-                                <div className="h-10 w-px bg-border hidden sm:block" />
-                                <div className="space-y-1">
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <Calendar className="h-3 w-3" /> Submitted On
+                                <div className="h-12 w-px bg-slate-100 hidden sm:block" />
+                                <div className="space-y-2">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Calendar className="h-3.5 w-3.5" /> Date Submitted
                                     </p>
-                                    <p className="text-sm font-medium">{new Date(submission.submittedAt).toLocaleString()}</p>
+                                    <p className="text-sm font-black text-slate-900 tracking-tight">{new Date(submission.submittedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                <div className="p-3 bg-muted/50 rounded-lg text-center">
-                                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Score</p>
-                                    <p className="text-xl font-bold">{submission.score}/{submission.totalMarks}</p>
-                                </div>
-                                <div className="p-3 bg-muted/50 rounded-lg text-center">
-                                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Percentage</p>
-                                    <p className="text-xl font-bold">{submission.percentage}%</p>
-                                </div>
-                                <div className="p-3 bg-muted/50 rounded-lg text-center">
-                                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Attempt</p>
-                                    <p className="text-xl font-bold">#{submission.attemptNumber}</p>
-                                </div>
-                                <div className="p-3 bg-muted/50 rounded-lg text-center">
-                                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Pass Mark</p>
-                                    <p className="text-xl font-bold">{submission.quizId.pass_percentage}%</p>
-                                </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <DetailCard label="Raw Score" value={`${submission.score}/${submission.totalMarks}`} />
+                                <DetailCard label="Mastery" value={`${submission.percentage}%`} highlight />
+                                <DetailCard label="Attempt" value={`#${submission.attemptNumber}`} />
+                                <DetailCard label="Required" value={`${submission.quizId.pass_percentage}%`} />
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="flex flex-col items-center justify-center text-center p-6 bg-primary text-primary-foreground">
-                        <Award className="h-16 w-16 mb-4 opacity-80" />
-                        <h3 className="text-3xl font-bold mb-1">{submission.percentage}%</h3>
-                        <p className="text-primary-foreground/80 mb-4 font-medium">Auto-Graded Result</p>
-                        <div className="w-full bg-primary-foreground/20 rounded-full h-2 mb-4">
+                    <Card className="flex flex-col items-center justify-center text-center p-12 bg-slate-900 text-white rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-8 opacity-[0.05] group-hover:rotate-12 transition-transform duration-700">
+                           <Award className="h-40 w-40" />
+                        </div>
+                        <Award className="h-20 w-20 mb-8 text-indigo-400 relative z-10" />
+                        <h3 className="text-5xl font-black mb-2 tracking-tighter tabular-nums relative z-10">{submission.percentage}%</h3>
+                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-8 relative z-10">Grade Assessment</p>
+                        <div className="w-full bg-white/10 rounded-full h-3 mb-8 shadow-inner relative z-10 overflow-hidden">
                             <div
-                                className="bg-white h-full rounded-full"
+                                className={cn("h-full rounded-full transition-all duration-1000", submission.passed ? "bg-emerald-500" : "bg-rose-500")}
                                 style={{ width: `${submission.percentage}%` }}
                             />
                         </div>
-                        <p className="text-sm italic">
-                            Student {submission.passed ? 'met' : 'did not meet'} the passing requirement.
+                        <p className="text-xs font-bold italic text-slate-300 relative z-10">
+                           {submission.passed ? 'Scholar has met the academic threshold.' : 'Scholar has not met the academic threshold.'}
                         </p>
                     </Card>
                 </div>
 
                 {/* Detailed Question Review */}
-                <div className="space-y-6">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                        <HelpCircle className="h-5 w-5" /> Question Breakdown
+                <div className="space-y-8">
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-4">
+                        <HelpCircle className="h-6 w-6 text-indigo-600" /> Question Analysis
                     </h2>
 
-                    {submission.answers.map((answer, idx) => (
-                        <Card key={idx} className={`shadow-sm border-l-4 ${answer.isCorrect ? "border-l-green-500" : "border-l-red-500"}`}>
-                            <CardHeader className="pb-2">
-                                <div className="flex items-start gap-4">
-                                    <span className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold ${answer.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                                        }`}>
-                                        {idx + 1}
-                                    </span>
-                                    <div className="flex-grow">
-                                        <p className="font-semibold text-lg">{answer.questionText}</p>
+                    <div className="grid grid-cols-1 gap-10">
+                        {submission.answers.map((answer, idx) => (
+                            <div key={idx} className={cn(
+                               "bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden transition-all group/q hover:shadow-xl hover:shadow-indigo-500/5",
+                               answer.isCorrect ? "hover:border-emerald-200" : "hover:border-rose-200"
+                            )}>
+                                <div className="p-10 space-y-8">
+                                    <div className="flex items-start gap-6">
+                                        <span className={cn(
+                                          "flex-shrink-0 h-10 w-10 rounded-xl flex items-center justify-center text-xs font-black transition-transform group-hover/q:scale-110 shadow-lg",
+                                          answer.isCorrect ? "bg-emerald-600 text-white shadow-emerald-500/20" : "bg-rose-600 text-white shadow-rose-500/20"
+                                        )}>
+                                            {idx + 1}
+                                        </span>
+                                        <div className="flex-grow min-w-0 pr-8">
+                                            <p className="text-xl font-black text-slate-900 tracking-tight leading-tight group-hover/q:text-indigo-600 transition-colors uppercase">{answer.questionText}</p>
+                                        </div>
+                                        {answer.isCorrect ? (
+                                            <CheckCircle2 className="h-8 w-8 text-emerald-500 flex-shrink-0" />
+                                        ) : (
+                                            <XCircle className="h-8 w-8 text-rose-500 flex-shrink-0" />
+                                        )}
                                     </div>
-                                    {answer.isCorrect ? (
-                                        <CheckCircle2 className="h-6 w-6 text-green-500 flex-shrink-0" />
-                                    ) : (
-                                        <XCircle className="h-6 w-6 text-red-500 flex-shrink-0" />
-                                    )}
-                                </div>
-                            </CardHeader>
-                            <CardContent className="pl-16 space-y-3">
-                                <div className="grid gap-2">
-                                    {answer.options.map((opt, optIdx) => (
-                                        <div
-                                            key={optIdx}
-                                            className={`p-3 rounded-lg text-sm border flex justify-between items-center ${optIdx === answer.correctAnswer
-                                                    ? "bg-green-50 border-green-200 text-green-800"
-                                                    : optIdx === answer.selectedOption && !answer.isCorrect
-                                                        ? "bg-red-50 border-red-200 text-red-800"
-                                                        : "bg-background border-muted"
-                                                }`}
-                                        >
-                                            <span>{opt}</span>
-                                            <div className="flex gap-2">
-                                                {optIdx === answer.correctAnswer && (
-                                                    <Badge variant="outline" className="bg-green-100 border-green-300 text-green-800">Correct Answer</Badge>
+
+                                    <div className="grid gap-4 pl-16">
+                                        {answer.options.map((opt, optIdx) => (
+                                            <div
+                                                key={optIdx}
+                                                className={cn(
+                                                   "p-6 rounded-2xl text-[13px] font-black uppercase tracking-wider border flex justify-between items-center transition-all",
+                                                   optIdx === answer.correctAnswer
+                                                        ? "bg-emerald-50 border-emerald-100 text-emerald-800 shadow-sm"
+                                                        : optIdx === answer.selectedOption && !answer.isCorrect
+                                                            ? "bg-rose-50 border-rose-100 text-rose-800 shadow-sm"
+                                                            : "bg-slate-50 border-slate-100 text-slate-400 group-hover/q:bg-white transition-colors"
                                                 )}
-                                                {optIdx === answer.selectedOption && (
-                                                    <Badge variant="outline" className={answer.isCorrect ? "bg-green-200 border-green-400" : "bg-red-200 border-red-400"}>
-                                                        Student Selection
-                                                    </Badge>
-                                                )}
+                                            >
+                                                <span>{opt}</span>
+                                                <div className="flex gap-3">
+                                                    {optIdx === answer.correctAnswer && (
+                                                       <div className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-[9px] border border-emerald-200 uppercase tracking-widest font-black">Correct Key</div>
+                                                    )}
+                                                    {optIdx === answer.selectedOption && (
+                                                       <div className={cn(
+                                                          "px-3 py-1 rounded-full text-[9px] border uppercase tracking-widest font-black",
+                                                          answer.isCorrect ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-rose-100 text-rose-700 border-rose-200"
+                                                       )}>
+                                                          Learner Pick
+                                                       </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {answer.explanation && (
+                                        <div className="ml-16 mt-4 p-8 bg-slate-50/80 rounded-[1.5rem] border border-slate-100 flex items-start gap-4 group-hover/q:bg-indigo-50/50 group-hover/q:border-indigo-100 transition-colors">
+                                            <Progress className="hidden" /> {/* Mock progress for some space if needed */}
+                                            <div className="h-10 w-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shrink-0 shadow-sm">
+                                               <Clock className="w-5 h-5 text-indigo-400" />
+                                            </div>
+                                            <div className="space-y-1.5 flex-1 min-w-0">
+                                               <p className="text-[9px] uppercase font-black tracking-[0.2em] text-slate-400">Review Analysis</p>
+                                               <p className="text-sm text-slate-600 font-bold leading-relaxed">{answer.explanation}</p>
                                             </div>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
-
-                                {answer.explanation && (
-                                    <div className="mt-4 p-4 bg-muted/50 rounded-lg text-sm">
-                                        <p className="font-bold text-muted-foreground mb-1 text-xs uppercase tracking-widest">Explanation</p>
-                                        <p>{answer.explanation}</p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    ))}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
     )
+}
+
+function DetailCard({ label, value, highlight }: { label: string, value: string | number, highlight?: boolean }) {
+   return (
+      <div className={cn(
+         "p-6 rounded-2xl flex flex-col items-center justify-center text-center border transition-all",
+         highlight ? "bg-indigo-50 border-indigo-100 text-indigo-600" : "bg-slate-50 border-slate-100 text-slate-900"
+      )}>
+         <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{label}</p>
+         <p className="text-2xl font-black tabular-nums">{value}</p>
+      </div>
+   )
 }

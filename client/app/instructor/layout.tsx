@@ -16,14 +16,11 @@ export default function InstructorLayout({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#020617] gap-8">
-        <div className="relative">
-          <div className="h-20 w-20 border-[8px] border-white/5 border-t-indigo-600 rounded-full animate-spin shadow-2xl shadow-indigo-500/20" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <GraduationCap className="w-8 h-8 text-white/20" />
-          </div>
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
+          <p className="text-sm font-medium text-slate-500">Synchronizing Instructor Console...</p>
         </div>
-        <p className="text-[12px] font-black text-white/40 uppercase tracking-[0.4em] animate-pulse italic">Synchronizing Executive Console</p>
       </div>
     )
   }
@@ -36,7 +33,7 @@ export default function InstructorLayout({
       disableTransitionOnChange
     >
       <ProtectedRoute allowedRoles={["instructor"]}>
-        <div className="flex h-screen overflow-hidden bg-[#F8FAFC] dark:bg-[#0B0F1A]">
+        <div className="flex h-screen overflow-hidden bg-slate-50">
           <InstructorSidebar />
           <div className="flex flex-1 flex-col overflow-hidden relative">
             <InstructorHeader
@@ -44,8 +41,7 @@ export default function InstructorLayout({
               userEmail={user?.email || "instructor@example.com"}
             />
             <main className="flex-1 overflow-y-auto relative custom-scrollbar">
-              <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-indigo-500/5 rounded-full blur-[150px] -mr-40 -mt-40 pointer-events-none" />
-              <div className="min-h-full">
+              <div className="min-h-full p-8">
                 {children}
               </div>
             </main>

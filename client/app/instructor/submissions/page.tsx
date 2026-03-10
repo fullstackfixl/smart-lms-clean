@@ -1,8 +1,7 @@
 "use client"
- 
+
 import { useState, useEffect, useCallback, Suspense } from "react"
 import { useRouter } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
 import {
   Users, 
   Search, 
@@ -32,14 +31,30 @@ import {
   Sparkles,
   ArrowUpRight,
   FileText,
-  Boxes
+  Boxes,
+  CheckCircle,
+  MoreVertical
 } from "lucide-react"
-import { Badge } from '../../../components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
+import { Button } from '../../../components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../../components/ui/select'
 import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 import { API_URL } from '../../../lib/config'
 import { cn } from "../../../lib/utils"
+import { 
+  SimpleCard, 
+  SimpleBadge,
+  FlatTable,
+  FlatTableHead,
+  FlatTableRow,
+  FlatTableCell 
+} from '../../../components/platform/ui-standard'
  
 interface QuestionReview {
   questionText: string
@@ -113,10 +128,10 @@ function SubmissionsContent() {
       if (data.success) {
         setSubmissions(data.data.submissions || [])
       } else {
-        toast.error("Telemetry link synchronization failure")
+        toast.error("Failed to synchronize submission data")
       }
     } catch {
-      toast.error("Audit stream link severed")
+      toast.error("Network error: Could not reach submission server")
     } finally {
       setLoading(false)
     }
@@ -141,392 +156,264 @@ function SubmissionsContent() {
   }
  
   return (
-    <div className="max-w-[1600px] mx-auto space-y-16 pb-32 p-8 animate-in fade-in duration-1000">
-      
-      {/* ─── Audit Stream Hero ──────────────────────────────────────── */}
-      <div className="relative group">
-        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-[4rem] blur opacity-[0.03] group-hover:opacity-[0.08] transition duration-1000" />
-        <div className="relative overflow-hidden rounded-[3.5rem] bg-indigo-600 p-12 lg:p-20 shadow-[0_32px_64px_-16px_rgba(79,70,229,0.3)] transition-all">
-          <div className="absolute top-0 right-0 -mr-24 -mt-24 w-[35rem] h-[35rem] bg-white/10 rounded-full blur-[120px]" />
-          <div className="absolute bottom-0 left-0 p-12 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity">
-              <Database className="w-80 h-80 -ml-20 -mb-20 rotate-12" />
+    <div className="space-y-10 pb-20">
+      {/* ─── Page Header ────────────────────────────────────────────── */}
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 p-10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl opacity-60" />
+        <div className="relative z-10 space-y-4">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest border border-indigo-100">
+            <Trophy className="w-3.5 h-3.5" />
+            Performance Insights
           </div>
-          
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-16">
-            <div className="space-y-8 max-w-2xl text-white">
-              <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-white/10 text-white text-[11px] font-black uppercase tracking-[0.25em] border border-white/20">
-                <ShieldCheck className="w-4 h-4 fill-white" />
-                Authored Audit Stream
-              </div>
-              <div className="space-y-4">
-                <h1 className="text-6xl lg:text-7xl font-black text-white tracking-[-0.04em] leading-[0.95]">
-                  Submission <br />
-                  <span className="text-indigo-200">Intelligence.</span>
-                </h1>
-                <p className="text-[19px] font-medium text-indigo-50 leading-relaxed max-w-xl opacity-90">
-                  Verify scholarly outcomes with granular precision. Analyze pass velocities, diagnostic trajectories, and cohort performace through an executive-grade audit interface.
-                </p>
-              </div>
- 
-              <div className="flex flex-wrap items-center gap-6 pt-4">
-                <button
-                  onClick={loadSubmissions}
-                  className="h-20 px-12 bg-white text-indigo-600 rounded-[2.2rem] text-[16px] font-black hover:scale-105 active:scale-95 transition-all flex items-center gap-4 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.2)] group"
-                >
-                  <RefreshCw className="w-6 h-6 group-hover:rotate-180 transition-transform duration-700" />
-                  SYNCHRONIZE STREAM
-                </button>
-                <div className="flex items-center gap-3 h-20 px-8 rounded-[2.2rem] border border-white/20 bg-white/5 backdrop-blur-md">
-                   <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_12px_rgba(16,185,129,0.5)]" />
-                   <span className="text-[11px] font-black uppercase tracking-widest text-white/70">Registry Online</span>
-                </div>
-              </div>
-            </div>
- 
-            {/* Macro Stats Grid */}
-            <div className="grid grid-cols-2 gap-6 w-full max-w-md">
-                <MetricMiniCard variant="glass" label="Intersections" value={stats.total} icon={<Hash color="#fff" />} />
-                <MetricMiniCard variant="glass" label="Mastery Index" value={`${stats.avgScore}%`} icon={<Trophy color="#fff" />} />
-                <MetricMiniCard variant="glass" label="Secured" value={stats.passed} icon={<CheckCircle2 color="#fff" />} />
-                <MetricMiniCard variant="glass" label="Deficits" value={stats.failed} icon={<XCircle color="#fff" />} />
-            </div>
-          </div>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Quiz Submissions</h1>
+          <p className="text-sm text-slate-500 font-medium italic">Review learner achievement, quiz results, and detailed performance metrics.</p>
         </div>
-      </div>
- 
-      {/* ─── Control Surface ────────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row items-center gap-8 px-4">
-        <div className="relative flex-1 group w-full">
-           <div className="absolute inset-y-0 left-10 flex items-center pointer-events-none">
-             <SearchIcon className="h-6 w-6 text-slate-300 group-hover:text-indigo-600 transition-colors" strokeWidth={3} />
-           </div>
-           <input 
-             value={search}
-             onChange={e => setSearch(e.target.value)}
-             placeholder="Search by scholar identity, module, or curriculum context..."
-             className="w-full h-24 pl-20 pr-10 bg-white border border-slate-100 rounded-[2.5rem] text-[17px] font-bold text-slate-900 placeholder-slate-300 focus:outline-none focus:ring-[12px] focus:ring-indigo-500/5 focus:border-indigo-500/20 shadow-sm transition-all"
-           />
-        </div>
-        <div className="flex items-center gap-4 w-full lg:w-auto">
-           <div className="bg-slate-50 p-1 rounded-[2.2rem] border border-slate-100 shadow-inner w-full lg:w-auto">
-             <Select value={filterPass} onValueChange={setFilterPass}>
-               <SelectTrigger className="h-20 w-full lg:w-[260px] rounded-[2rem] bg-white border-none shadow-sm px-8 font-black text-[14px]">
-                 <div className="flex items-center gap-4">
-                   <Filter className="w-5 h-5 text-indigo-500" strokeWidth={3} />
-                   <SelectValue placeholder="All Contexts" />
-                 </div>
-               </SelectTrigger>
-               <SelectContent className="rounded-[2.2rem] p-3 border-slate-100 shadow-2xl">
-                 <SelectItem value="all" className="rounded-xl py-4 font-black">ALL SUBMISSIONS</SelectItem>
-                 <SelectItem value="passed" className="rounded-xl py-4 font-black">SECURED CLUSTERS</SelectItem>
-                 <SelectItem value="failed" className="rounded-xl py-4 font-black">DEFICIT CLUSTERS</SelectItem>
-               </SelectContent>
-             </Select>
-           </div>
-        </div>
-      </div>
- 
-      {/* ─── Audit Matrix ────────────────────────────────────────────── */}
-      <AnimatePresence mode="wait">
-        {submissions.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-white border border-dashed border-slate-200 rounded-[4rem] py-48 text-center m-4"
+        
+        <div className="relative z-10 flex items-center gap-4">
+          <Button 
+            variant="outline"
+            onClick={loadSubmissions}
+            className="rounded-2xl h-14 px-8 border-slate-200 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
           >
-             <div className="w-24 h-24 rounded-[2.5rem] bg-slate-50 flex items-center justify-center mb-10 border border-slate-100 mx-auto">
-                <FileText className="h-10 w-10 text-slate-200" />
-             </div>
-             <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight uppercase">AUDIT STANDBY</h3>
-             <p className="text-[17px] font-medium text-slate-400 max-w-sm mx-auto leading-relaxed italic opacity-80">
-                The audit stream is currently stagnant. Zero scholar submissions identified in global registry.
-             </p>
-          </motion.div>
-        ) : (
-          <div className="grid grid-cols-1 gap-8 p-4">
-             {filtered.map((sub, idx) => (
-               <SubmissionCard
-                 key={sub._id}
-                 sub={sub}
-                 idx={idx}
-                 isExpanded={expandedId === sub._id}
-                 onToggle={() => setExpandedId(expandedId === sub._id ? null : sub._id)}
-               />
-             ))}
+            <RefreshCw className="w-4 h-4 stroke-[3]" />
+            Refresh Data
+          </Button>
+        </div>
+      </div>
+
+      {/* ─── Metrics Quickview ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricMiniCard label="Total Submissions" value={stats.total} icon={<Hash className="w-6 h-6 text-blue-600" />} />
+        <MetricMiniCard label="Avg. Score" value={`${stats.avgScore}%`} icon={<Trophy className="w-6 h-6 text-orange-600" />} />
+        <MetricMiniCard label="Passed" value={stats.passed} icon={<CheckCircle className="w-6 h-6 text-emerald-600" />} />
+        <MetricMiniCard label="Failed" value={stats.failed} icon={<XCircle className="w-6 h-6 text-rose-600" />} />
+      </div>
+
+      {/* ─── Submissions Log Table ─── */}
+      <SimpleCard className="p-0 overflow-hidden border-slate-100 shadow-sm rounded-[2.5rem]">
+        <div className="p-10 border-b border-slate-50 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 stroke-[3]" />
+            <input
+              type="text"
+              placeholder="Search by learner, quiz, or course..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-14 w-full pl-14 pr-6 bg-slate-50/50 border border-slate-100 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/20 transition-all font-bold text-slate-900 shadow-sm"
+            />
           </div>
-        )}
-      </AnimatePresence>
+          <div className="flex items-center gap-4">
+            <Select value={filterPass} onValueChange={setFilterPass}>
+              <SelectTrigger className="h-14 w-[220px] rounded-2xl bg-white border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600 focus:ring-4 focus:ring-indigo-500/5 transition-all">
+                <SelectValue placeholder="All Results" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-slate-100 shadow-2xl p-2">
+                <SelectItem value="all" className="rounded-xl py-3 font-black text-[10px] uppercase tracking-widest text-slate-600">All Attempts</SelectItem>
+                <SelectItem value="passed" className="rounded-xl py-3 font-black text-[10px] uppercase tracking-widest text-emerald-600">Passed Only</SelectItem>
+                <SelectItem value="failed" className="rounded-xl py-3 font-black text-[10px] uppercase tracking-widest text-rose-600">Failed Only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <FlatTable>
+          <FlatTableHead>
+            <FlatTableRow className="bg-slate-50/50">
+              <FlatTableCell className="w-[100px] font-black text-slate-500 uppercase text-[10px] tracking-[0.2em] py-6 pl-10">Learner</FlatTableCell>
+              <FlatTableCell className="font-black text-slate-500 uppercase text-[10px] tracking-[0.2em] py-6">Quiz Assessment</FlatTableCell>
+              <FlatTableCell className="font-black text-slate-500 uppercase text-[10px] tracking-[0.2em] py-6">Score</FlatTableCell>
+              <FlatTableCell className="font-black text-slate-500 uppercase text-[10px] tracking-[0.2em] py-6">Status</FlatTableCell>
+              <FlatTableCell className="font-black text-slate-500 uppercase text-[10px] tracking-[0.2em] py-6">Submitted Date</FlatTableCell>
+              <FlatTableCell className="font-black text-slate-500 uppercase text-[10px] tracking-[0.2em] py-6 text-right pr-10">Actions</FlatTableCell>
+            </FlatTableRow>
+          </FlatTableHead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <FlatTableRow>
+                <FlatTableCell colSpan={6} className="h-72 text-center">
+                  <div className="flex flex-col items-center justify-center text-slate-400 italic font-bold">
+                    <Database className="w-12 h-12 mb-4 opacity-10" />
+                    No submissions found matching your search.
+                  </div>
+                </FlatTableCell>
+              </FlatTableRow>
+            ) : (
+              filtered.map((sub) => (
+                <Suspense key={sub._id} fallback={<tr><td colSpan={6}>Loading...</td></tr>}>
+                   <SubmissionRow
+                    sub={sub}
+                    isExpanded={expandedId === sub._id}
+                    onToggle={() => setExpandedId(expandedId === sub._id ? null : sub._id)}
+                  />
+                </Suspense>
+              ))
+            )}
+          </tbody>
+        </FlatTable>
+      </SimpleCard>
     </div>
   )
 }
- 
-function SubmissionCard({ sub, idx, isExpanded, onToggle }: any) {
+
+function SubmissionRow({ sub, isExpanded, onToggle }: any) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: idx * 0.04, duration: 0.6 }}
-      className={cn(
-        "group relative bg-white border rounded-[3.5rem] transition-all duration-700 overflow-hidden",
-        isExpanded 
-          ? "border-indigo-500/30 shadow-[0_48px_96px_-24px_rgba(79,70,229,0.12)] bg-indigo-50/10" 
-          : "border-slate-100 shadow-sm hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)] hover:border-slate-200"
-      )}
-    >
-      <div className="p-10 lg:p-14">
-         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-12">
-            
-            {/* Identity Cluster */}
-            <div className="flex items-center gap-8 flex-1 min-w-0">
-               <div className={cn(
-                 "h-24 w-24 rounded-[2.5rem] flex items-center justify-center text-[24px] font-black shadow-lg transition-transform duration-700 group-hover:rotate-6 shrink-0 border-2",
-                 sub.passed ? "bg-emerald-50 text-emerald-600 border-emerald-100/50" : "bg-rose-50 text-rose-600 border-rose-100/50"
-               )}>
-                  {sub.studentAvatar ? <img src={sub.studentAvatar} className="w-full h-full object-cover rounded-[2.5rem]" /> : getInitials(sub.studentName)}
-               </div>
-               <div className="min-w-0 space-y-2">
-                  <p className="text-[26px] font-black text-slate-900 tracking-[-0.02em] leading-none truncate group-hover:text-indigo-600 transition-colors uppercase">{sub.studentName}</p>
-                  <p className="text-[13px] font-bold text-slate-400 truncate uppercase tracking-[0.1em] flex items-center gap-3">
-                     <Mail className="w-4 h-4 opacity-40 text-indigo-500" />
-                     {sub.studentEmail}
-                  </p>
-               </div>
+    <>
+      <FlatTableRow className={cn("group transition-all", isExpanded && "bg-indigo-50/30")}>
+        <FlatTableCell className="pl-10 py-8">
+          <div className={cn(
+            "h-12 w-12 rounded-2xl flex items-center justify-center text-sm font-black border shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-all duration-500",
+            sub.passed ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
+          )}>
+            {getInitials(sub.studentName)}
+          </div>
+        </FlatTableCell>
+        <FlatTableCell>
+          <div className="space-y-1.5 min-w-[300px]">
+            <p className="text-[15px] font-black text-slate-900 uppercase pr-8 truncate group-hover:text-indigo-600 transition-colors">{sub.quizTitle}</p>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">{sub.studentName} // {sub.courseTitle}</p>
+          </div>
+        </FlatTableCell>
+        <FlatTableCell>
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-20 bg-slate-100 rounded-full overflow-hidden shrink-0 shadow-inner">
+               <div className={cn("h-full rounded-full transition-all duration-700", sub.passed ? "bg-emerald-500" : "bg-rose-500")} style={{ width: `${sub.percentage}%` }} />
             </div>
- 
-            {/* Context Module */}
-            <div className="w-full lg:w-64 shrink-0 space-y-3">
-               <div>
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1 font-mono opacity-80">// MODULE CONTEXT</p>
-                  <p className="text-[19px] font-black text-slate-900 leading-tight uppercase tracking-tighter truncate">{sub.quizTitle}</p>
-               </div>
-               <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-indigo-50 text-indigo-600 w-fit">
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <p className="text-[10px] font-black uppercase tracking-widest truncate max-w-[140px]">{sub.courseTitle}</p>
-               </div>
-            </div>
- 
-            {/* Performance Dial */}
-            <div className="w-full lg:w-64 shrink-0 space-y-4">
-               <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none">MASTERY INDEX</span>
-                  <span className={cn(
-                    "text-[20px] font-black tracking-tighter",
-                    sub.passed ? "text-emerald-600" : "text-rose-600"
-                  )}>{sub.percentage}%</span>
-               </div>
-               <div className="h-4 w-full bg-slate-50 rounded-full overflow-hidden p-1 shadow-inner relative">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${sub.percentage}%` }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
-                    className={cn(
-                      "h-full rounded-full shadow-lg",
-                      sub.passed ? "bg-emerald-500 shadow-emerald-500/20" : "bg-rose-500 shadow-rose-500/20"
-                    )} 
-                  />
-               </div>
-            </div>
-            
-            {/* Status & Action */}
-            <div className="flex items-center gap-8 shrink-0">
-               <div className={cn(
-                 "px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest border-2",
-                 sub.passed ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
-               )}>
-                  {sub.passed ? 'SECURED' : 'DEFICIT'}
-               </div>
-               <button 
-                 onClick={onToggle}
-                 className={cn(
-                   "h-16 w-16 rounded-3xl flex items-center justify-center transition-all duration-700",
-                   isExpanded 
-                     ? "bg-slate-900 text-white shadow-xl rotate-180" 
-                     : "bg-slate-50 text-slate-400 hover:bg-slate-900 hover:text-white"
-                 )}
-               >
-                  <ChevronDown className="h-7 w-7" strokeWidth={3} />
-               </button>
-            </div>
-         </div>
-         
-         <div className="mt-12 pt-10 border-t border-slate-50 flex flex-wrap gap-12">
-            <div className="flex items-center gap-4">
-               <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                  <Calendar className="w-5 h-5" />
-               </div>
-               <div className="space-y-0.5">
-                  <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none">SUBMISSION PULSE</p>
-                  <p className="text-[13px] font-black text-slate-600 uppercase tracking-tighter">{formatDate(sub.submittedAt)}</p>
-               </div>
-            </div>
-            <div className="flex items-center gap-4">
-               <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                  <Clock className="w-5 h-5" />
-               </div>
-               <div className="space-y-0.5">
-                  <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none">TEMPORAL LATENCY</p>
-                  <p className="text-[13px] font-black text-slate-600 uppercase tracking-tighter">{formatTime(sub.timeTakenSeconds)}</p>
-               </div>
-            </div>
-            <div className="flex items-center gap-4">
-               <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                  <Target className="h-5 w-5" />
-               </div>
-               <div className="space-y-0.5">
-                  <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none">ATTEMPT VECTOR</p>
-                  <p className="text-[13px] font-black text-slate-800 uppercase tracking-tighter">SEQUENCE #{sub.attemptNumber}</p>
-               </div>
-            </div>
-         </div>
-      </div>
- 
-      <AnimatePresence>
-         {isExpanded && (
-            <motion.div
-               initial={{ height: 0, opacity: 0 }}
-               animate={{ height: 'auto', opacity: 1 }}
-               exit={{ height: 0, opacity: 0 }}
-               className="bg-slate-50/50 border-t border-slate-100 p-12 lg:p-20"
+            <span className="text-[11px] font-black tabular-nums text-slate-900 tracking-wider">{sub.percentage}%</span>
+          </div>
+        </FlatTableCell>
+        <FlatTableCell>
+          <SimpleBadge variant={sub.passed ? 'green' : 'red'}>
+            {sub.passed ? 'PASSED' : 'FAILED'}
+          </SimpleBadge>
+        </FlatTableCell>
+        <FlatTableCell>
+          <div className="flex items-center gap-2 text-slate-600 font-black uppercase tracking-widest tabular-nums text-[10px]">
+            <Clock className="w-4 h-4 text-slate-400" />
+            {formatDate(sub.submittedAt)}
+          </div>
+        </FlatTableCell>
+        <FlatTableCell className="text-right pr-10">
+          <div className="flex items-center justify-end gap-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onToggle}
+              className={cn("h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all", isExpanded ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/10 hover:bg-slate-800" : "border-slate-200 hover:bg-slate-50")}
             >
-               <div className="max-w-5xl mx-auto space-y-12">
-                  <div className="flex items-center justify-between">
-                     <div className="space-y-2">
-                        <h4 className="text-2xl font-black text-slate-900 tracking-tight uppercase flex items-center gap-4">
-                           <Activity className="w-7 h-7 text-indigo-600" />
-                           Full Spectrum Diagnostic review
-                        </h4>
-                        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest italic opacity-70">// Detailed sector analysis provided by neural link</p>
-                     </div>
-                     <div className="h-16 px-8 rounded-2xl bg-indigo-600 text-white flex items-center gap-4 shadow-xl shadow-indigo-500/20">
-                        <span className="text-[20px] font-black tracking-tighter">{sub.correctCount} / {sub.totalQuestions}</span>
-                        <div className="h-6 w-[1px] bg-white/20" />
-                        <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Sectors Secured</span>
-                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 gap-10">
-                    {sub.questionReview.map((q: any, i: number) => (
-                      <div key={i} className={cn(
-                        "p-10 rounded-[3rem] border-2 transition-all bg-white relative overflow-hidden group/q",
-                        q.isCorrect ? "border-emerald-500/10 shadow-lg shadow-emerald-500/5" : "border-rose-500/10 shadow-lg shadow-rose-500/5"
+              {isExpanded ? 'CLOSE' : 'REVIEW'}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-slate-50 text-slate-400">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </div>
+        </FlatTableCell>
+      </FlatTableRow>
+      
+      {isExpanded && (
+        <tr>
+          <td colSpan={6} className="px-10 pb-12 pt-4 bg-indigo-50/30 border-b border-slate-100">
+            <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 pb-8 gap-6">
+                 <div className="space-y-3">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest">
+                       <Sparkles className="w-3 h-3" />
+                       Analysis Report
+                    </div>
+                    <h4 className="text-2xl font-black text-slate-900 tracking-tight">Grade Assessment Summary</h4>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-80 pr-4 truncate max-w-lg">
+                      {sub.studentName} // {sub.quizTitle}
+                    </p>
+                 </div>
+                 <div className="flex items-center gap-10">
+                    <div className="text-right">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Time Elapsed</p>
+                       <p className="text-xl font-black text-slate-900 tabular-nums uppercase">{formatTime(sub.timeTakenSeconds)}</p>
+                    </div>
+                    <div className="h-10 w-[1px] bg-slate-200" />
+                    <div className="text-right">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Score Matrix</p>
+                       <p className="text-2xl font-black text-slate-900 tabular-nums tracking-tight">{sub.correctCount} / {sub.totalQuestions}</p>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-8">
+                {sub.questionReview.map((q: any, i: number) => (
+                  <div key={i} className="bg-white border border-slate-100 rounded-[2rem] p-8 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all group/q">
+                    <div className="flex items-start gap-6">
+                      <div className={cn(
+                        "h-10 w-10 rounded-xl flex items-center justify-center text-xs font-black shrink-0 transition-transform group-hover/q:scale-110",
+                        q.isCorrect ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20" : "bg-rose-600 text-white shadow-lg shadow-rose-500/20"
                       )}>
-                         <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover/q:opacity-[0.08] transition-opacity">
-                            {q.isCorrect ? <ShieldCheck className="w-20 h-20" /> : <XCircle className="w-20 h-20" />}
-                         </div>
-                         <div className="flex items-start gap-8 relative z-10">
-                            <div className={cn(
-                              "h-14 w-14 rounded-2xl flex items-center justify-center text-[18px] font-black shrink-0 transition-all group-hover/q:rotate-12",
-                              q.isCorrect ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
-                            )}>
-                               {i + 1}
-                            </div>
-                            <div className="flex-1 space-y-8">
-                               <p className="text-[22px] font-black text-slate-900 leading-snug tracking-tight pr-12">{q.questionText}</p>
-                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  <div className={cn(
-                                    "p-6 rounded-[1.8rem] border flex items-center gap-6 transition-all",
-                                    q.isCorrect 
-                                      ? "bg-emerald-50 border-emerald-500/30 text-emerald-700" 
-                                      : "bg-rose-50 border-rose-500/30 text-rose-700"
-                                  )}>
-                                     <div className={cn(
-                                       "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border-2",
-                                       q.isCorrect ? "bg-white border-emerald-500/20" : "bg-white border-rose-500/20"
-                                     )}>
-                                        {q.isCorrect ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-                                     </div>
-                                     <div className="flex-1">
-                                        <p className="text-[10px] uppercase font-black tracking-[0.2em] opacity-50 mb-1">Submitted Response</p>
-                                        <p className="text-[16px] font-black leading-none">{q.selectedText}</p>
-                                     </div>
-                                  </div>
-                                  {!q.isCorrect && (
-                                    <div className="p-6 rounded-[1.8rem] border bg-emerald-50 border-emerald-500/20 text-emerald-700 flex items-center gap-6">
-                                       <div className="h-10 w-10 rounded-xl bg-white border-2 border-emerald-500/20 flex items-center justify-center shrink-0 shadow-sm">
-                                          <CheckCircle2 className="w-5 h-5" />
-                                       </div>
-                                       <div className="flex-1">
-                                          <p className="text-[10px] uppercase font-black tracking-[0.2em] opacity-50 mb-1">Validated Intelligence</p>
-                                          <p className="text-[16px] font-black leading-none">{q.correctText}</p>
-                                       </div>
-                                    </div>
-                                  )}
-                               </div>
-                               {q.explanation && (
-                                  <div className="p-8 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-start gap-6 relative group/expl">
-                                     <div className="h-10 w-10 rounded-2xl bg-indigo-600/10 flex items-center justify-center shrink-0 group-hover/expl:scale-110 transition-transform">
-                                        <Zap className="w-5 h-5 text-indigo-600 fill-indigo-600" />
-                                     </div>
-                                     <div className="space-y-1">
-                                        <p className="text-[10px] uppercase font-black tracking-widest text-indigo-400 opacity-60">SYNTHESIZED EXPLANATION</p>
-                                        <p className="text-[15px] font-bold text-slate-500 leading-relaxed italic opacity-90">{q.explanation}</p>
-                                     </div>
-                                  </div>
-                               )}
-                            </div>
-                         </div>
+                        {i + 1}
                       </div>
-                    ))}
+                      <div className="flex-1 space-y-6 min-w-0">
+                        <p className="text-xl font-black text-slate-900 leading-tight tracking-tight">{q.questionText}</p>
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                           <div className={cn(
+                             "p-5 rounded-2xl border flex items-center gap-4 transition-all",
+                             q.isCorrect ? "bg-emerald-50 border-emerald-100 text-emerald-800" : "bg-rose-50 border-rose-100 text-rose-800"
+                           )}>
+                              {q.isCorrect ? <CheckCircle className="w-5 h-5 stroke-[3]" /> : <XCircle className="w-5 h-5 stroke-[3]" />}
+                              <div className="flex-1 min-w-0">
+                                 <p className="text-[9px] uppercase font-black tracking-[0.2em] opacity-60 mb-1">Learner Response</p>
+                                 <p className="text-[13px] font-black uppercase tracking-wider truncate">{q.selectedText}</p>
+                              </div>
+                           </div>
+                           {!q.isCorrect && (
+                             <div className="p-5 rounded-2xl border bg-emerald-50 border-emerald-100 text-emerald-800 flex items-center gap-4 transition-all">
+                                <CheckCircle className="w-5 h-5 stroke-[3]" />
+                                <div className="flex-1 min-w-0">
+                                   <p className="text-[9px] uppercase font-black tracking-[0.2em] opacity-60 mb-1">Correct Answer</p>
+                                   <p className="text-[13px] font-black uppercase tracking-wider truncate">{q.correctText}</p>
+                                </div>
+                             </div>
+                           )}
+                        </div>
+
+                        {q.explanation && (
+                          <div className="p-6 rounded-[1.5rem] bg-slate-50/80 border border-slate-100 flex items-start gap-4 transition-colors group-hover/q:bg-indigo-50/50 group-hover/q:border-indigo-100">
+                             <Zap className="w-5 h-5 text-indigo-400 mt-1" />
+                             <div className="space-y-1.5 flex-1">
+                                <p className="text-[9px] uppercase font-black tracking-[0.2em] text-slate-400">Analysis & Context</p>
+                                <p className="text-sm text-slate-600 font-bold leading-relaxed">{q.explanation}</p>
+                             </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
- 
-                  <div className="pt-10 flex justify-center">
-                     <button 
-                       onClick={onToggle}
-                       className="h-16 px-12 rounded-[1.5rem] bg-slate-900 text-white text-[13px] font-black uppercase tracking-[0.2em] shadow-2xl hover:scale-105 active:scale-95 transition-all"
-                     >
-                       CLOSE AUDIT LOG
-                     </button>
-                  </div>
-               </div>
-            </motion.div>
-         )}
-      </AnimatePresence>
-    </motion.div>
+                ))}
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
- 
-function MetricMiniCard({ label, value, icon, variant = "default" }: any) {
+
+function MetricMiniCard({ label, value, icon }: any) {
   return (
-    <div className={cn(
-      "p-6 rounded-[2.5rem] border flex items-center gap-5 transition-all cursor-default group",
-      variant === "glass" 
-        ? "bg-white/5 border-white/10 hover:bg-white/10 backdrop-blur-md" 
-        : "bg-slate-50/50 border-slate-100 hover:bg-white hover:border-indigo-200 hover:shadow-lg"
-    )}>
-       <div className={cn(
-         "h-14 w-14 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform",
-         variant === "glass" ? "bg-white/10" : "bg-white border border-slate-200"
-       )}>
+    <div className="bg-white p-8 rounded-[2rem] border border-slate-100 flex items-center gap-6 hover:border-blue-200 transition-all cursor-default group shadow-sm hover:shadow-xl hover:shadow-slate-500/5">
+       <div className="h-14 w-14 rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-center group-hover:bg-white group-hover:scale-110 transition-all duration-500">
           {icon}
        </div>
        <div>
-          <p className={cn(
-            "text-[10px] font-black uppercase tracking-widest leading-none mb-1.5",
-            variant === "glass" ? "text-indigo-200" : "text-slate-400"
-          )}>{label}</p>
-          <p className={cn(
-            "text-[24px] font-black leading-none tracking-tighter",
-            variant === "glass" ? "text-white" : "text-slate-900"
-          )}>{value}</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-2">{label}</p>
+          <p className="text-2xl font-black text-slate-900 leading-none tracking-tight">{value}</p>
        </div>
     </div>
   )
 }
- 
+
 export default function InstructorSubmissionsPage() {
     return (
         <Suspense fallback={
-            <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6">
-                <div className="relative">
-                  <div className="h-20 w-20 border-[6px] border-indigo-500/10 border-t-indigo-600 rounded-full animate-spin" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Database className="w-6 h-6 text-indigo-600 animate-pulse" />
-                  </div>
-                </div>
-                <div className="text-center space-y-2">
-                   <p className="text-[12px] font-black text-slate-900 uppercase tracking-[0.3em]">Synchronizing Submission Hub</p>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic animate-pulse">Establishing audit link...</p>
-                </div>
+            <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8">
+                <div className="h-16 w-16 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin shadow-inner" />
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] animate-pulse italic">Loading Performance Records...</p>
             </div>
         }>
             <SubmissionsContent />

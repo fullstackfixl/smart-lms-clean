@@ -6,7 +6,8 @@ import {
   Bell, Check, CheckCheck, Trash2, Filter, AlertCircle,
   Info, CheckCircle2, XCircle, Clock, 
   Search, ShieldCheck, Zap, Sparkles, Database,
-  Activity, ArrowUpRight, MousePointer2, Target, Globe
+  Activity, ArrowUpRight, MousePointer2, Target, Globe,
+  RefreshCcw, Layers
 } from "lucide-react"
 import { Badge } from '../../../components/ui/badge'
 import {
@@ -69,7 +70,7 @@ function NotificationsContent() {
         }
       }
     } catch (error) {
-      toast.error("Intelligence stream sync failure")
+      toast.error("Failed to synchronize student alerts")
     } finally {
       setLoading(false)
     }
@@ -84,11 +85,11 @@ function NotificationsContent() {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       })
       if (response.ok) {
-        toast.success("Signal acknowledged")
+        toast.success("Notification marked as read")
         loadNotifications()
       }
     } catch {
-      toast.error("Protocol failure")
+      toast.error("Update failed")
     }
   }
  
@@ -101,11 +102,11 @@ function NotificationsContent() {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       })
       if (response.ok) {
-        toast.success("All signals acknowledged")
+        toast.success("All notifications marked as read")
         loadNotifications()
       }
     } catch {
-      toast.error("Batch protocol failure")
+      toast.error("Update failed")
     }
   }
  
@@ -118,39 +119,39 @@ function NotificationsContent() {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       })
       if (response.ok) {
-        toast.success("Data unit purged")
+        toast.success("Notification removed")
         loadNotifications()
       }
     } catch {
-      toast.error("Purge failure")
+      toast.error("Removal failed")
     }
   }
  
   return (
     <div className="max-w-[1600px] mx-auto space-y-16 pb-32 p-8 animate-in fade-in duration-1000">
       
-      {/* ─── Telemetry Streams Hero ─────────────────────────────────── */}
+      {/* ─── Notification Streams Hero ─────────────────────────────────── */}
       <div className="relative group">
         <div className="absolute -inset-1 bg-gradient-to-r from-amber-500 to-orange-600 rounded-[4rem] blur opacity-[0.03] group-hover:opacity-[0.08] transition duration-1000" />
         <div className="relative overflow-hidden rounded-[4rem] bg-white border border-slate-200/60 p-12 lg:p-20 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.03)] transition-all">
-          <div className="absolute top-0 right-0 -mr-24 -mt-24 w-[35rem] h-[35rem] bg-amber-50 rounded-full blur-[120px]" />
+          <div className="absolute top-0 right-0 -mr-24 -mt-24 w-[35rem] h-[35rem] bg-amber-50/50 rounded-full blur-[120px]" />
           <div className="absolute bottom-0 left-0 p-12 opacity-[0.05] group-hover:opacity-[0.1] transition-opacity">
-              <Bell className="w-80 h-80 -ml-20 -mb-20 rotate-12" />
+              <Bell className="w-80 h-80 -ml-20 -mb-20 rotate-12 text-amber-500" />
           </div>
           
           <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-16">
-            <div className="space-y-8 max-w-2xl">
-              <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-amber-50 text-amber-700 text-[11px] font-black uppercase tracking-[0.25em] border border-amber-100/50">
+            <div className="space-y-10 max-w-2xl">
+              <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-[0.25em] border border-amber-100/50">
                 <Activity className="w-4 h-4" />
-                Live Telemetry Streams
+                Live Performance Alerts
               </div>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <h1 className="text-6xl lg:text-7xl font-black text-slate-900 tracking-[-0.04em] leading-[0.95]">
-                  Operational <br />
-                  <span className="text-amber-600">Signals.</span>
+                  Instructor <br />
+                  <span className="text-amber-600">Notifications.</span>
                 </h1>
-                <p className="text-[19px] font-medium text-slate-500 leading-relaxed max-w-xl">
-                  Stay synchronized with platform-wide intelligence. Real-time alerts on scholar milestones, curriculum pulse, and fiscal events delivered through high-fidelity telemetry.
+                <p className="text-[19px] font-bold text-slate-500 leading-relaxed max-w-xl opacity-80 italic">
+                  Keep track of all platform activities. Real-time updates on student progress, curriculum changes, and financial milestones delivered instantly.
                 </p>
               </div>
  
@@ -158,87 +159,96 @@ function NotificationsContent() {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="h-20 px-12 bg-[#020617] text-white rounded-[2.2rem] text-[16px] font-black hover:scale-105 active:scale-95 transition-all flex items-center gap-4 shadow-2xl group"
+                    className="h-20 px-12 bg-slate-900 text-white rounded-[2.25rem] text-[15px] font-black hover:scale-105 active:scale-95 transition-all flex items-center gap-4 shadow-2xl group uppercase tracking-widest"
                   >
-                    <CheckCheck className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-                    ACKNOWLEDGE ALL
+                    <CheckCheck className="w-6 h-6 group-hover:rotate-12 transition-transform stroke-[3]" />
+                    Mark All as Read
                   </button>
                 )}
-                <div className="flex items-center gap-4 h-20 px-8 rounded-[2.2rem] border border-slate-100 bg-slate-50 shadow-inner">
+                <div className="flex items-center gap-4 h-20 px-10 rounded-[2.25rem] border border-slate-100 bg-slate-50/50 backdrop-blur-sm shadow-inner">
                    <div className={cn("h-3 w-3 rounded-full animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.5)]", unreadCount > 0 ? "bg-amber-500" : "bg-emerald-500")} />
                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                     {unreadCount > 0 ? `${unreadCount} UNREAD SIGNALS` : "ALL SIGNALS CLEAR"}
+                     {unreadCount > 0 ? `${unreadCount} New Alerts` : "All notifications read"}
                    </span>
                 </div>
               </div>
             </div>
  
-            {/* Macro Stats */}
-            <div className="grid grid-cols-2 gap-6 w-full max-w-md">
-                <div className="p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm transition-all hover:border-amber-200">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">URGENT PRIORITY</p>
-                   <p className="text-[40px] font-black tracking-tighter tabular-nums text-slate-900 leading-none">
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full max-w-lg">
+                <div className="p-10 rounded-[3rem] bg-white border border-slate-100 shadow-xl transition-all hover:border-amber-200 relative overflow-hidden group/m">
+                   <div className="absolute top-0 right-0 p-6 opacity-[0.05] group-hover/m:opacity-[0.1] transition-opacity">
+                      <AlertCircle className="w-16 h-16 text-rose-500" strokeWidth={3} />
+                   </div>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Priority Alerts</p>
+                   <p className="text-5xl font-black tracking-tighter tabular-nums text-slate-900 leading-none">
                      {notifications.filter(n => n.priority === 'urgent' && (n.status === 'pending' || n.status === 'sent')).length}
                    </p>
+                   <p className="text-[11px] text-slate-400 font-bold italic mt-2 opacity-60">Action required soon</p>
                 </div>
-                <div className="p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm transition-all hover:border-blue-200">
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">SYSTEM ALERTS</p>
-                   <p className="text-[40px] font-black tracking-tighter tabular-nums text-slate-900 leading-none">
+                <div className="p-10 rounded-[3rem] bg-white border border-slate-100 shadow-xl transition-all hover:border-indigo-200 relative overflow-hidden group/m">
+                   <div className="absolute top-0 right-0 p-6 opacity-[0.05] group-hover/m:opacity-[0.1] transition-opacity">
+                      <Activity className="w-16 h-16 text-blue-500" strokeWidth={3} />
+                   </div>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">System Updates</p>
+                   <p className="text-5xl font-black tracking-tighter tabular-nums text-slate-900 leading-none">
                      {notifications.filter(n => n.type === 'warning' || n.type === 'error').length}
                    </p>
+                   <p className="text-[11px] text-slate-400 font-bold italic mt-2 opacity-60">Platform logs & status</p>
                 </div>
             </div>
           </div>
         </div>
       </div>
  
-      {/* ─── Control Surface ────────────────────────────────────────── */}
-      <div className="flex items-center gap-8 px-4">
-        <div className="bg-slate-50 p-1 rounded-[2.2rem] border border-slate-100 shadow-inner w-full lg:w-auto">
+      {/* ─── Filter Section ────────────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-8 px-6">
+        <div className="bg-slate-50/50 p-2 rounded-[2.5rem] border border-slate-100 shadow-inner w-full lg:w-auto backdrop-blur-sm">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-20 w-full lg:w-[260px] rounded-[2rem] bg-white border-none shadow-sm px-8 font-black text-[14px]">
+            <SelectTrigger className="h-16 w-full lg:w-[280px] rounded-[2.25rem] bg-white border-none shadow-sm px-10 font-black text-[12px] uppercase tracking-widest text-slate-600 focus:ring-4 focus:ring-amber-500/5">
               <div className="flex items-center gap-4">
                 <Filter className="w-5 h-5 text-amber-500" strokeWidth={3} />
-                <SelectValue placeholder="All Contexts" />
+                <SelectValue placeholder="All Alerts" />
               </div>
             </SelectTrigger>
-            <SelectContent className="rounded-[2.2rem] p-3 border-slate-100 shadow-2xl">
-              <SelectItem value="all" className="rounded-xl py-4 font-black">ALL SIGNALS</SelectItem>
-              <SelectItem value="pending" className="rounded-xl py-4 font-black">UNACKNOWLEDGED</SelectItem>
-              <SelectItem value="read" className="rounded-xl py-4 font-black">ARCHIVED</SelectItem>
+            <SelectContent className="rounded-[2rem] p-3 border-slate-100 shadow-2xl">
+              <SelectItem value="all" className="rounded-xl py-4 font-black text-xs uppercase tracking-widest">Display All Content</SelectItem>
+              <SelectItem value="pending" className="rounded-xl py-4 font-black text-xs uppercase tracking-widest text-amber-600">Unread Notifications</SelectItem>
+              <SelectItem value="read" className="rounded-xl py-4 font-black text-xs uppercase tracking-widest text-slate-400">Archived History</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <div className="h-20 px-8 rounded-[2rem] border border-slate-100 bg-white/50 backdrop-blur-md flex items-center gap-4 ml-auto">
-           <Database className="w-5 h-5 text-slate-300" />
-           <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic animate-pulse">Establishing secure link...</p>
+        <div className="h-16 px-10 rounded-[2.25rem] border border-slate-100 bg-white/50 backdrop-blur-md flex items-center gap-5 ml-auto shadow-sm">
+           <RefreshCcw className="w-4 h-4 text-slate-300 animate-spin-slow" />
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">Link synchronized</p>
         </div>
       </div>
  
-      {/* ─── Notification Matrix ──────────────────────────────────────── */}
+      {/* ─── Notification List ──────────────────────────────────────── */}
       <AnimatePresence mode="wait">
         {loading ? (
-          <div className="grid grid-cols-1 gap-8 p-4">
+          <div className="grid grid-cols-1 gap-10 px-6">
              {[1, 2, 3, 4].map(i => (
-               <div key={i} className="h-40 rounded-[3rem] bg-slate-50 animate-pulse" />
+               <div key={i} className="h-44 rounded-[3.5rem] bg-slate-50 animate-pulse border border-slate-100" />
              ))}
           </div>
         ) : notifications.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-white border border-dashed border-slate-200 rounded-[4rem] py-48 text-center m-4"
+            className="bg-white border-2 border-dashed border-slate-100 rounded-[5rem] py-48 text-center m-6"
           >
-             <div className="w-24 h-24 rounded-[2.5rem] bg-slate-50 flex items-center justify-center mb-10 border border-slate-100 mx-auto">
-                <Sparkles className="h-10 w-10 text-slate-200" />
+             <div className="w-28 h-28 rounded-[3rem] bg-slate-50 flex items-center justify-center mb-10 border border-slate-100 mx-auto shadow-inner relative">
+                <div className="absolute inset-0 bg-indigo-500/5 rounded-[3rem] blur-xl" />
+                <Sparkles className="h-10 w-10 text-slate-200 relative z-10" />
              </div>
-             <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight uppercase">SIGNALS CLEAR</h3>
-             <p className="text-[17px] font-medium text-slate-400 max-w-sm mx-auto leading-relaxed italic opacity-80">
-               {statusFilter !== 'all' ? 'The current sector is devoid of data units.' : 'Strategic communication streams are currently stagnant.'}
+             <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter uppercase">Alert Stream Clear</h3>
+             <p className="text-[17px] font-bold text-slate-400 max-w-md mx-auto leading-relaxed italic opacity-80">
+               {statusFilter !== 'all' ? 'No notifications found matching the current filter.' : 'Your notification dashboard is currently empty.'}
              </p>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 gap-8 p-4">
+          <div className="grid grid-cols-1 gap-10 px-6">
              {notifications.map((notif, idx) => (
                <NotificationCard
                  key={notif._id}
@@ -259,76 +269,76 @@ function NotificationCard({ notif, idx, onRead, onDelete }: any) {
   const isUnread = notif.status === 'pending' || notif.status === 'sent'
  
   const icons: any = {
-    success: <CheckCircle2 className="h-7 w-7 text-emerald-500" />,
-    error: <XCircle className="h-7 w-7 text-rose-500" />,
-    warning: <AlertCircle className="h-7 w-7 text-amber-500" />,
-    info: <Info className="h-7 w-7 text-blue-500" />,
+    success: <CheckCircle2 className="h-8 w-8 text-emerald-500" strokeWidth={2.5} />,
+    error: <XCircle className="h-8 w-8 text-rose-500" strokeWidth={2.5} />,
+    warning: <AlertCircle className="h-8 w-8 text-amber-500" strokeWidth={2.5} />,
+    info: <Info className="h-8 w-8 text-indigo-500" strokeWidth={2.5} />,
   }
  
   const priorities: any = {
-    urgent: "bg-rose-500 text-white shadow-lg shadow-rose-500/20",
-    high: "bg-amber-100 text-amber-700",
-    medium: "bg-blue-100 text-blue-700",
-    low: "bg-slate-100 text-slate-500",
+    urgent: "bg-rose-600 text-white shadow-lg shadow-rose-600/30",
+    high: "bg-amber-100 text-amber-700 border border-amber-200/50",
+    medium: "bg-indigo-50 text-indigo-700 border border-indigo-100/50",
+    low: "bg-slate-50 text-slate-400 border border-slate-100",
   }
  
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98, y: 30 }}
+      initial={{ opacity: 0, scale: 0.98, y: 40 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ delay: idx * 0.04 }}
+      transition={{ delay: idx * 0.05, duration: 0.7, ease: "easeOut" }}
       className={cn(
-        "group relative bg-white border rounded-[3.5rem] p-10 lg:p-14 transition-all duration-700 overflow-hidden",
+        "group relative bg-white border rounded-[4rem] p-12 lg:p-16 transition-all duration-700 overflow-hidden hover:shadow-[0_48px_96px_-32px_rgba(0,0,0,0.06)]",
         isUnread 
-          ? "border-amber-500/30 shadow-[0_48px_96px_-24px_rgba(245,158,11,0.08)] bg-amber-50/5" 
-          : "border-slate-100 shadow-sm hover:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.05)]"
+          ? "border-amber-500/30 shadow-[0_40px_80px_-20px_rgba(245,158,11,0.08)] bg-white" 
+          : "border-slate-100 opacity-90 hover:opacity-100"
       )}
     >
-      <div className="absolute top-0 right-0 p-12 opacity-[0.02]">
+      <div className="absolute top-0 right-0 p-16 opacity-[0.03] pointer-events-none group-hover:scale-125 transition-transform duration-1000">
          {icons[notif.type] || icons.info}
       </div>
  
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-12">
          
-         <div className="flex items-start gap-8 flex-1 min-w-0">
+         <div className="flex items-start gap-10 flex-1 min-w-0 text-left">
             <div className={cn(
-              "h-20 w-20 rounded-[2.2rem] flex items-center justify-center shrink-0 border-2 transition-transform duration-700 group-hover:rotate-6 shadow-sm",
-              isUnread ? "bg-white border-amber-200" : "bg-slate-50 border-slate-100"
+              "h-24 w-24 rounded-[2.5rem] flex items-center justify-center shrink-0 border-4 transition-all duration-700 group-hover:rotate-6 group-hover:scale-110 shadow-xl",
+              isUnread ? "bg-white border-amber-100 shadow-amber-500/10" : "bg-slate-50 border-white shadow-slate-200/50"
             )}>
                {icons[notif.type] || icons.info}
             </div>
             
-            <div className="space-y-4 flex-1 min-w-0">
-               <div className="flex flex-wrap items-center gap-4">
+            <div className="space-y-6 flex-1 min-w-0">
+               <div className="flex flex-wrap items-center gap-5">
                   <h3 className={cn(
-                    "text-2xl font-black tracking-tight leading-none uppercase",
+                    "text-3xl font-black tracking-tight leading-tight uppercase",
                     isUnread ? "text-slate-900" : "text-slate-500"
                   )}>
                     {notif.title}
                   </h3>
                   {isUnread && (
-                    <div className="h-3 w-3 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                    <div className="h-3.5 w-3.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_12px_rgba(245,158,11,0.8)]" />
                   )}
-                  <Badge className={cn("rounded-full px-5 py-1.5 text-[9px] font-black uppercase tracking-widest border-0", priorities[notif.priority])}>
+                  <div className={cn("rounded-full px-6 py-2 text-[10px] font-black uppercase tracking-[0.2em] shadow-sm", priorities[notif.priority])}>
                      {notif.priority}
-                  </Badge>
+                  </div>
                </div>
                <p className={cn(
-                 "text-[17px] font-medium leading-relaxed max-w-2xl",
+                 "text-[19px] font-bold leading-relaxed max-w-3xl",
                  isUnread ? "text-slate-600" : "text-slate-400 italic"
                )}>
                  {notif.message}
                </p>
                
-               <div className="flex flex-wrap items-center gap-8 pt-4">
-                  <div className="flex items-center gap-3 text-[11px] font-black text-slate-300 uppercase tracking-widest">
-                     <Clock className="w-4 h-4" />
+               <div className="flex flex-wrap items-center gap-10 pt-4">
+                  <div className="flex items-center gap-4 text-[11px] font-black text-slate-300 uppercase tracking-widest italic">
+                     <Clock className="w-5 h-5 opacity-40 text-slate-400" />
                      {new Date(notif.created_at).toLocaleString()}
                   </div>
                   {notif.sender_id && (
-                    <div className="flex items-center gap-3 text-[11px] font-black text-indigo-400 uppercase tracking-widest">
-                       <Database className="w-4 h-4" />
-                       ENCRYPTED SOURCE: {notif.sender_id.name.toUpperCase()}
+                    <div className="flex items-center gap-4 text-[11px] font-black text-indigo-400 uppercase tracking-widest border-l border-slate-100 pl-10">
+                       <Layers className="w-5 h-5 opacity-60" />
+                       Source: {notif.sender_id.name.toUpperCase()}
                     </div>
                   )}
                </div>
@@ -339,16 +349,18 @@ function NotificationCard({ notif, idx, onRead, onDelete }: any) {
             {isUnread && (
               <button 
                 onClick={onRead}
-                className="h-16 w-16 rounded-[1.8rem] bg-indigo-600 text-white flex items-center justify-center shadow-lg hover:scale-110 active:scale-90 transition-all group/btn"
+                title="Mark as read"
+                className="h-20 w-20 rounded-[2.25rem] bg-indigo-600 text-white flex items-center justify-center shadow-2xl shadow-indigo-600/20 hover:scale-110 active:scale-90 transition-all group/btn"
               >
-                <Check className="w-7 h-7 group-hover/btn:rotate-12 transition-transform" strokeWidth={3} />
+                <Check className="w-8 h-8 group-hover/btn:rotate-12 transition-transform" strokeWidth={4} />
               </button>
             )}
             <button 
               onClick={onDelete}
-              className="h-16 w-16 rounded-[1.8rem] bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all group/del"
+              title="Delete notification"
+              className="h-20 w-20 rounded-[2.25rem] bg-slate-50 text-slate-300 flex items-center justify-center hover:bg-rose-600 hover:text-white transition-all shadow-sm hover:shadow-xl hover:shadow-rose-600/20 group/del"
             >
-              <Trash2 className="w-6 h-6 group-hover/del:rotate-12 transition-transform" />
+              <Trash2 className="w-7 h-7 group-hover/del:rotate-12 transition-transform" />
             </button>
          </div>
       </div>
@@ -359,9 +371,12 @@ function NotificationCard({ notif, idx, onRead, onDelete }: any) {
 export default function InstructorNotificationsPage() {
   return (
     <Suspense fallback={
-       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6">
-          <div className="h-16 w-16 border-[6px] border-amber-500/10 border-t-amber-600 rounded-full animate-spin" />
-          <p className="text-[12px] font-black text-slate-900 uppercase tracking-[0.3em] animate-pulse">Synchronizing Intelligence Streams</p>
+       <div className="flex flex-col items-center justify-center min-h-[75vh] gap-10">
+          <div className="relative">
+            <div className="absolute -inset-6 bg-amber-500/10 rounded-full blur-2xl animate-pulse" />
+            <div className="h-24 w-24 border-[8px] border-amber-50 border-t-amber-600 rounded-full animate-spin shadow-inner" />
+          </div>
+          <p className="text-[12px] font-black text-slate-900 uppercase tracking-[0.45em] animate-pulse italic text-center">Synchronizing Alert Registry...</p>
        </div>
     }>
        <NotificationsContent />
