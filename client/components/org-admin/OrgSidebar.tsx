@@ -5,24 +5,54 @@ import { usePathname } from "next/navigation"
 import { useAuth } from '../../lib/auth-context'
 import { cn } from "../../lib/utils"
  
-const navigationItems = [
-  { name: "Dashboard", href: "/org-admin/dashboard" },
-  { name: "Content", href: "/org-admin/content" },
-  { name: "Courses", href: "/org-admin/courses" },
-  { name: "Learners", href: "/org-admin/users?role=student" },
-  { name: "Instructors", href: "/org-admin/users?role=instructor" },
-  { name: "Invites", href: "/org-admin/users?tab=invites" },
-  { name: "Reports", href: "/org-admin/reports" },
-  { name: "Attendance", href: "/org-admin/attendance" },
-  { name: "Exams", href: "/org-admin/exams" },
-  { name: "Parent Portal", href: "/org-admin/parent-portal" },
-  { name: "Settings", href: "/org-admin/settings" },
-]
- 
 export function OrgSidebar() {
   const pathname = usePathname()
   const { organization } = useAuth()
- 
+  const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+
+  // Base items common to all
+  const navItems = [
+    { name: "Dashboard", href: "/org-admin/dashboard" },
+    { name: "Courses", href: "/org-admin/courses" },
+  ]
+
+  // Type-specific extensions
+  if (orgType === 'COLLEGE' || orgType === 'UNIVERSITY') {
+    navItems.push(
+      { name: "Departments", href: "/org-admin/departments" },
+      { name: "Programs", href: "/org-admin/programs" },
+      { name: "Academic Years", href: "/org-admin/academic-year" },
+      { name: "Batches", href: "/org-admin/batches" }
+    )
+  } else if (orgType === 'SCHOOL') {
+    navItems.push(
+      { name: "Classes", href: "/org-admin/grade-levels" },
+      { name: "Sections", href: "/org-admin/grades-sections" },
+      { name: "Homework", href: "/org-admin/homework" },
+      { name: "Attendance", href: "/org-admin/attendance" }
+    )
+  } else if (orgType === 'CORPORATE') {
+    navItems.push(
+      { name: "Trainers", href: "/org-admin/trainers" },
+      { name: "Skills", href: "/org-admin/skills" },
+      { name: "Assignments", href: "/org-admin/training-assignments" }
+    )
+  } else {
+    // Institute / Coaching / Others
+    navItems.push(
+      { name: "Subjects", href: "/org-admin/subjects" },
+      { name: "Attendance", href: "/org-admin/attendance" },
+      { name: "Batches", href: "/org-admin/batches" }
+    )
+  }
+
+  // Common management items at the bottom
+  navItems.push(
+    { name: "Learners", href: "/org-admin/users?role=student" },
+    { name: "Instructors", href: "/org-admin/users?role=instructor" },
+    { name: "Settings", href: "/org-admin/settings" }
+  )
+
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Brand Header */}
@@ -32,14 +62,14 @@ export function OrgSidebar() {
             {organization?.name || "Learnyst"}
           </span>
           <span className="text-[10px] text-blue-600 font-bold uppercase mt-1 tracking-tight">
-            Org Admin
+            {orgType} ADMIN
           </span>
         </Link>
       </div>
- 
+
       {/* Navigation */}
       <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
-        {navigationItems.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href)
           return (
             <Link
@@ -54,7 +84,7 @@ export function OrgSidebar() {
             >
               <span>{item.name}</span>
               {isActive && (
-                <div className="absolute bottom-0 left-3 right-3 h-[2px] bg-[#3B82F6]" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#3B82F6] rounded-r-full" />
               )}
             </Link>
           )

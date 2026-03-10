@@ -33,7 +33,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function BillingPage() {
   const { data: response, error, isLoading } = useSWR('/api/platform/billing', fetcher)
-  const stats = response?.success ? response.data : null
+  const stats = response?.data || null
 
   if (isLoading) {
     return (
@@ -113,7 +113,7 @@ export default function BillingPage() {
               <Badge className="bg-blue-50 text-blue-600 border-none rounded-sm px-2 py-0.5 text-[10px] font-bold">USD VOLUME</Badge>
             </div>
           </div>
-          <BasicChart data={revenueData} type="bar" height={320} />
+          <BasicChart data={revenueData} type="bar" xKey="name" yKey="value" height={320} />
         </Card>
 
         <Card className="lg:col-span-4 border-orange-100 bg-orange-50/30 p-8 rounded-md no-shadow flex flex-col justify-center items-center text-center">

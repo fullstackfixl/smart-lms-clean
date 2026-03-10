@@ -38,6 +38,7 @@ import {
 } from "../../../components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
+import Link from 'next/link'
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
@@ -49,8 +50,8 @@ export default function OrganizationsPage() {
     fetcher
   )
 
-  const organizations = response?.success ? response.data.organizations : []
-  const stats = response?.success ? response.data.stats : { total: 0, active: 0, suspended: 0 }
+  const organizations = response?.data?.organizations || []
+  const stats = response?.data?.stats || { total: 0, active: 0, suspended: 0 }
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -61,7 +62,6 @@ export default function OrganizationsPage() {
     name: '',
     email: '',
     type: 'COLLEGE',
-    subdomain: '',
     plan: 'basic',
     maxStudents: 1000,
     maxInstructors: 50
@@ -72,7 +72,6 @@ export default function OrganizationsPage() {
       name: '',
       email: '',
       type: 'COLLEGE',
-      subdomain: '',
       plan: 'basic',
       maxStudents: 1000,
       maxInstructors: 50
@@ -208,10 +207,10 @@ export default function OrganizationsPage() {
             <SelectTrigger className="w-full sm:w-48 h-10 border-gray-300 focus:ring-0 focus:border-blue-500">
               <SelectValue placeholder="Status: All" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-gray-200">
-              <SelectItem value="all">Status: All</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="suspended">Suspended</SelectItem>
+            <SelectContent className="bg-white border-gray-200 shadow-xl rounded-lg p-1">
+              <SelectItem value="all" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-md py-2">Status: All</SelectItem>
+              <SelectItem value="active" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-md py-2">Active</SelectItem>
+              <SelectItem value="suspended" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-md py-2">Suspended</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="ghost" className="text-slate-500 hover:text-blue-600 font-bold h-10 px-4">
@@ -219,21 +218,19 @@ export default function OrganizationsPage() {
           </Button>
         </div>
 
-        <SimpleTable headers={['Organization', 'Subdomain', 'Plan', 'Users', 'Status', 'Actions']}>
+        <SimpleTable headers={['Organization', 'Plan', 'Users', 'Status', 'Actions']}>
           {organizations.map((org: any) => (
             <SimpleTableRow key={org._id}>
               <SimpleTableCell>
                 <div>
-                  <div className="font-bold text-blue-600 hover:underline cursor-pointer">
+                  <Link 
+                    href={`/platform/organizations/${org._id}`}
+                    className="font-bold text-blue-600 hover:underline cursor-pointer"
+                  >
                     {org.name}
-                  </div>
+                  </Link>
                   <div className="text-xs text-slate-400 mt-0.5">{org.email}</div>
-                </div>
-              </SimpleTableCell>
-              <SimpleTableCell>
-                <div className="flex items-center text-slate-600 font-medium">
-                  {org.subdomain}
-                  <ExternalLink className="ml-1.5 h-3 w-3 text-slate-300" />
+                  <div className="text-[10px] text-slate-300 font-mono mt-1 uppercase tracking-tighter">ID: {org.code || org._id.slice(-6)}</div>
                 </div>
               </SimpleTableCell>
               <SimpleTableCell>
@@ -269,7 +266,6 @@ export default function OrganizationsPage() {
                           name: org.name,
                           email: org.email,
                           type: org.type,
-                          subdomain: org.subdomain,
                           plan: org.plan,
                           maxStudents: org.limits?.max_students || 1000,
                           maxInstructors: org.limits?.max_instructors || 50
@@ -327,56 +323,46 @@ export default function OrganizationsPage() {
             <Input 
               required 
               placeholder="e.g. Global Tech University" 
-              className="h-10 border-gray-300 focus:border-blue-500"
+              className="h-11 border-gray-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all rounded-lg"
               value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="col-span-2 space-y-1.5">
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Admin Email</Label>
             <Input 
               required 
               type="email" 
               placeholder="admin@institution.edu" 
-              className="h-10 border-gray-300 focus:border-blue-500"
+              className="h-11 border-gray-200 bg-white text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all rounded-lg"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Subdomain</Label>
-            <Input 
-              required 
-              placeholder="subdomain" 
-              className="h-10 border-gray-300 focus:border-blue-500"
-              value={formData.subdomain}
-              onChange={(e) => setFormData({...formData, subdomain: e.target.value})}
-            />
-          </div>
-          <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Org Type</Label>
             <Select value={formData.type} onValueChange={(v) => setFormData({...formData, type: v})}>
-              <SelectTrigger className="h-10 border-gray-300">
+              <SelectTrigger className="h-11 border-gray-200 bg-white text-slate-900 rounded-lg focus:ring-4 focus:ring-blue-50/50 transition-all">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="COLLEGE">College / University</SelectItem>
-                <SelectItem value="SCHOOL">K-12 School</SelectItem>
-                <SelectItem value="COACHING">Coaching Center</SelectItem>
-                <SelectItem value="CORPORATE">Corporate</SelectItem>
+              <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+                <SelectItem value="COLLEGE" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">College / University</SelectItem>
+                <SelectItem value="SCHOOL" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">K-12 School</SelectItem>
+                <SelectItem value="COACHING" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Institute / Coaching</SelectItem>
+                <SelectItem value="CORPORATE" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Corporate Training</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">License Plan</Label>
             <Select value={formData.plan} onValueChange={(v) => setFormData({...formData, plan: v})}>
-              <SelectTrigger className="h-10 border-gray-300">
+              <SelectTrigger className="h-11 border-gray-200 bg-white text-slate-900 rounded-lg focus:ring-4 focus:ring-blue-50/50 transition-all">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="basic">Basic Tier</SelectItem>
-                <SelectItem value="premium">Premium Tier</SelectItem>
-                <SelectItem value="enterprise">Enterprise Tier</SelectItem>
+              <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+                <SelectItem value="basic" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Basic Tier</SelectItem>
+                <SelectItem value="premium" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Premium Tier</SelectItem>
+                <SelectItem value="enterprise" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Enterprise Tier</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -424,13 +410,13 @@ export default function OrganizationsPage() {
           <div className="col-span-2 space-y-1.5">
             <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">License Tier</Label>
             <Select value={formData.plan} onValueChange={(v) => setFormData({...formData, plan: v})}>
-              <SelectTrigger className="h-10 border-gray-300">
+              <SelectTrigger className="h-11 border-gray-200 bg-white text-slate-900 rounded-lg focus:ring-4 focus:ring-blue-50/50 transition-all">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="basic">Basic - Core Features</SelectItem>
-                <SelectItem value="premium">Premium - Academic Layer</SelectItem>
-                <SelectItem value="enterprise">Enterprise - Unlimited</SelectItem>
+              <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+                <SelectItem value="basic" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Basic - Core Features</SelectItem>
+                <SelectItem value="premium" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Premium - Academic Layer</SelectItem>
+                <SelectItem value="enterprise" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Enterprise - Unlimited</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -46,6 +46,10 @@ const OrganizationEvent = require('./OrganizationEvent');
 const SystemConfig = require('./SystemConfig');
 const PlatformReport = require('./PlatformReport');
 const PlatformAuditLog = require('./PlatformAuditLog');
+const OrgAuditLog = require('./OrgAuditLog');
+const Homework = require('./Homework');
+const TrainingAssignment = require('./TrainingAssignment');
+const Skill = require('./Skill');
 
 
 
@@ -96,5 +100,9 @@ module.exports = {
   QuizSubmission,
   SystemConfig,
   PlatformReport,
-  PlatformAuditLog
+  PlatformAuditLog,
+  OrgAuditLog,
+  Homework,
+  TrainingAssignment,
+  Skill
 };

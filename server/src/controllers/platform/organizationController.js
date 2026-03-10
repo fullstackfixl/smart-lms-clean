@@ -6,7 +6,7 @@ exports.getOrganizations = async (req, res) => {
     const result = await organizationService.listOrganizations(req.query);
     res.status(200).json({
       success: true,
-      ...result
+      data: result
     });
   } catch (error) {
     res.status(500).json({
@@ -113,6 +113,163 @@ exports.deleteOrganization = async (req, res) => {
       success: false,
       message: error.message,
       errorCode: 'ORG_DELETE_ERROR'
+    });
+  }
+};
+
+exports.getOrganizationInstructors = async (req, res) => {
+  try {
+    const result = await organizationService.listOrganizationUsers(req.params.orgId, 'instructor', req.query);
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_INSTRUCTORS_ERROR'
+    });
+  }
+};
+
+exports.getOrganizationStudents = async (req, res) => {
+  try {
+    const result = await organizationService.listOrganizationUsers(req.params.orgId, 'student', req.query);
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_STUDENTS_ERROR'
+    });
+  }
+};
+
+exports.getOrganizationStats = async (req, res) => {
+  try {
+    const stats = await organizationService.getOrganizationStats(req.params.orgId);
+    res.status(200).json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_STATS_ERROR'
+    });
+  }
+};
+
+exports.getOrganizationCourses = async (req, res) => {
+  try {
+    const result = await organizationService.listOrganizationCourses(req.params.orgId, req.query);
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_COURSES_ERROR'
+    });
+  }
+};
+
+exports.getOrganizationActivity = async (req, res) => {
+  try {
+    const result = await organizationService.getOrganizationActivity(req.params.orgId, req.query);
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_ACTIVITY_ERROR'
+    });
+  }
+};
+
+exports.getOrganizationLiveClasses = async (req, res) => {
+  try {
+    const result = await organizationService.listOrganizationLiveClasses(req.params.orgId, req.query);
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_LIVE_CLASSES_ERROR'
+    });
+  }
+};
+
+exports.getOrganizationQuizzes = async (req, res) => {
+  try {
+    const result = await organizationService.listOrganizationQuizzes(req.params.orgId, req.query);
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_QUIZZES_ERROR'
+    });
+  }
+};
+
+exports.getOrganizationCertificates = async (req, res) => {
+  try {
+    const result = await organizationService.listOrganizationCertificates(req.params.orgId, req.query);
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_CERTIFICATES_ERROR'
+    });
+  }
+};
+
+exports.getOrganizationAttendance = async (req, res) => {
+  try {
+    const result = await organizationService.listOrganizationAttendance(req.params.orgId, req.query);
+    res.status(200).json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_ATTENDANCE_ERROR'
+    });
+  }
+};
+
+exports.resetAdminPassword = async (req, res) => {
+  try {
+    const result = await organizationService.resetAdminPassword(req.params.orgId);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_RESET_PASSWORD_ERROR'
     });
   }
 };

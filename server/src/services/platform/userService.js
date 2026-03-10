@@ -46,6 +46,17 @@ exports.suspendUser = async (userId) => {
   return user;
 };
 
+exports.activateUser = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user || user.is_deleted) {
+    throw new Error('User not found');
+  }
+
+  user.status = 'active';
+  await user.save();
+  return user;
+};
+
 exports.resetUserPassword = async (userId, newPassword) => {
   const user = await User.findById(userId);
   if (!user || user.is_deleted) {

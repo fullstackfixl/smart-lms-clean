@@ -27,7 +27,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function AnalyticsPage() {
   const { data: response, error, isLoading } = useSWR('/api/platform/analytics/overview', fetcher)
-  const stats = response?.success ? response.data : null
+  const stats = response?.data || null
 
   if (isLoading) {
     return (

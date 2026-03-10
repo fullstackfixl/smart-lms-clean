@@ -36,13 +36,17 @@ class BillingService {
         is_deleted: { $ne: true } 
       });
 
+      const trajectory = Object.entries(monthlyRevenue).map(([name, value]) => ({ name, value }));
+
+      const retentionRate = totalOrgs
+        ? Number(((activeSubscriptions / totalOrgs) * 100).toFixed(1))
+        : 0;
+
       return {
         totalRevenue,
-        revenueTrajectory: revenueTrajectory.length ? revenueTrajectory : [
-          { name: 'Jan', value: 0 }, { name: 'Feb', value: 0 }, { name: 'Mar', value: 0 }
-        ],
+        revenueTrajectory: trajectory,
         activeSubscriptions,
-        retentionRate: 94.2, // Placeholder for churn logic
+        retentionRate,
         recentTransactions: enrollments.slice(0, 10).map(enc => ({
           _id: enc._id,
           amount: enc.course_id?.price || 0,

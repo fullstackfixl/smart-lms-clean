@@ -1133,6 +1133,69 @@ class InstructorController extends BaseController {
       }
     }, 'Submission details retrieved successfully');
   });
+  // ENROLLMENT & JOINING
+  enrollStudentInCourse = this.asyncHandler(async (req, res) => {
+    const { id } = req.params; // courseId
+    const { name, email } = req.body;
+
+    if (!email || !name) {
+      return res.error('Name and email are required', 'Validation failed', 400);
+    }
+
+    const course = await this.findInstructorCourse(id, req.user);
+    if (!course) {
+      return res.error('Course not found', 'Course not found or access denied', 404);
+    }
+
+    const orgId = req.user.organization_id;
+    const crypto = require('crypto');
+    const { Invite } = require('../models');
+    
+    // 1. Create Invite
+    const token = crypto.randomBytes(32).toString('hex');
+    const invite = await Invite.create({
+      email: email.toLowerCase(),
+      role: 'student',
+      organization_id: orgId,
+      token,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    });
+
+    // 2. Send Email
+    const emailService = require('../services/email.service');
+    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const setupLink = `${clientUrl}/accept-invite?token=${token}&courseId=${course._id}`;
+    
+    try {
+      const html = emailService.generateInvitationTemplate(course.title, setupLink);
+      await emailService.sendEmail({
+        to: email,
+        subject: `Invitation to join course: ${course.title}`,
+        html
+      });
+    } catch (err) {
+      console.warn('Enrollment email failed:', err.message);
+    }
+
+    return res.success({ invite: { token } }, 'Student invited to course successfully');
+  });
+
+  getJoinLink = this.asyncHandler(async (req, res) => {
+    const { id } = req.params; // courseId
+    const course = await this.findInstructorCourse(id, req.user);
+    if (!course) {
+      return res.error('Course not found', 'Course not found or access denied', 404);
+    }
+
+    const Organization = require('../models/Organization');
+    const org = await Organization.findById(req.user.organization_id);
+    
+    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const joinCode = org.code || org.subdomain;
+    const joinLink = `${clientUrl}/register?org=${joinCode}&course=${course._id}`;
+
+    return res.success({ joinLink, joinCode }, 'Join link generated successfully');
+  });
 }
 
 module.exports = new InstructorController();

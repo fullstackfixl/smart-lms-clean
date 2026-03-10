@@ -41,7 +41,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function ReportsPage() {
   const { data: response, error, isLoading, mutate } = useSWR('/api/platform/reports', fetcher)
-  const reports = response?.success ? response.data : []
+  const reports = response?.data || []
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -197,11 +197,11 @@ export default function ReportsPage() {
                 <SelectTrigger className="h-10 border-gray-300">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="enrollment">Enrollment Cycles</SelectItem>
-                  <SelectItem value="revenue">Financial Velocity</SelectItem>
-                  <SelectItem value="activity">User Engagement</SelectItem>
-                  <SelectItem value="security">Audit Violations</SelectItem>
+                <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+                  <SelectItem value="enrollment" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Enrollment Cycles</SelectItem>
+                  <SelectItem value="revenue" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Financial Velocity</SelectItem>
+                  <SelectItem value="activity" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">User Engagement</SelectItem>
+                  <SelectItem value="security" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Audit Violations</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -211,10 +211,10 @@ export default function ReportsPage() {
                 <SelectTrigger className="h-10 border-gray-300">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="csv">CSV Spreadsheet</SelectItem>
-                  <SelectItem value="pdf">PDF Document</SelectItem>
-                  <SelectItem value="json">JSON Matrix</SelectItem>
+                <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+                  <SelectItem value="csv" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">CSV Spreadsheet</SelectItem>
+                  <SelectItem value="pdf" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">PDF Document</SelectItem>
+                  <SelectItem value="json" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">JSON Matrix</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -225,11 +225,11 @@ export default function ReportsPage() {
               <SelectTrigger className="h-10 border-gray-300">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="last_24h">Internal Last 24h</SelectItem>
-                <SelectItem value="last_7_days">Last 7 Cycles</SelectItem>
-                <SelectItem value="last_30_days">Last 30 Cycles</SelectItem>
-                <SelectItem value="custom">Custom Range...</SelectItem>
+              <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+                <SelectItem value="last_24h" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Internal Last 24h</SelectItem>
+                <SelectItem value="last_7_days" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Last 7 Cycles</SelectItem>
+                <SelectItem value="last_30_days" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Last 30 Cycles</SelectItem>
+                <SelectItem value="custom" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Custom Range...</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -10,8 +10,14 @@ const organizationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['SCHOOL', 'COLLEGE', 'INSTITUTE', 'ONLINE_ACADEMY'],
-    required: [true, 'Organization type is required']
+    enum: ['SCHOOL', 'COLLEGE', 'INSTITUTE', 'ONLINE_ACADEMY', 'CORPORATE', 'school', 'college', 'institute', 'corporate'],
+    required: [true, 'Organization type is required'],
+    set: function(v) { return v.toLowerCase(); }
+  },
+  organizationType: {
+    type: String,
+    enum: ['school', 'college', 'institute', 'corporate'],
+    required: false
   },
   modulesEnabled: [{
     type: String,

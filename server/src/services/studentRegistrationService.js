@@ -7,13 +7,20 @@ const jwtUtils = require('../utils/jwt');
 
 class StudentRegistrationService {
   async validateOrganization(codeRaw) {
-    const code = (codeRaw || '').trim().toUpperCase();
+    const code = (codeRaw || '').trim();
     if (!code) {
       const err = new Error('organization_code is required');
       err.statusCode = 400;
       throw err;
     }
-    const org = await Organization.findOne({ code });
+    
+    const org = await Organization.findOne({
+      $or: [
+        { code: code.toUpperCase() },
+        { subdomain: code.toLowerCase() }
+      ]
+    });
+
     if (!org) {
       const err = new Error('Organization not found');
       err.statusCode = 404;
@@ -24,7 +31,7 @@ class StudentRegistrationService {
       err.statusCode = 403;
       throw err;
     }
-    return { _id: org._id, name: org.name, code: org.code };
+    return { _id: org._id, name: org.name, code: org.code || org.subdomain };
   }
 
   async sendVerification({ name, email, organization_code }) {

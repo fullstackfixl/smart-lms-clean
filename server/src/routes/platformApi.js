@@ -7,7 +7,7 @@ const platformCourseController = require('../controllers/PlatformCourseControlle
 const PlatformController = require('../controllers/platformController');
 const platformAdminsController = require('../controllers/PlatformAdminsController');
 const platformStaffController = require('../controllers/PlatformStaffController');
-const { authMiddleware, requirePlatformAdmin, requirePlatformAccess } = require('../middleware/auth');
+const { authMiddleware, requirePlatformAdmin, requirePlatformStaff } = require('../middleware/auth');
 const { activityLogger } = require('../middleware/activityLogger');
 
 const router = express.Router();
@@ -25,7 +25,7 @@ router.post('/org-invite/complete', platformInviteController.completeSetup.bind(
 router.post('/create-super-admin', PlatformController.createSuperAdmin);
 
 // --- Protected Platform Routes (admin + staff) ---
-router.use(authMiddleware, requirePlatformAccess, activityLogger);
+router.use(authMiddleware, requirePlatformStaff, activityLogger);
 
 // --- Dashboard & Analytics ---
 router.get('/dashboard/stats', platformAnalyticsController.getDashboardStats.bind(platformAnalyticsController));

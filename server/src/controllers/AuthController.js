@@ -132,9 +132,14 @@ class AuthController {
             const { generateOTP } = require('../utils/otp');
             const emailService = require('../services/email.service');
             const { generateOtpTemplate } = emailService;
-            const org = await Organization.findOne({ subdomain: orgSubdomain.toLowerCase() });
+            const org = await Organization.findOne({ 
+                $or: [
+                    { subdomain: orgSubdomain.toLowerCase() },
+                    { code: orgSubdomain.toUpperCase() }
+                ]
+            });
             if (!org) {
-                return res.status(404).json({ success: false, message: 'Organization not found' });
+                return res.status(404).json({ success: false, message: 'Organization not found. Please check your code or subdomain.' });
             }
             const existingUser = await User.findOne({ email: email.toLowerCase(), organization_id: org._id });
             if (existingUser) {

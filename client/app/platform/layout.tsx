@@ -12,7 +12,7 @@ export default function PlatformLayout({
 }) {
   return (
     <ProtectedRoute allowedRoles={["platform_admin", "platform_staff"]}>
-      <div className="min-h-screen bg-white font-sans text-slate-700 antialiased">
+      <div className="min-h-screen bg-slate-50 font-sans text-slate-700 antialiased">
         {/* Sidebar - Fixed Left */}
         <PlatformSidebar />
 
@@ -20,7 +20,7 @@ export default function PlatformLayout({
         <div className="pl-[220px]">
           <PlatformHeader />
           
-          <main className="mx-auto max-w-6xl p-8">
+          <main className="mx-auto max-w-7xl p-6 lg:p-8">
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
               {children}
             </div>

@@ -38,7 +38,7 @@ export default function StaffPage() {
   const [search, setSearch] = useState('')
   const { data: response, error, isLoading, mutate } = useSWR(`/api/platform/staff?search=${search}`, fetcher)
   
-  const staff = response?.success ? response.data : []
+  const staff = response?.data || []
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)

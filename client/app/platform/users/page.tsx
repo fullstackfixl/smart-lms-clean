@@ -44,8 +44,8 @@ export default function UsersPage() {
     fetcher
   )
 
-  const users = response?.success ? response.data.users : []
-  const stats = response?.success ? response.data.stats : { total: 0, active: 0, suspended: 0 }
+  const users = response?.data?.users || []
+  const stats = response?.data?.stats || { total: 0, active: 0, suspended: 0 }
 
   const handleAction = async (id: string, action: string) => {
     try {

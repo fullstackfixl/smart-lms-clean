@@ -411,26 +411,39 @@ class AuthService {
 
     // Check if user already exists
     let user = await User.findOne({ email: invite.email, organization_id: invite.organization_id });
-    if (user) {
-      throw new ValidationError('User already exists');
-    }
-
+    
     // Hash password securely
     const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Create user
-    const organization = await Organization.findById(invite.organization_id);
-    user = new User({
-      name,
-      email: invite.email,
-      password_hash: passwordHash,
-      role: invite.role,
-      organization_id: invite.organization_id,
-      organization_code: organization?.code || organization?.organization_code || invite.organization_code,
-      status: 'active',
-      email_verified: true
-    });
+    if (user) {
+      if (user.status !== 'pending') {
+        throw new ValidationError('User already exists and is active');
+      }
+      // Update the pending user (automated provisioning flow created this user)
+      user.name = name;
+      user.password_hash = passwordHash;
+      user.status = 'active';
+      user.email_verified = true;
+      // Ensure organization_code is set
+      if (!user.organization_code) {
+        const organization = await Organization.findById(invite.organization_id);
+        user.organization_code = organization?.code || organization?.organization_code || invite.organization_code;
+      }
+    } else {
+      // Create new user (standard invite flow)
+      const organization = await Organization.findById(invite.organization_id);
+      user = new User({
+        name,
+        email: invite.email,
+        password_hash: passwordHash,
+        role: invite.role,
+        organization_id: invite.organization_id,
+        organization_code: organization?.code || organization?.organization_code || invite.organization_code,
+        status: 'active',
+        email_verified: true
+      });
+    }
     await user.save();
 
     // Mark invite as used

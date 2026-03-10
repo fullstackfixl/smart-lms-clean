@@ -20,10 +20,15 @@ import { PlainChart } from "../../../components/org-admin/core/PlainChart"
 import Link from "next/link"
  
 export default function OrgAdminDashboard() {
-  const { user } = useAuth()
+  const { user, organization } = useAuth()
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState<any>(null)
   const [activities, setActivities] = useState<any>(null)
+
+  const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+  const isCorporate = orgType === 'CORPORATE'
+  const isSchool = orgType === 'SCHOOL'
+  const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
  
   useEffect(() => {
     loadDashboardData()
@@ -68,13 +73,19 @@ export default function OrgAdminDashboard() {
       {/* ─── Hero Header ────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
          <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-[#3B82F6] tracking-tight leading-none uppercase">At a Glance</h1>
-            <p className="text-[14px] text-slate-500 font-medium italic">Comprehensive overview of your organization&apos;s digital learning ecosystem.</p>
+            <h1 className="text-3xl font-bold text-[#3B82F6] tracking-tight leading-none uppercase">
+              {isCorporate ? 'Workforce Oversight' : isSchool ? 'School Hub' : isCollege ? 'Academic Registry' : 'At a Glance'}
+            </h1>
+            <p className="text-[14px] text-slate-500 font-medium italic">
+              {isCorporate ? 'Monitoring employee growth and skill acquisition matrix.' : 
+               isSchool ? 'Daily operations and student performance telemetry.' :
+               'Comprehensive overview of your organization\'s digital learning ecosystem.'}
+            </p>
          </div>
          <Link href="/org-admin/courses">
             <MinimalButton variant="text" className="text-[#F97316]">
                <Plus className="w-4 h-4 mr-2" />
-               Add Content
+               {isCorporate ? 'Assign Training' : 'Add Content'}
             </MinimalButton>
          </Link>
       </div>
@@ -82,27 +93,27 @@ export default function OrgAdminDashboard() {
       {/* ─── Metric Matrix ────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
          <MetricCard 
-           label="Total Learners" 
+           label={isCorporate ? "Total Workforce" : isSchool ? "Total Students" : "Total Learners"} 
            value={metrics?.metrics?.totalStudents?.toLocaleString() || 0} 
            trend={metrics?.metrics?.trends?.students}
            subtext="Active engagement"
          />
          <MetricCard 
-           label="Total Products" 
+           label={isCorporate ? "Active Assignments" : "Total Products"} 
            value={metrics?.metrics?.activeCourses || 0} 
-           subtext="Live and selling"
+           subtext={isCorporate ? "Current training" : "Live and selling"}
          />
          <MetricCard 
-           label="Live Sessions" 
+           label={isSchool ? "Live Classes" : "Interactive Sessions"} 
            value={metrics?.metrics?.liveClassesCount || 0} 
            trend={metrics?.metrics?.trends?.liveSessions}
            subtext="Scheduled this week"
          />
          <MetricCard 
-           label="Total Revenue" 
-           value={`₹${(metrics?.metrics?.totalRevenue || 0).toLocaleString()}`} 
+           label={isCorporate ? "Skill Index" : "Total Revenue"} 
+           value={isCorporate ? `${metrics?.metrics?.skillIndex || 85}%` : `₹${(metrics?.metrics?.totalRevenue || 0).toLocaleString()}`} 
            trend={metrics?.metrics?.trends?.revenue}
-           subtext="Marketplace performance"
+           subtext={isCorporate ? "Avg proficiency" : "Marketplace performance"}
          />
       </div>
  

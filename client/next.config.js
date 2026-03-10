@@ -81,6 +81,24 @@ const nextConfig = {
       },
     ]
   },
+  
+  // Rewrites to proxy API requests to backend
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:5000/api/:path*',
+      },
+      {
+        source: '/auth/:path*',
+        destination: 'http://localhost:5000/auth/:path*',
+      },
+      {
+        source: '/instructor/:path*',
+        destination: 'http://localhost:5000/instructor/:path*',
+      }
+    ]
+  },
 
 }
 

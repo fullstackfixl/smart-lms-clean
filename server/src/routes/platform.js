@@ -6,7 +6,7 @@ const platformAdminsController = require('../controllers/PlatformAdminsControlle
 const platformStaffController = require('../controllers/PlatformStaffController');
 const PlatformController = require('../controllers/platformController');
 const platformCourseController = require('../controllers/PlatformCourseController');
-const { authMiddleware, requirePlatformAdmin, requirePlatformAccess } = require('../middleware/auth');
+const { authMiddleware, requirePlatformAdmin, requirePlatformStaff } = require('../middleware/auth');
 const { activityLogger } = require('../middleware/activityLogger');
 const router = express.Router();
 
@@ -21,7 +21,7 @@ router.post('/create-super-admin', PlatformController.createSuperAdmin);
 // ══════════════════════════════════════════════════════════════════════════════
 // SHARED ROUTES — platform_admin + platform_staff
 // ══════════════════════════════════════════════════════════════════════════════
-router.use(authMiddleware, requirePlatformAccess, activityLogger);
+router.use(authMiddleware, requirePlatformStaff, activityLogger);
 
 // --- Dashboard & Analytics ---
 router.get('/dashboard/stats', platformAnalyticsController.getDashboardStats.bind(platformAnalyticsController));

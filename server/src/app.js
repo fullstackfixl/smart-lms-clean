@@ -164,6 +164,10 @@ try {
   const notificationRoutes = require('./routes/notifications');
   app.use('/api/notifications', notificationRoutes);
 
+  console.log('  - live-classes');
+  const liveClassesRoutes = require('./routes/liveClasses');
+  app.use('/api/live-classes', liveClassesRoutes);
+
   console.log('  - fees');
   const feesRoutes = require('./routes/fees');
   app.use('/api/fees', feesRoutes);
@@ -260,6 +264,11 @@ try {
   console.log('  - live-classes-simple');
   const liveClassesSimpleRoutes = require('./routes/liveClassesSimple');
   app.use(liveClassesSimpleRoutes);
+
+  console.log('  - organization-corporate');
+  console.log('  - organization-unified');
+  const unifiedOrgRoutes = require('./routes/organization/index');
+  app.use('/api/organization', unifiedOrgRoutes);
 
   console.log('  - api (generic REST routes)');
   const apiRoutes = require('./api/routes/index');

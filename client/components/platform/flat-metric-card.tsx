@@ -26,20 +26,20 @@ export function FlatMetricCard({
   className
 }: FlatMetricCardProps) {
   return (
-    <Card className={cn("border-gray-200 bg-white p-6 rounded-md no-shadow", className)}>
+    <Card className={cn("border-slate-200 bg-white p-6 rounded-xl shadow-sm shadow-slate-100/60 hover:shadow-md hover:shadow-slate-100 transition-shadow", className)}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
             {title}
           </p>
-          <h3 className="mt-2 text-3xl font-bold text-slate-900">
+          <h3 className="mt-2 text-3xl font-extrabold text-slate-900 tracking-tight">
             {value}
           </h3>
           {(subtitle || trend) && (
             <div className="mt-2 flex items-center gap-2">
               {trend && (
                 <span className={cn(
-                  "text-xs font-medium",
+                  "text-xs font-semibold",
                   trend.isPositive ? "text-green-600" : "text-red-600"
                 )}>
                   {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
@@ -53,7 +53,7 @@ export function FlatMetricCard({
             </div>
           )}
         </div>
-        <div className="rounded-md bg-blue-50 p-2">
+        <div className="rounded-lg bg-blue-50 p-2.5">
           <Icon className="h-5 w-5 text-blue-500 stroke-[1.5]" />
         </div>
       </div>

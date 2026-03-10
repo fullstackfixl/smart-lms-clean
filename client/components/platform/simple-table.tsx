@@ -19,14 +19,14 @@ interface SimpleTableProps {
 
 export function SimpleTable({ headers, children, className }: SimpleTableProps) {
   return (
-    <div className={cn("rounded-md border border-gray-200 bg-white overflow-hidden", className)}>
+    <div className={cn("rounded-xl border border-slate-200 bg-white overflow-hidden", className)}>
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50 hover:bg-gray-50">
+          <TableRow className="bg-slate-50 hover:bg-slate-50">
             {headers.map((header) => (
               <TableHead 
                 key={header} 
-                className="h-10 text-xs font-semibold uppercase tracking-wider text-slate-500"
+                className="h-11 text-[11px] font-bold uppercase tracking-wider text-slate-500"
               >
                 {header}
               </TableHead>
@@ -54,7 +54,8 @@ export function SimpleTableRow({
     <TableRow 
       onClick={onClick}
       className={cn(
-        "h-14 border-b border-gray-100 transition-colors hover:bg-blue-50 cursor-pointer",
+        "h-14 border-b border-slate-100 transition-colors",
+        onClick ? "cursor-pointer hover:bg-blue-50/50" : "cursor-default hover:bg-slate-50/40",
         className
       )}
     >
@@ -65,13 +66,11 @@ export function SimpleTableRow({
 
 export function SimpleTableCell({ 
   children, 
-  className 
-}: { 
-  children: React.ReactNode; 
-  className?: string 
-}) {
+  className,
+  ...props 
+}: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <TableCell className={cn("text-sm text-slate-700", className)}>
+    <TableCell className={cn("text-sm text-slate-700", className)} {...props}>
       {children}
     </TableCell>
   )

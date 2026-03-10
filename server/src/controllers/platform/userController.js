@@ -59,6 +59,32 @@ exports.suspendUser = async (req, res) => {
   }
 };
 
+exports.activateUser = async (req, res) => {
+  try {
+    const user = await userService.activateUser(req.params.userId);
+    
+    await auditLogService.logAction({
+      actorId: req.user._id,
+      actorRole: req.user.role,
+      action: 'user_activated',
+      entityType: 'User',
+      entityId: user._id,
+      ipAddress: req.ip
+    });
+
+    res.status(200).json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+      errorCode: 'USER_ACTIVATE_ERROR'
+    });
+  }
+};
+
 exports.resetUserPassword = async (req, res) => {
   try {
     const result = await userService.resetUserPassword(req.params.userId, req.body.password);

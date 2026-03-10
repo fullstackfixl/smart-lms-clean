@@ -48,6 +48,8 @@ router.delete('/quizzes/:id', ...requireInstructor, (req, res, next) => Instruct
 
 // Students & Analytics
 router.get('/courses/:id/students', ...requireInstructor, (req, res, next) => InstructorController.getCourseStudents(req, res, next));
+router.post('/courses/:id/enroll-student', ...requireInstructor, (req, res, next) => InstructorController.enrollStudentInCourse(req, res, next));
+router.get('/courses/:id/join-link', ...requireInstructor, (req, res, next) => InstructorController.getJoinLink(req, res, next));
 router.get('/courses/:id/analytics', ...requireInstructor, (req, res, next) => InstructorController.getCourseAnalytics(req, res, next));
 
 // Announcements

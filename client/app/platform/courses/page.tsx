@@ -45,8 +45,8 @@ export default function CoursesPage() {
     fetcher
   )
 
-  const courses = response?.success ? response.data.courses : []
-  const stats = response?.success ? response.data.stats : { total: 0, published: 0, enrollments: 0 }
+  const courses = response?.data?.courses || []
+  const stats = response?.data?.stats || { total: 0, published: 0, enrollments: 0 }
 
   return (
     <div className="space-y-8">

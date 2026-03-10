@@ -1,18 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, requireRole } = require('../middleware/auth');
-const departmentController = require('../controllers/DepartmentController');
+const departmentController = require('../controllers/organization/departmentController');
+const semesterController = require('../controllers/organization/semesterController');
+const programController = require('../controllers/organization/programController');
+const schoolController = require('../controllers/organization/schoolController');
+const homeworkController = require('../controllers/organization/homeworkController');
+const instituteController = require('../controllers/organization/instituteController');
+const corporateController = require('../controllers/organization/corporateController');
+
+// Keep existing ones that we haven't replaced yet
 const batchController = require('../controllers/BatchController');
 const academicYearController = require('../controllers/AcademicYearController');
-const semesterController = require('../controllers/SemesterController');
 const SubjectController = require('../controllers/SubjectController');
 const TestSeriesController = require('../controllers/TestSeriesController');
 const SchoolGradeController = require('../controllers/SchoolGradeController');
 const GPAReportController = require('../controllers/GPAReportController');
 const TrainerController = require('../controllers/TrainerController');
 const LeaderboardController = require('../controllers/LeaderboardController');
-const ProgramController = require('../controllers/ProgramController');
 const AcademicEnrollmentController = require('../controllers/AcademicEnrollmentController');
+const { createDepartmentValidator, createSemesterValidator, createProgramValidator, createHomeworkValidator, createBatchValidator, assignTrainingValidator, createSkillValidator } = require('../validators/organization/featureValidator');
+const validate = require('../middleware/validate');
 const moduleGuard = require('../middleware/moduleGuard');
 
 // All routes require authentication and organization admin role
@@ -26,18 +34,18 @@ router.put('/academic-years/:id', moduleGuard('ACADEMIC_YEAR'), academicYearCont
 router.delete('/academic-years/:id', moduleGuard('ACADEMIC_YEAR'), academicYearController.delete);
 
 // Department Routes
-router.get('/departments', moduleGuard('DEPARTMENTS'), departmentController.getAll);
-router.post('/departments', moduleGuard('DEPARTMENTS'), departmentController.create);
-router.get('/departments/:id', moduleGuard('DEPARTMENTS'), departmentController.getById);
-router.put('/departments/:id', moduleGuard('DEPARTMENTS'), departmentController.update);
-router.delete('/departments/:id', moduleGuard('DEPARTMENTS'), departmentController.delete);
+router.get('/departments', moduleGuard('DEPARTMENTS'), departmentController.getDepartments);
+router.post('/departments', moduleGuard('DEPARTMENTS'), createDepartmentValidator, validate, departmentController.createDepartment);
+router.get('/departments/:id', moduleGuard('DEPARTMENTS'), departmentController.getDepartmentById);
+router.put('/departments/:id', moduleGuard('DEPARTMENTS'), departmentController.updateDepartment);
+router.delete('/departments/:id', moduleGuard('DEPARTMENTS'), departmentController.deleteDepartment);
 
 // Academic Program (Academic Course) Routes
-router.get('/courses', moduleGuard('DEPARTMENTS'), ProgramController.getAll);
-router.post('/courses', moduleGuard('DEPARTMENTS'), ProgramController.create);
-router.get('/courses/:id', moduleGuard('DEPARTMENTS'), ProgramController.getById);
-router.put('/courses/:id', moduleGuard('DEPARTMENTS'), ProgramController.update);
-router.delete('/courses/:id', moduleGuard('DEPARTMENTS'), ProgramController.delete);
+router.get('/courses', moduleGuard('DEPARTMENTS'), programController.getPrograms);
+router.post('/courses', moduleGuard('DEPARTMENTS'), createProgramValidator, validate, programController.createProgram);
+router.get('/courses/:id', moduleGuard('DEPARTMENTS'), programController.getProgramById); 
+router.put('/courses/:id', moduleGuard('DEPARTMENTS'), async (req, res) => res.status(501).json({message: "Not implemented"}));
+router.delete('/courses/:id', moduleGuard('DEPARTMENTS'), async (req, res) => res.status(501).json({message: "Not implemented"}));
 
 // Batch Routes
 router.get('/batches', moduleGuard('BATCHES'), batchController.getAll);
@@ -47,11 +55,11 @@ router.put('/batches/:id', moduleGuard('BATCHES'), batchController.update);
 router.delete('/batches/:id', moduleGuard('BATCHES'), batchController.delete);
 
 // Semester Routes
-router.get('/semesters', moduleGuard('SEMESTERS'), semesterController.getAll);
-router.post('/semesters', moduleGuard('SEMESTERS'), semesterController.create);
-router.get('/semesters/:id', moduleGuard('SEMESTERS'), semesterController.getById);
-router.put('/semesters/:id', moduleGuard('SEMESTERS'), semesterController.update);
-router.delete('/semesters/:id', moduleGuard('SEMESTERS'), semesterController.delete);
+router.get('/semesters', moduleGuard('SEMESTERS'), semesterController.getSemesters);
+router.post('/semesters', moduleGuard('SEMESTERS'), createSemesterValidator, validate, semesterController.createSemester);
+router.get('/semesters/:id', moduleGuard('SEMESTERS'), semesterController.getSemesters);
+router.put('/semesters/:id', moduleGuard('SEMESTERS'), async (req, res) => res.status(501).json({message: "Not implemented"}));
+router.delete('/semesters/:id', moduleGuard('SEMESTERS'), async (req, res) => res.status(501).json({message: "Not implemented"}));
 
 // Subject Routes
 router.get('/subjects', moduleGuard('SUBJECTS'), SubjectController.getAll);
@@ -67,16 +75,22 @@ router.post('/test-series', (req, res) => TestSeriesController.create(req, res))
 router.put('/test-series/:id', (req, res) => TestSeriesController.update(req, res));
 router.delete('/test-series/:id', (req, res) => TestSeriesController.delete(req, res));
 
-// School Grade Levels & Sections
-router.use(['/school-levels', '/school-sections'], moduleGuard('GRADES_SECTIONS'));
-router.get('/school-levels', (req, res) => SchoolGradeController.listLevels(req, res));
-router.post('/school-levels', (req, res) => SchoolGradeController.createLevel(req, res));
-router.put('/school-levels/:id', (req, res) => SchoolGradeController.updateLevel(req, res));
-router.delete('/school-levels/:id', (req, res) => SchoolGradeController.deleteLevel(req, res));
-router.get('/school-sections', (req, res) => SchoolGradeController.listSections(req, res));
-router.post('/school-sections', (req, res) => SchoolGradeController.createSection(req, res));
-router.put('/school-sections/:id', (req, res) => SchoolGradeController.updateSection(req, res));
-router.delete('/school-sections/:id', (req, res) => SchoolGradeController.deleteSection(req, res));
+// School Grade Levels & Sections (Mapping to new Controller)
+router.get('/school-levels', moduleGuard('GRADES_SECTIONS'), schoolController.getClasses);
+router.post('/school-levels', moduleGuard('GRADES_SECTIONS'), schoolController.createClass);
+router.get('/school-sections', moduleGuard('GRADES_SECTIONS'), schoolController.getSections);
+router.post('/school-sections', moduleGuard('GRADES_SECTIONS'), schoolController.createSection);
+
+// Homework (School)
+router.get('/homework', moduleGuard('GRADES_SECTIONS'), homeworkController.getHomework);
+router.post('/homework', moduleGuard('GRADES_SECTIONS'), createHomeworkValidator, validate, homeworkController.createHomework);
+
+// Parent Access (School)
+router.get('/parents', moduleGuard('GRADES_SECTIONS'), async (req, res) => {
+  const { User } = require('../models');
+  const parents = await User.find({ organization_id: req.user.organization_id, role: 'parent' });
+  res.status(200).json({ success: true, data: parents });
+});
 
 // GPA Reports (College)
 router.use('/gpa', moduleGuard('GPA_REPORTS'));
@@ -89,6 +103,17 @@ router.get('/gpa/student/:studentId', (req, res) => GPAReportController.getStude
 router.use('/trainers', moduleGuard('TRAINERS'));
 router.get('/trainers', (req, res) => TrainerController.list(req, res));
 router.put('/trainers/:id/expertise', (req, res) => TrainerController.updateExpertise(req, res));
+
+// Institute Features (Batches & Certificates)
+router.get('/batches', moduleGuard('BATCHES'), instituteController.getBatches);
+router.post('/batches', moduleGuard('BATCHES'), createBatchValidator, validate, instituteController.createBatch);
+router.post('/certificates', moduleGuard('CERTIFICATES'), instituteController.issueCertificate);
+
+// Corporate Features
+router.get('/company-departments', moduleGuard('DEPARTMENTS'), corporateController.getCompanyDepartments);
+router.post('/training-assignments', moduleGuard('DEPARTMENTS'), assignTrainingValidator, validate, corporateController.assignTraining);
+router.get('/skills', moduleGuard('DEPARTMENTS'), corporateController.getSkills);
+router.post('/skills', moduleGuard('DEPARTMENTS'), createSkillValidator, validate, corporateController.createSkill);
 
 // Leaderboards (Institute)
 router.use('/leaderboard', moduleGuard('LEADERBOARDS'));

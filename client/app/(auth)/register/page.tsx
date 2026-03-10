@@ -42,6 +42,17 @@ export default function RegisterPage() {
     return () => clearInterval(interval)
   }, [resendTimer])
 
+  // Pre-fill org code from URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const org = params.get('org')
+      if (org) {
+        setOrganizationCode(org.toUpperCase())
+      }
+    }
+  }, [])
+
   // Validate organization code when changed (debounced)
   useEffect(() => {
     const code = organizationCode.trim()

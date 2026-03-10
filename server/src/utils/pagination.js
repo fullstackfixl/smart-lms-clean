@@ -8,11 +8,15 @@ exports.paginate = async (model, query = {}, options = {}) => {
   const sort = options.sort || { created_at: -1 };
 
   const [data, total] = await Promise.all([
-    model.find(query)
-      .sort(sort)
-      .skip(skip)
-      .limit(limit)
-      .lean(),
+    (() => {
+      let q = model.find(query)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit);
+      if (options.select) q = q.select(options.select);
+      if (options.populate) q = q.populate(options.populate);
+      return q.lean();
+    })(),
     model.countDocuments(query)
   ]);
 
