@@ -1,197 +1,178 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React from 'react'
+import useSWR from 'swr'
 import { 
   Users, 
   Building2, 
   GraduationCap, 
-  TrendingUp, 
+  Activity,
   ArrowUpRight,
   ChevronRight,
-  Activity
+  TrendingUp,
+  FileText
 } from 'lucide-react'
-import { SimpleCard, SimpleBadge, FlatTable, FlatTableHead, FlatTableRow, FlatTableCell } from '../../../components/platform/ui-standard'
-import { BasicChart } from '../../../components/platform/chart-wrapper'
+import { FlatMetricCard } from '../../../components/platform/flat-metric-card'
+import { BasicChart } from '../../../components/platform/basic-chart'
+import { SimpleTable, SimpleTableRow, SimpleTableCell } from '../../../components/platform/simple-table'
+import { Card } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Skeleton } from '../../../components/ui/skeleton'
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: response, error, isLoading } = useSWR('/api/platform/dashboard', fetcher)
+  const stats = response?.success ? response.data : null
 
-  useEffect(() => {
-    // Fetch real metrics
-    const fetchStats = async () => {
-      try {
-        const response = await fetch('/api/platform/dashboard')
-        const data = await response.json()
-        if (data.success) {
-          setStats(data.data)
-        }
-      } catch (error) {
-        console.error('Failed to fetch dashboard stats:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchStats()
-  }, [])
-
-  const enrollmentData = stats?.enrollmentFlux || [
-    { name: 'Mon', value: 0 },
-    { name: 'Tue', value: 0 },
-    { name: 'Wed', value: 0 },
-  ]
-
-  const demographicData = [
-    { name: 'Students', value: stats?.totalStudents || 0 },
-    { name: 'Instructors', value: stats?.totalInstructors || 0 },
-  ]
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 w-48 animate-pulse rounded bg-gray-100" />
-        <div className="grid grid-cols-4 gap-6">
+      <div className="space-y-8">
+        <div>
+          <Skeleton className="h-8 w-64 bg-gray-100" />
+          <Skeleton className="mt-2 h-4 w-96 bg-gray-50" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 animate-pulse rounded-md bg-gray-100" />
+            <Skeleton key={i} className="h-32 rounded-md bg-gray-100" />
           ))}
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <Skeleton className="h-[350px] rounded-md bg-gray-100" />
+          <Skeleton className="h-[350px] rounded-md bg-gray-100" />
         </div>
       </div>
     )
   }
 
+  const enrollmentData = stats?.enrollmentFlux || [
+    { name: 'Mon', value: 120 },
+    { name: 'Tue', value: 150 },
+    { name: 'Wed', value: 180 },
+    { name: 'Thu', value: 140 },
+    { name: 'Fri', value: 210 },
+    { name: 'Sat', value: 190 },
+    { name: 'Sun', value: 230 },
+  ]
+
+  const growthData = [
+    { name: 'Students', value: stats?.totalStudents || 0 },
+    { name: 'Institutions', value: stats?.totalOrganizations || 0 },
+    { name: 'Courses', value: stats?.totalCourses || 0 },
+  ]
+
   return (
     <div className="space-y-8">
       {/* Hero Header */}
       <section>
-        <h1 className="text-2xl font-bold text-slate-900 border-b-2 border-blue-600 inline-block pb-1">
-          Intelligence Hub
+        <h1 className="text-2xl font-bold text-slate-900 border-b-2 border-blue-500 inline-block pb-1">
+          Platform Dashboard
         </h1>
-        <p className="mt-2 text-slate-500">Ecosystem integrity verified. All systems operational.</p>
+        <p className="mt-2 text-slate-500 max-w-2xl">
+          Aggregate ecosystem data. Real-time overview of your institutions, enrollment trends, and platform-wide user health.
+        </p>
       </section>
 
       {/* Metric Cards Grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <SimpleCard className="flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 text-blue-600">
-              <Users className="h-5 w-5 stroke-[1.5]" />
-            </div>
-            <div className="flex items-center text-xs font-medium text-orange-600">
-              <TrendingUp className="mr-1 h-3 w-3" />
-              +12.5%
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-sm font-medium text-slate-500">Global Learners</p>
-            <p className="text-2xl font-bold text-slate-900">{stats?.totalUsers || 0}</p>
-          </div>
-        </SimpleCard>
-
-        <SimpleCard className="flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-orange-50 text-orange-600">
-              <Activity className="h-5 w-5 stroke-[1.5]" />
-            </div>
-            <div className="flex items-center text-xs font-medium text-orange-600">
-              <TrendingUp className="mr-1 h-3 w-3" />
-              +5.2%
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-sm font-medium text-slate-500">Avg Completion</p>
-            <p className="text-2xl font-bold text-slate-900">36.8%</p>
-          </div>
-        </SimpleCard>
-
-        <SimpleCard className="flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-green-50 text-green-600">
-              <GraduationCap className="h-5 w-5 stroke-[1.5]" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-sm font-medium text-slate-500">Active Courses</p>
-            <p className="text-2xl font-bold text-slate-900">{stats?.totalCourses || 0}</p>
-          </div>
-        </SimpleCard>
-
-        <SimpleCard className="flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-teal-50 text-teal-600">
-              <Building2 className="h-5 w-5 stroke-[1.5]" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <p className="text-sm font-medium text-slate-500">Organizations</p>
-            <p className="text-2xl font-bold text-slate-900">{stats?.totalOrganizations || 0}</p>
-          </div>
-        </SimpleCard>
+        <FlatMetricCard
+          title="Total Organizations"
+          value={stats?.totalOrganizations || 0}
+          icon={Building2}
+          trend={{ value: 5.2, isPositive: true }}
+          subtitle="Registered institutions"
+        />
+        <FlatMetricCard
+          title="Active Users"
+          value={stats?.activeUsersToday || 0}
+          icon={Users}
+          trend={{ value: 12.5, isPositive: true }}
+          subtitle="Today's activity"
+        />
+        <FlatMetricCard
+          title="Total Courses"
+          value={stats?.totalCourses || 0}
+          icon={FileText}
+          subtitle="Across all orgs"
+        />
+        <FlatMetricCard
+          title="Active Today"
+          value={stats?.activeSessions || 0}
+          icon={Activity}
+          subtitle="Concurrent users"
+        />
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SimpleCard>
+        <Card className="border-gray-200 bg-white p-6 rounded-md no-shadow">
           <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900">Enrollment Flux</h3>
-            <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
-              Details <ArrowUpRight className="ml-1 h-3 w-3" />
-            </Button>
-          </div>
-          <BasicChart data={enrollmentData} type="line" height={240} />
-        </SimpleCard>
-
-        <SimpleCard>
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900">User Demographics</h3>
-            <div className="flex space-x-2">
-              <SimpleBadge variant="blue">Students</SimpleBadge>
-              <SimpleBadge variant="orange">Staff</SimpleBadge>
+            <h3 className="text-lg font-bold text-slate-900">Enrollment Growth</h3>
+            <div className="flex items-center text-xs font-medium text-blue-600">
+              <TrendingUp className="mr-1 h-3 w-3" />
+              +18% this week
             </div>
           </div>
-          <BasicChart data={demographicData} type="pie" height={240} />
-        </SimpleCard>
+          <BasicChart data={enrollmentData} type="line" xKey="name" yKey="value" height={280} />
+        </Card>
+
+        <Card className="border-gray-200 bg-white p-6 rounded-md no-shadow">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-slate-900">Platform Distribution</h3>
+            <Button variant="ghost" size="sm" className="text-blue-500 hover:bg-blue-50 font-bold h-8">
+              View Analytics <ArrowUpRight className="ml-1 h-3 w-3" />
+            </Button>
+          </div>
+          <BasicChart data={growthData} type="bar" xKey="name" yKey="value" height={280} />
+        </Card>
       </div>
 
-      {/* Recent Activity Section */}
-      <SimpleCard>
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900">Recent Onboardings</h3>
-          <Button variant="outline" size="sm" className="border-gray-200 text-slate-600 hover:bg-gray-50">
-            View All Organizations
+      {/* Recent Onboardings Section */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-900">Recent Onboardings</h3>
+          <Button variant="ghost" className="text-orange-500 hover:text-orange-600 font-bold p-0 h-auto">
+            View All Reports
           </Button>
         </div>
-        <FlatTable>
-          <FlatTableHead>
-            <FlatTableRow>
-              <FlatTableCell className="font-semibold text-slate-700">Institution</FlatTableCell>
-              <FlatTableCell className="font-semibold text-slate-700">Type</FlatTableCell>
-              <FlatTableCell className="font-semibold text-slate-700">Status</FlatTableCell>
-              <FlatTableCell className="font-semibold text-slate-700">Onboarded</FlatTableCell>
-              <FlatTableCell className="text-right"></FlatTableCell>
-            </FlatTableRow>
-          </FlatTableHead>
-          <tbody>
-            {(stats?.recentActivity?.organizations || []).slice(0, 5).map((org: any) => (
-              <FlatTableRow key={org._id}>
-                <FlatTableCell className="font-medium text-blue-600">{org.name}</FlatTableCell>
-                <FlatTableCell className="text-slate-500">{org.type}</FlatTableCell>
-                <FlatTableCell>
-                  <SimpleBadge variant={org.status === 'active' ? 'green' : 'orange'}>
-                    {org.status}
-                  </SimpleBadge>
-                </FlatTableCell>
-                <FlatTableCell className="text-slate-500">
-                  {new Date(org.created_at).toLocaleDateString()}
-                </FlatTableCell>
-                <FlatTableCell className="text-right">
-                  <ChevronRight className="h-4 w-4 text-slate-300" />
-                </FlatTableCell>
-              </FlatTableRow>
-            ))}
-          </tbody>
-        </FlatTable>
-      </SimpleCard>
+        
+        <SimpleTable headers={['Institution', 'Type', 'Status', 'Onboarded', 'Actions']}>
+          {(stats?.recentActivity?.organizations || []).slice(0, 5).map((org: any) => (
+            <SimpleTableRow key={org._id}>
+              <SimpleTableCell className="font-bold text-blue-600">
+                {org.name}
+              </SimpleTableCell>
+              <SimpleTableCell>
+                <span className="text-slate-500">{org.type}</span>
+              </SimpleTableCell>
+              <SimpleTableCell>
+                <Badge className={cn(
+                  "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                  org.status === 'active' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                )}>
+                  {org.status}
+                </Badge>
+              </SimpleTableCell>
+              <SimpleTableCell className="text-slate-400 font-medium">
+                {new Date(org.created_at).toLocaleDateString()}
+              </SimpleTableCell>
+              <SimpleTableCell className="text-right">
+                <Button variant="ghost" size="sm" className="text-slate-300 hover:text-blue-500">
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </SimpleTableCell>
+            </SimpleTableRow>
+          ))}
+          {(!stats?.recentActivity?.organizations || stats.recentActivity.organizations.length === 0) && (
+            <SimpleTableRow>
+              <SimpleTableCell colSpan={5} className="text-center py-8 text-slate-400">
+                No recent activity found.
+              </SimpleTableCell>
+            </SimpleTableRow>
+          )}
+        </SimpleTable>
+      </section>
     </div>
   )
 }

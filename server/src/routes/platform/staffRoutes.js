@@ -1,14 +1,15 @@
 const express = require('express');
-const staffController = require('../../controllers/platformAdmin/staffController');
+const staffController = require('../../controllers/platform/staffController');
+const { createStaffValidator, updateStaffValidator } = require('../../validators/platform/staffValidator');
 const { requirePlatformAdmin } = require('../../middleware/auth');
 const router = express.Router();
 
-// All staff operations are Admin-only as per requirements
+// Only Platform Admin can manage staff
 router.use(requirePlatformAdmin);
 
-router.post('/', staffController.create);
-router.get('/', staffController.list);
-router.put('/:staffId', staffController.update);
-router.patch('/:staffId/disable', staffController.disable);
+router.get('/', staffController.getStaffList);
+router.post('/', createStaffValidator, staffController.createStaff);
+router.put('/:staffId', updateStaffValidator, staffController.updateStaff);
+router.patch('/:staffId/disable', staffController.disableStaff);
 
 module.exports = router;

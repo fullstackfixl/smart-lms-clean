@@ -1,149 +1,240 @@
 "use client"
- 
-import React, { useState } from "react"
+
+import React, { useState } from 'react'
+import useSWR from 'swr'
 import { 
-  BarChart3, 
   Download, 
-  FileJson, 
   FileText, 
+  Plus, 
   Calendar, 
-  Globe, 
-  Database,
-  TrendingUp,
-  Activity,
-  CheckCircle2
-} from "lucide-react"
-import { SimpleCard, MetricCard } from "../../../components/platform/core/SimpleCard"
-import { SimpleLineChart, SimpleBarChart } from "../../../components/platform/core/BasicChart"
-import { SimpleButton } from "../../../components/platform/core/SimpleButton"
-import { cn } from "../../../lib/utils"
- 
-const comparisonData = [
-  { name: 'Jan', value: 4000, completions: 2400 },
-  { name: 'Feb', value: 5200, completions: 3100 },
-  { name: 'Mar', value: 4800, completions: 2800 },
-  { name: 'Apr', value: 6100, completions: 4200 },
-  { name: 'May', value: 5800, completions: 3800 },
-  { name: 'Jun', value: 7200, completions: 5100 },
-  { name: 'Jul', value: 8500, completions: 6200 },
-]
- 
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  FileSpreadsheet,
+  FileJson,
+  MoreHorizontal,
+  RefreshCw
+} from 'lucide-react'
+import { SimpleTable, SimpleTableRow, SimpleTableCell } from '../../../components/platform/simple-table'
+import { MinimalModalForm } from '../../../components/platform/minimal-modal-form'
+import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Label } from '../../../components/ui/label'
+import { Input } from '../../../components/ui/input'
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '../../../components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../../components/ui/dropdown-menu"
+import { toast } from "sonner"
+import { cn } from '../../../lib/utils'
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
 export default function ReportsPage() {
-  const [exportLoading, setExportLoading] = useState(false)
- 
-  const triggerExport = () => {
-    setExportLoading(true)
-    setTimeout(() => setExportLoading(false), 2000)
+  const { data: response, error, isLoading, mutate } = useSWR('/api/platform/reports', fetcher)
+  const reports = response?.success ? response.data : []
+  
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    type: 'enrollment',
+    format: 'csv',
+    range: 'last_30_days'
+  })
+
+  const handleGenerate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    try {
+      const res = await fetch('/api/platform/reports/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success("Intelligence report synthesis initiated")
+        setIsModalOpen(false)
+        mutate()
+      } else {
+        toast.error(data.message || "Failed to initiate report")
+      }
+    } catch (err) {
+      toast.error("Network error")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
- 
+
+  const getFormatIcon = (format: string) => {
+    switch (format) {
+      case 'csv': return <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
+      case 'pdf': return <FileText className="h-4 w-4 text-orange-500" />
+      case 'json': return <FileJson className="h-4 w-4 text-blue-500" />
+      default: return <FileText className="h-4 w-4 text-slate-400" />
+    }
+  }
+
   return (
-    <div className="space-y-12 pb-20">
-      
-      {/* ─── Page Header ─────────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-         <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-               Analytics <span className="text-[#3B82F6]">Terminal.</span>
-            </h1>
-            <p className="text-[14px] text-slate-500 font-medium italic">Comprehensive diagnostic suite for institutional ecosystem oversight.</p>
-         </div>
-         <div className="flex items-center gap-3">
-            <div className="bg-gray-100 p-1 rounded-md flex items-center">
-               {["Last 30 Days", "Quarterly", "Yearly"].map((range, idx) => (
-                  <button 
-                    key={range}
-                    className={cn(
-                      "px-4 py-1.5 rounded-sm text-[11px] font-bold transition-all",
-                      idx === 0 ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                    )}
-                  >
-                     {range}
-                  </button>
-               ))}
-            </div>
-            <SimpleButton variant="secondary">
-               <Calendar className="w-4 h-4 mr-2" /> Custom Range
-            </SimpleButton>
-         </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 border-b-2 border-blue-500 inline-block pb-1">
+            Intelligence Reports
+          </h1>
+          <p className="mt-2 text-slate-500">
+            Synthesize and export deep-dive analytical matrices for internal stakeholders.
+          </p>
+        </div>
+        <Button 
+          onClick={() => setIsModalOpen(true)}
+          className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-md px-6 shadow-none h-11"
+        >
+          <Plus className="mr-2 h-5 w-5 stroke-[3]" /> Generate Report
+        </Button>
       </div>
- 
-      {/* ─── Metric Matrix ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-         <MetricCard label="Global MAU" value="242.4k" trend="+12%" icon={<UsersIcon className="w-5 h-5" />} color="blue" />
-         <MetricCard label="Avg Engagement" value="88.2%" trend="+4%" icon={<Activity className="w-5 h-5" />} color="green" />
-         <MetricCard label="Content Volume" value="4.2k TB" trend="+82%" icon={<Database className="w-5 h-5" />} color="orange" />
-         <MetricCard label="Peer Efficiency" value="94.1%" trend="Peak" icon={<CheckCircle2 className="w-5 h-5" />} color="rose" />
-      </div>
- 
-      {/* ─── Analytical Layers ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-         <SimpleCard 
-           title="Universal Consumption Matrix" 
-           subtitle="Pedagogical engagement vs completion flux across global nodes" 
-           className="lg:col-span-12"
-           icon={<Globe className="w-5 h-5" />}
-         >
-            <SimpleLineChart data={comparisonData} xKey="name" yKey="value" color="#F97316" />
-         </SimpleCard>
- 
-         <SimpleCard 
-           title="Institutional Yield" 
-           subtitle="Top performing organizational nodes by efficiency" 
-           className="lg:col-span-8"
-           icon={<Database className="w-5 h-5" />}
-         >
-            <SimpleBarChart data={comparisonData} xKey="name" yKey="value" color="#3B82F6" />
-         </SimpleCard>
- 
-         <div className="lg:col-span-4 bg-[#F8FAFC] border border-gray-100 rounded-md p-10 flex flex-col justify-between">
-            <div className="space-y-4">
-               <h3 className="text-xl font-bold text-slate-900 uppercase italic tracking-tight">Export Protocols.</h3>
-               <p className="text-[13px] text-slate-500 font-medium leading-relaxed italic">Synthesis of global telemetry into portable data matrices.</p>
+
+      {/* Main Table */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-900 uppercase italic tracking-widest text-[11px] opacity-40">Report Generation Stream</h3>
+          <Button variant="ghost" size="sm" onClick={() => mutate()} className="text-blue-500 hover:bg-blue-50 h-8 px-2">
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} /> Refresh Queue
+          </Button>
+        </div>
+
+        <SimpleTable headers={['Report Identifier', 'Format', 'Source Hub', 'Status', 'Generated At', 'Actions']}>
+          {reports.map((report: any) => (
+            <SimpleTableRow key={report._id}>
+              <SimpleTableCell>
+                <div>
+                  <div className="font-bold text-blue-600">{report.name}</div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">ID: {report._id.slice(-8)}</div>
+                </div>
+              </SimpleTableCell>
+              <SimpleTableCell>
+                <div className="flex items-center gap-2">
+                  {getFormatIcon(report.format)}
+                  <span className="text-xs font-bold uppercase text-slate-600">{report.format}</span>
+                </div>
+              </SimpleTableCell>
+              <SimpleTableCell>
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Clock className="h-3.5 w-3.5 opacity-40" />
+                  <span className="text-xs font-medium uppercase">{report.type.replace('_', ' ')}</span>
+                </div>
+              </SimpleTableCell>
+              <SimpleTableCell>
+                <Badge className={cn(
+                  "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                  report.status === 'ready' ? "bg-green-100 text-green-700" : 
+                  report.status === 'processing' ? "bg-blue-100 text-blue-700 animate-pulse" : "bg-red-100 text-red-700"
+                )}>
+                  {report.status}
+                </Badge>
+              </SimpleTableCell>
+              <SimpleTableCell className="text-slate-400 font-bold text-[10px] uppercase">
+                {new Date(report.createdAt).toLocaleString()}
+              </SimpleTableCell>
+              <SimpleTableCell className="text-right">
+                {report.status === 'ready' ? (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <MoreHorizontal className="h-4 w-4 text-slate-200" />
+                )}
+              </SimpleTableCell>
+            </SimpleTableRow>
+          ))}
+          {reports.length === 0 && !isLoading && (
+            <SimpleTableRow>
+              <SimpleTableCell colSpan={6} className="text-center py-20 text-slate-400">
+                <FileText className="mx-auto h-12 w-12 text-slate-100 mb-4" />
+                <p className="font-medium">No intelligence reports in current queue.</p>
+              </SimpleTableCell>
+            </SimpleTableRow>
+          )}
+        </SimpleTable>
+      </section>
+
+      {/* Generate Modal */}
+      <MinimalModalForm
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Synthesize New Report"
+        description="Select report parameters and format to begin global ecosystem data extraction."
+        onSubmit={handleGenerate}
+        submitLabel="Initiate Synthesis"
+        loading={isSubmitting}
+      >
+        <div className="space-y-5">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Report Label</Label>
+            <Input 
+              required 
+              placeholder="e.g. Q1 Global Enrollment Matrix" 
+              className="h-10 border-gray-300 focus:border-blue-500"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Data Stream</Label>
+              <Select value={formData.type} onValueChange={(v) => setFormData({...formData, type: v})}>
+                <SelectTrigger className="h-10 border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="enrollment">Enrollment Cycles</SelectItem>
+                  <SelectItem value="revenue">Financial Velocity</SelectItem>
+                  <SelectItem value="activity">User Engagement</SelectItem>
+                  <SelectItem value="security">Audit Violations</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            
-            <div className="space-y-3 mt-8">
-               <ExportBtn icon={<FileText className="w-4 h-4" />} label="PDF Status Report" onClick={triggerExport} loading={exportLoading} />
-               <ExportBtn icon={<FileJson className="w-4 h-4" />} label="JSON Data Payload" onClick={triggerExport} loading={exportLoading} />
-               <ExportBtn icon={<Download className="w-4 h-4" />} label="CSV Direct Link" onClick={triggerExport} loading={exportLoading} />
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Target Format</Label>
+              <Select value={formData.format} onValueChange={(v) => setFormData({...formData, format: v})}>
+                <SelectTrigger className="h-10 border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="csv">CSV Spreadsheet</SelectItem>
+                  <SelectItem value="pdf">PDF Document</SelectItem>
+                  <SelectItem value="json">JSON Matrix</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-         </div>
-      </div>
- 
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Temporal Range</Label>
+            <Select value={formData.range} onValueChange={(v) => setFormData({...formData, range: v})}>
+              <SelectTrigger className="h-10 border-gray-300">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="last_24h">Internal Last 24h</SelectItem>
+                <SelectItem value="last_7_days">Last 7 Cycles</SelectItem>
+                <SelectItem value="last_30_days">Last 30 Cycles</SelectItem>
+                <SelectItem value="custom">Custom Range...</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </MinimalModalForm>
     </div>
-  )
-}
- 
-function UsersIcon({ className }: { className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width="24" 
-      height="24" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="1.5" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  )
-}
- 
-function ExportBtn({ icon, label, onClick, loading }: any) {
-  return (
-    <button 
-      onClick={onClick}
-      disabled={loading}
-      className="w-full h-12 bg-white border border-gray-200 rounded-sm flex items-center gap-3 px-4 hover:bg-gray-50 text-slate-700 font-bold text-[11px] uppercase tracking-widest transition-all group disabled:opacity-50"
-    >
-       {loading ? <div className="w-4 h-4 border-2 border-[#3B82F6] border-t-transparent rounded-full animate-spin" /> : <div className="text-[#3B82F6]">{icon}</div>}
-       {label}
-    </button>
   )
 }

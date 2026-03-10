@@ -1,44 +1,15 @@
-const SystemConfig = require('../../models/SystemConfig');
-const AuditLog = require('../../models/AuditLog');
+const { SystemConfig } = require('../../models');
 
-/**
- * Platform Settings Service
- * Manages global institutional protocols and platform preferences
- */
-class SettingsService {
-  /**
-   * Retrieve global configuration payload
-   */
-  async getSettings() {
-    return SystemConfig.getOrCreate();
-  }
+exports.getSettings = async () => {
+  return SystemConfig.getOrCreate();
+};
 
-  /**
-   * Update system-wide configuration
-   */
-  async updateSettings(data, actor) {
-    const config = await SystemConfig.getOrCreate();
-    
-    // Update fields
-    if (data.maintenanceMode !== undefined) config.maintenanceMode = data.maintenanceMode;
-    if (data.maxOrganizations !== undefined) config.maxOrganizations = data.maxOrganizations;
-    if (data.features) config.features = { ...config.features, ...data.features };
-    
-    config.updatedBy = actor._id;
-    await config.save();
-
-    await AuditLog.create({
-      user_id: actor._id,
-      user_email: actor.email,
-      user_role: actor.role,
-      action: 'UPDATE',
-      resource: 'config',
-      resource_id: config._id.toString(),
-      details: data
-    });
-
-    return config;
-  }
-}
-
-module.exports = new SettingsService();
+exports.updateSettings = async (data, userId) => {
+  const config = await SystemConfig.getOrCreate();
+  
+  Object.assign(config, data);
+  config.updatedBy = userId;
+  
+  await config.save();
+  return config;
+};

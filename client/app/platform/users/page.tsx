@@ -1,163 +1,212 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import useSWR from 'swr'
 import { 
   Users, 
   Search, 
-  UserPlus, 
   MoreHorizontal, 
   Shield, 
   GraduationCap, 
-  UserCheck 
+  UserCheck,
+  Filter,
+  ArrowUpRight,
+  Lock,
+  Unlock,
+  Key
 } from 'lucide-react'
-import { 
-  SimpleCard, 
-  SimpleBadge, 
-  FlatTable, 
-  FlatTableHead, 
-  FlatTableRow, 
-  FlatTableCell 
-} from '../../../components/platform/ui-standard'
+import { SimpleTable, SimpleTableRow, SimpleTableCell } from '../../../components/platform/simple-table'
+import { FlatMetricCard } from '../../../components/platform/flat-metric-card'
 import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../../components/ui/dropdown-menu"
+import { toast } from "sonner"
+import { cn } from '../../../lib/utils'
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function UsersPage() {
   const searchParams = useSearchParams()
   const organizationId = searchParams.get('organizationId')
   
-  const [users, setUsers] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('student')
-
   const [search, setSearch] = useState('')
+  
+  const { data: response, error, isLoading, mutate } = useSWR(
+    `/api/platform/users?role=${activeTab}&search=${search}${organizationId ? `&organization=${organizationId}` : ''}`, 
+    fetcher
+  )
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true)
-      try {
-        let url = `/api/platform/users?role=${activeTab}&search=${search}`
-        if (organizationId) url += `&organization=${organizationId}`
-        
-        const response = await fetch(url)
-        const data = await response.json()
-        if (data.success) {
-          setUsers(data.data.users)
-        }
-      } catch (error) {
-        console.error('Failed to fetch users:', error)
-      } finally {
-        setLoading(false)
+  const users = response?.success ? response.data.users : []
+  const stats = response?.success ? response.data.stats : { total: 0, active: 0, suspended: 0 }
+
+  const handleAction = async (id: string, action: string) => {
+    try {
+      const res = await fetch(`/api/platform/users/${id}/${action}`, {
+        method: action === 'reset-password' ? 'POST' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: action === 'reset-password' ? JSON.stringify({ password: 'NewPassword123' }) : undefined
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success(`User ${action.replace('-', ' ')} successful`)
+        mutate()
+      } else {
+        toast.error(data.message || "Action failed")
       }
+    } catch (err) {
+      toast.error("Network error")
     }
-    const timer = setTimeout(() => {
-      fetchUsers()
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [activeTab, search, organizationId])
+  }
 
   return (
     <div className="space-y-8">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 border-b-2 border-blue-600 inline-block pb-1">
-            {organizationId ? 'Institutional Oversight' : 'Users & Roles'}
+          <h1 className="text-2xl font-bold text-slate-900 border-b-2 border-blue-500 inline-block pb-1">
+            {organizationId ? 'Institutional Oversight' : 'Global User Monitoring'}
           </h1>
           <p className="mt-2 text-slate-500">
-            {organizationId ? 'Filtering identity data for child tenant node.' : 'Manage global identity and hierarchical access control.'}
+            {organizationId ? 'Aggregated identity data for child tenant.' : 'Monitor identity health and cross-institutional user growth.'}
           </p>
         </div>
-        <Button className="bg-orange-600 hover:bg-orange-700 text-white shadow-none">
-          <UserPlus className="mr-2 h-4 w-4" /> Invite User
+        <Button className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-md px-6 shadow-none h-11">
+          Suspend Selected
         </Button>
       </div>
 
-      <Tabs defaultValue="student" onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-gray-100 p-1 rounded-md border border-gray-200">
-          <TabsTrigger value="student" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-none px-6">
-            <GraduationCap className="mr-2 h-4 w-4" /> Students
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <FlatMetricCard
+          title="Total Identities"
+          value={stats?.total || 0}
+          icon={Users}
+          subtitle="Registered users"
+        />
+        <FlatMetricCard
+          title="Active Learners"
+          value={stats?.active || 0}
+          icon={GraduationCap}
+          className="border-l-4 border-l-green-500"
+          subtitle="System access granted"
+        />
+        <FlatMetricCard
+          title="Access Suspended"
+          value={stats?.suspended || 0}
+          icon={Lock}
+          className="border-l-4 border-l-red-500"
+          subtitle="Security restricted"
+        />
+      </div>
+
+      {/* Tabs & Table */}
+      <Tabs defaultValue="student" onValueChange={setActiveTab} className="w-full space-y-6">
+        <TabsList className="bg-white p-0.5 rounded-md border border-gray-200 w-fit">
+          <TabsTrigger value="student" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-bold px-6 h-9 transition-all">
+            Students
           </TabsTrigger>
-          <TabsTrigger value="instructor" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-none px-6">
-            <UserCheck className="mr-2 h-4 w-4" /> Instructors
+          <TabsTrigger value="instructor" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-bold px-6 h-9 transition-all">
+            Instructors
           </TabsTrigger>
-          <TabsTrigger value="org_admin" className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-none px-6">
-            <Shield className="mr-2 h-4 w-4" /> Org Admins
+          <TabsTrigger value="org_admin" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-bold px-6 h-9 transition-all">
+            Org Admins
           </TabsTrigger>
         </TabsList>
 
-        <div className="mt-6 flex items-center justify-between rounded-t-md bg-white p-4 border border-gray-200 border-b-0">
-          <div className="relative w-full max-sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 stroke-[1.5]" />
-            <input
-              type="text"
-              placeholder={`Search ${activeTab}s...`}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-10 w-full rounded-md border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-md border border-gray-200">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-500 stroke-[2]" />
+              <input
+                type="text"
+                placeholder={`Search ${activeTab}s by name or email...`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-0"
+              />
+            </div>
+            <Button variant="ghost" className="text-slate-500 hover:text-blue-600 font-bold h-10 px-4">
+              <Filter className="mr-2 h-4 w-4" /> Filters
+            </Button>
           </div>
-          <div className="flex space-x-2">
-            <Button variant="outline" size="sm" className="text-slate-600">Bulk Assign Role</Button>
-          </div>
-        </div>
 
-        <SimpleCard className="p-0 overflow-hidden border-t-0 rounded-t-none">
-          <FlatTable>
-            <FlatTableHead>
-              <FlatTableRow>
-                <FlatTableCell className="font-semibold text-slate-700">Name</FlatTableCell>
-                <FlatTableCell className="font-semibold text-slate-700">Email Address</FlatTableCell>
-                <FlatTableCell className="font-semibold text-slate-700">Organization</FlatTableCell>
-                <FlatTableCell className="font-semibold text-slate-700">Status</FlatTableCell>
-                <FlatTableCell className="font-semibold text-slate-700">Joined</FlatTableCell>
-                <FlatTableCell className="text-right"></FlatTableCell>
-              </FlatTableRow>
-            </FlatTableHead>
-            <tbody>
-              {loading ? (
-                [1, 2, 3].map((i) => (
-                  <FlatTableRow key={i}>
-                    <FlatTableCell colSpan={6} className="h-16">
-                      <div className="h-8 w-full animate-pulse rounded bg-gray-50" />
-                    </FlatTableCell>
-                  </FlatTableRow>
-                ))
-              ) : users.length === 0 ? (
-                <FlatTableRow>
-                  <FlatTableCell colSpan={6} className="h-48 text-center text-slate-500">
-                    No users identified for role: {activeTab}
-                  </FlatTableCell>
-                </FlatTableRow>
-              ) : (
-                users.map((user) => (
-                  <FlatTableRow key={user._id}>
-                    <FlatTableCell className="font-medium text-blue-600 hover:underline cursor-pointer">
+          <SimpleTable headers={['Identity', 'Organization', 'Status', 'Joined At', 'Actions']}>
+            {users.map((user: any) => (
+              <SimpleTableRow key={user._id}>
+                <SimpleTableCell>
+                  <div>
+                    <div className="font-bold text-blue-600 hover:underline cursor-pointer flex items-center">
                       {user.name}
-                    </FlatTableCell>
-                    <FlatTableCell className="text-slate-600 text-xs font-mono">{user.email}</FlatTableCell>
-                    <FlatTableCell className="text-slate-500 text-sm">
-                      {user.organization_id?.name || 'Platform Level'}
-                    </FlatTableCell>
-                    <FlatTableCell>
-                      <SimpleBadge variant={user.status === 'active' ? 'green' : 'orange'}>
-                        {user.status}
-                      </SimpleBadge>
-                    </FlatTableCell>
-                    <FlatTableCell className="text-slate-500 text-sm">
-                      {new Date(user.created_at || Date.now()).toLocaleDateString()}
-                    </FlatTableCell>
-                    <FlatTableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                        <MoreHorizontal className="h-4 w-4" />
+                      {user.email_verified && <Badge className="ml-2 bg-blue-50 text-blue-500 border-none rounded-full px-1.5 py-0">✓</Badge>}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5">{user.email}</div>
+                  </div>
+                </SimpleTableCell>
+                <SimpleTableCell>
+                  <div className="text-slate-700 font-medium truncate max-w-[200px]">
+                    {user.organization_id?.name || 'Platform Hub'}
+                  </div>
+                </SimpleTableCell>
+                <SimpleTableCell>
+                  <Badge className={cn(
+                    "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                    user.status === 'active' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  )}>
+                    {user.status}
+                  </Badge>
+                </SimpleTableCell>
+                <SimpleTableCell className="text-slate-400 font-medium uppercase text-[10px]">
+                  {new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </SimpleTableCell>
+                <SimpleTableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
+                        <MoreHorizontal className="h-5 w-5" />
                       </Button>
-                    </FlatTableCell>
-                  </FlatTableRow>
-                ))
-              )}
-            </tbody>
-          </FlatTable>
-        </SimpleCard>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 bg-white border-gray-200 shadow-none p-1">
+                      <DropdownMenuItem 
+                        onClick={() => handleAction(user._id, user.status === 'active' ? 'suspend' : 'activate')}
+                        className={cn(
+                          "cursor-pointer font-medium py-2",
+                          user.status === 'active' ? "text-orange-600 focus:bg-orange-50 focus:text-orange-700" : "text-green-600 focus:bg-green-50 focus:text-green-700"
+                        )}
+                      >
+                        {user.status === 'active' ? <Lock className="mr-2 h-4 w-4" /> : <Unlock className="mr-2 h-4 w-4" />}
+                        {user.status === 'active' ? 'Suspend Access' : 'Restore Access'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleAction(user._id, 'reset-password')}
+                        className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2"
+                      >
+                        <Key className="mr-2 h-4 w-4" /> Reset Password
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2">
+                        <ArrowUpRight className="mr-2 h-4 w-4" /> View Full Profile
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </SimpleTableCell>
+              </SimpleTableRow>
+            ))}
+            {users.length === 0 && !isLoading && (
+              <SimpleTableRow>
+                <SimpleTableCell colSpan={5} className="text-center py-12 text-slate-400">
+                  No {activeTab}s identified.
+                </SimpleTableCell>
+              </SimpleTableRow>
+            )}
+          </SimpleTable>
+        </section>
       </Tabs>
     </div>
   )

@@ -1,9 +1,10 @@
 const express = require('express');
-const userController = require('../../controllers/platformAdmin/userController');
+const userController = require('../../controllers/platform/userController');
 const router = express.Router();
 
-router.get('/', userController.list);
-router.get('/:userId', userController.getDetails);
-router.patch('/:userId/suspend', userController.suspend);
+router.get('/', userController.getUsers);
+router.get('/:userId', userController.getUserDetails);
+router.patch('/:userId/suspend', userController.suspendUser);
+router.post('/:userId/reset-password', userController.resetUserPassword);
 
 module.exports = router;

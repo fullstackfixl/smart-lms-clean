@@ -1,79 +1,86 @@
-const { Organization, User, Course, Enrollment } = require('../../models');
+const { PlatformReport, User, Organization, Course, Enrollment } = require('../../models');
+const path = require('path');
+const fs = require('fs').promises;
 
-/**
- * Platform Report Service
- * Synthesizes cross-tenant telemetry into portable data matrices
- */
-class ReportService {
-  /**
-   * Generate thematic ecosystem reports
-   */
-  async generateReport(type, filters = {}) {
-    let data = [];
-    switch (type) {
-      case 'organizations':
-        data = await Organization.find({ is_deleted: { $ne: true } }).lean();
-        break;
-      case 'users':
-        data = await User.find({ is_deleted: { $ne: true } }).select('-password_hash').lean();
-        break;
-      case 'courses':
-        data = await Course.find({ is_deleted: { $ne: true } }).lean();
-        break;
-      case 'enrollments':
-        data = await Enrollment.find({ is_deleted: { $ne: true } }).populate('user_id course_id').lean();
-        break;
-      default:
-        throw new Error(`Invalid report protocol: ${type}`);
-    }
-
-    // In a high-fidelity system, we would trigger a background worker here
-    // for actual file generation. For now, returning metadata.
-    return {
-      reportId: `REP-${Date.now()}`,
-      type,
-      generatedAt: new Date(),
-      recordCount: data.length,
-      status: 'completed',
-      downloadUrl: `/api/platform/reports/download/${type}_${Date.now()}.csv`
-    };
-  }
-
-  /**
-   * Export logic for CSV payload
-   * Fetches real data and converts to simple CSV string
-   */
-  async exportCSV(type) {
-    let data = [];
-    let headers = '';
+exports.generateReport = async (data, creatorId) => {
+  const { type, format, filters } = data;
+  
+  const report = new PlatformReport({
+    type,
+    format,
+    filters,
+    generatedBy: creatorId,
+    status: 'pending'
+  });
+  
+  await report.save();
+  
+  // In a real application, this would be handled by a worker
+  // For now, we'll simulate the generation
+  try {
+    const dataToReport = await this.fetchDataForReport(type, filters);
+    const fileName = `report_${type}_${Date.now()}.${format.toLowerCase()}`;
+    const publicPath = path.join(__dirname, '../../../public/reports');
     
-    switch (type.split('_')[0]) {
-      case 'organizations':
-        data = await Organization.find({ is_deleted: { $ne: true } }).lean();
-        headers = 'id,name,subdomain,status,email,plan,created_at';
-        data = data.map(o => `${o._id},"${o.name}",${o.subdomain},${o.status},${o.email},${o.plan},${o.created_at || ''}`);
-        break;
-      case 'users':
-        data = await User.find({ is_deleted: { $ne: true } }).lean();
-        headers = 'id,name,email,role,status,created_at';
-        data = data.map(u => `${u._id},"${u.name}",${u.email},${u.role},${u.status},${u.created_at || ''}`);
-        break;
-      case 'courses':
-        data = await Course.find({ is_deleted: { $ne: true } }).lean();
-        headers = 'id,title,category,status,price,created_at';
-        data = data.map(c => `${c._id},"${c.title}",${c.category},${c.status},${c.price},${c.created_at || ''}`);
-        break;
-      case 'enrollments':
-        data = await Enrollment.find({ is_deleted: { $ne: true } }).populate('user_id course_id').lean();
-        headers = 'id,user,course,status,created_at';
-        data = data.map(e => `${e._id},"${e.user_id?.email || 'N/A'}","${e.course_id?.title || 'N/A'}",${e.status},${e.created_at || ''}`);
-        break;
-      default:
-        return `id,name,timestamp\n1,Generated Report (${type}),${new Date().toISOString()}`;
+    // Ensure directory exists
+    await fs.mkdir(publicPath, { recursive: true });
+    
+    const filePath = path.join(publicPath, fileName);
+    
+    if (format === 'CSV') {
+      await this.generateCSV(dataToReport, filePath);
+    } else {
+      // PDF generation would require a library like puppeteer or pdfkit
+      await fs.writeFile(filePath, 'PDF generation placeholder');
     }
-
-    return [headers, ...data].join('\n');
+    
+    report.status = 'completed';
+    report.filePath = `/reports/${fileName}`;
+    await report.save();
+    
+    return report;
+  } catch (error) {
+    report.status = 'failed';
+    await report.save();
+    throw error;
   }
-}
+};
 
-module.exports = new ReportService();
+exports.getReportById = async (reportId) => {
+  const report = await PlatformReport.findById(reportId);
+  if (!report) throw new Error('Report not found');
+  return report;
+};
+
+exports.fetchDataForReport = async (type, filters = {}) => {
+  switch (type) {
+    case 'users':
+      return User.find(filters).select('name email role status created_at').lean();
+    case 'organizations':
+      return Organization.find(filters).select('name email plan status created_at').lean();
+    case 'courses':
+      return Course.find(filters).select('title organization_id instructor_id status created_at').lean();
+    case 'enrollments':
+      return Enrollment.find(filters).populate('student_id', 'name').populate('course_id', 'title').lean();
+    default:
+      return [];
+  }
+};
+
+exports.generateCSV = async (data, filePath) => {
+  if (data.length === 0) {
+    await fs.writeFile(filePath, 'No data found');
+    return;
+  }
+  
+  const headers = Object.keys(data[0]).join(',');
+  const rows = data.map(item => {
+    return Object.values(item).map(val => {
+      if (typeof val === 'object') return JSON.stringify(val);
+      return `"${val}"`;
+    }).join(',');
+  });
+  
+  const csvContent = [headers, ...rows].join('\n');
+  await fs.writeFile(filePath, csvContent);
+};

@@ -9,6 +9,19 @@ const systemConfigSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    platformName: {
+        type: String,
+        default: 'Smart LMS'
+    },
+    supportEmail: {
+        type: String,
+        default: 'support@smartlms.com'
+    },
+    defaultPlan: {
+        type: String,
+        enum: ['free', 'basic', 'premium', 'pro', 'enterprise'],
+        default: 'free'
+    },
     registrationEnabled: {
         type: Boolean,
         default: true

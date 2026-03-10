@@ -127,6 +127,24 @@ const organizationSchema = new mongoose.Schema({
         if (this.plan === 'basic') return 20;
         return 5; // free
       }
+    },
+    max_students: {
+      type: Number,
+      default: function () {
+        if (this.plan === 'enterprise') return 10000;
+        if (this.plan === 'pro') return 1000;
+        if (this.plan === 'basic') return 200;
+        return 50; // free
+      }
+    },
+    max_instructors: {
+      type: Number,
+      default: function () {
+        if (this.plan === 'enterprise') return 500;
+        if (this.plan === 'pro') return 50;
+        if (this.plan === 'basic') return 10;
+        return 2; // free
+      }
     }
   },
   // Usage tracking
