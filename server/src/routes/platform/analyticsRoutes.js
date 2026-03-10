@@ -1,5 +1,5 @@
 const express = require('express');
-const analyticsController = require('../../controllers/platformAdmin/analyticsController');
+const analyticsController = require('../../controllers/platform/analyticsController');
 const router = express.Router();
 
 router.get('/overview', analyticsController.getOverview);

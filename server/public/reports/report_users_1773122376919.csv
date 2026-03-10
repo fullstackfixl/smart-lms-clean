@@ -1,0 +1,12 @@
+_id,name,email,role,created_at,status
+"69ac0fb774d5b4fe4fef9691","platform admin","platform@admin.com","platform_admin","2026-03-07T11:44:55.305Z","active"
+"69adbd97141fb70ad40b87ea","dushyantkhandelwal4665@gmail.com","Admin","org_admin","active","2026-03-08T18:19:03.040Z"
+"69ae6111141fb70ad40b8e84","khandelwalkritika851@gmail.com","instructor","instructor","active","2026-03-09T05:56:33.351Z"
+"69af22e048f1e9d9c8f36f50","dushyant4665@gmail.com","Ram","org_admin","pending","2026-03-09T19:43:28.817Z"
+"69af23473a633777c54889a2","dushyant4665fixlsolution@gmail.com","Ram","org_admin","active","2026-03-09T19:45:11.525Z"
+"69af240c3a633777c5488a0e","gileh76455@medevsa.com","Intructor","instructor","active","2026-03-09T19:48:28.407Z"
+"69afb2f07ce78a01811dea1b","platform_admin@test.com","Test Platform Admin","platform_admin","active","2026-03-10T05:58:08.239Z"
+"69afb2f17ce78a01811dea66","platform_staff@test.com","Test Platform Staff","platform_staff","active","2026-03-10T05:58:09.282Z"
+"69afb2f17ce78a01811dea96","org_admin@test.com","Test Org Admin","org_admin","active","2026-03-10T05:58:09.853Z"
+"69afb32278b1a78214f369c8","support1773122338869@test.com","Updated Agent","platform_staff","suspended","2026-03-10T05:58:58.916Z"
+"69afb34778b1a78214f36a48","support1773122374977@test.com","Updated Agent","platform_staff","suspended","2026-03-10T05:59:35.022Z"

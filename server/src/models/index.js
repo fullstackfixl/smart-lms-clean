@@ -44,6 +44,8 @@ const GradeSection = require('./GradeSection');
 const QuizSubmission = require('./QuizSubmission');
 const OrganizationEvent = require('./OrganizationEvent');
 const SystemConfig = require('./SystemConfig');
+const PlatformReport = require('./PlatformReport');
+const PlatformAuditLog = require('./PlatformAuditLog');
 
 
 
@@ -92,5 +94,7 @@ module.exports = {
   GradeLevel,
   GradeSection,
   QuizSubmission,
-  SystemConfig
+  SystemConfig,
+  PlatformReport,
+  PlatformAuditLog
 };

@@ -1,9 +1,8 @@
 const express = require('express');
-const courseController = require('../../controllers/platformAdmin/courseController');
+const courseController = require('../../controllers/platform/courseController');
 const router = express.Router();
 
-router.get('/', courseController.list);
-router.patch('/:courseId/suspend', courseController.suspend);
-router.patch('/:courseId/activate', courseController.activate);
+router.get('/', courseController.getCourses);
+router.patch('/:courseId/suspend', courseController.suspendCourse);
 
 module.exports = router;

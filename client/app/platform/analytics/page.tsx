@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React from 'react'
+import useSWR from 'swr'
 import { 
   BarChart3, 
   Search, 
@@ -10,178 +11,195 @@ import {
   TrendingUp,
   Target,
   Zap,
-  Clock
+  Clock,
+  Globe,
+  MoreHorizontal
 } from 'lucide-react'
-import { 
-  SimpleCard, 
-  SimpleBadge, 
-  FlatTable, 
-  FlatTableHead, 
-  FlatTableRow, 
-  FlatTableCell 
-} from '../../../components/platform/ui-standard'
-import { BasicChart } from '../../../components/platform/chart-wrapper'
+import { FlatMetricCard } from '../../../components/platform/flat-metric-card'
+import { BasicChart } from '../../../components/platform/basic-chart'
+import { SimpleTable, SimpleTableRow, SimpleTableCell } from '../../../components/platform/simple-table'
+import { Card } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
+import { Badge } from '../../../components/ui/badge'
+import { Skeleton } from '../../../components/ui/skeleton'
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function AnalyticsPage() {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: response, error, isLoading } = useSWR('/api/platform/analytics/overview', fetcher)
+  const stats = response?.success ? response.data : null
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        const response = await fetch('/api/platform/analytics/overview');
-        const data = await response.json();
-        if (data.success) {
-          setStats(data.data);
-        }
-      } catch (error) {
-        console.error('Analytics telemetry failed:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAnalytics();
-  }, []);
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <Skeleton className="h-10 w-64 bg-gray-100" />
+        <div className="grid grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-32 bg-gray-100" />)}
+        </div>
+        <Skeleton className="h-[400px] w-full bg-gray-100" />
+      </div>
+    )
+  }
 
-  const trendData = [
-    { name: 'Mon', value: 120 },
-    { name: 'Tue', value: 180 },
-    { name: 'Wed', value: 160 },
+  const enrollmentTrend = stats?.enrollmentTrend || [
+    { date: '2026-03-01', value: 450 },
+    { date: '2026-03-02', value: 520 },
+    { date: '2026-03-03', value: 480 },
+    { date: '2026-03-04', value: 610 },
+    { date: '2026-03-05', value: 580 },
+    { date: '2026-03-06', value: 720 },
+    { date: '2026-03-07', value: 850 },
   ]
 
-  const metrics = [
-    { label: 'Platform Users', value: stats?.usersCount || '0', trend: 'Global', icon: Target, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Active Sessions', value: stats?.activeSessions || '0', trend: 'Live', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Global Students', value: stats?.studentsCount || '0', trend: 'Growth', icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Institutional Nodes', value: stats?.organizationsCount || '0', trend: 'Stable', icon: Zap, color: 'text-teal-600', bg: 'bg-teal-50' },
-  ]
+  const topNodes = stats?.topNodes || []
 
   return (
     <div className="space-y-8">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 border-b-2 border-blue-600 inline-block pb-1">
-            Deep-Dive Analytics
+          <h1 className="text-2xl font-bold text-slate-900 border-b-2 border-blue-500 inline-block pb-1">
+            Ecosystem Analytics
           </h1>
-          <p className="mt-2 text-slate-500">Universal ecosystem intelligence and performance metrics.</p>
+          <p className="mt-2 text-slate-500">
+            Real-time telemetry and growth metrics across all institutional segments.
+          </p>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" className="text-slate-600 bg-white border-gray-200 shadow-none">
-            <Filter className="mr-2 h-4 w-4" /> Date Range
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="border-gray-300 text-slate-600 font-bold h-10 px-4">
+            <Filter className="mr-2 h-4 w-4" /> Last 30 Days
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-none">
-            <Download className="mr-2 h-4 w-4" /> Export Report
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 px-4 shadow-none">
+            <Download className="mr-2 h-4 w-4" /> Export Data
           </Button>
         </div>
       </div>
 
-      {/* Metric Pills */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {metrics.map((m) => (
-          <SimpleCard key={m.label} className="p-4">
-            <div className="flex items-center justify-between">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-md ${m.bg} ${m.color}`}>
-                <m.icon className="h-4 w-4 stroke-[1.5]" />
-              </div>
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${m.trend.startsWith('+') ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600'}`}>
-                {m.trend}
-              </span>
-            </div>
-            <p className="mt-3 text-xs font-medium text-slate-500 uppercase tracking-wider">{m.label}</p>
-            <p className="text-xl font-bold text-slate-900">{m.value}</p>
-          </SimpleCard>
-        ))}
+      {/* Primary Metrics */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <FlatMetricCard
+          title="Global Learners"
+          value={stats?.totalStudents || 0}
+          icon={Target}
+          trend={{ value: 12.4, isPositive: true }}
+          subtitle="Unique identity count"
+        />
+        <FlatMetricCard
+          title="Active Sessions"
+          value={stats?.activeSessions || 0}
+          icon={Clock}
+          trend={{ value: 5.2, isPositive: true }}
+          subtitle="Concurrent users"
+        />
+        <FlatMetricCard
+          title="Content Volume"
+          value={stats?.totalLessons || 0}
+          icon={Zap}
+          subtitle="Total learning assets"
+        />
+        <FlatMetricCard
+          title="Avg Progress"
+          value="68.4%"
+          icon={TrendingUp}
+          trend={{ value: 2.1, isPositive: true }}
+          subtitle="Completion efficiency"
+        />
       </div>
 
-      {/* Main Charts */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <SimpleCard className="lg:col-span-2">
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900">Weekly User Flux</h3>
-            <SimpleBadge variant="blue">Real-time Node Activity</SimpleBadge>
+      {/* Charts Layer */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <Card className="lg:col-span-8 border-gray-200 bg-white p-6 rounded-md no-shadow">
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Universal Growth Matrix</h3>
+              <p className="text-sm text-slate-400 font-medium">Daily enrollment flux across the platform.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-blue-50 text-blue-600 border-none rounded-sm px-2 py-0.5 text-[10px] font-bold uppercase">Enrollments</Badge>
+            </div>
           </div>
-          <BasicChart data={trendData} type="line" height={300} />
-        </SimpleCard>
+          <BasicChart data={enrollmentTrend} type="line" xKey="date" yKey="value" height={320} />
+        </Card>
 
-        <SimpleCard>
-          <h3 className="font-semibold text-slate-900 mb-6">Regional Distribution</h3>
-          <div className="space-y-6">
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-600">North America</span>
-                <span className="font-bold text-slate-900">42%</span>
+        <Card className="lg:col-span-4 border-gray-200 bg-white p-6 rounded-md no-shadow flex flex-col">
+          <h3 className="text-lg font-bold text-slate-900 mb-6 font-bold">Regional Distribution</h3>
+          <div className="flex-1 space-y-8">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
+                <span className="text-slate-500">North America</span>
+                <span className="text-slate-900">42%</span>
               </div>
-              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-600 rounded-full" style={{ width: '42%' }} />
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-600">Europe & Asia</span>
-                <span className="font-bold text-slate-900">36%</span>
-              </div>
-              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-orange-600 rounded-full" style={{ width: '36%' }} />
+              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 rounded-full" style={{ width: '42%' }} />
               </div>
             </div>
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-600">Other Regions</span>
-                <span className="font-bold text-slate-900">22%</span>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
+                <span className="text-slate-500">Europe & Asia</span>
+                <span className="text-slate-900">36%</span>
               </div>
-              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-green-600 rounded-full" style={{ width: '22%' }} />
+              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-orange-500 rounded-full" style={{ width: '36%' }} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
+                <span className="text-slate-500">Other Clusters</span>
+                <span className="text-slate-900">22%</span>
+              </div>
+              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-green-500 rounded-full" style={{ width: '22%' }} />
               </div>
             </div>
           </div>
-          <div className="mt-12 text-center">
-            <p className="text-sm text-slate-500 italic">"Reach expanded by 8% this quarter"</p>
+          <div className="mt-8 pt-8 border-t border-gray-100 text-center">
+            <p className="text-sm text-slate-400 italic">"Global reach expanded by 8% this quarter"</p>
           </div>
-        </SimpleCard>
+        </Card>
       </div>
 
-      {/* Top Performing Org Table */}
-      <SimpleCard className="p-0 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 bg-white flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900">Top Growth Nodes</h3>
-          <div className="relative w-64">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 stroke-[1.5]" />
-            <input 
-              type="text" 
-              placeholder="Filter nodes..." 
-              className="h-9 w-full rounded-md border border-gray-100 bg-gray-50 pl-8 pr-3 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all shadow-none"
-            />
-          </div>
+      {/* Top Nodes Table */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-900">Top Performing Nodes</h3>
+          <Button variant="ghost" className="text-blue-500 hover:text-blue-600 font-bold h-8 p-0">
+            Full Growth Report <ArrowUpRight className="ml-1 h-4 w-4" />
+          </Button>
         </div>
-        <FlatTable>
-          <FlatTableHead>
-            <FlatTableRow>
-              <FlatTableCell className="font-semibold text-slate-700">Institution</FlatTableCell>
-              <FlatTableCell className="font-semibold text-slate-700">Learners</FlatTableCell>
-              <FlatTableCell className="font-semibold text-slate-700">Retention</FlatTableCell>
-              <FlatTableCell className="font-semibold text-slate-700">Revenue Contribution</FlatTableCell>
-              <FlatTableCell className="text-right"></FlatTableCell>
-            </FlatTableRow>
-          </FlatTableHead>
-          <tbody>
-            {[1, 2, 3].map((i) => (
-              <FlatTableRow key={i}>
-                <FlatTableCell className="font-medium text-blue-600">High Growth Node 00{i}</FlatTableCell>
-                <FlatTableCell className="text-slate-600">12,450</FlatTableCell>
-                <FlatTableCell>
-                  <SimpleBadge variant="green">94.2%</SimpleBadge>
-                </FlatTableCell>
-                <FlatTableCell className="font-bold text-slate-900">$45,200.00</FlatTableCell>
-                <FlatTableCell className="text-right">
-                  <Button variant="ghost" size="sm" className="text-blue-600 h-8 font-bold hover:bg-blue-50">Deep-Dive</Button>
-                </FlatTableCell>
-              </FlatTableRow>
-            ))}
-          </tbody>
-        </FlatTable>
-      </SimpleCard>
+        
+        <SimpleTable headers={['Institution', 'Learners', 'Course Volume', 'Retention', 'Stability']}>
+          {topNodes.map((node: any) => (
+            <SimpleTableRow key={node._id}>
+              <SimpleTableCell className="font-bold text-blue-600">
+                {node.name}
+              </SimpleTableCell>
+              <SimpleTableCell className="font-medium text-slate-700">
+                {node.studentsCount?.toLocaleString()}
+              </SimpleTableCell>
+              <SimpleTableCell className="text-slate-500">
+                {node.coursesCount} assets
+              </SimpleTableCell>
+              <SimpleTableCell>
+                <Badge className="bg-green-50 text-green-600 border-none rounded-full px-2 py-0.5 text-[10px] font-bold">
+                  {node.retention}%
+                </Badge>
+              </SimpleTableCell>
+              <SimpleTableCell className="text-right">
+                <div className="flex items-center justify-end text-emerald-500 font-bold text-xs">
+                  <TrendingUp className="mr-1 h-3 w-3" /> HIGH
+                </div>
+              </SimpleTableCell>
+            </SimpleTableRow>
+          ))}
+          {topNodes.length === 0 && (
+            <SimpleTableRow>
+              <SimpleTableCell colSpan={5} className="text-center py-12 text-slate-400">
+                No high-growth nodes identified in current period.
+              </SimpleTableCell>
+            </SimpleTableRow>
+          )}
+        </SimpleTable>
+      </section>
     </div>
   )
 }
