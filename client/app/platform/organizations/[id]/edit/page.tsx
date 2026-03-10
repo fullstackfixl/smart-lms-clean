@@ -1,12 +1,30 @@
 "use client"
-
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { ArrowLeft, Save, RefreshCw } from "lucide-react"
+ 
+import { useState, useEffect, Suspense } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { 
+  ArrowLeft, 
+  Save, 
+  RefreshCw, 
+  Building2, 
+  Mail, 
+  Phone, 
+  Globe, 
+  MapPin, 
+  ShieldCheck, 
+  Zap, 
+  Check, 
+  X,
+  Settings2,
+  Database,
+  ChevronDown,
+  Sparkles
+} from "lucide-react"
 import { platformApi } from '../../../../../lib/api'
 import { useRouter, useParams } from "next/navigation"
 import { useAuth } from '../../../../../lib/auth-context'
-
+import { cn } from "../../../../../lib/utils"
+ 
 interface Organization {
   _id: string
   name: string
@@ -21,34 +39,26 @@ interface Organization {
     zipCode?: string
   }
 }
-
-export default function EditOrganizationPage() {
+ 
+function EditContent() {
   const router = useRouter()
   const params = useParams()
   const { token } = useAuth()
   const id = params.id as string
-
+ 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     plan: "basic" as 'basic' | 'premium',
-    address: {
-      street: "",
-      city: "",
-      state: "",
-      country: "",
-      zipCode: ""
-    }
+    address: { street: "", city: "", state: "", country: "", zipCode: "" }
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-
-  useEffect(() => {
-    loadOrganization()
-  }, [id])
-
+ 
+  useEffect(() => { loadOrganization() }, [id, token])
+ 
   const loadOrganization = async () => {
     if (!token) return
     setLoading(true)
@@ -70,226 +80,220 @@ export default function EditOrganizationPage() {
           }
         })
       }
-    } catch (error) {
-      console.error("Failed to load organization:", error)
-      setError("Failed to load organization")
-    } finally {
-      setLoading(false)
-    }
+    } catch { setError("Identity synchronization failure") } finally { setLoading(false) }
   }
-
+ 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!token) return
     setSaving(true)
     setError("")
-
     try {
       const response = await platformApi.updateOrg(token, id, formData)
-
-      if (response.success) {
-        router.push(`/platform/organizations/${id}`)
-      } else {
-        setError(response.error || "Failed to update organization")
-      }
-    } catch (err) {
-      setError("An error occurred while updating the organization")
-    } finally {
-      setSaving(false)
-    }
+      if (response.success) router.push(`/platform/organizations/${id}`)
+      else setError(response.error || "Configuration update failure")
+    } catch { setError("Critical system failure during reconfiguration") } finally { setSaving(false) }
   }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <RefreshCw className="h-8 w-8 text-indigo-500 animate-spin" />
-      </div>
-    )
-  }
-
+ 
+  if (loading) return (
+     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 text-white">
+        <div className="h-16 w-16 border-[6px] border-slate-100 border-t-indigo-600 rounded-full animate-spin" />
+     </div>
+  )
+ 
   return (
-    <div className="space-y-8 max-w-4xl">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4"
-      >
-        <button
-          onClick={() => router.push(`/platform/organizations/${id}`)}
-          className="p-2 rounded-lg text-gray-400 hover:text-gray-300 hover:bg-slate-800/50 transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div>
-          <h1 className="text-4xl font-bold text-gray-50 mb-2">Edit Organization</h1>
-          <p className="text-lg text-gray-400">Update organization details</p>
+    <div className="max-w-[1200px] mx-auto space-y-16 pb-32 p-8 animate-in fade-in duration-1000">
+      
+      {/* ─── Reconfig Hero ────────────────────────────────────────── */}
+      <div className="relative group">
+        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-[4rem] blur opacity-[0.03] group-hover:opacity-[0.08] transition duration-1000" />
+        <div className="relative overflow-hidden rounded-[4rem] bg-[#020617] p-12 lg:p-20 shadow-2xl">
+          <div className="absolute top-0 right-0 -mr-24 -mt-24 w-[30rem] h-[30rem] bg-indigo-500/10 rounded-full blur-[100px]" />
+          
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-12">
+            <div className="space-y-6 text-white">
+              <div className="flex items-center gap-4">
+                 <button onClick={() => router.push(`/platform/organizations/${id}`)} className="h-12 w-12 rounded-xl bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all border border-white/10">
+                    <ArrowLeft className="w-5 h-5" />
+                 </button>
+                 <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] border border-white/20">
+                    <Settings2 className="w-3.5 h-3.5" />
+                    System Reconfiguration
+                 </div>
+              </div>
+              <h1 className="text-5xl lg:text-6xl font-black text-white tracking-tighter leading-none">
+                Modify <span className="text-indigo-400">Identity.</span>
+              </h1>
+              <p className="text-[17px] font-medium text-slate-400 max-w-lg opacity-80 italic">
+                Awaiting executive updates for the institutional parameters of {formData.name}.
+              </p>
+            </div>
+            
+            <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-xl max-w-xs w-full text-center">
+               <Database className="w-10 h-10 text-indigo-400 mx-auto mb-4" />
+               <p className="text-white/40 text-[11px] font-black uppercase tracking-widest leading-relaxed">Cluster ID: {id.slice(-8).toUpperCase()}</p>
+            </div>
+          </div>
         </div>
-      </motion.div>
-
-      {/* Form */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="rounded-xl border border-slate-800/50 bg-slate-900/80 backdrop-blur-sm p-6 shadow-lg shadow-black/20"
-      >
+      </div>
+ 
+      {/* ─── Reconfig Form ────────────────────────────────────────── */}
+      <form onSubmit={handleSubmit} className="space-y-12">
         {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
-            {error}
+          <div className="p-8 rounded-[2rem] bg-rose-50 border border-rose-100 text-rose-600 text-[14px] font-black flex items-center gap-4 animate-in slide-in-from-top-4">
+            <ShieldCheck className="w-6 h-6 shrink-0" /> {error}
           </div>
         )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Organization Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full h-11 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 placeholder-gray-500 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="Enter organization name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email *
-              </label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full h-11 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 placeholder-gray-500 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="contact@organization.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Phone
-              </label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full h-11 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 placeholder-gray-500 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                placeholder="+1-555-0123"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Plan
-              </label>
-              <select
-                value={formData.plan}
-                onChange={(e) => setFormData({ ...formData, plan: e.target.value as 'basic' | 'premium' })}
-                className="w-full h-11 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              >
-                <option value="basic">Basic</option>
-                <option value="premium">Premium</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-800/50 pt-6">
-            <h3 className="text-lg font-semibold text-gray-200 mb-4">Address Information</h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Street Address
-                </label>
-                <input
-                  type="text"
-                  value={formData.address.street}
-                  onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })}
-                  className="w-full h-11 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 placeholder-gray-500 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="123 Main St"
-                />
+ 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+           
+           {/* Section: Core Parameters */}
+           <div className="bg-white rounded-[3.5rem] border border-slate-100 p-12 lg:p-14 shadow-sm space-y-10">
+              <div className="space-y-2">
+                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-serif italic">// Core Parameters</h3>
+                 <p className="text-3xl font-black text-slate-900 tracking-tight">Institutional DNA</p>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.address.city}
-                    onChange={(e) => setFormData({ ...formData, address: { ...formData.address, city: e.target.value } })}
-                    className="w-full h-11 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 placeholder-gray-500 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="San Francisco"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    State
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.address.state}
-                    onChange={(e) => setFormData({ ...formData, address: { ...formData.address, state: e.target.value } })}
-                    className="w-full h-11 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 placeholder-gray-500 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="CA"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    ZIP Code
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.address.zipCode}
-                    onChange={(e) => setFormData({ ...formData, address: { ...formData.address, zipCode: e.target.value } })}
-                    className="w-full h-11 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 placeholder-gray-500 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    placeholder="94102"
-                  />
-                </div>
+ 
+              <div className="space-y-8">
+                 <LogicInput 
+                    label="Executive Identity" 
+                    placeholder="Institutional Name" 
+                    icon={<Building2 className="w-4 h-4" />} 
+                    value={formData.name} 
+                    onValueChange={(v: string) => setFormData({ ...formData, name: v })} 
+                 />
+                 <LogicInput 
+                    label="Strategic Uplink (Email)" 
+                    placeholder="admin@institution.edu" 
+                    icon={<Mail className="w-4 h-4" />} 
+                    value={formData.email} 
+                    onValueChange={(v: string) => setFormData({ ...formData, email: v })} 
+                 />
+                 <div className="grid grid-cols-2 gap-8">
+                    <LogicInput 
+                       label="Response Line" 
+                       placeholder="+1-000-0000" 
+                       icon={<Phone className="w-4 h-4" />} 
+                       value={formData.phone} 
+                       onValueChange={(v: string) => setFormData({ ...formData, phone: v })} 
+                    />
+                    <div className="space-y-3">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Active Protocol</label>
+                       <div className="relative group">
+                          <select
+                            value={formData.plan}
+                            onChange={(e) => setFormData({ ...formData, plan: e.target.value as 'basic' | 'premium' })}
+                            className="w-full h-16 rounded-[1.5rem] bg-slate-50 border border-slate-100 px-6 text-[14px] font-black appearance-none cursor-pointer focus:bg-white focus:ring-[10px] focus:ring-indigo-500/5 transition-all outline-none"
+                          >
+                             <option value="basic">Standard Protocol</option>
+                             <option value="premium">Enterprise Protocol</option>
+                          </select>
+                          <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 pointer-events-none group-focus-within:text-indigo-500" />
+                       </div>
+                    </div>
+                 </div>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Country
-                </label>
-                <input
-                  type="text"
-                  value={formData.address.country}
-                  onChange={(e) => setFormData({ ...formData, address: { ...formData.address, country: e.target.value } })}
-                  className="w-full h-11 rounded-xl border border-slate-800/50 bg-slate-900/50 px-4 text-sm text-gray-100 placeholder-gray-500 transition-all focus:border-indigo-500/50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  placeholder="USA"
-                />
+           </div>
+ 
+           {/* Section: Spatial Parameters */}
+           <div className="bg-white rounded-[3.5rem] border border-slate-100 p-12 lg:p-14 shadow-sm space-y-10">
+              <div className="space-y-2">
+                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-serif italic">// Spatial configuration</h3>
+                 <p className="text-3xl font-black text-slate-900 tracking-tight">Geographic Nexus</p>
               </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 justify-end pt-6 border-t border-slate-800/50">
-            <button
+ 
+              <div className="space-y-8">
+                 <LogicInput 
+                    label="Primary Vector (Street)" 
+                    placeholder="Operational Address" 
+                    icon={<MapPin className="w-4 h-4" />} 
+                    value={formData.address.street} 
+                    onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, street: v } })} 
+                 />
+                 <div className="grid grid-cols-2 gap-8">
+                    <LogicInput 
+                       label="Regional Sector (City)" 
+                       placeholder="City" 
+                       value={formData.address.city} 
+                       onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, city: v } })} 
+                    />
+                    <LogicInput 
+                       label="Territory (State)" 
+                       placeholder="State" 
+                       value={formData.address.state} 
+                       onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, state: v } })} 
+                    />
+                 </div>
+                 <div className="grid grid-cols-2 gap-8">
+                    <LogicInput 
+                       label="Nexus Code (ZIP)" 
+                       placeholder="ZIP" 
+                       value={formData.address.zipCode} 
+                       onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, zipCode: v } })} 
+                    />
+                    <LogicInput 
+                       label="Global Entity (Country)" 
+                       placeholder="Country" 
+                       icon={<Globe className="w-4 h-4" />} 
+                       value={formData.address.country} 
+                       onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, country: v } })} 
+                    />
+                 </div>
+              </div>
+           </div>
+ 
+        </div>
+ 
+        <div className="flex gap-6 items-center justify-end px-4">
+           <button
               type="button"
               onClick={() => router.push(`/platform/organizations/${id}`)}
-              className="px-6 py-2.5 text-sm font-medium text-gray-300 bg-slate-800/50 rounded-xl hover:bg-slate-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
+              className="h-20 px-12 text-[14px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
+           >
+              ABORT CHANGES
+           </button>
+           <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 disabled:opacity-50 transition-colors"
-            >
-              <Save className="h-4 w-4" />
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      </motion.div>
+              className="h-20 px-16 bg-[#020617] text-white rounded-[2rem] text-[16px] font-black uppercase tracking-[0.2em] shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 disabled:opacity-30"
+           >
+              {saving ? <RefreshCw className="h-6 w-6 animate-spin text-indigo-500" /> : <><Save className="h-6 w-6 text-indigo-500" /> Commit Updates</>}
+           </button>
+        </div>
+      </form>
     </div>
+  )
+}
+ 
+function LogicInput({ label, placeholder, icon, value, onValueChange }: any) {
+  return (
+    <div className="space-y-3 flex-1">
+      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{label}</label>
+      <div className="relative group">
+        {icon && <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors pointer-events-none">{icon}</div>}
+        <input
+          required
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          placeholder={placeholder}
+          className={cn(
+            "w-full h-16 rounded-[1.5rem] bg-slate-50 border border-slate-100 px-6 text-[14px] font-black focus:ring-[10px] focus:ring-indigo-500/5 focus:bg-white transition-all outline-none",
+            icon && "pl-14"
+          )}
+        />
+      </div>
+    </div>
+  )
+}
+ 
+export default function EditOrganizationPage() {
+  return (
+    <Suspense fallback={
+       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6">
+          <div className="h-16 w-16 border-[6px] border-slate-100 border-t-indigo-600 rounded-full animate-spin" />
+       </div>
+    }>
+       <EditContent />
+    </Suspense>
   )
 }

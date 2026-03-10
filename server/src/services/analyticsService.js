@@ -93,6 +93,58 @@ class AnalyticsService {
         console.error('❌ [AnalyticsService] Error getting historical stats:', error);
       }
 
+      // Get enrollment trends for chart
+      let enrollmentTrends = [];
+      try {
+        console.log('📊 [AnalyticsService] Fetching enrollment trends...');
+        enrollmentTrends = await this.getEnrollmentTrends(7);
+      } catch (error) {
+        console.error('❌ [AnalyticsService] Error getting enrollment trends:', error);
+      }
+
+      // Get top performing courses
+      let topCourses = [];
+      try {
+        console.log('📊 [AnalyticsService] Fetching top courses...');
+        topCourses = await this.getTopPerformingCourses(4);
+      } catch (error) {
+        console.error('❌ [AnalyticsService] Error getting top courses:', error);
+      }
+
+      // Calculate global completion rate
+      let globalCompletionRate = 0;
+      try {
+        console.log('📊 [AnalyticsService] Calculating global completion rate...');
+        const completionStats = await Enrollment.aggregate([
+          { $group: { _id: null, avg: { $avg: '$progress.completionPercentage' } } }
+        ]);
+        globalCompletionRate = completionStats.length > 0 ? Number(completionStats[0].avg.toFixed(1)) : 0;
+      } catch (error) {
+        console.error('❌ [AnalyticsService] Error calculating completion rate:', error);
+      }
+
+      // Get revenue metrics
+      let revenue = { total: 0, currency: 'INR' };
+      try {
+        console.log('📊 [AnalyticsService] Fetching revenue metrics...');
+        const revenueStats = await Enrollment.aggregate([
+          { $match: { 'payment.paymentStatus': 'completed' } },
+          { $group: { _id: null, total: { $sum: '$payment.amount' } } }
+        ]);
+        revenue.total = revenueStats.length > 0 ? revenueStats[0].total : 0;
+      } catch (error) {
+        console.error('❌ [AnalyticsService] Error fetching revenue:', error);
+      }
+
+      // Get market distribution
+      let marketDistribution = [];
+      try {
+        console.log('📊 [AnalyticsService] Fetching market distribution...');
+        marketDistribution = await this.getMarketDistribution();
+      } catch (error) {
+        console.error('❌ [AnalyticsService] Error getting market distribution:', error);
+      }
+
       // Calculate growth percentages
       let growth = { organizations: 0, users: 0, courses: 0 };
       try {
@@ -126,6 +178,15 @@ class AnalyticsService {
         enrollments: {
           total: totalEnrollments
         },
+        charts: {
+          enrollmentTrends,
+          marketDistribution,
+          revenueTrends: await this.getRevenueTrends(7)
+        },
+        topCourses,
+        completionRate: globalCompletionRate,
+        revenue,
+        recentTransactions: await this.getRecentTransactions(5),
         growth
       };
 
@@ -137,36 +198,91 @@ class AnalyticsService {
       
       // Return default structure even on error
       return {
-        organizations: {
-          total: 0,
-          active: 0,
-          inactive: 0,
-          new: 0
-        },
-        users: {
-          total: 0,
-          byRole: {
-            platform_admin: 0,
-            org_admin: 0,
-            instructor: 0,
-            student: 0,
-            parent: 0,
-            support_staff: 0
-          }
-        },
-        courses: {
-          total: 0
-        },
-        enrollments: {
-          total: 0
-        },
-        growth: {
-          organizations: 0,
-          users: 0,
-          courses: 0
-        }
+        organizations: { total: 0, active: 0, inactive: 0, new: 0 },
+        users: { total: 0, byRole: {} },
+        courses: { total: 0 },
+        enrollments: { total: 0 },
+        charts: { enrollmentTrends: [] },
+        topCourses: [],
+        completionRate: 0,
+        revenue: { total: 0, currency: 'INR' },
+        growth: { organizations: 0, users: 0, courses: 0 }
       };
     }
+  }
+
+  /**
+   * Get enrollment trends for the last N days
+   * @param {Number} days - Number of days to look back
+   */
+  async getEnrollmentTrends(days = 7) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const trends = await Enrollment.aggregate([
+      { $match: { createdAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          enrollments: { $sum: 1 }
+        }
+      },
+      { $sort: { "_id": 1 } }
+    ]);
+
+    // Fill in missing days
+    const result = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const match = trends.find(t => t._id === dateStr);
+      
+      // Use short day name for frontend
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+      result.push({
+        name: dayName,
+        date: dateStr,
+        enrollments: match ? match.enrollments : 0
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Get top performing courses based on enrollment count
+   * @param {Number} limit - Number of courses to return
+   */
+  async getTopPerformingCourses(limit = 4) {
+    return Enrollment.aggregate([
+      {
+        $group: {
+          _id: '$course_id',
+          enrollments: { $sum: 1 },
+          avgCompletion: { $avg: '$progress.completionPercentage' }
+        }
+      },
+      { $sort: { enrollments: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'courses',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'course'
+        }
+      },
+      { $unwind: '$course' },
+      {
+        $project: {
+          title: '$course.title',
+          category: '$course.category',
+          enrollments: 1,
+          completion: { $round: ['$avgCompletion', 1] }
+        }
+      }
+    ]);
   }
 
   /**
@@ -280,6 +396,85 @@ class AnalyticsService {
         previousStats.courses
       )
     };
+  }
+
+  /**
+   * Get distribution of organizations by type
+   */
+  async getMarketDistribution() {
+    const stats = await Organization.aggregate([
+      { $match: { is_deleted: false } },
+      { $group: { _id: '$type', value: { $sum: 1 } } }
+    ]);
+
+    const total = stats.reduce((acc, curr) => acc + curr.value, 0);
+    const colors = {
+      'SCHOOL': '#2563EB',
+      'COLLEGE': '#10B981',
+      'INSTITUTE': '#F59E0B',
+      'ONLINE_ACADEMY': '#EF4444'
+    };
+
+    return stats.map(s => ({
+      name: s._id || 'UNSPECIFIED',
+      value: total > 0 ? Number(((s.value / total) * 100).toFixed(1)) : 0,
+      count: s.value,
+      color: colors[s._id] || '#64748b'
+    }));
+  }
+
+  /**
+   * Get revenue trends for the last N days
+   */
+  async getRevenueTrends(days = 7) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const trends = await Enrollment.aggregate([
+      { 
+        $match: { 
+          'payment.paymentStatus': 'completed',
+          createdAt: { $gte: startDate }
+        } 
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          revenue: { $sum: '$payment.amount' }
+        }
+      },
+      { $sort: { "_id": 1 } }
+    ]);
+
+    const result = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const match = trends.find(t => t._id === dateStr);
+      
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+      result.push({
+        name: dayName,
+        date: dateStr,
+        revenue: match ? match.revenue : 0
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Get recent completed transactions
+   */
+  async getRecentTransactions(limit = 5) {
+    return Enrollment.find({ 'payment.paymentStatus': 'completed' })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('student_id', 'name email profile')
+      .populate('course_id', 'title category')
+      .populate('organization_id', 'name code')
+      .lean();
   }
 
   /**

@@ -1,11 +1,32 @@
 "use client"
-
+ 
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import {
-  BookOpen, Users, Video, Calendar, TrendingUp, Clock,
-  FileText, Award, Loader2, Plus, Eye
+  BookOpen, 
+  Users, 
+  Video, 
+  Calendar, 
+  TrendingUp, 
+  Clock,
+  FileText, 
+  Award, 
+  Loader2, 
+  Plus, 
+  Eye,
+  Activity,
+  ChevronRight,
+  Zap,
+  Layout,
+  Layers,
+  Search,
+  ArrowUpRight,
+  Bell,
+  Star,
+  Target,
+  ShieldCheck,
+  MousePointer2
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
@@ -13,7 +34,7 @@ import { Badge } from '../../../components/ui/badge'
 import { toast } from "sonner"
 import { API_URL, getToken } from '../../../lib/config'
 import { useAuth } from '../../../lib/auth-context'
-
+ 
 interface DashboardData {
   totalCourses: number
   totalStudents: number
@@ -31,28 +52,29 @@ interface DashboardData {
   }
   mySubjects?: any[]
 }
-
+ 
 export default function InstructorDashboardPage() {
   const { user } = useAuth()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
-
+ 
   useEffect(() => {
+    setMounted(true)
     fetchDashboardData()
   }, [])
-
+ 
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
       const token = getToken()
       if (!token) {
-        toast.error('Please login first')
+        toast.error('Session expired')
         router.push('/login')
         return
       }
-
-      // Use environment variable for API URL
+ 
       const response = await fetch(
         `${API_URL}/instructor/dashboard/overview`,
         {
@@ -63,13 +85,12 @@ export default function InstructorDashboardPage() {
           credentials: 'include'
         }
       )
-
+ 
       const result = await response.json()
-
+ 
       if (result.success) {
         let dashboardData = result.data;
-
-        // Fetch subjects if College
+ 
         if (user?.organizationType === 'COLLEGE') {
           const subRes = await fetch(`${API_URL}/instructor/subjects`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -79,368 +100,348 @@ export default function InstructorDashboardPage() {
             dashboardData.mySubjects = subData.data;
           }
         }
-
+ 
         setData(dashboardData)
       } else {
-        toast.error(result.message || 'Failed to load dashboard data')
+        toast.error(result.message || 'Synchronization failure')
       }
     } catch (error) {
-      console.error('Dashboard error:', error)
-      toast.error('Failed to load dashboard data')
+      console.error('Peak Dashboard error:', error)
+      toast.error('Intelligence stream link severed')
     } finally {
       setLoading(false)
     }
   }
-
+ 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  if (!data) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Failed to load dashboard</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Instructor Dashboard</h1>
-            <p className="text-muted-foreground">Manage your courses and track student progress</p>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-6">
+        <div className="relative">
+          <div className="h-20 w-20 border-[6px] border-indigo-500/10 border-t-indigo-600 rounded-full animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Zap className="w-6 h-6 text-indigo-600 fill-indigo-600 animate-pulse" />
           </div>
-          <Button onClick={() => router.push('/instructor/courses/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Course
-          </Button>
         </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="overflow-hidden border-0 bg-slate-900/40 backdrop-blur-xl border border-slate-800/50">
-              <CardContent className="p-6 relative">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <BookOpen className="h-16 w-16" />
-                </div>
-                <div className="flex items-center justify-between relative z-10">
-                  <div>
-                    <p className="text-xs font-bold text-blue-400 uppercase tracking-tighter mb-1">Total Courses</p>
-                    <p className="text-4xl font-black text-white">{data.totalCourses}</p>
-                  </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <BookOpen className="h-7 w-7 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="overflow-hidden border-0 bg-slate-900/40 backdrop-blur-xl border border-slate-800/50">
-              <CardContent className="p-6 relative">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <Users className="h-16 w-16" />
-                </div>
-                <div className="flex items-center justify-between relative z-10">
-                  <div>
-                    <p className="text-xs font-bold text-emerald-400 uppercase tracking-tighter mb-1">Total Students</p>
-                    <p className="text-4xl font-black text-white">{data.totalStudents}</p>
-                  </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                    <Users className="h-7 w-7 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="overflow-hidden border-0 bg-slate-900/40 backdrop-blur-xl border border-slate-800/50">
-              <CardContent className="p-6 relative">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <Video className="h-16 w-16" />
-                </div>
-                <div className="flex items-center justify-between relative z-10">
-                  <div>
-                    <p className="text-xs font-bold text-purple-400 uppercase tracking-tighter mb-1">Total Lectures</p>
-                    <p className="text-4xl font-black text-white">{data.totalLectures}</p>
-                  </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                    <Video className="h-7 w-7 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card className="overflow-hidden border-0 bg-slate-900/40 backdrop-blur-xl border border-slate-800/50">
-              <CardContent className="p-6 relative">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <TrendingUp className="h-16 w-16" />
-                </div>
-                <div className="flex items-center justify-between relative z-10">
-                  <div>
-                    <p className="text-xs font-bold text-orange-400 uppercase tracking-tighter mb-1">Completion Rate</p>
-                    <p className="text-4xl font-black text-white">{Math.round(data.completionRate)}%</p>
-                  </div>
-                  <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-600 to-orange-400 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                    <TrendingUp className="h-7 w-7 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+        <div className="text-center space-y-2">
+           <p className="text-[12px] font-black text-slate-900 uppercase tracking-[0.3em]">Calibrating Executive Console</p>
+           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic animate-pulse">Establishing secure link...</p>
         </div>
-
-        {/* College Attendance Summary */}
-        {user?.organizationType === 'COLLEGE' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="mb-8"
-          >
-            <Card className="bg-gradient-to-r from-slate-900 to-slate-800 text-white border-0 overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-8 opacity-10">
-                <Users className="h-32 w-32" />
+      </div>
+    )
+  }
+ 
+  if (!data || !mounted) return null;
+ 
+  return (
+    <div className="max-w-[1600px] mx-auto space-y-16 pb-32 p-8 animate-in fade-in duration-1000">
+      
+      {/* ─── Executive Header Layer ───────────────────────────────────── */}
+      <div className="relative group">
+        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-[4rem] blur opacity-[0.03] group-hover:opacity-[0.08] transition duration-1000"></div>
+        <div className="relative overflow-hidden rounded-[3.5rem] bg-white border border-slate-200/60 p-12 lg:p-20 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.03)]">
+          {/* Ambient Background Elements */}
+          <div className="absolute top-0 right-0 -mr-24 -mt-24 w-[40rem] h-[40rem] bg-indigo-50/50 rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 left-0 -ml-24 -mb-24 w-96 h-96 bg-blue-50/40 rounded-full blur-[100px]" />
+          
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-16">
+            <div className="space-y-8 max-w-2xl">
+              <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-black uppercase tracking-[0.25em] border border-indigo-100/50">
+                <ShieldCheck className="w-4 h-4 fill-indigo-700/10" />
+                Verified Educator Console
               </div>
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                  <div>
-                    <h2 className="text-xl font-bold mb-2">College Attendance Summary</h2>
-                    <p className="text-slate-400 text-sm">Real-time tracking for active courses</p>
-                  </div>
-                  <div className="flex gap-8">
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-green-400">{data.attendanceStats?.overallPercentage || 0}%</p>
-                      <p className="text-xs text-slate-400">Avg. Attendance</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-red-400">{data.attendanceStats?.atRiskStudents || 0}</p>
-                      <p className="text-xs text-slate-400">At-Risk Students</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="bg-white/10 border-white/20 hover:bg-white/20 text-white"
-                    onClick={() => router.push('/instructor/attendance')}
-                  >
-                    Manage Attendance
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* My Subjects (COLLEGE ONLY) */}
-          {user?.organizationType === 'COLLEGE' && (
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-purple-400" />
-                    My Assigned Subjects
-                  </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => router.push('/instructor/subjects')}
-                  >
-                    View All
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {!data.mySubjects || data.mySubjects.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No subjects assigned yet</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {data.mySubjects.slice(0, 3).map((sub) => (
-                      <div
-                        key={sub._id}
-                        className="p-4 rounded-xl border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => router.push(`/instructor/subjects/${sub._id}`)}
-                      >
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                            <BookOpen className="h-5 w-5 text-purple-400" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-sm">{sub.name}</p>
-                            <p className="text-xs text-muted-foreground">{sub.code}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between mt-4">
-                          <Badge variant="secondary" className="text-[10px]">
-                            {sub.program_id?.name || 'Program'}
-                          </Badge>
-                          <span className="text-[10px] text-muted-foreground">Semester {sub.semester}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Upcoming Classes */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Upcoming Live Classes
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push('/instructor/live-classes')}
-                >
-                  View All
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {data.upcomingClasses.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No upcoming classes scheduled</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {data.upcomingClasses.map((liveClass, index) => (
-                    <div
-                      key={liveClass._id}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+              
+              <div className="space-y-4">
+                <h1 className="text-6xl lg:text-7xl font-black text-slate-900 tracking-[-0.04em] leading-[0.95]">
+                  Peak Performance, <br />
+                  <span className="text-indigo-600 inline-flex items-center gap-4">
+                    {user?.name?.split(' ')[0] || "Educator"}
+                    <motion.div 
+                      animate={{ y: [0, -4, 0] }} 
+                      transition={{ repeat: Infinity, duration: 2 }}
                     >
-                      <div className="flex-1">
-                        <p className="font-medium">{liveClass.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {liveClass.course_id?.title || 'No course'}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Clock className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(liveClass.scheduled_date).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                      <Badge variant={liveClass.status === 'live' ? 'default' : 'secondary'}>
-                        {liveClass.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  className="h-24 flex-col gap-2"
-                  onClick={() => router.push('/instructor/courses')}
-                >
-                  <BookOpen className="h-6 w-6" />
-                  <span>My Courses</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 flex-col gap-2"
+                      <Zap className="w-12 h-12 fill-indigo-600" />
+                    </motion.div>
+                  </span>
+                </h1>
+                <p className="text-[19px] font-medium text-slate-500 leading-relaxed max-w-xl">
+                  Your pedagogical influence is expanding. Navigate through real-time scholar analytics, curriculum mastery trends, and upcoming broadcast channels.
+                </p>
+              </div>
+ 
+              <div className="flex flex-wrap items-center gap-6 pt-4">
+                <button 
                   onClick={() => router.push('/instructor/courses/new')}
+                  className="h-20 px-12 bg-slate-900 text-white rounded-[2.2rem] text-[16px] font-black hover:scale-105 active:scale-95 transition-all flex items-center gap-4 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.2)] group"
                 >
-                  <Plus className="h-6 w-6" />
-                  <span>New Course</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 flex-col gap-2"
-                  onClick={() => router.push('/instructor/live-classes')}
-                >
-                  <Video className="h-6 w-6" />
-                  <span>Live Classes</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-24 flex-col gap-2"
-                  onClick={() => router.push('/instructor/submissions')}
-                >
-                  <FileText className="h-6 w-6" />
-                  <span>Submissions</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Completion Stats */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Award className="h-5 w-5" />
-              Student Progress Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center p-4 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-foreground">{data.completionStats.total}</p>
-                <p className="text-sm text-muted-foreground mt-1">Total Enrollments</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {data.completionStats.completed}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">Completed Courses</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {Math.round(data.completionRate)}%
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">Average Completion</p>
+                  <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-500" strokeWidth={3} />
+                  PROVISION COURSE
+                </button>
+                <button className="h-20 w-20 flex items-center justify-center rounded-[2.2rem] border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition-all">
+                  <Bell className="w-7 h-7" />
+                </button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+ 
+            {/* Quick Context Grid */}
+            <div className="hidden xl:grid grid-cols-2 gap-6 w-full max-w-md">
+                <ContextMiniCard label="Active Students" value={data.totalStudents} icon={<Users color="#4F46E5" />} />
+                <ContextMiniCard label="Global Rank" value="#12" icon={<Star color="#F59E0B" />} />
+                <ContextMiniCard label="Engagement" value="94%" icon={<Activity color="#10B981" />} />
+                <ContextMiniCard label="Tasks Pending" value={data.recentSubmissions.length} icon={<FileText color="#EF4444" />} />
+            </div>
+          </div>
+        </div>
       </div>
+ 
+      {/* ─── Global Intelligence Grid ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <PeakMetric 
+          label="Curriculum Volume" 
+          value={data.totalCourses} 
+          icon={<BookOpen className="w-6 h-6" />} 
+          color="indigo"
+          trend="+2 New"
+          delay={0.1}
+        />
+        <PeakMetric 
+          label="Scholar Registry" 
+          value={data.totalStudents} 
+          icon={<Users className="w-6 h-6" />} 
+          color="emerald"
+          trend="+12% Gain"
+          delay={0.2}
+        />
+        <PeakMetric 
+          label="Knowledge Assets" 
+          value={data.totalLectures} 
+          icon={<Video className="w-6 h-6" />} 
+          color="blue"
+          trend="84h Stream"
+          delay={0.3}
+        />
+        <PeakMetric 
+          label="Mastery Velocity" 
+          value={`${Math.round(data.completionRate)}%`} 
+          icon={<Target className="w-6 h-6" />} 
+          color="amber"
+          trend="Elite Tier"
+          delay={0.4}
+        />
+      </div>
+ 
+      {/* ─── Predictive Analytics Layer ───────────────────────────────── */}
+      {user?.organizationType === 'COLLEGE' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+           <div className="lg:col-span-2 relative overflow-hidden rounded-[3.5rem] bg-indigo-600 p-16 text-white group cursor-default shadow-[0_40px_80px_-20px_rgba(79,70,229,0.3)]">
+              <div className="absolute top-0 right-0 -mr-24 -mt-24 w-[35rem] h-[35rem] bg-white/10 rounded-full blur-[100px] group-hover:scale-110 transition-transform duration-1000" />
+              <div className="relative z-10 space-y-12">
+                 <div className="flex items-center justify-between">
+                    <div className="space-y-4">
+                       <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white/60">Predictive Modeling</p>
+                       <h2 className="text-4xl font-black tracking-tight leading-tight italic">Scholarly Retention <br />& Participation</h2>
+                    </div>
+                    <button onClick={() => router.push('/instructor/attendance')} className="h-14 px-8 bg-white/10 hover:bg-white text-white hover:text-indigo-600 rounded-2xl text-[12px] font-black uppercase tracking-widest transition-all border border-white/20 hover:border-white">Deep Analyze</button>
+                 </div>
+                 <div className="flex items-center gap-20">
+                    <div className="space-y-1">
+                       <p className="text-7xl font-black tracking-tighter">{data.attendanceStats?.overallPercentage || 0}%</p>
+                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 italic">System Participation</p>
+                    </div>
+                    <div className="h-20 w-[1px] bg-white/10" />
+                    <div className="space-y-1">
+                       <p className="text-7xl font-black tracking-tighter text-rose-300">{data.attendanceStats?.atRiskStudents || 0}</p>
+                       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 italic">Risk Intervention</p>
+                    </div>
+                 </div>
+              </div>
+           </div>
+           
+           <div className="bg-white border border-slate-200 rounded-[3.5rem] p-12 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.1] transition-opacity">
+                <Layers className="w-32 h-32 rotate-12" />
+              </div>
+              <div className="space-y-6 relative z-10">
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em]">Academic Load</p>
+                <div className="space-y-2">
+                  <p className="text-5xl font-black text-slate-900 tracking-tighter">{data.mySubjects?.length || 0}</p>
+                  <p className="text-[14px] font-bold text-slate-500 uppercase tracking-widest italic">Assigned Faculties</p>
+                </div>
+              </div>
+              <button onClick={() => router.push('/instructor/subjects')} className="h-16 w-full bg-slate-50 hover:bg-indigo-600 hover:text-white rounded-[1.5rem] mt-10 transition-all font-black text-[12px] uppercase tracking-[0.2em] border border-slate-100 hover:border-indigo-600 flex items-center justify-center gap-3">
+                 REVIEW ARCHIVE <ArrowUpRight className="w-4 h-4" strokeWidth={3} />
+              </button>
+           </div>
+        </div>
+      )}
+ 
+      {/* ─── Principal Information Architecture ───────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        {/* Left Surface - Assignments & Audit */}
+        <div className="lg:col-span-8 space-y-12">
+           {/* Section Header */}
+           <div className="flex items-center justify-between px-6">
+              <div className="space-y-1">
+                 <h3 className="text-[18px] font-black text-slate-900 tracking-[-0.02em]">Audit Intelligence Stream</h3>
+                 <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest italic opacity-70">// Monitoring scholar submissions in real-time</p>
+              </div>
+              <Button onClick={() => router.push('/instructor/submissions')} variant="link" className="text-indigo-600 font-black text-[12px] uppercase tracking-widest hover:no-underline flex items-center gap-2 group">
+                 Open Registry <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" strokeWidth={3} />
+              </Button>
+           </div>
+ 
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {!data.recentSubmissions || data.recentSubmissions.length === 0 ? (
+                <div className="md:col-span-2 bg-white border border-dashed border-slate-200 rounded-[3rem] py-32 text-center group">
+                   <div className="h-20 w-20 flex items-center justify-center rounded-[2rem] bg-slate-50 mx-auto mb-8 group-hover:scale-110 transition-transform">
+                     <ShieldCheck className="w-8 h-8 text-slate-200" />
+                   </div>
+                   <p className="text-[16px] font-bold text-slate-400 italic">Audit queue synchronized. Zero pending identities identified.</p>
+                </div>
+              ) : (
+                data.recentSubmissions.slice(0, 4).map((sub, idx) => (
+                  <PeakAuditCard key={idx} sub={sub} idx={idx} />
+                ))
+              )}
+           </div>
+        </div>
+ 
+        {/* Right Surface - Broadcasting & Navigation */}
+        <div className="lg:col-span-4 space-y-12">
+           <div className="space-y-6 px-6">
+               <h3 className="text-[18px] font-black text-slate-900 tracking-[-0.02em]">Satellite Uplink</h3>
+               <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest italic opacity-70">// Active broadcast channels</p>
+           </div>
+ 
+           <div className="bg-white border border-slate-200 rounded-[3.5rem] p-8 space-y-8 shadow-sm">
+              {data.upcomingClasses.length === 0 ? (
+                <div className="py-24 text-center">
+                   <Video className="w-10 h-10 text-slate-100 mx-auto mb-4" />
+                   <p className="text-[13px] font-bold text-slate-400 italic">Zero broadcasts identified.</p>
+                </div>
+              ) : (
+                data.upcomingClasses.map((live, idx) => (
+                  <PeakLiveCard key={idx} live={live} />
+                ))
+              )}
+           </div>
+ 
+           {/* Navigation QuickLinks */}
+           <div className="grid grid-cols-2 gap-4">
+              <PeakNavButton label="Courses" icon={<Layers />} href="/instructor/courses" />
+              <PeakNavButton label="Scholars" icon={<Users />} href="/instructor/students" />
+              <PeakNavButton label="Broadcast" icon={<Video />} href="/instructor/live-classes" />
+              <PeakNavButton label="Registry" icon={<Search />} href="/instructor/gradebook" />
+           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+ 
+function PeakMetric({ label, value, icon, color, trend, delay }: any) {
+  const colors: any = {
+    indigo: "bg-indigo-50 border-indigo-100 text-indigo-700",
+    emerald: "bg-emerald-50 border-emerald-100 text-emerald-700",
+    blue: "bg-blue-50 border-blue-100 text-blue-700",
+    amber: "bg-amber-50 border-amber-100 text-amber-700",
+  }
+ 
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="bg-white border border-slate-200 rounded-[3rem] p-10 space-y-8 group hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.06)] hover:scale-[1.02] transition-all cursor-default relative overflow-hidden"
+    >
+      <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.08] transition-opacity duration-700">
+        {React.cloneElement(icon, { size: 100 })}
+      </div>
+      <div className={`h-16 w-16 rounded-[1.6rem] ${colors[color]} border flex items-center justify-center group-hover:rotate-12 group-hover:scale-110 transition-all duration-700 shadow-sm`}>
+        {icon}
+      </div>
+      <div className="space-y-2">
+        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">{label}</p>
+        <div className="flex items-baseline gap-4">
+          <p className="text-5xl font-black text-slate-900 tracking-[-0.02em]">{value}</p>
+          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 uppercase tracking-widest">{trend}</span>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+ 
+function PeakAuditCard({ sub, idx }: any) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      transition={{ delay: idx * 0.1 }}
+      className="bg-white border border-slate-100 rounded-[2.5rem] p-8 flex items-center justify-between hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/5 transition-all group cursor-pointer"
+    >
+      <div className="flex items-center gap-6">
+         <div className="h-16 w-16 rounded-[1.6rem] bg-indigo-50 border border-indigo-100 flex items-center justify-center group-hover:bg-indigo-600 transition-all duration-700 shadow-sm relative overflow-hidden">
+            <FileText className="w-7 h-7 text-indigo-600 group-hover:text-white transition-colors" />
+            <div className="absolute top-0 right-0 h-4 w-4 bg-amber-500 border-[3px] border-white group-hover:border-indigo-600 rounded-full" />
+         </div>
+         <div className="space-y-1">
+            <p className="text-[18px] font-black text-slate-900 tracking-tight leading-tight group-hover:text-indigo-600 transition-colors">{sub.assignment_id?.title || 'Intelligence Task'}</p>
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">{sub.student_id?.name || 'Authorized Scholar'}</p>
+         </div>
+      </div>
+      <div className="h-10 w-10 flex items-center justify-center rounded-2xl bg-slate-50 text-slate-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
+         <ChevronRight className="w-5 h-5" strokeWidth={3} />
+      </div>
+    </motion.div>
+  )
+}
+ 
+function PeakLiveCard({ live }: any) {
+  return (
+    <div className="p-6 rounded-[2.5rem] bg-slate-50 hover:bg-slate-900 group transition-all duration-500 cursor-pointer relative overflow-hidden border border-transparent hover:scale-[1.02]">
+       <div className="relative z-10 space-y-6">
+          <div className="flex items-center justify-between">
+             <div className="h-12 w-12 rounded-[1.2rem] bg-white group-hover:bg-rose-600 flex items-center justify-center shadow-sm transition-all duration-500 border border-slate-100 group-hover:border-rose-600">
+                <Video className="w-5 h-5 text-rose-600 group-hover:text-white" />
+             </div>
+             <Badge className="bg-rose-500 group-hover:bg-white group-hover:text-rose-600 border-0 text-[10px] font-black px-3 py-1">LIVE IN 12MIN</Badge>
+          </div>
+          <div className="space-y-1">
+             <p className="text-[18px] font-black group-hover:text-white tracking-tight leading-tight">{live.title}</p>
+             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{live.course_id?.title}</p>
+          </div>
+          <div className="flex items-center gap-2 font-black text-[12px] group-hover:text-rose-400 transition-colors">
+             <Clock className="w-4 h-4" /> {new Date(live.scheduled_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
+       </div>
+    </div>
+  )
+}
+ 
+function PeakNavButton({ label, icon, href }: any) {
+  const router = useRouter()
+  return (
+    <button 
+      onClick={() => router.push(href)}
+      className="h-[120px] rounded-[2.5rem] border border-slate-200 bg-white hover:bg-slate-900 hover:text-white transition-all duration-500 group flex flex-col items-center justify-center gap-4 hover:shadow-2xl hover:shadow-indigo-500/10"
+    >
+      <div className="text-slate-300 group-hover:text-indigo-400 transition-colors">
+         {React.cloneElement(icon, { size: 28, strokeWidth: 2.5 })}
+      </div>
+      <span className="text-[12px] font-black uppercase tracking-widest">{label}</span>
+    </button>
+  )
+}
+ 
+function ContextMiniCard({ label, value, icon }: any) {
+  return (
+    <div className="bg-slate-50/50 p-6 rounded-[2.5rem] border border-slate-100 flex items-center gap-5 hover:bg-white hover:border-indigo-200 hover:shadow-lg transition-all cursor-default">
+       <div className="h-12 w-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+          {icon}
+       </div>
+       <div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">{label}</p>
+          <p className="text-[18px] font-black text-slate-900 leading-none">{value}</p>
+       </div>
     </div>
   )
 }

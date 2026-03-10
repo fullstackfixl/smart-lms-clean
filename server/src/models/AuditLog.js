@@ -33,7 +33,7 @@ const auditLogSchema = new mongoose.Schema({
       'SUSPEND', 'ACTIVATE', 'APPROVE', 'REJECT',
       'LOGIN', 'LOGOUT', 'PASSWORD_RESET',
       'ROLE_CHANGE', 'PERMISSION_CHANGE',
-      'EXPORT', 'IMPORT', 'BULK_UPDATE'
+      'EXPORT', 'IMPORT', 'BULK_UPDATE', 'INVITE'
     ]
   },
   resource: {

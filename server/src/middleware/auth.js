@@ -41,12 +41,12 @@ const authMiddleware = async (req, res, next) => {
     const user = await User.findById(userId).select('-password').populate('organization_id');
 
     if (!user) {
-      console.log('❌ [Auth] User not found:', userId);
+      console.log('❌ [Auth] User not found for ID:', userId);
       return res.error('User not found', 'Authentication failed', 401);
     }
 
-    if (!user.isActive) {
-      console.log('❌ [Auth] User inactive:', user.email);
+    if (!user.isActive || user.status === 'suspended' || user.status === 'inactive') {
+      console.log('❌ [Auth] User not active or suspended:', user.email, 'Status:', user.status, 'isActive:', user.isActive);
       return res.error('Account deactivated', 'Account access denied', 401);
     }
 
@@ -241,7 +241,7 @@ const requirePlatformAdmin = (req, res, next) => {
  * Middleware to require platform-level access (admin OR staff)
  * Used for shared routes like viewing orgs, applications, analytics
  */
-const requirePlatformAccess = (req, res, next) => {
+const requirePlatformStaff = (req, res, next) => {
   if (!req.user) {
     return res.error('Authentication required', 'Access denied', 401);
   }
@@ -259,7 +259,7 @@ module.exports = {
   requireRole,
   requirePermission,
   requirePlatformAdmin,
-  requirePlatformAccess,
+  requirePlatformStaff,
   orgAccessMiddleware,
   parentAccessMiddleware,
   multiTenantMiddleware,

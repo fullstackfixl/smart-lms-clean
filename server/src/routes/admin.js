@@ -142,7 +142,59 @@ router.get('/dashboard/metrics', async (req, res) => {
     ]);
     const totalRevenue = revenueData[0]?.totalRevenue || 0;
 
-    // Pending Fees
+    // --- Trend Calculations (MoM) ---
+    const currentMonthStart = new Date();
+    currentMonthStart.setDate(1);
+    currentMonthStart.setHours(0, 0, 0, 0);
+
+    const prevMonthStart = new Date(currentMonthStart);
+    prevMonthStart.setMonth(prevMonthStart.getMonth() - 1);
+
+    const [currentMonthStudents, prevMonthStudents, currentMonthRevenue, prevMonthRevenue] = await Promise.all([
+      User.countDocuments({ organization_id: orgId, role: 'student', isActive: true, createdAt: { $gte: currentMonthStart } }),
+      User.countDocuments({ organization_id: orgId, role: 'student', isActive: true, createdAt: { $gte: prevMonthStart, $lt: currentMonthStart } }),
+      Fee.aggregate([
+        { $match: { organization_id: orgId, status: 'paid', paidAt: { $gte: currentMonthStart } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      Fee.aggregate([
+        { $match: { organization_id: orgId, status: 'paid', paidAt: { $gte: prevMonthStart, $lt: currentMonthStart } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+      ])
+    ]);
+
+    const calculateTrend = (curr, prev) => {
+      if (prev === 0) return curr > 0 ? `+${curr}` : '0%';
+      const diff = ((curr - prev) / prev) * 100;
+      return `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%`;
+    };
+
+    const studentTrend = calculateTrend(currentMonthStudents, prevMonthStudents);
+    const revenueTrend = calculateTrend(currentMonthRevenue[0]?.total || 0, prevMonthRevenue[0]?.total || 0);
+
+    // Live Classes Count (Upcoming within 7 days)
+    const LiveClass = require('../models/LiveClass');
+    const within7Days = new Date();
+    within7Days.setDate(within7Days.getDate() + 7);
+
+    const liveClassesCount = await LiveClass.countDocuments({
+      organization_id: orgId,
+      scheduled_date: { $gte: new Date(), $lte: within7Days },
+      status: { $in: ['scheduled', 'live'] }
+    });
+
+    // Live Session Trend (Comparison with previous 7 days)
+    const last7DaysStart = new Date();
+    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+    const prev7DaysStart = new Date(last7DaysStart);
+    prev7DaysStart.setDate(prev7DaysStart.getDate() - 7);
+
+    const [currSessions, prevSessions] = await Promise.all([
+      LiveClass.countDocuments({ organization_id: orgId, scheduled_date: { $gte: last7DaysStart }, is_active: true }),
+      LiveClass.countDocuments({ organization_id: orgId, scheduled_date: { $gte: prev7DaysStart, $lt: last7DaysStart }, is_active: true })
+    ]);
+    const sessionDiff = currSessions - prevSessions;
+    const sessionTrend = `${sessionDiff >= 0 ? '+' : ''}${sessionDiff}`;
     const pendingFeesData = await Fee.aggregate([
       {
         $match: {
@@ -273,8 +325,14 @@ router.get('/dashboard/metrics', async (req, res) => {
         activeCourses,
         totalRevenue,
         pendingFees,
+        liveClassesCount,
         attendancePercentage: parseFloat(attendancePercentage),
         completionRate: parseFloat(completionRate),
+        trends: {
+          students: studentTrend,
+          revenue: revenueTrend,
+          liveSessions: sessionTrend
+        },
         ...typeSpecific
       },
       organizationType: orgType,
@@ -320,9 +378,43 @@ router.get('/dashboard/activities', async (req, res) => {
       .limit(limit)
       .populate('student_id', 'name email');
 
+    // Top Performing Courses (by enrollment count)
+    const topCoursesRaw = await Enrollment.aggregate([
+      { $match: { organization_id: orgId } },
+      { $group: { _id: '$course_id', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // Populate course details
+    const topCourseIds = topCoursesRaw.map(tc => tc._id);
+    const topCourseDetails = await Course.find({ _id: { $in: topCourseIds } })
+      .populate('instructor_id', 'profile.fullName name email')
+      .lean();
+
+    const topCourses = await Promise.all(topCoursesRaw.map(async (tc) => {
+      const details = topCourseDetails.find(d => String(d._id) === String(tc._id));
+      
+      // Calculate average completion rate for this course
+      const completionData = await Enrollment.aggregate([
+        { $match: { course_id: tc._id, organization_id: orgId } },
+        { $group: { _id: null, avgProgress: { $avg: '$progress.completionPercentage' } } }
+      ]);
+      const avgProgress = Math.round(completionData[0]?.avgProgress || 0);
+
+      return {
+        _id: tc._id,
+        title: details?.title || 'Unknown Course',
+        instructor: details?.instructor_id?.profile?.fullName || details?.instructor_id?.name || 'Unknown Instructor',
+        enrollments: tc.count,
+        rate: avgProgress
+      };
+    }));
+
     res.success({
       recentEnrollments,
-      recentPayments
+      recentPayments,
+      topCourses
     }, 'Recent activities retrieved');
 
   } catch (error) {

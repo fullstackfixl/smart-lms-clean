@@ -326,6 +326,33 @@ export async function deleteEvent(eventId: string) {
   });
 }
 
+// ==================== LIVE CLASSES (NEW) ====================
+
+export async function getLiveClasses(params: any = {}) {
+  const query = new URLSearchParams(params).toString();
+  return apiRequest(`/api/live-classes${query ? `?${query}` : ''}`);
+}
+
+export async function createLiveClass(data: any) {
+  return apiRequest('/api/live-classes', {
+    method: 'POST',
+    body: data
+  });
+}
+
+export async function updateLiveClass(id: string, data: any) {
+  return apiRequest(`/api/live-classes/${id}`, {
+    method: 'PUT',
+    body: data
+  });
+}
+
+export async function deleteLiveClass(id: string) {
+  return apiRequest(`/api/live-classes/${id}`, {
+    method: 'DELETE'
+  });
+}
+
 // ==================== ANALYTICS ====================
 
 export async function getAnalyticsOverview() {

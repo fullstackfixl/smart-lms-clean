@@ -97,13 +97,9 @@ try {
   const organizationRoutes = require('./routes/organizations');
   app.use('/api/organizations', organizationRoutes);
 
-  console.log(`[${new Date().toISOString()}]   - platform`);
-  const platformRoutes = require('./routes/platform');
-  app.use('/platform', platformRoutes);
-
-  console.log(`[${new Date().toISOString()}]   - platform-api`);
-  const platformApiRoutes = require('./routes/platformApi');
-  app.use('/api/platform', platformApiRoutes);
+  console.log(`[${new Date().toISOString()}]   - platform (overhauled)`);
+  const platformAdminRoutes = require('./routes/platform/index');
+  app.use('/api/platform', platformAdminRoutes);
 
   console.log(`[${new Date().toISOString()}]   - payments`);
   const paymentRoutes = require('./routes/payments');

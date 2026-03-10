@@ -364,7 +364,7 @@ export const platformApi = {
     }
     plan?: 'basic' | 'premium'
   }) => {
-    return apiRequest("/platform/organizations", {
+    return apiRequest("/api/platform/organizations", {
       method: "POST",
       token,
       body: data
@@ -382,11 +382,11 @@ export const platformApi = {
     if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder)
 
     const query = queryParams.toString()
-    return apiRequest(`/platform/organizations${query ? `?${query}` : ""}`, { token })
+    return apiRequest(`/api/platform/organizations${query ? `?${query}` : ""}`, { token })
   },
 
   getOrg: (token: string, id: string) =>
-    apiRequest(`/platform/organizations/${id}`, { token }),
+    apiRequest(`/api/platform/organizations/${id}`, { token }),
 
   updateOrg: async (token: string, id: string, data: {
     name?: string
@@ -401,50 +401,55 @@ export const platformApi = {
     }
     plan?: 'basic' | 'premium'
   }) => {
-    return apiRequest(`/platform/organizations/${id}`, {
+    return apiRequest(`/api/platform/organizations/${id}`, {
       method: "PUT",
       token,
       body: data
     })
   },
 
-  updateOrgStatus: async (token: string, id: string, status: 'active' | 'suspended') => {
-    return apiRequest(`/platform/organizations/${id}/status`, {
+  suspendOrg: async (token: string, id: string) => {
+    return apiRequest(`/api/platform/organizations/${id}/suspend`, {
       method: "PATCH",
-      token,
-      body: { status }
+      token
+    })
+  },
+  activateOrg: async (token: string, id: string) => {
+    return apiRequest(`/api/platform/organizations/${id}/activate`, {
+      method: "PATCH",
+      token
     })
   },
 
   deleteOrg: async (token: string, id: string) => {
-    return apiRequest(`/platform/organizations/${id}`, {
+    return apiRequest(`/api/platform/organizations/${id}`, {
       method: "DELETE",
       token
     })
   },
 
   restoreOrg: async (token: string, id: string) => {
-    return apiRequest(`/platform/organizations/${id}/restore`, {
+    return apiRequest(`/api/platform/organizations/${id}/restore`, {
       method: "POST",
       token
     })
   },
 
   getOrgStats: (token?: string) =>
-    apiRequest("/platform/organizations/stats", { token }),
+    apiRequest("/api/platform/organizations/stats", { token }),
 
   analytics: (token: string) =>
-    apiRequest("/platform/analytics", { token }),
+    apiRequest("/api/platform/analytics", { token }),
   revenue: (token: string) =>
-    apiRequest("/platform/revenue", { token }),
+    apiRequest("/api/platform/revenue", { token }),
 
   // Dashboard
   getDashboardStats: (token?: string) =>
-    apiRequest("/platform/dashboard/stats", { token }),
+    apiRequest("/api/platform/dashboard/stats", { token }),
   getGlobalAnalytics: (token?: string, period?: string) =>
-    apiRequest(`/platform/analytics/global${period ? `?period=${period}` : ""}`, { token }),
+    apiRequest(`/api/platform/analytics/global${period ? `?period=${period}` : ""}`, { token }),
   getRevenueAnalytics: (token?: string) =>
-    apiRequest("/platform/analytics/revenue", { token }),
+    apiRequest("/api/platform/analytics/revenue", { token }),
 
   // Platform Admins
   listAdmins: (token: string, params?: { page?: number; limit?: number; search?: string }) => {
@@ -454,7 +459,7 @@ export const platformApi = {
     if (params?.search) queryParams.append('search', params.search)
 
     const query = queryParams.toString()
-    return apiRequest(`/platform/admins${query ? `?${query}` : ""}`, { token })
+    return apiRequest(`/api/platform/admins${query ? `?${query}` : ""}`, { token })
   },
 
   createAdmin: async (token: string, data: {
@@ -462,7 +467,7 @@ export const platformApi = {
     email: string
     password: string
   }) => {
-    return apiRequest("/platform/admins", {
+    return apiRequest("/api/platform/admins", {
       method: "POST",
       token,
       body: data
@@ -470,7 +475,7 @@ export const platformApi = {
   },
 
   updateAdminStatus: async (token: string, id: string, isActive: boolean) => {
-    return apiRequest(`/platform/admins/${id}/status`, {
+    return apiRequest(`/api/platform/admins/${id}/status`, {
       method: "PATCH",
       token,
       body: { isActive }
@@ -479,25 +484,31 @@ export const platformApi = {
 
   // Users
   listUsers: (token: string, params?: string) =>
-    apiRequest(`/platform/users${params ? `?${params}` : ""}`, { token }),
+    apiRequest(`/api/platform/users${params ? `?${params}` : ""}`, { token }),
 
   getUserStats: (token: string) =>
-    apiRequest("/platform/users/stats", { token }),
+    apiRequest("/api/platform/users/stats", { token }),
 
   updateUserStatus: (token: string, id: string, isActive: boolean) =>
-    apiRequest(`/platform/users/${id}/status`, {
+    apiRequest(`/api/platform/users/${id}/status`, {
       method: "PATCH",
       token,
       body: { isActive }
     }),
 
+  suspendCourse: (token: string, id: string) =>
+    apiRequest(`/api/platform/courses/${id}/suspend`, { method: "PATCH", token }),
+  
+  activateCourse: (token: string, id: string) =>
+    apiRequest(`/api/platform/courses/${id}/activate`, { method: "PATCH", token }),
+
   // Organization Applications
   listApplications: (token: string, status: string = 'pending') =>
-    apiRequest(`/platform/applications?status=${status}`, { token }),
+    apiRequest(`/api/platform/applications?status=${status}`, { token }),
   approveApplication: (token: string, id: string) =>
-    apiRequest(`/platform/applications/${id}/approve`, { method: "PUT", token }),
+    apiRequest(`/api/platform/applications/${id}/approve`, { method: "PUT", token }),
   rejectApplication: (token: string, id: string) =>
-    apiRequest(`/platform/applications/${id}/reject`, { method: "PUT", token }),
+    apiRequest(`/api/platform/applications/${id}/reject`, { method: "PUT", token }),
 
   // New Organization Invitation Flow
   createOrgV2: async (token: string, data: {
@@ -506,7 +517,7 @@ export const platformApi = {
     adminName: string
     adminEmail: string
   }) => {
-    return apiRequest("/api/platform/organizations/create", {
+    return apiRequest("/api/platform/organizations/invite", {
       method: "POST",
       token,
       body: data
@@ -653,6 +664,18 @@ export const instructorApi = {
   gradeSubmission: (token: string, id: string, data: Record<string, unknown>) =>
     apiRequest(`/instructor/submissions/${id}/grade`, {
       method: "PATCH",
+      token,
+      body: data,
+    }),
+
+  // Attendance & Gradebook (College/Academic)
+  attendanceSummary: (token: string) =>
+    apiRequest("/instructor/attendance/summary", { token }),
+  getGradebook: (token: string, courseId: string) =>
+    apiRequest(`/instructor/gradebook/${courseId}`, { token }),
+  updateMarks: (token: string, data: Record<string, unknown>) =>
+    apiRequest("/instructor/gradebook/marks", {
+      method: "POST",
       token,
       body: data,
     }),

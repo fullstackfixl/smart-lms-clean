@@ -1,4 +1,5 @@
 const Organization = require('./Organization');
+const AuditLog = require('./AuditLog');
 const User = require('./User');
 const Course = require('./Course');
 const Section = require('./Section');
@@ -42,11 +43,13 @@ const GradeLevel = require('./GradeLevel');
 const GradeSection = require('./GradeSection');
 const QuizSubmission = require('./QuizSubmission');
 const OrganizationEvent = require('./OrganizationEvent');
+const SystemConfig = require('./SystemConfig');
 
 
 
 module.exports = {
   Organization,
+  AuditLog,
   User,
   Course,
   Section,
@@ -88,6 +91,6 @@ module.exports = {
   TestSeries,
   GradeLevel,
   GradeSection,
-  QuizSubmission
-
+  QuizSubmission,
+  SystemConfig
 };

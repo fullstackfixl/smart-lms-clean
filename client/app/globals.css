@@ -10,79 +10,69 @@
 
 @layer base {
   :root {
-    /* Premium SaaS Admin Theme - Platform Admin */
-    --background: 210 40% 98%; /* #F8FAFC */
-    --foreground: 222.2 84% 4.9%; /* #0F172A */
-    --card: 0 0% 100%; /* #FFFFFF */
+    /* Learnyst Minimal System - Light Theme Primary */
+    --background: 0 0% 100%;       /* Pure White #FFFFFF */
+    --foreground: 222.2 84% 4.9%;  /* Slate 900 #0F172A */
+    
+    --card: 0 0% 100%;             /* White */
     --card-foreground: 222.2 84% 4.9%;
+    
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%; /* #2563EB */
+    
+    --primary: 221.2 83.2% 53.3%;  /* Learnyst Blue #3B82F6 */
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    
+    --secondary: 24.6 95% 53.1%;   /* Learnyst Orange #F97316 */
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 210 40% 96.1%;        /* Gray 100 #F1F5F9 */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Slate 500 */
+    
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
+    
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
+    
+    --success: 142.1 70.6% 45.3%;   /* Emerald 500 */
+    --success-foreground: 210 40% 98%;
+    
+    --border: 214.3 31.8% 91.4%;    /* Gray 200 #E2E8F0 */
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
-    --radius: 0.75rem; /* 12px for modern rounded look */
-    --sidebar-background: 222.2 47.4% 11.2%; /* #111827 */
-    --sidebar-foreground: 210 40% 98%;
+    
+    --radius: 0.5rem;               /* 8px - Standard Learnyst Radius */
+    
+    --sidebar-background: 0 0% 100%; /* White Sidebar */
+    --sidebar-foreground: 222.2 84% 4.9%;
     --sidebar-primary: 221.2 83.2% 53.3%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 214.3 31.8% 91.4%;
     --sidebar-ring: 221.2 83.2% 53.3%;
-    --success: 142.1 70.6% 45.3%;
-    --success-foreground: 210 40% 98%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 222.2 84% 4.9%;
   }
 
   .dark {
-    /* Instructor Portal Redesign - Dark Theme */
-    --background: 222.2 84% 4.9%; /* #0F172A slate-900 */
-    --foreground: 210 40% 98%; /* slate-100 */
-    --card: 217.2 32.6% 17.5%; /* #1E293B slate-800 */
+    /* Keep Dark Theme available but refined */
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
+    --card: 224 71% 7%;
     --card-foreground: 210 40% 98%;
-    --popover: 217.2 32.6% 17.5%;
+    --popover: 224 71% 7%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%; /* #3B82F6 blue-500 */
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --primary: 235 75% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 224 71% 15%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%; /* slate-400 */
-    --accent: 217.2 32.6% 17.5%;
+    --muted: 224 71% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 224 71% 15%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%; /* slate-700 */
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-    --chart-1: 217.2 91.2% 59.8%;
-    --chart-2: 142.1 76.2% 36.3%;
-    --chart-3: 262.1 83.3% 57.8%;
-    --chart-4: 37.7 92.1% 50.2%;
-    --chart-5: 340 82.2% 52.5%;
-    --sidebar-background: 217.2 32.6% 17.5%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217.2 91.2% 59.8%;
-    --sidebar-primary-foreground: 222.2 47.4% 11.2%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 224.3 76.3% 48%;
-    --success: 142.1 76.2% 36.3%;
-    --success-foreground: 210 40% 98%;
-    --warning: 37.7 92.1% 50.2%;
-    --warning-foreground: 222.2 84% 4.9%;
+    --border: 224 71% 15%;
+    --input: 224 71% 15%;
+    --ring: 235 75% 65%;
   }
 }
 
