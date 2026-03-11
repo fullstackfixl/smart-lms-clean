@@ -46,7 +46,7 @@ export default function ReportsPage() {
       {/* ─── Performance Matrix ────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
          <FlatCard className="space-y-6">
-            <h3 className="text-[16px] font-bold text-slate-900 italic">// ENROLLMENT VELOCITY</h3>
+            <h3 className="text-[16px] font-bold text-slate-900 italic">{'// ENROLLMENT VELOCITY'}</h3>
             <PlainChart 
                type="bar" 
                dataKey="count" 
@@ -55,7 +55,7 @@ export default function ReportsPage() {
          </FlatCard>
  
          <FlatCard className="space-y-6">
-            <h3 className="text-[16px] font-bold text-slate-900 italic">// ACADEMIC ENGAGEMENT</h3>
+            <h3 className="text-[16px] font-bold text-slate-900 italic">{'// ACADEMIC ENGAGEMENT'}</h3>
             <TextTable headers={["Metric", "Value", "Status"]}>
                <TextRow>
                   <TextCell bold>Retention Rate</TextCell>

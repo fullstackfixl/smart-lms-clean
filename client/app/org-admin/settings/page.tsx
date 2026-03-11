@@ -26,7 +26,7 @@ export default function SettingsPage() {
       <div className="max-w-2xl space-y-10">
          
          <div className="space-y-6">
-            <h3 className="text-[16px] font-bold text-slate-900 uppercase tracking-widest italic">// General Protocols</h3>
+            <h3 className="text-[16px] font-bold text-slate-900 uppercase tracking-widest italic">{'// General Protocols'}</h3>
             <div className="space-y-4">
                <MinimalInput label="Organization Name" defaultValue={organization?.name} />
                <MinimalInput label="Contact Email" placeholder="admin@org.com" />
@@ -35,7 +35,7 @@ export default function SettingsPage() {
          </div>
  
          <div className="space-y-6 pt-4">
-            <h3 className="text-[16px] font-bold text-slate-900 uppercase tracking-widest italic">// Security & Privacy</h3>
+            <h3 className="text-[16px] font-bold text-slate-900 uppercase tracking-widest italic">{'// Security & Privacy'}</h3>
             <div className="space-y-4">
                <div className="flex items-center justify-between p-4 bg-[#F8FAFC] border border-gray-100 rounded-md">
                   <div className="space-y-0.5">

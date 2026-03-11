@@ -72,11 +72,11 @@ export default function CoursesPage() {
       {/* ─── Metrics Matrix ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          <FlatCard className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">// Published</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">{'// Published'}</span>
             <span className="text-2xl font-bold text-slate-900">{publishedCount}</span>
          </FlatCard>
          <FlatCard className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">// Drafts</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">{'// Drafts'}</span>
             <span className="text-2xl font-bold text-slate-900">{draftCount}</span>
          </FlatCard>
       </div>

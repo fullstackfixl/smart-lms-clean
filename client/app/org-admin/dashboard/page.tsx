@@ -314,7 +314,7 @@ function MetricCard({ label, value, trend, subtext, icon: Icon }: { label: strin
    return (
       <FlatCard className="flex flex-col gap-4">
          {Icon && <Icon className="h-5 w-5 text-slate-400 mb-1" />}
-         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest opacity-60 italic">// {label}</p>
+         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest opacity-60 italic">{'// '}{label}</p>
          <div className="flex items-end justify-between">
             <h3 className="text-3xl font-bold text-slate-900 tracking-tighter leading-none">{value}</h3>
             {trend && (

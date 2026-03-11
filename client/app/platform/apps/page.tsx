@@ -13,7 +13,8 @@ import {
   ChevronRight,
   Monitor,
   Cloud,
-  Mail
+  Mail,
+  Globe
 } from "lucide-react"
 import { SimpleCard } from "../../../components/platform/core/SimpleCard"
 import { SimpleButton } from "../../../components/platform/core/SimpleButton"
@@ -82,7 +83,7 @@ export default function AppsPage() {
                   </div>
                </div>
                <div className="px-8 py-5 border-t border-gray-50 flex items-center justify-between bg-[#F8FAFC]/30">
-                  <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{app.category}</div>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest opacity-60 italic">{'// '}{app.category}</p>
                   <button className="text-[13px] font-bold text-[#3B82F6] hover:underline flex items-center gap-1.5">
                      Open App <ChevronRight className="w-4 h-4" />
                   </button>

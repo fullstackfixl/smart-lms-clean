@@ -219,9 +219,7 @@ function GradebookContent() {
                             </div>
                             <div>
                                 <h2 className="text-2xl font-black text-slate-900 leading-none mb-2">{selectedCourse.title}</h2>
-                                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">
-                                    // Viewing {filtered.length} Students
-                                </p>
+                                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">{'// Viewing '}{filtered.length}{' Students'}</p>
                             </div>
                         </div>
                         <div className="relative flex-1 max-w-sm">

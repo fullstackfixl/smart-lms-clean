@@ -24,11 +24,11 @@ export default function ContentPage() {
       {/* ─── Metrics Matrix ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
          <FlatCard className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">// Total Lessons</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">{'// Total Lessons'}</span>
             <span className="text-2xl font-bold text-slate-900">0</span>
          </FlatCard>
          <FlatCard className="flex flex-col gap-1">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">// Total Assignments</span>
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">{'// Total Assignments'}</span>
             <span className="text-2xl font-bold text-slate-900">0</span>
          </FlatCard>
       </div>
