@@ -14,6 +14,7 @@ export function OrgSidebar() {
   const navItems = [
     { name: "Dashboard", href: "/org-admin/dashboard" },
     { name: "Courses", href: "/org-admin/courses" },
+    { name: "Applications", href: "/org-admin/applications" },
   ]
 
   // Type-specific extensions

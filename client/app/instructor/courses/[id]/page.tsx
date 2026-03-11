@@ -1,34 +1,23 @@
 "use client"
 
-import React, { useState, useEffect, use } from "react"
-import { useParams, useRouter } from "next/navigation"
+import React, { useState, useEffect, use, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import {
-  BookOpen, Plus, Edit, Trash2, GripVertical, Video,
-  FileText, CheckCircle, Eye, ArrowLeft, Save, Sparkles,
-  CheckCircle2, Target, Layout, Database, ChevronLeft,
-  ChevronDown, Settings2, Globe, ShieldCheck, Activity,
-  ArrowUpRight
+  BookOpen, Plus, Edit, Trash2, Video, FileText, CheckCircle,
+  ArrowLeft, Sparkles, GripVertical, RefreshCw, Upload, X, Loader2, File, Play
 } from "lucide-react"
 import { Button } from '../../../../components/ui/button'
 import { Input } from '../../../../components/ui/input'
 import { Label } from '../../../../components/ui/label'
 import { Textarea } from '../../../../components/ui/textarea'
+import { Progress } from '../../../../components/ui/progress'
 import { cn } from "../../../../lib/utils"
-import { 
-  SimpleCard, 
-  SimpleBadge,
-  FlatTable,
-  FlatTableHead,
-  FlatTableRow,
-  FlatTableCell
-} from "../../../../components/platform/ui-standard"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '../../../../components/ui/dialog'
 import {
   Select,
@@ -45,15 +34,15 @@ import {
 } from '../../../../components/ui/accordion'
 import { useAuth } from '../../../../lib/auth-context'
 import { instructorApi } from '../../../../lib/api'
-import { toast } from "sonner"
 import { API_URL } from '../../../../lib/config'
+import { toast } from "sonner"
 
 interface Lesson {
   _id: string
   title: string
   description?: string
   type: "video" | "text" | "pdf" | "quiz"
-  content?: string
+  content?: string | { videoUrl?: string; pdfUrl?: string; textContent?: string }
   duration?: number
   order: number
   isPreview: boolean
@@ -74,10 +63,7 @@ interface Course {
   status: string
   category: string
   level: string
-  course_credits?: number
-  subject_id?: { name: string, code: string }
-  semester_id?: { name: string, number: number }
-  department_id?: { name: string, code: string }
+  price: number
 }
 
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -86,25 +72,14 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const { token } = useAuth()
   const courseId = unwrappedParams.id
 
-  // Get token directly from storage as fallback
-  const getToken = () => {
-    if (token) return token
-    if (typeof window !== 'undefined') {
-      return window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-    }
-    return null
-  }
-
   const [course, setCourse] = useState<Course | null>(null)
   const [modules, setModules] = useState<Module[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Module dialog
   const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false)
   const [editingModule, setEditingModule] = useState<Module | null>(null)
   const [moduleData, setModuleData] = useState({ title: "", description: "" })
 
-  // Lesson dialog
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null)
@@ -117,15 +92,19 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     isPreview: false
   })
 
-  // AI Quiz Dialolg
   const [showAIDialog, setShowAIDialog] = useState(false)
   const [aiGenerating, setAIGenerating] = useState(false)
   const [aiModuleId, setAIModuleId] = useState("")
   const [aiDifficulty, setAIDifficulty] = useState("medium")
-  const [aiQuizTitle, setAIQuizTitle] = useState("")
+
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadedFileUrl, setUploadedFileUrl] = useState("")
+  const uploadedUrlRef = useRef("")
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    loadCourseData()
+    if (token && courseId) loadCourseData()
   }, [courseId, token])
 
   async function loadCourseData() {
@@ -134,9 +113,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     try {
       const res = await instructorApi.getCourse(token, courseId)
       if (res.success && res.data) {
-        const data = res.data as { course: Course; modules: Module[] }
+        const data = res.data as any
         setCourse(data.course)
         setModules(data.modules || [])
+      } else {
+        toast.error("Failed to load course")
       }
     } catch (error) {
       toast.error("Failed to load course")
@@ -145,35 +126,89 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
     }
   }
 
-  async function handlePublishCourse() {
-    const authToken = getToken()
-    if (!authToken || !courseId) return
+  const uploadToCloudinary = useCallback(async (file: File, type: 'video' | 'pdf') => {
+    if (!token) return null
+    setUploading(true)
+    setUploadProgress(0)
+    try {
+      const sigRes = await fetch(`${API_URL}/api/upload/signature?type=${type}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const sigData = await sigRes.json()
+      if (!sigData.success) throw new Error("Failed to get upload signature")
 
-    if (!confirm("Publish this course? Students in your organization will be able to see and enroll in it.")) {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('api_key', sigData.data.apiKey)
+      formData.append('timestamp', sigData.data.timestamp)
+      formData.append('signature', sigData.data.signature)
+      formData.append('folder', sigData.data.folder)
+
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 10, 90))
+      }, 500)
+
+      const uploadRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${sigData.data.cloudName}/${type === 'video' ? 'video' : 'raw'}/upload`,
+        { method: 'POST', body: formData }
+      )
+      clearInterval(progressInterval)
+      const uploadData = await uploadRes.json()
+
+      if (uploadData.secure_url) {
+        setUploadProgress(100)
+        setUploadedFileUrl(uploadData.secure_url)
+        uploadedUrlRef.current = uploadData.secure_url  // Set ref synchronously
+        setLessonData(prev => ({ ...prev, content: uploadData.secure_url }))
+        toast.success(`${type === 'video' ? 'Video' : 'PDF'} uploaded successfully`)
+        return uploadData.secure_url
+      }
+      throw new Error("Upload failed")
+    } catch (error) {
+      toast.error(`Failed to upload ${type}`)
+      return null
+    } finally {
+      setUploading(false)
+    }
+  }, [token])
+
+  const handleDrop = useCallback((e: React.DragEvent, type: 'video' | 'pdf') => {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (!file) return
+    if (type === 'video' && !file.type.startsWith('video/')) {
+      toast.error("Please upload a video file")
       return
     }
+    if (type === 'pdf' && file.type !== 'application/pdf') {
+      toast.error("Please upload a PDF file")
+      return
+    }
+    uploadToCloudinary(file, type)
+  }, [uploadToCloudinary])
 
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>, type: 'video' | 'pdf') => {
+    const file = e.target.files?.[0]
+    if (file) uploadToCloudinary(file, type)
+  }, [uploadToCloudinary])
+
+  async function handleSubmitForApproval() {
+    if (!token || !courseId) return
+    if (!confirm("Submit this course for approval? Your organization admin will review it before publishing.")) return
     try {
-      const response = await fetch(`${API_URL}/instructor/courses/${courseId}/publish`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
+      const res = await fetch(`${API_URL}/instructor/courses/${courseId}/submit-for-approval`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       })
-
-      const data = await response.json()
-
+      const data = await res.json()
       if (data.success) {
-        toast.success("Course published successfully!")
-        loadCourseData() // Reload to update status
+        toast.success("Course submitted for approval")
+        loadCourseData()
       } else {
-        toast.error(data.message || "Failed to publish course")
+        toast.error(data.error || "Failed to submit")
       }
     } catch (error) {
-      console.error('Publish course error:', error)
-      toast.error("Failed to publish course")
+      toast.error("Failed to submit for approval")
     }
   }
 
@@ -182,19 +217,13 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       toast.error("Module title is required")
       return
     }
-
     try {
-      const res = await instructorApi.createModule(token!, courseId as string, {
-        ...moduleData,
-        order: modules.length + 1
-      })
+      const res = await instructorApi.createModule(token, courseId, { ...moduleData, order: modules.length + 1 })
       if (res.success) {
-        toast.success("Module created successfully")
+        toast.success("Module created")
         setIsModuleDialogOpen(false)
         setModuleData({ title: "", description: "" })
         loadCourseData()
-      } else {
-        toast.error(res.error || "Failed to create module")
       }
     } catch (error) {
       toast.error("Failed to create module")
@@ -202,21 +231,15 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   }
 
   async function handleUpdateModule() {
-    if (!token || !editingModule || !moduleData.title) {
-      toast.error("Module title is required")
-      return
-    }
-
+    if (!token || !editingModule || !moduleData.title) return
     try {
-      const res = await instructorApi.updateModule(token!, editingModule._id, moduleData)
+      const res = await instructorApi.updateModule(token, editingModule._id, moduleData)
       if (res.success) {
-        toast.success("Module updated successfully")
+        toast.success("Module updated")
         setIsModuleDialogOpen(false)
         setEditingModule(null)
         setModuleData({ title: "", description: "" })
         loadCourseData()
-      } else {
-        toast.error(res.error || "Failed to update module")
       }
     } catch (error) {
       toast.error("Failed to update module")
@@ -225,14 +248,11 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   async function handleDeleteModule(moduleId: string) {
     if (!token || !confirm("Delete this module and all its lessons?")) return
-
     try {
       const res = await instructorApi.deleteModule(token, moduleId)
       if (res.success) {
-        toast.success("Module deleted successfully")
+        toast.success("Module deleted")
         loadCourseData()
-      } else {
-        toast.error(res.error || "Failed to delete module")
       }
     } catch (error) {
       toast.error("Failed to delete module")
@@ -240,40 +260,39 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   }
 
   async function handleCreateLesson() {
-    const authToken = getToken()
-    if (!authToken || !selectedModuleId || !lessonData.title) {
+    if (!token || !selectedModuleId || !lessonData.title) {
       toast.error("Lesson title is required")
       return
     }
-
+    // For video/pdf lessons, ensure content (URL) is set - use ref for synchronous access
+    const contentUrl = lessonData.content || uploadedUrlRef.current || ""
+    if ((lessonData.type === 'video' || lessonData.type === 'pdf') && !contentUrl) {
+      toast.error("Please upload a file first")
+      return
+    }
     try {
       const module = modules.find(m => m._id === selectedModuleId)
-      let contentData: any = { videoUrl: lessonData.content }
-
-      const res = await instructorApi.createLesson(token!, selectedModuleId!, {
-        title: lessonData.title,
-        description: lessonData.description,
-        type: lessonData.type,
-        content: contentData,
-        order: (module?.lessons.length || 0) + 1,
-        duration: lessonData.duration,
-        isPreview: lessonData.isPreview
+      // Format content based on lesson type
+      let content: any = {}
+      if (lessonData.type === 'video') {
+        content = { videoUrl: contentUrl }
+      } else if (lessonData.type === 'pdf') {
+        content = { pdfUrl: contentUrl }
+      } else if (lessonData.type === 'text') {
+        content = { textContent: lessonData.content }
+      } else if (lessonData.type === 'quiz') {
+        content = { quizId: lessonData.content }
+      }
+      const res = await instructorApi.createLesson(token, selectedModuleId, {
+        ...lessonData,
+        content,
+        order: (module?.lessons.length || 0) + 1
       })
-
       if (res.success) {
-        toast.success("Lesson created successfully")
+        toast.success("Lesson created")
         setIsLessonDialogOpen(false)
-        setLessonData({
-          title: "",
-          description: "",
-          type: "video",
-          content: "",
-          duration: 0,
-          isPreview: false
-        })
+        resetLessonForm()
         loadCourseData()
-      } else {
-        toast.error(res.error || "Failed to create lesson")
       }
     } catch (error) {
       toast.error("Failed to create lesson")
@@ -281,47 +300,78 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   }
 
   async function handleUpdateLesson() {
-    if (!token || !editingLesson || !lessonData.title) {
-      toast.error("Lesson title is required")
-      return
-    }
-
+    if (!token || !editingLesson || !lessonData.title) return
     try {
-      const res = await instructorApi.updateLesson(token!, editingLesson._id, lessonData)
+      const contentUrl = lessonData.content || uploadedUrlRef.current || ""
+      let content: any = {}
+      if (lessonData.type === 'video') {
+        content = { videoUrl: contentUrl }
+      } else if (lessonData.type === 'pdf') {
+        content = { pdfUrl: contentUrl }
+      } else if (lessonData.type === 'text') {
+        content = { textContent: lessonData.content }
+      } else if (lessonData.type === 'quiz') {
+        content = { quizId: lessonData.content }
+      }
+      const res = await instructorApi.updateLesson(token, editingLesson._id, {
+        ...lessonData,
+        content
+      })
       if (res.success) {
-        toast.success("Lesson updated successfully")
+        toast.success("Lesson updated")
         setIsLessonDialogOpen(false)
-        setEditingLesson(null)
-        setLessonData({
-          title: "",
-          description: "",
-          type: "video",
-          content: "",
-          duration: 0,
-          isPreview: false
-        })
+        resetLessonForm()
         loadCourseData()
-      } else {
-        toast.error(res.error || "Failed to update lesson")
       }
     } catch (error) {
       toast.error("Failed to update lesson")
     }
   }
 
+  function resetLessonForm() {
+    setEditingLesson(null)
+    setLessonData({ title: "", description: "", type: "video", content: "", duration: 0, isPreview: false })
+    setUploadedFileUrl("")
+    uploadedUrlRef.current = ""  // Reset ref
+    setUploadProgress(0)
+  }
+
   async function handleDeleteLesson(lessonId: string) {
     if (!token || !confirm("Delete this lesson?")) return
-
     try {
       const res = await instructorApi.deleteLesson(token, lessonId)
       if (res.success) {
-        toast.success("Lesson deleted successfully")
+        toast.success("Lesson deleted")
         loadCourseData()
-      } else {
-        toast.error(res.error || "Failed to delete lesson")
       }
     } catch (error) {
       toast.error("Failed to delete lesson")
+    }
+  }
+
+  async function handleGenerateAIQuiz() {
+    if (!token || !courseId || !aiModuleId) {
+      toast.error("Please select a module")
+      return
+    }
+    setAIGenerating(true)
+    try {
+      const selectedModule = modules.find(m => m._id === aiModuleId)
+      const res = await instructorApi.generateAIQuiz(token, {
+        course_id: courseId,
+        topic: selectedModule?.title || "General",
+        num_questions: 10,
+        difficulty: aiDifficulty
+      })
+      if (res.success) {
+        toast.success("AI Quiz generated successfully")
+        setShowAIDialog(false)
+        loadCourseData()
+      }
+    } catch (error) {
+      toast.error("Failed to generate AI quiz")
+    } finally {
+      setAIGenerating(false)
     }
   }
 
@@ -338,669 +388,494 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   function openLessonDialog(moduleId: string, lesson?: Lesson) {
     setSelectedModuleId(moduleId)
+    setUploadedFileUrl("")
+    uploadedUrlRef.current = ""  // Reset ref
+    setUploadProgress(0)
     if (lesson) {
       setEditingLesson(lesson)
+      // Extract content string from object if needed
+      let contentStr = ""
+      if (lesson.content) {
+        if (typeof lesson.content === 'string') {
+          contentStr = lesson.content
+        } else if ('videoUrl' in lesson.content) {
+          contentStr = lesson.content.videoUrl || ""
+        } else if ('pdfUrl' in lesson.content) {
+          contentStr = lesson.content.pdfUrl || ""
+        } else if ('textContent' in lesson.content) {
+          contentStr = lesson.content.textContent || ""
+        }
+      }
       setLessonData({
         title: lesson.title,
         description: lesson.description || "",
         type: lesson.type,
-        content: lesson.content || "",
+        content: contentStr,
         duration: lesson.duration || 0,
         isPreview: lesson.isPreview
       })
+      if (contentStr && (lesson.type === 'video' || lesson.type === 'pdf')) {
+        setUploadedFileUrl(contentStr)
+        uploadedUrlRef.current = contentStr  // Set ref for editing
+      }
     } else {
       setEditingLesson(null)
-      setLessonData({
-        title: "",
-        description: "",
-        type: "video",
-        content: "",
-        duration: 0,
-        isPreview: false
-      })
+      setLessonData({ title: "", description: "", type: "video", content: "", duration: 0, isPreview: false })
     }
     setIsLessonDialogOpen(true)
-  }
-
-  async function handleGenerateAIQuiz() {
-    if (!token || !courseId || !aiModuleId) {
-      toast.error("Please select a module")
-      return
-    }
-
-    setAIGenerating(true)
-    try {
-      const selectedModule = modules.find(m => m._id === aiModuleId)
-      const topic = selectedModule ? selectedModule.title : "General"
-
-      const res = await instructorApi.generateAIQuiz(token!, {
-        course_id: courseId as string,
-        topic: topic,
-        num_questions: 10,
-        difficulty: aiDifficulty
-      })
-
-      if (res.success) {
-        toast.success("AI Synthesis Complete: Instructional Assessment Matrix Generated")
-        setShowAIDialog(false)
-        loadCourseData()
-      } else {
-        toast.error(res.error || "Synthesis Failure")
-      }
-    } catch (error) {
-      toast.error("Critical Neural Link Failure")
-    } finally {
-      setAIGenerating(false)
-    }
   }
 
   const getLessonIcon = (type: string) => {
     switch (type) {
       case "video": return <Video className="h-4 w-4" />
-      case "text": return <FileText className="h-4 w-4" />
-      case "pdf": return <FileText className="h-4 w-4" />
       case "quiz": return <CheckCircle className="h-4 w-4" />
       default: return <FileText className="h-4 w-4" />
     }
   }
 
-  const handleSaveModule = editingModule ? handleUpdateModule : handleCreateModule;
-  const handleSaveLesson = editingLesson ? handleUpdateLesson : handleCreateLesson;
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading course...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
       </div>
     )
   }
 
   if (!course) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg font-medium">Course not found</p>
-          <Button onClick={() => router.push("/instructor/courses")} className="mt-4">
-            Back to Courses
-          </Button>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <p className="text-lg font-medium text-slate-900">Course not found</p>
+        <Button onClick={() => router.push("/instructor/courses")} className="mt-4">
+          Back to Courses
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-12 pb-32 animate-in fade-in duration-1000">
-      {/* Header Section */}
-      <div className="relative group">
-        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-[3rem] blur opacity-[0.03] group-hover:opacity-[0.08] transition duration-1000" />
-        <div className="relative overflow-hidden rounded-[3rem] bg-white border border-slate-200/60 p-12 lg:p-16 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.03)]">
-          <div className="absolute top-0 right-0 -mr-24 -mt-24 w-96 h-96 bg-indigo-50/50 rounded-full blur-[100px]" />
-          
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
-            <div className="flex items-center gap-8">
-              <button
-                onClick={() => router.push("/instructor/courses")}
-                className="h-16 w-16 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 hover:text-indigo-600 hover:bg-white transition-all flex items-center justify-center shadow-sm group/back"
-              >
-                <ArrowLeft className="h-6 w-6 stroke-[3] group-hover:-translate-x-1 transition-transform" />
-              </button>
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-[-0.04em] leading-tight max-w-xl">
-                    {course.title}
-                  </h1>
-                  {course.status === 'draft' ? (
-                    <span className="px-5 py-2 text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100 rounded-full shadow-sm">Draft Registry</span>
-                  ) : (
-                    <span className="px-5 py-2 text-[10px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full shadow-sm">Active Hub</span>
-                  )}
-                </div>
-                <p className="text-[15px] font-bold text-slate-400 tracking-tight leading-none italic opacity-80">
-                  Orchestrate your instructional assets and architectural modules.
-                </p>
-              </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={() => router.push("/instructor/courses")} className="h-10 w-10 p-0">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-slate-900">{course.title}</h1>
+              <span className={cn("px-2 py-1 text-xs font-medium rounded border",
+                course.status === 'draft' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'bg-green-100 text-green-700 border-green-200'
+              )}>
+                {course.status}
+              </span>
             </div>
-
-            <div className="flex flex-wrap items-center gap-4">
-              {course.status === 'draft' && (
-                <Button
-                  onClick={handlePublishCourse}
-                  className="h-16 px-10 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest gap-3 shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
-                >
-                  <CheckCircle2 className="h-4 w-4 stroke-[3]" />
-                  Deploy Curriculum
-                </Button>
-              )}
-              <Button 
-                variant="outline" 
-                onClick={() => setShowAIDialog(true)} 
-                className="h-16 px-10 rounded-2xl border-indigo-100 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest gap-3 hover:bg-indigo-100 transition-all shadow-sm"
-              >
-                <Sparkles className="h-4 w-4 text-indigo-400 stroke-[3]" />
-                Neural Quiz
-              </Button>
-              <Button 
-                onClick={() => openModuleDialog()} 
-                className="h-16 px-10 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all"
-              >
-                <Plus className="h-4 w-4 stroke-[3]" />
-                Initialize Module
-              </Button>
-            </div>
+            <p className="text-slate-500">{course.category} • {course.level}</p>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={loadCourseData}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          {course.status === 'draft' && (
+            <Button onClick={handleSubmitForApproval} className="bg-green-600 hover:bg-green-700">
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Submit for Approval
+            </Button>
+          )}
+          <Button onClick={() => setShowAIDialog(true)} variant="outline">
+            <Sparkles className="w-4 h-4 mr-2" />
+            AI Quiz
+          </Button>
+          <Button onClick={() => openModuleDialog()} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Module
+          </Button>
         </div>
       </div>
 
-      {/* Academic Architecture Specs */}
-      {course.course_credits !== undefined && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <SpecCard 
-            label="Academic Domain" 
-            title={course.subject_id?.name || 'N/A'} 
-            sub={course.subject_id?.code || 'UNSPECIFIED'} 
-            icon={<BookOpen />} 
-            color="indigo" 
-          />
-          <SpecCard 
-            label="Credit Weight" 
-            title={`${course.course_credits} Units`} 
-            sub="Academic Scale" 
-            icon={<Target />} 
-            color="emerald" 
-          />
-          <SpecCard 
-            label="Instructional Tier" 
-            title={course.semester_id?.name || 'N/A'} 
-            sub={`Tier ${course.semester_id?.number || '0'}`} 
-            icon={<Layout />} 
-            color="purple" 
-          />
-          <SpecCard 
-            label="Departmental Node" 
-            title={course.department_id?.name || 'N/A'} 
-            sub={course.department_id?.code || 'EXTERNAL'} 
-            icon={<Database />} 
-            color="rose" 
-          />
+      {/* Course Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white border border-gray-200 rounded-md p-4">
+          <p className="text-sm text-slate-600">Modules</p>
+          <p className="text-2xl font-bold text-slate-900">{modules.length}</p>
         </div>
-      )}
+        <div className="bg-white border border-gray-200 rounded-md p-4">
+          <p className="text-sm text-slate-600">Lessons</p>
+          <p className="text-2xl font-bold text-slate-900">{modules.reduce((acc, m) => acc + m.lessons.length, 0)}</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-md p-4">
+          <p className="text-sm text-slate-600">Price</p>
+          <p className="text-2xl font-bold text-slate-900">${course.price}</p>
+        </div>
+      </div>
 
       {/* Modules & Lessons */}
       {modules.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-40 rounded-[3rem] border-2 border-dashed border-slate-100 bg-slate-50/30 space-y-8">
-          <div className="w-24 h-24 rounded-[2.5rem] bg-white flex items-center justify-center border border-slate-100 shadow-sm text-slate-300">
-            <BookOpen className="h-10 w-10" />
-          </div>
-          <div className="text-center space-y-2">
-            <p className="text-2xl font-black text-slate-900 tracking-tight uppercase">Empty Curriculum Hub</p>
-            <p className="text-[13px] font-bold text-slate-400 italic opacity-70">Initialize your first module to begin asset orchestration.</p>
-          </div>
-          <Button onClick={() => openModuleDialog()} className="h-16 px-10 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest gap-3 shadow-xl hover:scale-105 active:scale-95 transition-all">
-            <Plus className="h-4 w-4 stroke-[3]" />
-            Initialize Module
+        <div className="bg-white border border-gray-200 rounded-md p-12 text-center">
+          <BookOpen className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+          <p className="text-slate-900 font-medium mb-2">No modules yet</p>
+          <p className="text-slate-500 mb-4">Add your first module to start building your course</p>
+          <Button onClick={() => openModuleDialog()}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Module
           </Button>
         </div>
       ) : (
-        <div className="space-y-8">
-           <div className="flex items-center justify-between px-4">
-              <div className="space-y-1">
-                 <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Structural Blocks</h3>
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-60">Modular Curriculum Organization</p>
-              </div>
-              <div className="flex items-center gap-4">
-                 <div className="px-6 py-2 rounded-full bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-3">
-                    <Activity className="w-4 h-4" />
-                    {modules.length} Modules Synthetic
-                 </div>
-              </div>
-           </div>
-
-           <Accordion type="multiple" className="space-y-6">
-             {modules.map((module, index) => (
-               <AccordionItem
-                 key={module._id}
-                 value={module._id}
-                 className="rounded-[2.5rem] border border-slate-100 bg-white overflow-hidden shadow-sm hover:shadow-xl hover:shadow-slate-200/20 transition-all duration-500 group/module"
-               >
-                 <AccordionTrigger className="px-10 py-8 hover:no-underline hover:bg-slate-50/50 transition-all border-none">
-                   <div className="flex items-center gap-8 flex-1">
-                     <div className="flex items-center gap-4">
-                       <div className="h-12 w-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-slate-300 group-hover/module:text-indigo-400 transition-colors shadow-sm">
-                          <GripVertical className="h-5 w-5 stroke-[2.5]" />
-                       </div>
-                       <div className="flex flex-col items-start leading-none gap-1.5">
-                          <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
-                             Block {String(index + 1).padStart(2, '0')}
-                          </span>
-                          <h3 className="text-xl font-black text-slate-900 tracking-tight group-hover/module:text-indigo-600 transition-colors">{module.title}</h3>
-                       </div>
-                     </div>
-                     
-                     <div className="flex-1 hidden md:block">
-                        {module.description && (
-                          <p className="text-sm font-bold text-slate-400 italic opacity-80 text-left line-clamp-1">
-                            {module.description}
-                          </p>
+        <Accordion type="multiple" className="space-y-4">
+          {modules.map((module, index) => (
+            <AccordionItem key={module._id} value={module._id} className="bg-white border border-gray-200 rounded-md overflow-hidden">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-slate-50">
+                <div className="flex items-center gap-3 flex-1">
+                  <GripVertical className="h-4 w-4 text-slate-400" />
+                  <span className="text-xs text-slate-400">Module {index + 1}</span>
+                  <span className="font-medium text-slate-900">{module.title}</span>
+                  <span className="ml-auto text-xs text-slate-500">{module.lessons.length} lessons</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-2 pt-2">
+                  {module.lessons.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-4">No lessons in this module</p>
+                  ) : (
+                    module.lessons.map((lesson) => (
+                      <div key={lesson._id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-md hover:bg-slate-100 transition-colors">
+                        <GripVertical className="h-4 w-4 text-slate-400" />
+                        <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center text-blue-600">
+                          {getLessonIcon(lesson.type)}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-slate-900">{lesson.title}</p>
+                          {lesson.duration && <p className="text-xs text-slate-500">{lesson.duration} min</p>}
+                        </div>
+                        {lesson.isPreview && <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">Preview</span>}
+                        {lesson.content && typeof lesson.content === 'object' && 'videoUrl' in lesson.content && lesson.content.videoUrl && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 text-blue-600"
+                            onClick={() => setPreviewVideoUrl(lesson.content && typeof lesson.content === 'object' ? lesson.content.videoUrl || null : null)}
+                          >
+                            <Play className="h-4 w-4" />
+                          </Button>
                         )}
-                     </div>
-
-                     <div className="flex items-center gap-4">
-                       <SimpleBadge variant="gray" className="h-8 px-4 text-[9px] font-black uppercase tracking-widest bg-slate-50 border-slate-100 text-slate-400 rounded-full">
-                         {module.lessons.length} Assets
-                       </SimpleBadge>
-                       <div className="flex items-center gap-1 opacity-0 group-hover/module:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); openModuleDialog(module); }}
-                            className="h-10 w-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm"
-                          >
-                            <Edit className="h-4 w-4 stroke-[2.5]" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteModule(module._id); }}
-                            className="h-10 w-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:border-rose-100 transition-all shadow-sm"
-                          >
-                            <Trash2 className="h-4 w-4 stroke-[2.5]" />
-                          </button>
-                       </div>
-                     </div>
-                   </div>
-                 </AccordionTrigger>
-                 <AccordionContent className="px-10 pb-10 pt-4">
-                   <div className="space-y-3">
-                     <div className="h-px bg-slate-50 mb-8" />
-                     {module.lessons.length === 0 ? (
-                       <div className="text-center py-16 border-2 border-dashed border-slate-50 rounded-[2rem] bg-slate-50/20 space-y-6">
-                         <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 flex items-center justify-center mx-auto text-slate-200">
-                           <Layout className="h-8 w-8" />
-                         </div>
-                         <div className="space-y-1">
-                            <p className="text-[13px] font-black text-slate-400 uppercase tracking-widest italic opacity-50">Empty Module Container</p>
-                            <p className="text-[11px] font-bold text-slate-300 italic opacity-40">No instructional assets have been injected yet.</p>
-                         </div>
-                         <Button
-                           onClick={() => openLessonDialog(module._id)}
-                           className="h-12 px-8 bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 rounded-xl text-[9px] font-black uppercase tracking-widest gap-2 shadow-sm transition-all"
-                         >
-                           <Plus className="h-3.5 w-3.5 stroke-[3]" />
-                           Inject Asset
-                         </Button>
-                       </div>
-                     ) : (
-                       <div className="space-y-3">
-                         {module.lessons.map((lesson, lessonIndex) => (
-                           <div
-                             key={lesson._id}
-                             className="flex items-center gap-6 p-5 rounded-2xl bg-white border border-slate-100 hover:border-indigo-100 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 group/lesson"
-                           >
-                             <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-300 group-hover/lesson:text-indigo-400 transition-colors">
-                                <GripVertical className="h-4 w-4 stroke-[3]" />
-                             </div>
-                             
-                             <div className="h-12 w-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm group-hover/lesson:scale-110 transition-transform">
-                               {getLessonIcon(lesson.type)}
-                             </div>
-
-                             <div className="flex-1 space-y-1">
-                               <div className="flex items-center gap-3">
-                                 <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest tabular-nums">Asset {String(lessonIndex + 1).padStart(2, '0')}</span>
-                                 <span className="h-1 w-1 rounded-full bg-slate-200" />
-                                 <span className="font-black text-slate-900 tracking-tight">{lesson.title}</span>
-                                 {lesson.isPreview && (
-                                   <div className="px-3 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm">
-                                      Public Preview
-                                   </div>
-                                 )}
-                               </div>
-                               {lesson.description && (
-                                 <p className="text-xs font-bold text-slate-400 italic opacity-80 line-clamp-1">
-                                   {lesson.description}
-                                 </p>
-                               )}
-                             </div>
-
-                             {lesson.duration && (
-                               <div className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-black text-slate-500 tabular-nums">
-                                 {lesson.duration} MIN
-                               </div>
-                             )}
-
-                             <div className="flex items-center gap-2 pr-2">
-                               <button
-                                 onClick={() => openLessonDialog(module._id, lesson)}
-                                 className="h-10 w-10 rounded-xl bg-white border border-slate-50 flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-100 transition-all shadow-sm"
-                               >
-                                 <Edit className="h-4 w-4 stroke-[2.5]" />
-                               </button>
-                               <button
-                                 onClick={() => handleDeleteLesson(lesson._id)}
-                                 className="h-10 w-10 rounded-xl bg-white border border-slate-50 flex items-center justify-center text-slate-300 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 transition-all shadow-sm"
-                               >
-                                 <Trash2 className="h-4 w-4 stroke-[2.5]" />
-                               </button>
-                             </div>
-                           </div>
-                         ))}
-                         
-                         <div className="pt-4">
-                            <button
-                              onClick={() => openLessonDialog(module._id)}
-                              className="w-full h-16 rounded-[1.5rem] border-2 border-dashed border-slate-100 bg-slate-50/50 flex items-center justify-center gap-3 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-white hover:border-indigo-200 hover:text-indigo-600 transition-all group/add"
-                            >
-                              <div className="h-8 w-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center shadow-sm group-hover/add:rotate-90 transition-transform">
-                                 <Plus className="h-4 w-4 stroke-[3]" />
-                              </div>
-                              Inject Source Asset
-                            </button>
-                         </div>
-                       </div>
-                     )}
-                   </div>
-                 </AccordionContent>
-               </AccordionItem>
-             ))}
-           </Accordion>
-        </div>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openLessonDialog(module._id, lesson)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600" onClick={() => handleDeleteLesson(lesson._id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                  <Button variant="outline" className="w-full mt-2" onClick={() => openLessonDialog(module._id)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Lesson
+                  </Button>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="outline" size="sm" onClick={() => openModuleDialog(module)}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit Module
+                    </Button>
+                    <Button variant="outline" size="sm" className="text-red-600" onClick={() => handleDeleteModule(module._id)}>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       )}
 
       {/* Module Dialog */}
       <Dialog open={isModuleDialogOpen} onOpenChange={setIsModuleDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-[0_32px_128px_-16px_rgba(0,0,0,0.1)]">
-          <div className="bg-slate-900 p-10 relative overflow-hidden">
-             <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
-             <DialogHeader className="relative z-10">
-               <div className="flex items-center gap-4 mb-4">
-                  <div className="h-14 w-14 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-white backdrop-blur-sm">
-                     <Layout className="h-6 w-6" />
-                  </div>
-                  <div className="space-y-1">
-                     <DialogTitle className="text-2xl font-black text-white tracking-tight uppercase">
-                       {editingModule ? 'Register Structural Block' : 'Initialize Block Node'}
-                     </DialogTitle>
-                     <p className="text-[10px] font-black text-white/40 uppercase tracking-widest italic leading-none">Primary Curriculum Architecture Metadata</p>
-                  </div>
-               </div>
-             </DialogHeader>
-          </div>
-          
-          <div className="p-10 space-y-8 bg-white">
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Block Designation</Label>
-                <Input
-                  placeholder="e.g., Advanced Neural Architectures"
-                  className="h-16 px-6 rounded-2xl bg-slate-50 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all text-[15px] font-bold"
-                  value={moduleData.title}
-                  onChange={(e) => setModuleData({ ...moduleData, title: e.target.value })}
-                />
-              </div>
-              <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Contextual Description</Label>
-                <Textarea
-                  placeholder="Elaborate on the module's instructional objectives..."
-                  className="min-h-[140px] p-6 rounded-2xl bg-slate-50 border-slate-100 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all text-[15px] font-medium resize-none"
-                  value={moduleData.description}
-                  onChange={(e) => setModuleData({ ...moduleData, description: e.target.value })}
-                />
-              </div>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingModule ? 'Edit Module' : 'Add Module'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Module Title</Label>
+              <Input
+                value={moduleData.title}
+                onChange={(e) => setModuleData({ ...moduleData, title: e.target.value })}
+                placeholder="e.g., Introduction to the Course"
+              />
             </div>
-
-            <DialogFooter>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsModuleDialogOpen(false)}
-                className="h-14 px-8 rounded-xl border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest"
-              >
-                Abort
-              </Button>
-              <Button 
-                onClick={handleSaveModule}
-                className="h-14 px-10 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 shadow-xl hover:scale-105 active:scale-95 transition-all"
-              >
-                {editingModule ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {editingModule ? 'Commit Changes' : 'Initialize Block'}
-              </Button>
-            </DialogFooter>
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                value={moduleData.description}
+                onChange={(e) => setModuleData({ ...moduleData, description: e.target.value })}
+                placeholder="Brief description of this module..."
+              />
+            </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsModuleDialogOpen(false)}>Cancel</Button>
+            <Button onClick={editingModule ? handleUpdateModule : handleCreateModule}>
+              {editingModule ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Lesson Dialog */}
+      {/* Lesson Dialog with Drag-Drop Upload */}
       <Dialog open={isLessonDialogOpen} onOpenChange={setIsLessonDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-[0_32px_128px_-16px_rgba(0,0,0,0.1)]">
-           <div className="bg-indigo-600 p-10 relative overflow-hidden">
-             <div className="absolute bottom-0 right-0 -mr-24 -mb-24 w-80 h-80 bg-white/10 rounded-full blur-3xl rotate-12" />
-             <DialogHeader className="relative z-10">
-               <div className="flex items-center gap-4 mb-4">
-                  <div className="h-14 w-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white backdrop-blur-sm">
-                     <Layout className="h-6 w-6 stroke-[2.5]" />
+        <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingLesson ? 'Edit Lesson' : 'Add Lesson'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Lesson Title</Label>
+              <Input
+                value={lessonData.title}
+                onChange={(e) => setLessonData({ ...lessonData, title: e.target.value })}
+                placeholder="e.g., What is Web Development?"
+              />
+            </div>
+            <div>
+              <Label>Type</Label>
+              <Select value={lessonData.type} onValueChange={(v) => {
+                setLessonData({ ...lessonData, type: v as any, content: "" })
+                setUploadedFileUrl("")
+                setUploadProgress(0)
+              }}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="video">Video</SelectItem>
+                  <SelectItem value="text">Text</SelectItem>
+                  <SelectItem value="pdf">PDF Document</SelectItem>
+                  <SelectItem value="quiz">Quiz</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Duration (minutes)</Label>
+              <Input
+                type="number"
+                value={lessonData.duration}
+                onChange={(e) => setLessonData({ ...lessonData, duration: parseInt(e.target.value) || 0 })}
+                placeholder="0"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isPreview"
+                checked={lessonData.isPreview}
+                onChange={(e) => setLessonData({ ...lessonData, isPreview: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <Label htmlFor="isPreview" className="mb-0">Allow as free preview</Label>
+            </div>
+
+            {/* Video Upload */}
+            {lessonData.type === 'video' && (
+              <div className="space-y-2">
+                <Label>Video File</Label>
+                {uploadedFileUrl ? (
+                  <div className="space-y-2">
+                    <div className="aspect-video bg-slate-900 rounded-md overflow-hidden">
+                      <video src={uploadedFileUrl} controls className="w-full h-full" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input value={uploadedFileUrl} readOnly className="text-xs" />
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setUploadedFileUrl("")
+                        setLessonData({ ...lessonData, content: "" })
+                      }}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                     <DialogTitle className="text-2xl font-black text-white tracking-tight uppercase">
-                        {editingLesson ? 'Synchronize Instructional Asset' : 'Inject Asset Linkage'}
-                     </DialogTitle>
-                     <p className="text-[10px] font-black text-white/50 uppercase tracking-widest italic leading-none">Source Parameters and Integration Logic</p>
+                ) : uploading ? (
+                  <div className="border-2 border-blue-200 bg-blue-50 rounded-md p-8 text-center">
+                    <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin text-blue-500" />
+                    <p className="text-sm font-medium">Uploading video...</p>
+                    <Progress value={uploadProgress} className="w-full mt-2" />
                   </div>
-               </div>
-             </DialogHeader>
-          </div>
-
-          <div className="p-10 space-y-8 bg-white max-h-[70vh] overflow-y-auto custom-scrollbar">
-            <div className="grid grid-cols-2 gap-8">
-              <div className="space-y-3 col-span-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Asset Nomenclature</Label>
-                <Input
-                  placeholder="e.g., Theoretical Foundations of Learning"
-                  className="h-16 px-6 rounded-2xl bg-slate-50 border-slate-100 focus:border-indigo-500 transition-all text-[15px] font-bold"
-                  value={lessonData.title}
-                  onChange={(e) => setLessonData({ ...lessonData, title: e.target.value })}
-                />
+                ) : (
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDrop(e, 'video')}
+                    className="border-2 border-dashed border-gray-300 hover:border-gray-400 rounded-md p-8 text-center transition-colors"
+                  >
+                    <Upload className="w-10 h-10 mx-auto mb-3 text-slate-400" />
+                    <p className="text-sm font-medium text-slate-900">Drag & drop video here</p>
+                    <p className="text-xs text-slate-500 mt-1">or</p>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => handleFileSelect(e, 'video')}
+                      className="hidden"
+                      id="video-upload"
+                    />
+                    <label htmlFor="video-upload">
+                      <Button variant="outline" size="sm" className="mt-2 cursor-pointer" asChild>
+                        <span>Browse files</span>
+                      </Button>
+                    </label>
+                    <p className="text-xs text-slate-400 mt-2">MP4, MOV, AVI up to 500MB</p>
+                  </div>
+                )}
               </div>
+            )}
 
-              <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Asset Modality</Label>
-                <Select
-                  value={lessonData.type}
-                  onValueChange={(value: any) => setLessonData({ ...lessonData, type: value })}
-                >
-                  <SelectTrigger className="h-16 px-6 rounded-2xl bg-slate-50 border-slate-100 focus:border-indigo-500 transition-all text-[13px] font-black uppercase tracking-widest">
-                    <SelectValue placeholder="Select Modality" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-slate-100 p-2 shadow-xl">
-                    <SelectItem value="video" className="rounded-xl py-3 focus:bg-indigo-50 focus:text-indigo-600 text-xs font-black uppercase tracking-widest">VIDEO SOURCE</SelectItem>
-                    <SelectItem value="text" className="rounded-xl py-3 focus:bg-indigo-50 focus:text-indigo-600 text-xs font-black uppercase tracking-widest">TEXTUAL DOC</SelectItem>
-                    <SelectItem value="pdf" className="rounded-xl py-3 focus:bg-indigo-50 focus:text-indigo-600 text-xs font-black uppercase tracking-widest">PDF RESOURCE</SelectItem>
-                    <SelectItem value="quiz" className="rounded-xl py-3 focus:bg-indigo-50 focus:text-indigo-600 text-xs font-black uppercase tracking-widest">ASSESSMENT HUB</SelectItem>
-                  </SelectContent>
-                </Select>
+            {/* PDF Upload */}
+            {lessonData.type === 'pdf' && (
+              <div className="space-y-2">
+                <Label>PDF Document</Label>
+                {uploadedFileUrl ? (
+                  <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-md">
+                    <File className="w-8 h-8 text-red-500" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">PDF uploaded</p>
+                      <a href={uploadedFileUrl} target="_blank" rel="noopener" className="text-xs text-blue-600 hover:underline">View file</a>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setUploadedFileUrl("")
+                      setLessonData({ ...lessonData, content: "" })
+                    }}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : uploading ? (
+                  <div className="border-2 border-blue-200 bg-blue-50 rounded-md p-8 text-center">
+                    <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin text-blue-500" />
+                    <p className="text-sm font-medium">Uploading PDF...</p>
+                    <Progress value={uploadProgress} className="w-full mt-2" />
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDrop(e, 'pdf')}
+                    className="border-2 border-dashed border-gray-300 hover:border-gray-400 rounded-md p-8 text-center transition-colors"
+                  >
+                    <File className="w-10 h-10 mx-auto mb-3 text-slate-400" />
+                    <p className="text-sm font-medium text-slate-900">Drag & drop PDF here</p>
+                    <p className="text-xs text-slate-500 mt-1">or</p>
+                    <input
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      onChange={(e) => handleFileSelect(e, 'pdf')}
+                      className="hidden"
+                      id="pdf-upload"
+                    />
+                    <label htmlFor="pdf-upload">
+                      <Button variant="outline" size="sm" className="mt-2 cursor-pointer" asChild>
+                        <span>Browse files</span>
+                      </Button>
+                    </label>
+                    <p className="text-xs text-slate-400 mt-2">PDF files up to 50MB</p>
+                  </div>
+                )}
               </div>
+            )}
 
-              <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Temporal Duration (MIN)</Label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  className="h-16 px-6 rounded-2xl bg-slate-50 border-slate-100 focus:border-indigo-500 transition-all text-[15px] font-bold tabular-nums"
-                  value={lessonData.duration}
-                  onChange={(e) => setLessonData({ ...lessonData, duration: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-
-              <div className="space-y-3 col-span-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Structural Content / Source Link</Label>
+            {/* Text Content */}
+            {lessonData.type === 'text' && (
+              <div>
+                <Label>Content</Label>
                 <Textarea
-                  placeholder="Inject video URL, Markdown content, or structural parameters..."
-                  className="min-h-[120px] p-6 rounded-2xl bg-slate-50 border-slate-100 focus:border-indigo-500 transition-all text-[14px] font-medium resize-none tabular-nums"
                   value={lessonData.content}
                   onChange={(e) => setLessonData({ ...lessonData, content: e.target.value })}
+                  placeholder="Enter lesson content here..."
+                  rows={8}
                 />
               </div>
+            )}
 
-              <div className="col-span-2 py-4">
-                 <div className="flex items-center justify-between p-6 rounded-3xl bg-slate-50/50 border border-slate-100">
-                    <div className="space-y-1">
-                       <p className="text-[13px] font-black text-slate-900 tracking-tight uppercase">Public Access Node</p>
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-60 leading-none">Allow scholarship without prior session registry</p>
-                    </div>
-                    <button
-                      onClick={() => setLessonData({ ...lessonData, isPreview: !lessonData.isPreview })}
-                      className={cn(
-                        "h-10 w-20 rounded-full p-1 transition-all duration-500 relative shadow-inner overflow-hidden",
-                        lessonData.isPreview ? "bg-indigo-600 shadow-indigo-200" : "bg-slate-200 shadow-slate-300"
-                      )}
-                    >
-                      <div className={cn(
-                        "h-8 w-8 rounded-full bg-white shadow-lg transition-transform duration-500",
-                        lessonData.isPreview ? "translate-x-10" : "translate-x-0"
-                      )} />
-                    </button>
-                 </div>
+            {/* Quiz */}
+            {lessonData.type === 'quiz' && (
+              <div>
+                <Label>Quiz URL or ID</Label>
+                <Input
+                  value={lessonData.content}
+                  onChange={(e) => setLessonData({ ...lessonData, content: e.target.value })}
+                  placeholder="Enter quiz URL or ID..."
+                />
               </div>
-            </div>
+            )}
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsLessonDialogOpen(false)
+              resetLessonForm()
+            }}>Cancel</Button>
+            <Button onClick={editingLesson ? handleUpdateLesson : handleCreateLesson} disabled={uploading}>
+              {uploading ? 'Uploading...' : (editingLesson ? 'Update' : 'Create')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <div className="px-10 py-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsLessonDialogOpen(false)}
-                className="h-14 px-8 rounded-xl border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest"
-              >
-                Retract
-              </Button>
-              <Button 
-                onClick={handleSaveLesson}
-                className="h-14 px-10 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 shadow-xl shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all"
-              >
-                {editingLesson ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {editingLesson ? 'Synchronize Asset' : 'Inject Asset'}
-              </Button>
-          </div>
+      {/* Video Preview Dialog */}
+      <Dialog open={!!previewVideoUrl} onOpenChange={() => setPreviewVideoUrl(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Video Preview</DialogTitle>
+          </DialogHeader>
+          {previewVideoUrl && (
+            <div className="aspect-video bg-black rounded-md overflow-hidden">
+              <video 
+                src={previewVideoUrl} 
+                controls 
+                className="w-full h-full"
+                autoPlay
+              />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* AI Quiz Dialog */}
       <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
-         <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-[0_32px_128px_-16px_rgba(0,0,0,0.1)]">
-            <div className="bg-slate-900 p-10 relative overflow-hidden">
-               <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-               <DialogHeader className="relative z-10">
-                 <div className="flex items-center gap-4 mb-4">
-                    <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-xl shadow-indigo-500/40">
-                       <Sparkles className="h-6 w-6" />
-                    </div>
-                    <div className="space-y-1">
-                       <DialogTitle className="text-2xl font-black text-white tracking-tight uppercase">Neural Synthesis Hub</DialogTitle>
-                       <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest italic leading-none">Generative Assessment Matrix Architecture</p>
-                    </div>
-                 </div>
-               </DialogHeader>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Generate AI Quiz</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Select Module</Label>
+              <Select value={aiModuleId} onValueChange={setAIModuleId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a module..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {modules.map(m => (
+                    <SelectItem key={m._id} value={m._id}>{m.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-
-            <div className="p-10 space-y-8 bg-white">
-               <div className="space-y-6">
-                 <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Source Module Node</Label>
-                    <Select value={aiModuleId} onValueChange={setAIModuleId}>
-                      <SelectTrigger className="h-16 px-6 rounded-2xl bg-slate-50 border-slate-100 focus:border-indigo-500 transition-all text-[13px] font-black uppercase tracking-widest">
-                        <SelectValue placeholder="Select Module" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-2xl border-slate-100 p-2 shadow-xl">
-                        {modules.map(m => (
-                          <SelectItem key={m._id} value={m._id} className="rounded-xl py-3 focus:bg-indigo-50 focus:text-indigo-600 text-xs font-black uppercase tracking-widest">
-                            {m.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                 </div>
-
-                 <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Cognitive Complexity</Label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {['easy', 'medium', 'hard'].map((level) => (
-                        <button
-                          key={level}
-                          onClick={() => setAIDifficulty(level)}
-                          className={cn(
-                            "h-14 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all",
-                            aiDifficulty === level 
-                              ? "bg-slate-900 border-slate-900 text-white shadow-lg" 
-                              : "border-slate-100 bg-slate-50 text-slate-400 hover:border-slate-200"
-                          )}
-                        >
-                          {level}
-                        </button>
-                      ))}
-                    </div>
-                 </div>
-
-                 <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">Resultant Nomenclature</Label>
-                    <Input
-                      placeholder="e.g., Synthetic Assessment - Phase 01"
-                      className="h-16 px-6 rounded-2xl bg-slate-50 border-slate-100 focus:border-indigo-500 transition-all text-[15px] font-bold"
-                      value={aiQuizTitle}
-                      onChange={(e) => setAIQuizTitle(e.target.value)}
-                    />
-                 </div>
-               </div>
-
-               <DialogFooter className="pt-4">
-                 <Button 
-                   variant="outline" 
-                   onClick={() => setShowAIDialog(false)}
-                   className="h-14 px-8 rounded-xl border-slate-200 text-slate-500 text-[10px] font-black uppercase tracking-widest"
-                 >
-                   Abort
-                 </Button>
-                 <Button 
-                   onClick={handleGenerateAIQuiz}
-                   disabled={aiGenerating}
-                   className="h-14 px-10 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 shadow-xl shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                 >
-                   {aiGenerating ? (
-                     <>
-                        <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        Synthesizing...
-                     </>
-                   ) : (
-                     <>
-                        <Sparkles className="h-4 w-4" />
-                        Execute Synthesis
-                     </>
-                   )}
-                 </Button>
-               </DialogFooter>
+            <div>
+              <Label>Difficulty</Label>
+              <Select value={aiDifficulty} onValueChange={setAIDifficulty}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-         </DialogContent>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAIDialog(false)}>Cancel</Button>
+            <Button onClick={handleGenerateAIQuiz} disabled={aiGenerating}>
+              {aiGenerating ? 'Generating...' : <><Sparkles className="w-4 h-4 mr-2" /> Generate Quiz</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
-    </div>
-  )
-}
-
-function SpecCard({ label, title, sub, icon, color }: any) {
-  const colors: any = {
-    indigo: "from-indigo-500/10 to-blue-500/10 border-indigo-500/20 text-indigo-600",
-    emerald: "from-emerald-500/10 to-teal-500/10 border-emerald-500/20 text-emerald-600",
-    purple: "from-purple-500/10 to-pink-500/10 border-purple-500/20 text-purple-600",
-    rose: "from-rose-500/10 to-orange-500/10 border-rose-500/20 text-rose-600"
-  }
-
-  return (
-    <div className={cn("p-8 rounded-[2.5rem] bg-gradient-to-br border shadow-xl shadow-slate-200/20 relative overflow-hidden group/spec transition-all duration-500 hover:scale-[1.02]", colors[color])}>
-      <div className="absolute top-0 right-0 p-6 opacity-[0.05] group-hover/spec:rotate-12 group-hover/spec:scale-125 transition-transform duration-1000">
-        {React.cloneElement(icon, { size: 48, strokeWidth: 2.5 })}
-      </div>
-      <div className="relative z-10 space-y-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] opacity-60 leading-none">{label}</p>
-        <p className="text-2xl font-black text-slate-900 tracking-tight leading-none">{title}</p>
-        <div className="flex items-center gap-2">
-           <div className="h-1.5 w-1.5 rounded-full bg-current opacity-40 animate-pulse" />
-           <p className="text-[9px] font-black uppercase tracking-widest opacity-40 italic">{sub}</p>
-        </div>
-      </div>
     </div>
   )
 }

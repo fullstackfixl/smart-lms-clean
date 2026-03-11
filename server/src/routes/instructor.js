@@ -28,6 +28,41 @@ router.put('/courses/:id', ...requireInstructor, (req, res, next) => InstructorC
 router.delete('/courses/:id', ...requireInstructor, (req, res, next) => InstructorController.deleteCourse(req, res, next));
 router.patch('/courses/:id/publish', ...requireInstructor, (req, res, next) => InstructorController.publishCourse(req, res, next));
 
+// Submit course for approval (changes status to 'pending_review')
+router.post('/courses/:id/submit-for-approval', ...requireInstructor, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { Course } = require('../models');
+    
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const course = await Course.findOne({
+      _id: id,
+      organization_id: orgId,
+      instructor_id: req.user._id
+    });
+    
+    if (!course) {
+      return res.error('Course not found', 'Course does not exist or you do not have permission', 404);
+    }
+    
+    if (course.status === 'pending_review') {
+      return res.error('Already submitted', 'Course is already pending review', 400);
+    }
+    
+    if (course.status === 'published') {
+      return res.error('Already published', 'Course is already published', 400);
+    }
+    
+    course.status = 'pending_review';
+    await course.save();
+    
+    res.success({ course }, 'Course submitted for approval successfully');
+  } catch (error) {
+    console.error('Submit for approval error:', error);
+    res.error(error.message, 'Failed to submit course for approval', 500);
+  }
+});
+
 // Modules (Sections)
 router.post('/courses/:courseId/modules', ...requireInstructor, (req, res, next) => InstructorController.createModule(req, res, next));
 router.get('/courses/:courseId/sections', ...requireInstructor, (req, res, next) => InstructorController.getCourseSections(req, res, next));

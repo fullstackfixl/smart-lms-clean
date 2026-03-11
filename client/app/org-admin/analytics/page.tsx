@@ -21,6 +21,7 @@ import {
   BarChart, Bar, Cell, PieChart, Pie
 } from "recharts"
 import { getDashboardMetrics } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 
 function AnalyticsMetric({ title, value, change, icon: Icon, trend }: { title: string, value: string | number, change: string, icon: any, trend: 'up' | 'down' }) {
   return (
@@ -45,20 +46,22 @@ function AnalyticsMetric({ title, value, change, icon: Icon, trend }: { title: s
 }
 
 export default function StudentAnalyticsPage() {
+  const { token } = useAuth()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await getDashboardMetrics()
+        if (!token) return
+        const res = await getDashboardMetrics(token)
         if (res.success) setData(res.data)
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [])
+  }, [token])
 
   if (loading) {
     return (

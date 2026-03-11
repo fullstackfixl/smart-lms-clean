@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, Plus, Edit, Trash2, Users, Clock, DollarSign, Eye, Loader2, AlertCircle, X, Send } from "lucide-react"
 import { publishCourse, assignInstructor, programApi, departmentApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 
 interface Course {
@@ -24,6 +25,7 @@ interface Course {
 }
 
 export default function CoursesPage() {
+  const { token } = useAuth()
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -42,13 +44,15 @@ export default function CoursesPage() {
   })
 
   useEffect(() => {
+    if (!token) return
     loadCourses()
     loadDepartments()
-  }, [statusFilter])
+  }, [statusFilter, token])
 
   async function loadDepartments() {
     try {
-      const response = await departmentApi.list()
+      if (!token) return
+      const response = await departmentApi.list(token)
       if (response.success) {
         setDepartments(response.data || [])
       }
@@ -60,11 +64,12 @@ export default function CoursesPage() {
   async function loadCourses() {
     setLoading(true)
     try {
+      if (!token) return
       const params: any = {}
       if (statusFilter !== "all") params.status = statusFilter
       if (searchTerm) params.search = searchTerm
 
-      const response = await programApi.list(params)
+      const response = await programApi.list(token, params)
       if (response.success && response.data) {
         setCourses(Array.isArray(response.data) ? response.data : (response.data.courses || []))
       }
@@ -78,7 +83,8 @@ export default function CoursesPage() {
 
   async function handleTogglePublish(courseId: string, currentStatus: boolean) {
     try {
-      await publishCourse(courseId, !currentStatus)
+      if (!token) throw new Error('No authentication token')
+      await publishCourse(token, courseId, !currentStatus)
       toast.success(`Course ${!currentStatus ? 'published' : 'unpublished'} successfully`)
       loadCourses()
     } catch (error) {
@@ -99,7 +105,8 @@ export default function CoursesPage() {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      const response = await programApi.create(formData)
+      if (!token) throw new Error('No authentication token')
+      const response = await programApi.create(token, formData)
       if (response.success) {
         toast.success("Academic Program created successfully")
         setShowCreateModal(false)

@@ -14,7 +14,7 @@ import { Button } from '../ui/button'
 
 export function PlatformHeader() {
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200/70 bg-white/90 px-6 backdrop-blur supports-[backdrop-filter]:bg-white/70 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-6 lg:px-8">
       <div className="flex w-full max-w-2xl items-center">
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 stroke-[1.75]" />

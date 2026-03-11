@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Trophy, Edit2, Trash2, Loader2, X } from "lucide-react"
 import { testSeriesApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 
@@ -15,6 +16,7 @@ interface TestSeries {
 }
 
 export default function TestSeriesPage() {
+    const { token } = useAuth()
     const [data, setData] = useState<TestSeries[]>([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -26,13 +28,14 @@ export default function TestSeriesPage() {
     })
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     async function loadData() {
         setLoading(true)
         try {
-            const response = await testSeriesApi.list()
+            if (!token) return
+            const response = await testSeriesApi.list(token)
             if (response.success) {
                 setData(response.data)
             }
@@ -47,11 +50,12 @@ export default function TestSeriesPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         try {
+            if (!token) throw new Error('No authentication token')
             if (editingSeries) {
-                await testSeriesApi.update(editingSeries._id, formData)
+                await testSeriesApi.update(token, editingSeries._id, formData)
                 toast.success("Test series updated successfully")
             } else {
-                await testSeriesApi.create(formData)
+                await testSeriesApi.create(token, formData)
                 toast.success("Test series created successfully")
             }
             setIsModalOpen(false)
@@ -64,7 +68,8 @@ export default function TestSeriesPage() {
     async function handleDelete(id: string) {
         if (!confirm("Are you sure?")) return
         try {
-            await testSeriesApi.delete(id)
+            if (!token) throw new Error('No authentication token')
+            await testSeriesApi.delete(token, id)
             toast.success("Deleted successfully")
             loadData()
         } catch (error) {

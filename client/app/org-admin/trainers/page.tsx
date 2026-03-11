@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ShieldCheck, Mail, BookOpen, Edit2, Loader2, X, Award } from "lucide-react"
 import { trainerApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 
 export default function TrainersPage() {
+    const { token } = useAuth()
     const [trainers, setTrainers] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -15,13 +17,14 @@ export default function TrainersPage() {
     const [formData, setFormData] = useState({ expertise: "", bio: "" })
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     async function loadData() {
         setLoading(true)
         try {
-            const response = await trainerApi.list()
+            if (!token) return
+            const response = await trainerApi.list(token)
             if (response.success) {
                 setTrainers(response.data)
             }
@@ -35,7 +38,8 @@ export default function TrainersPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         try {
-            await trainerApi.updateExpertise(editingTrainer._id, formData)
+            if (!token) throw new Error('No authentication token')
+            await trainerApi.updateExpertise(token, editingTrainer._id, formData)
             toast.success("Trainer profile updated")
             setIsModalOpen(false)
             loadData()

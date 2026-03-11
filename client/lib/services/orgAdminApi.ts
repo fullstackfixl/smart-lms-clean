@@ -12,18 +12,8 @@ async function apiRequest(
   endpoint: string,
   options: any = {}
 ): Promise<any> {
-  // Prefer explicit token passed in, else use 'instatute_token' from storage, else 'token'
-  let token = options.token;
-  if (!token && typeof window !== 'undefined') {
-    token =
-      window.sessionStorage.getItem('instatute_token') ||
-      window.localStorage.getItem('instatute_token') ||
-      window.localStorage.getItem('token') ||
-      undefined;
-  }
-  if (!token) {
-    throw new Error('No authentication token found');
-  }
+  const token = options.token;
+  if (!token) throw new Error('No authentication token provided');
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -55,16 +45,16 @@ async function apiRequest(
 
 // ==================== DASHBOARD ====================
 
-export async function getDashboardMetrics() {
-  return apiRequest('/api/admin/dashboard/metrics');
+export async function getDashboardMetrics(token: string) {
+  return apiRequest('/api/admin/dashboard/metrics', { token });
 }
 
-export async function getDashboardActivities(limit: number = 10) {
-  return apiRequest(`/api/admin/dashboard/activities?limit=${limit}`);
+export async function getDashboardActivities(token: string, limit: number = 10) {
+  return apiRequest(`/api/admin/dashboard/activities?limit=${limit}`, { token });
 }
 
-export async function getOrgEvents() {
-  return apiRequest('/api/org/events');
+export async function getOrgEvents(token: string) {
+  return apiRequest('/api/org/events', { token });
 }
 
 // ==================== USER MANAGEMENT ====================
@@ -77,7 +67,7 @@ export interface GetUsersParams {
   status?: string;
 }
 
-export async function getUsers(params: GetUsersParams = {}) {
+export async function getUsers(token: string, params: GetUsersParams = {}) {
   const queryParams = new URLSearchParams();
   if (params.role) queryParams.append('role', params.role);
   if (params.search) queryParams.append('search', params.search);
@@ -86,7 +76,7 @@ export async function getUsers(params: GetUsersParams = {}) {
   if (params.status) queryParams.append('status', params.status);
 
   const query = queryParams.toString();
-  return apiRequest(`/api/admin/users${query ? `?${query}` : ''}`);
+  return apiRequest(`/api/admin/users${query ? `?${query}` : ''}`, { token });
 }
 
 // Org-admin user creation (invite flow)
@@ -107,15 +97,23 @@ export async function createStudent(token: string, data: { name: string; email: 
 }
 
 export async function listInstructors(token: string) {
-  return apiRequest(`/api/org/users/instructors`, { token });
+  const res = await apiRequest(`/api/org/users/instructors`, { token });
+  if (res?.success && res?.data?.users && Array.isArray(res.data.users)) {
+    return { ...res, data: res.data.users };
+  }
+  return res;
 }
 
 export async function listStudents(token: string) {
-  return apiRequest(`/api/org/users/students`, { token });
+  const res = await apiRequest(`/api/org/users/students`, { token });
+  if (res?.success && res?.data?.users && Array.isArray(res.data.users)) {
+    return { ...res, data: res.data.users };
+  }
+  return res;
 }
 
-export async function getUserById(userId: string) {
-  return apiRequest(`/api/admin/users/${userId}`);
+export async function getUserById(token: string, userId: string) {
+  return apiRequest(`/api/admin/users/${userId}`, { token });
 }
 
 export interface CreateUserData {
@@ -126,10 +124,11 @@ export interface CreateUserData {
   phone?: string;
 }
 
-export async function createUser(data: CreateUserData) {
+export async function createUser(token: string, data: CreateUserData) {
   return apiRequest('/api/admin/users', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    token,
   });
 }
 
@@ -139,30 +138,34 @@ export interface UpdateUserData {
   email?: string;
 }
 
-export async function updateUser(userId: string, data: UpdateUserData) {
+export async function updateUser(token: string, userId: string, data: UpdateUserData) {
   return apiRequest(`/api/admin/users/${userId}`, {
     method: 'PUT',
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    token,
   });
 }
 
-export async function assignUserRole(userId: string, role: string) {
+export async function assignUserRole(token: string, userId: string, role: string) {
   return apiRequest(`/api/admin/users/${userId}/assign-role`, {
     method: 'POST',
-    body: JSON.stringify({ role })
+    body: JSON.stringify({ role }),
+    token,
   });
 }
 
-export async function updateUserStatus(userId: string, isActive: boolean) {
+export async function updateUserStatus(token: string, userId: string, isActive: boolean) {
   return apiRequest(`/api/admin/users/${userId}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ isActive })
+    body: JSON.stringify({ isActive }),
+    token,
   });
 }
 
-export async function deleteUser(userId: string) {
+export async function deleteUser(token: string, userId: string) {
   return apiRequest(`/api/admin/users/${userId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    token,
   });
 }
 
@@ -175,7 +178,7 @@ export interface GetCoursesParams {
   limit?: number;
 }
 
-export async function getCourses(params: GetCoursesParams = {}) {
+export async function getCourses(token: string, params: GetCoursesParams = {}) {
   const queryParams = new URLSearchParams();
   if (params.search) queryParams.append('search', params.search);
   if (params.status) queryParams.append('status', params.status);
@@ -184,53 +187,56 @@ export async function getCourses(params: GetCoursesParams = {}) {
 
   const query = queryParams.toString();
   // Regular LMS content courses
-  return apiRequest(`/api/admin/courses${query ? `?${query}` : ''}`);
+  return apiRequest(`/api/admin/courses${query ? `?${query}` : ''}`, { token });
 }
 
-export async function createCourse(data: any) {
+export async function createCourse(token: string, data: any) {
   return apiRequest('/api/org-admin/courses', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    token,
   });
 }
 
-export async function getCourseById(courseId: string) {
-  return apiRequest(`/api/admin/courses/${courseId}`);
+export async function getCourseById(token: string, courseId: string) {
+  return apiRequest(`/api/admin/courses/${courseId}`, { token });
 }
 
-export async function publishCourse(courseId: string, isPublished: boolean) {
+export async function publishCourse(token: string, courseId: string, isPublished: boolean) {
   return apiRequest(`/api/admin/courses/${courseId}/publish`, {
     method: 'PUT',
-    body: JSON.stringify({ isPublished })
+    body: JSON.stringify({ isPublished }),
+    token,
   });
 }
 
-export async function assignInstructor(courseId: string, instructorId: string) {
+export async function assignInstructor(token: string, courseId: string, instructorId: string) {
   return apiRequest(`/api/admin/courses/${courseId}/assign-instructor`, {
     method: 'PUT',
-    body: JSON.stringify({ instructorId })
+    body: JSON.stringify({ instructorId }),
+    token,
   });
 }
 
 // ==================== ATTENDANCE ====================
 
 export const attendanceApi = {
-  getSummary: () => apiRequest('/api/attendance/reports/summary'),
-  getCourseAttendance: (courseId: string) => apiRequest(`/api/attendance/course/${courseId}`),
-  getStudentAttendance: (studentId: string) => apiRequest(`/api/attendance/student/${studentId}`),
-  mark: (data: any) => apiRequest('/api/attendance/mark', { method: 'POST', body: data }),
-  update: (id: string, data: any) => apiRequest(`/api/attendance/${id}`, { method: 'PUT', body: data }),
+  getSummary: (token: string) => apiRequest('/api/attendance/reports/summary', { token }),
+  getCourseAttendance: (token: string, courseId: string) => apiRequest(`/api/attendance/course/${courseId}`, { token }),
+  getStudentAttendance: (token: string, studentId: string) => apiRequest(`/api/attendance/student/${studentId}`, { token }),
+  mark: (token: string, data: any) => apiRequest('/api/attendance/mark', { method: 'POST', body: data, token }),
+  update: (token: string, id: string, data: any) => apiRequest(`/api/attendance/${id}`, { method: 'PUT', body: data, token }),
 };
 
 // ==================== GRADES & EXAMS ====================
 
 export const gradeApi = {
-  list: (params: any = {}) => {
+  list: (token: string, params: any = {}) => {
     const query = new URLSearchParams(params).toString();
-    return apiRequest(`/api/admin/grades${query ? `?${query}` : ''}`);
+    return apiRequest(`/api/admin/grades${query ? `?${query}` : ''}`, { token });
   },
-  getCourseGrades: (id: string) => apiRequest(`/api/admin/grades/course/${id}`),
-  export: (data: any) => apiRequest('/api/admin/grades/export', { method: 'POST', body: data }),
+  getCourseGrades: (token: string, id: string) => apiRequest(`/api/admin/grades/course/${id}`, { token }),
+  export: (token: string, data: any) => apiRequest('/api/admin/grades/export', { method: 'POST', body: data, token }),
 };
 
 // ==================== FEES ====================
@@ -244,15 +250,16 @@ export interface SetFeeData {
   type?: string;
 }
 
-export async function setFee(data: SetFeeData) {
+export async function setFee(token: string, data: SetFeeData) {
   return apiRequest('/api/admin/fees/set', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    token,
   });
 }
 
-export async function getPendingFees() {
-  return apiRequest('/api/admin/fees/pending');
+export async function getPendingFees(token: string) {
+  return apiRequest('/api/admin/fees/pending', { token });
 }
 
 export interface GetFeeHistoryParams {
@@ -261,20 +268,21 @@ export interface GetFeeHistoryParams {
   status?: string;
 }
 
-export async function getFeeHistory(params: GetFeeHistoryParams = {}) {
+export async function getFeeHistory(token: string, params: GetFeeHistoryParams = {}) {
   const queryParams = new URLSearchParams();
   if (params.startDate) queryParams.append('startDate', params.startDate);
   if (params.endDate) queryParams.append('endDate', params.endDate);
   if (params.status) queryParams.append('status', params.status);
 
   const query = queryParams.toString();
-  return apiRequest(`/api/admin/fees/history${query ? `?${query}` : ''}`);
+  return apiRequest(`/api/admin/fees/history${query ? `?${query}` : ''}`, { token });
 }
 
-export async function sendFeeReminder(feeId: string) {
+export async function sendFeeReminder(token: string, feeId: string) {
   return apiRequest('/api/admin/fees/reminder', {
     method: 'POST',
-    body: JSON.stringify({ feeId })
+    body: JSON.stringify({ feeId }),
+    token,
   });
 }
 
@@ -290,10 +298,11 @@ export interface CreateEventData {
   participants?: string[];
 }
 
-export async function createEvent(data: CreateEventData) {
+export async function createEvent(token: string, data: CreateEventData) {
   return apiRequest('/api/admin/events', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    token,
   });
 }
 
@@ -303,64 +312,69 @@ export interface GetEventsParams {
   endDate?: string;
 }
 
-export async function getEvents(params: GetEventsParams = {}) {
+export async function getEvents(token: string, params: GetEventsParams = {}) {
   const queryParams = new URLSearchParams();
   if (params.type) queryParams.append('type', params.type);
   if (params.startDate) queryParams.append('startDate', params.startDate);
   if (params.endDate) queryParams.append('endDate', params.endDate);
 
   const query = queryParams.toString();
-  return apiRequest(`/api/admin/events${query ? `?${query}` : ''}`);
+  return apiRequest(`/api/admin/events${query ? `?${query}` : ''}`, { token });
 }
 
-export async function updateEvent(eventId: string, data: Partial<CreateEventData>) {
+export async function updateEvent(token: string, eventId: string, data: Partial<CreateEventData>) {
   return apiRequest(`/api/admin/events/${eventId}`, {
     method: 'PUT',
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    token,
   });
 }
 
-export async function deleteEvent(eventId: string) {
+export async function deleteEvent(token: string, eventId: string) {
   return apiRequest(`/api/admin/events/${eventId}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    token,
   });
 }
 
 // ==================== LIVE CLASSES (NEW) ====================
 
-export async function getLiveClasses(params: any = {}) {
+export async function getLiveClasses(token: string, params: any = {}) {
   const query = new URLSearchParams(params).toString();
-  return apiRequest(`/api/live-classes${query ? `?${query}` : ''}`);
+  return apiRequest(`/api/live-classes${query ? `?${query}` : ''}`, { token });
 }
 
-export async function createLiveClass(data: any) {
+export async function createLiveClass(token: string, data: any) {
   return apiRequest('/api/live-classes', {
     method: 'POST',
-    body: data
+    body: data,
+    token,
   });
 }
 
-export async function updateLiveClass(id: string, data: any) {
+export async function updateLiveClass(token: string, id: string, data: any) {
   return apiRequest(`/api/live-classes/${id}`, {
     method: 'PUT',
-    body: data
+    body: data,
+    token,
   });
 }
 
-export async function deleteLiveClass(id: string) {
+export async function deleteLiveClass(token: string, id: string) {
   return apiRequest(`/api/live-classes/${id}`, {
-    method: 'DELETE'
+    method: 'DELETE',
+    token,
   });
 }
 
 // ==================== ANALYTICS ====================
 
-export async function getAnalyticsOverview() {
-  return apiRequest('/api/admin/analytics/overview');
+export async function getAnalyticsOverview(token: string) {
+  return apiRequest('/api/admin/analytics/overview', { token });
 }
 
-export async function getAttendanceAnalytics() {
-  return apiRequest('/api/admin/analytics/attendance');
+export async function getAttendanceAnalytics(token: string) {
+  return apiRequest('/api/admin/analytics/attendance', { token });
 }
 
 export interface GetRevenueAnalyticsParams {
@@ -368,19 +382,19 @@ export interface GetRevenueAnalyticsParams {
   endDate?: string;
 }
 
-export async function getRevenueAnalytics(params: GetRevenueAnalyticsParams = {}) {
+export async function getRevenueAnalytics(token: string, params: GetRevenueAnalyticsParams = {}) {
   const queryParams = new URLSearchParams();
   if (params.startDate) queryParams.append('startDate', params.startDate);
   if (params.endDate) queryParams.append('endDate', params.endDate);
 
   const query = queryParams.toString();
-  return apiRequest(`/api/admin/analytics/revenue${query ? `?${query}` : ''}`);
+  return apiRequest(`/api/admin/analytics/revenue${query ? `?${query}` : ''}`, { token });
 }
 
 // ==================== SETTINGS ====================
 
-export async function getSettings() {
-  return apiRequest('/api/admin/settings');
+export async function getSettings(token: string) {
+  return apiRequest('/api/admin/settings', { token });
 }
 
 export interface UpdateSettingsData {
@@ -390,110 +404,114 @@ export interface UpdateSettingsData {
   preferences?: Record<string, any>;
 }
 
-export async function updateSettings(data: UpdateSettingsData) {
+export async function updateSettings(token: string, data: UpdateSettingsData) {
   return apiRequest('/api/admin/settings', {
     method: 'PUT',
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
+    token,
   });
 }
 
 // ==================== ORGANIZATION FEATURES (NEW) ====================
 
 // Generic CRUD helper for org features
-async function orgFeatureRequest(resource: string, method: string = 'GET', data?: any) {
-  const options: any = { method };
+async function orgFeatureRequest(token: string, resource: string, method: string = 'GET', data?: any) {
+  const options: any = { method, token };
   if (data) options.body = data;
   return apiRequest(`/api/org-features/${resource}`, options);
 }
 
 // Academic Years
 export const academicYearApi = {
-  list: () => orgFeatureRequest('academic-years'),
-  create: (data: any) => orgFeatureRequest('academic-years', 'POST', data),
-  get: (id: string) => orgFeatureRequest(`academic-years/${id}`),
-  update: (id: string, data: any) => orgFeatureRequest(`academic-years/${id}`, 'PUT', data),
-  delete: (id: string) => orgFeatureRequest(`academic-years/${id}`, 'DELETE'),
+  list: (token: string) => orgFeatureRequest(token, 'academic-years'),
+  create: (token: string, data: any) => orgFeatureRequest(token, 'academic-years', 'POST', data),
+  get: (token: string, id: string) => orgFeatureRequest(token, `academic-years/${id}`),
+  update: (token: string, id: string, data: any) => orgFeatureRequest(token, `academic-years/${id}`, 'PUT', data),
+  delete: (token: string, id: string) => orgFeatureRequest(token, `academic-years/${id}`, 'DELETE'),
 };
 
 // Departments
 export const departmentApi = {
-  list: () => orgFeatureRequest('departments'),
-  create: (data: any) => orgFeatureRequest('departments', 'POST', data),
-  get: (id: string) => orgFeatureRequest(`departments/${id}`),
-  update: (id: string, data: any) => orgFeatureRequest(`departments/${id}`, 'PUT', data),
-  delete: (id: string) => orgFeatureRequest(`departments/${id}`, 'DELETE'),
+  list: (token: string) => orgFeatureRequest(token, 'departments'),
+  create: (token: string, data: any) => orgFeatureRequest(token, 'departments', 'POST', data),
+  get: (token: string, id: string) => orgFeatureRequest(token, `departments/${id}`),
+  update: (token: string, id: string, data: any) => orgFeatureRequest(token, `departments/${id}`, 'PUT', data),
+  delete: (token: string, id: string) => orgFeatureRequest(token, `departments/${id}`, 'DELETE'),
 };
 
 // Batches
 export const batchApi = {
-  list: () => orgFeatureRequest('batches'),
-  create: (data: any) => orgFeatureRequest('batches', 'POST', data),
-  get: (id: string) => orgFeatureRequest(`batches/${id}`),
-  update: (id: string, data: any) => orgFeatureRequest(`batches/${id}`, 'PUT', data),
-  delete: (id: string) => orgFeatureRequest(`batches/${id}`, 'DELETE'),
+  list: (token: string) => orgFeatureRequest(token, 'batches'),
+  create: (token: string, data: any) => orgFeatureRequest(token, 'batches', 'POST', data),
+  get: (token: string, id: string) => orgFeatureRequest(token, `batches/${id}`),
+  update: (token: string, id: string, data: any) => orgFeatureRequest(token, `batches/${id}`, 'PUT', data),
+  delete: (token: string, id: string) => orgFeatureRequest(token, `batches/${id}`, 'DELETE'),
 };
 
 // Semesters
 export const semesterApi = {
-  list: () => orgFeatureRequest('semesters'),
-  create: (data: any) => orgFeatureRequest('semesters', 'POST', data),
-  get: (id: string) => orgFeatureRequest(`semesters/${id}`),
-  update: (id: string, data: any) => orgFeatureRequest(`semesters/${id}`, 'PUT', data),
-  delete: (id: string) => orgFeatureRequest(`semesters/${id}`, 'DELETE'),
+  list: (token: string) => orgFeatureRequest(token, 'semesters'),
+  create: (token: string, data: any) => orgFeatureRequest(token, 'semesters', 'POST', data),
+  get: (token: string, id: string) => orgFeatureRequest(token, `semesters/${id}`),
+  update: (token: string, id: string, data: any) => orgFeatureRequest(token, `semesters/${id}`, 'PUT', data),
+  delete: (token: string, id: string) => orgFeatureRequest(token, `semesters/${id}`, 'DELETE'),
 };
 
 // Subjects
 export const subjectApi = {
-  list: (programId?: string) => orgFeatureRequest(`subjects${programId ? `?program_id=${programId}` : ''}`),
-  create: (data: any) => orgFeatureRequest('subjects', 'POST', data),
-  get: (id: string) => orgFeatureRequest(`subjects/${id}`),
-  update: (id: string, data: any) => orgFeatureRequest(`subjects/${id}`, 'PUT', data),
-  delete: (id: string) => orgFeatureRequest(`subjects/${id}`, 'DELETE'),
+  list: (token: string, programId?: string) => orgFeatureRequest(token, `subjects${programId ? `?program_id=${programId}` : ''}`),
+  create: (token: string, data: any) => orgFeatureRequest(token, 'subjects', 'POST', data),
+  get: (token: string, id: string) => orgFeatureRequest(token, `subjects/${id}`),
+  update: (token: string, id: string, data: any) => orgFeatureRequest(token, `subjects/${id}`, 'PUT', data),
+  delete: (token: string, id: string) => orgFeatureRequest(token, `subjects/${id}`, 'DELETE'),
 };
 
 // Test Series
 export const testSeriesApi = {
-  delete: (id: string) => orgFeatureRequest(`test-series/${id}`, 'DELETE'),
+  list: (token: string) => orgFeatureRequest(token, 'test-series'),
+  create: (token: string, data: any) => orgFeatureRequest(token, 'test-series', 'POST', data),
+  update: (token: string, id: string, data: any) => orgFeatureRequest(token, `test-series/${id}`, 'PUT', data),
+  delete: (token: string, id: string) => orgFeatureRequest(token, `test-series/${id}`, 'DELETE'),
 }
 
 // Academic Programs (Academic Courses in Org Admin context)
 export const programApi = {
-  list: (params: any = {}) => {
+  list: (token: string, params: any = {}) => {
     const query = new URLSearchParams(params).toString();
     // Academic Programs (Structural)
-    return apiRequest(`/api/org-admin/courses${query ? `?${query}` : ''}`);
+    return apiRequest(`/api/org-admin/courses${query ? `?${query}` : ''}`, { token });
   },
-  create: (data: any) => apiRequest('/api/org-admin/courses', { method: 'POST', body: data }),
-  get: (id: string) => apiRequest(`/api/org-admin/courses/${id}`),
-  update: (id: string, data: any) => apiRequest(`/api/org-admin/courses/${id}`, { method: 'PUT', body: data }),
-  delete: (id: string) => apiRequest(`/api/org-admin/courses/${id}`, { method: 'DELETE' }),
+  create: (token: string, data: any) => apiRequest('/api/org-admin/courses', { method: 'POST', body: data, token }),
+  get: (token: string, id: string) => apiRequest(`/api/org-admin/courses/${id}`, { token }),
+  update: (token: string, id: string, data: any) => apiRequest(`/api/org-admin/courses/${id}`, { method: 'PUT', body: data, token }),
+  delete: (token: string, id: string) => apiRequest(`/api/org-admin/courses/${id}`, { method: 'DELETE', token }),
 };
 
 export const schoolGradeApi = {
-  listLevels: () => orgFeatureRequest('school-levels'),
-  createLevel: (data: any) => orgFeatureRequest('school-levels', 'POST', data),
-  updateLevel: (id: string, data: any) => orgFeatureRequest(`school-levels/${id}`, 'PUT', data),
-  deleteLevel: (id: string) => orgFeatureRequest(`school-levels/${id}`, 'DELETE'),
+  listLevels: (token: string) => orgFeatureRequest(token, 'school-levels'),
+  createLevel: (token: string, data: any) => orgFeatureRequest(token, 'school-levels', 'POST', data),
+  updateLevel: (token: string, id: string, data: any) => orgFeatureRequest(token, `school-levels/${id}`, 'PUT', data),
+  deleteLevel: (token: string, id: string) => orgFeatureRequest(token, `school-levels/${id}`, 'DELETE'),
 
-  listSections: (gradeLevelId?: string) => orgFeatureRequest(`school-sections${gradeLevelId ? `?grade_level_id=${gradeLevelId}` : ''}`),
-  createSection: (data: any) => orgFeatureRequest('school-sections', 'POST', data),
-  updateSection: (id: string, data: any) => orgFeatureRequest(`school-sections/${id}`, 'PUT', data),
-  deleteSection: (id: string) => orgFeatureRequest(`school-sections/${id}`, 'DELETE'),
+  listSections: (token: string, gradeLevelId?: string) => orgFeatureRequest(token, `school-sections${gradeLevelId ? `?grade_level_id=${gradeLevelId}` : ''}`),
+  createSection: (token: string, data: any) => orgFeatureRequest(token, 'school-sections', 'POST', data),
+  updateSection: (token: string, id: string, data: any) => orgFeatureRequest(token, `school-sections/${id}`, 'PUT', data),
+  deleteSection: (token: string, id: string) => orgFeatureRequest(token, `school-sections/${id}`, 'DELETE'),
 }
 
 export const gpaApi = {
-  getStats: () => orgFeatureRequest('gpa/stats'),
-  getAtRisk: (threshold?: number) => orgFeatureRequest(`gpa/at-risk${threshold ? `?threshold=${threshold}` : ''}`),
-  getDepartments: () => orgFeatureRequest('gpa/departments'),
-  getStudentGPA: (studentId: string) => orgFeatureRequest(`gpa/student/${studentId}`),
+  getStats: (token: string) => orgFeatureRequest(token, 'gpa/stats'),
+  getAtRisk: (token: string, threshold?: number) => orgFeatureRequest(token, `gpa/at-risk${threshold ? `?threshold=${threshold}` : ''}`),
+  getDepartments: (token: string) => orgFeatureRequest(token, 'gpa/departments'),
+  getStudentGPA: (token: string, studentId: string) => orgFeatureRequest(token, `gpa/student/${studentId}`),
 }
 
 export const trainerApi = {
-  list: () => orgFeatureRequest('trainers'),
-  updateExpertise: (id: string, data: { expertise: string; bio?: string }) => orgFeatureRequest(`trainers/${id}/expertise`, 'PUT', data),
+  list: (token: string) => orgFeatureRequest(token, 'trainers'),
+  updateExpertise: (token: string, id: string, data: { expertise: string; bio?: string }) => orgFeatureRequest(token, `trainers/${id}/expertise`, 'PUT', data),
 }
 
 export const leaderboardApi = {
-  getGlobal: () => orgFeatureRequest('leaderboard'),
-  getBadges: (userId: string) => orgFeatureRequest(`leaderboard/badges/${userId}`),
+  getGlobal: (token: string) => orgFeatureRequest(token, 'leaderboard'),
+  getBadges: (token: string, userId: string) => orgFeatureRequest(token, `leaderboard/badges/${userId}`),
 }

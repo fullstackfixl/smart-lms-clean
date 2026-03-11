@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { 
   DollarSign, 
   TrendingUp, 
@@ -80,7 +79,7 @@ export default function RevenuePage() {
   }, [fetchRevenue])
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-10 animate-in fade-in duration-700 pb-20">
+    <div className="max-w-[1400px] mx-auto space-y-10 pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2 border-b border-slate-100">
         <div>
           <h1 className="text-[28px] font-black text-slate-900 tracking-tight uppercase">Fiscal Intelligence</h1>
@@ -90,7 +89,7 @@ export default function RevenuePage() {
         <div className="flex items-center gap-3">
           <button 
             onClick={fetchRevenue}
-            className="h-10 px-4 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-[#2563EB] transition-all shadow-sm flex items-center gap-2 group"
+            className="h-10 px-4 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-[#2563EB] transition-colors shadow-none flex items-center gap-2 group"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
             <span className="text-[10px] font-black uppercase tracking-widest">Re-Sync</span>
@@ -130,7 +129,7 @@ export default function RevenuePage() {
       </div>
 
       {/* Main Revenue Chart */}
-      <div className="bg-white border border-slate-100 rounded-[2.5rem] shadow-sm p-8 hover:shadow-md transition-all">
+      <div className="bg-white border border-slate-100 rounded-[2.5rem] shadow-none p-8">
         <div className="flex items-center justify-between mb-10">
           <div>
             <h3 className="text-[15px] font-black text-slate-900 uppercase tracking-tight">Revenue Flux Index</h3>
@@ -155,7 +154,7 @@ export default function RevenuePage() {
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} dy={15} />
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#94a3b8'}} />
                     <Tooltip 
-                      contentStyle={{ borderRadius: '20px', border: '1px solid #f1f5f9', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.08)', fontSize: '12px', padding: '12px' }}
+                      contentStyle={{ borderRadius: '20px', border: '1px solid #f1f5f9', boxShadow: 'none', fontSize: '12px', padding: '12px' }}
                       formatter={(value: any) => [`${data.revenue.currency} ${value}`, "Revenue"]}
                     />
                     <Area type="monotone" dataKey="revenue" stroke="#2563EB" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" animationDuration={1500} />
@@ -171,7 +170,7 @@ export default function RevenuePage() {
       </div>
 
       {/* Transaction Stream */}
-      <div className="bg-white border border-slate-100 rounded-[2.5rem] shadow-sm overflow-hidden hover:shadow-md transition-all">
+      <div className="bg-white border border-slate-100 rounded-[2.5rem] shadow-none overflow-hidden">
         <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/20">
           <div>
             <h3 className="text-[15px] font-black text-slate-900 uppercase tracking-tight">Financial Stream</h3>
@@ -246,12 +245,12 @@ function RevenueMetricCard({ label, value, trend, up, icon, loading, color }: an
   }
 
   return (
-    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-md transition-all group">
+    <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-none">
       <div className="flex items-center justify-between mb-8">
-        <div className={`w-12 h-12 rounded-[1.25rem] ${bgColors[color]} border flex items-center justify-center transition-all duration-700 group-hover:rotate-6 group-hover:scale-110 shadow-sm shadow-black/5`}>
+        <div className={`w-12 h-12 rounded-[1.25rem] ${bgColors[color]} border flex items-center justify-center shadow-none`}>
           {icon}
         </div>
-        <div className={`flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full border shadow-sm ${
+        <div className={`flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full border shadow-none ${
           up ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'
         }`}>
           {up ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}

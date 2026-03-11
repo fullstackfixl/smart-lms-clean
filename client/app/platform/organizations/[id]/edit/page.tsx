@@ -1,7 +1,6 @@
 "use client"
  
 import { useState, useEffect, Suspense } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { 
   ArrowLeft, 
   Save, 
@@ -24,6 +23,11 @@ import { platformApi } from '../../../../../lib/api'
 import { useRouter, useParams } from "next/navigation"
 import { useAuth } from '../../../../../lib/auth-context'
 import { cn } from "../../../../../lib/utils"
+import { Card } from "../../../../../components/ui/card"
+import { Button } from "../../../../../components/ui/button"
+import { Input } from "../../../../../components/ui/input"
+import { Label } from "../../../../../components/ui/label"
+import { PlatformErrorState } from "../../../../../components/platform/platform-error-state"
  
 interface Organization {
   _id: string
@@ -96,169 +100,119 @@ function EditContent() {
   }
  
   if (loading) return (
-     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 text-white">
-        <div className="h-16 w-16 border-[6px] border-slate-100 border-t-indigo-600 rounded-full animate-spin" />
+     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6">
+        <div className="h-10 w-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+        <div className="text-sm text-slate-500 font-medium">Loading...</div>
      </div>
   )
  
   return (
-    <div className="max-w-[1200px] mx-auto space-y-16 pb-32 p-8 animate-in fade-in duration-1000">
+    <div className="max-w-[1200px] mx-auto space-y-8 pb-20">
       
       {/* ─── Reconfig Hero ────────────────────────────────────────── */}
-      <div className="relative group">
-        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-[4rem] blur opacity-[0.03] group-hover:opacity-[0.08] transition duration-1000" />
-        <div className="relative overflow-hidden rounded-[4rem] bg-[#020617] p-12 lg:p-20 shadow-2xl">
-          <div className="absolute top-0 right-0 -mr-24 -mt-24 w-[30rem] h-[30rem] bg-indigo-500/10 rounded-full blur-[100px]" />
-          
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-12">
-            <div className="space-y-6 text-white">
-              <div className="flex items-center gap-4">
-                 <button onClick={() => router.push(`/platform/organizations/${id}`)} className="h-12 w-12 rounded-xl bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all border border-white/10">
-                    <ArrowLeft className="w-5 h-5" />
-                 </button>
-                 <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] border border-white/20">
-                    <Settings2 className="w-3.5 h-3.5" />
-                    System Reconfiguration
-                 </div>
-              </div>
-              <h1 className="text-5xl lg:text-6xl font-black text-white tracking-tighter leading-none">
-                Modify <span className="text-indigo-400">Identity.</span>
-              </h1>
-              <p className="text-[17px] font-medium text-slate-400 max-w-lg opacity-80 italic">
-                Awaiting executive updates for the institutional parameters of {formData.name}.
-              </p>
-            </div>
-            
-            <div className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-xl max-w-xs w-full text-center">
-               <Database className="w-10 h-10 text-indigo-400 mx-auto mb-4" />
-               <p className="text-white/40 text-[11px] font-black uppercase tracking-widest leading-relaxed">Cluster ID: {id.slice(-8).toUpperCase()}</p>
-            </div>
-          </div>
+      <div className="flex items-start justify-between gap-6">
+        <div>
+          <button onClick={() => router.push(`/platform/organizations/${id}`)} className="text-slate-500 hover:text-blue-600 font-bold text-sm flex items-center">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </button>
+          <h1 className="mt-4 text-2xl font-bold text-slate-900 border-b-2 border-blue-500 inline-block pb-1">Edit Organization</h1>
+          <p className="mt-2 text-slate-500">Update institutional parameters for {formData.name || 'this organization'}.</p>
         </div>
+        <div className="text-xs text-slate-400 font-mono uppercase">ID: {id.slice(-8).toUpperCase()}</div>
       </div>
  
       {/* ─── Reconfig Form ────────────────────────────────────────── */}
       <form onSubmit={handleSubmit} className="space-y-12">
         {error && (
-          <div className="p-8 rounded-[2rem] bg-rose-50 border border-rose-100 text-rose-600 text-[14px] font-black flex items-center gap-4 animate-in slide-in-from-top-4">
-            <ShieldCheck className="w-6 h-6 shrink-0" /> {error}
-          </div>
+          <PlatformErrorState title="Update failed" message={error} />
         )}
  
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
            
            {/* Section: Core Parameters */}
-           <div className="bg-white rounded-[3.5rem] border border-slate-100 p-12 lg:p-14 shadow-sm space-y-10">
+           <Card className="bg-white border border-slate-200 p-8 rounded-md space-y-8">
               <div className="space-y-2">
-                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-serif italic">// Core Parameters</h3>
-                 <p className="text-3xl font-black text-slate-900 tracking-tight">Institutional DNA</p>
+                 <h3 className="text-sm font-bold text-slate-900">Core Parameters</h3>
+                 <p className="text-xs text-slate-500">Institutional identity and plan configuration.</p>
               </div>
  
               <div className="space-y-8">
-                 <LogicInput 
-                    label="Executive Identity" 
-                    placeholder="Institutional Name" 
-                    icon={<Building2 className="w-4 h-4" />} 
-                    value={formData.name} 
-                    onValueChange={(v: string) => setFormData({ ...formData, name: v })} 
-                 />
-                 <LogicInput 
-                    label="Strategic Uplink (Email)" 
-                    placeholder="admin@institution.edu" 
-                    icon={<Mail className="w-4 h-4" />} 
-                    value={formData.email} 
-                    onValueChange={(v: string) => setFormData({ ...formData, email: v })} 
-                 />
+                 <div className="space-y-1.5">
+                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Organization Name</Label>
+                   <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="h-11 border-gray-200" required />
+                 </div>
+                 <div className="space-y-1.5">
+                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Admin Email</Label>
+                   <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="h-11 border-gray-200" required />
+                 </div>
                  <div className="grid grid-cols-2 gap-8">
-                    <LogicInput 
-                       label="Response Line" 
-                       placeholder="+1-000-0000" 
-                       icon={<Phone className="w-4 h-4" />} 
-                       value={formData.phone} 
-                       onValueChange={(v: string) => setFormData({ ...formData, phone: v })} 
-                    />
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Phone</Label>
+                      <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="h-11 border-gray-200" />
+                    </div>
                     <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Active Protocol</label>
+                       <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Plan</Label>
                        <div className="relative group">
                           <select
                             value={formData.plan}
                             onChange={(e) => setFormData({ ...formData, plan: e.target.value as 'basic' | 'premium' })}
-                            className="w-full h-16 rounded-[1.5rem] bg-slate-50 border border-slate-100 px-6 text-[14px] font-black appearance-none cursor-pointer focus:bg-white focus:ring-[10px] focus:ring-indigo-500/5 transition-all outline-none"
+                            className="w-full h-11 rounded-md bg-white border border-gray-200 px-3 text-sm font-bold appearance-none cursor-pointer focus:outline-none focus:ring-0 focus:border-blue-500"
                           >
-                             <option value="basic">Standard Protocol</option>
-                             <option value="premium">Enterprise Protocol</option>
+                             <option value="basic">Basic</option>
+                             <option value="premium">Premium</option>
                           </select>
                           <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300 pointer-events-none group-focus-within:text-indigo-500" />
                        </div>
                     </div>
                  </div>
               </div>
-           </div>
+           </Card>
  
            {/* Section: Spatial Parameters */}
-           <div className="bg-white rounded-[3.5rem] border border-slate-100 p-12 lg:p-14 shadow-sm space-y-10">
+           <Card className="bg-white border border-slate-200 p-8 rounded-md space-y-8">
               <div className="space-y-2">
-                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] font-serif italic">// Spatial configuration</h3>
-                 <p className="text-3xl font-black text-slate-900 tracking-tight">Geographic Nexus</p>
+                 <h3 className="text-sm font-bold text-slate-900">Address</h3>
+                 <p className="text-xs text-slate-500">Optional contact and location fields.</p>
               </div>
  
               <div className="space-y-8">
-                 <LogicInput 
-                    label="Primary Vector (Street)" 
-                    placeholder="Operational Address" 
-                    icon={<MapPin className="w-4 h-4" />} 
-                    value={formData.address.street} 
-                    onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, street: v } })} 
-                 />
-                 <div className="grid grid-cols-2 gap-8">
-                    <LogicInput 
-                       label="Regional Sector (City)" 
-                       placeholder="City" 
-                       value={formData.address.city} 
-                       onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, city: v } })} 
-                    />
-                    <LogicInput 
-                       label="Territory (State)" 
-                       placeholder="State" 
-                       value={formData.address.state} 
-                       onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, state: v } })} 
-                    />
+                 <div className="space-y-1.5">
+                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Street</Label>
+                   <Input value={formData.address.street} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })} className="h-11 border-gray-200" />
                  </div>
                  <div className="grid grid-cols-2 gap-8">
-                    <LogicInput 
-                       label="Nexus Code (ZIP)" 
-                       placeholder="ZIP" 
-                       value={formData.address.zipCode} 
-                       onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, zipCode: v } })} 
-                    />
-                    <LogicInput 
-                       label="Global Entity (Country)" 
-                       placeholder="Country" 
-                       icon={<Globe className="w-4 h-4" />} 
-                       value={formData.address.country} 
-                       onValueChange={(v: string) => setFormData({ ...formData, address: { ...formData.address, country: v } })} 
-                    />
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">City</Label>
+                      <Input value={formData.address.city} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, city: e.target.value } })} className="h-11 border-gray-200" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">State</Label>
+                      <Input value={formData.address.state} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, state: e.target.value } })} className="h-11 border-gray-200" />
+                    </div>
+                 </div>
+                 <div className="grid grid-cols-2 gap-8">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">ZIP</Label>
+                      <Input value={formData.address.zipCode} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, zipCode: e.target.value } })} className="h-11 border-gray-200" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Country</Label>
+                      <Input value={formData.address.country} onChange={(e) => setFormData({ ...formData, address: { ...formData.address, country: e.target.value } })} className="h-11 border-gray-200" />
+                    </div>
                  </div>
               </div>
-           </div>
+           </Card>
  
         </div>
  
         <div className="flex gap-6 items-center justify-end px-4">
-           <button
-              type="button"
-              onClick={() => router.push(`/platform/organizations/${id}`)}
-              className="h-20 px-12 text-[14px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
-           >
-              ABORT CHANGES
-           </button>
-           <button
-              type="submit"
-              disabled={saving}
-              className="h-20 px-16 bg-[#020617] text-white rounded-[2rem] text-[16px] font-black uppercase tracking-[0.2em] shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-4 disabled:opacity-30"
-           >
-              {saving ? <RefreshCw className="h-6 w-6 animate-spin text-indigo-500" /> : <><Save className="h-6 w-6 text-indigo-500" /> Commit Updates</>}
-           </button>
+          <Button type="button" variant="outline" className="h-11 border-gray-200 bg-white font-bold" onClick={() => router.push(`/platform/organizations/${id}`)}>
+            Cancel
+          </Button>
+          <Button type="submit" className="h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold" disabled={saving}>
+            {saving ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save changes
+          </Button>
         </div>
       </form>
     </div>

@@ -35,7 +35,7 @@ export function SimpleLineChart({ data, xKey, yKey, color = "#3B82F6" }: any) {
             contentStyle={{ 
               borderRadius: '8px', 
               border: '1px solid #E2E8F0', 
-              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)',
+              boxShadow: 'none',
               fontSize: '12px',
               fontWeight: 700
             }} 

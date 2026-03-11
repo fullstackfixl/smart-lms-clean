@@ -2,13 +2,11 @@
  
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
-  BookOpen,
   Video,
-  Upload,
   Settings,
   LogOut,
   GraduationCap,
@@ -22,11 +20,8 @@ import {
   ClipboardList,
   Book,
   ChevronRight,
-  Zap,
   Layers,
-  Search,
   Target,
-  ShieldCheck,
   Activity,
   MessageSquare,
 } from 'lucide-react'
@@ -39,28 +34,31 @@ interface NavItem {
   icon: any
   collegeOnly?: boolean
   description?: string
+  section?: 'core' | 'academics' | 'engagement' | 'reports'
 }
  
 const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/instructor/dashboard', icon: LayoutDashboard, description: 'Executive Overview' },
-  { label: 'My Subjects', href: '/instructor/subjects', icon: Book, collegeOnly: true, description: 'Faculty Registry' },
-  { label: 'My Courses', href: '/instructor/courses', icon: Layers, description: 'Curriculum Matrix' },
-  { label: 'Students', href: '/instructor/students', icon: Users, description: 'Scholar Network' },
-  { label: 'Live Classes', href: '/instructor/live-classes', icon: Video, description: 'Stream Uplink' },
-  { label: 'Quiz Hub', href: '/instructor/quiz', icon: ClipboardList, description: 'AI Neural Matrix' },
-  { label: 'Analytics', href: '/instructor/analytics', icon: BarChart3, description: 'Intelligence Reports' },
-  { label: 'Submissions', href: '/instructor/submissions', icon: FileText, description: 'Audit Stream' },
-  { label: 'Earnings', href: '/instructor/earnings', icon: Activity, description: 'Fiscal Terminal' },
-  { label: 'Messages', href: '/instructor/messages', icon: MessageSquare, description: 'Strategic Uplink' },
-  { label: 'Notifications', href: '/instructor/notifications', icon: Bell, description: 'Intelligence Signals' },
-  { label: 'Gradebook', href: '/instructor/gradebook', icon: Target, collegeOnly: true, description: 'Mastery Registry' },
-  { label: 'Attendance', href: '/instructor/attendance', icon: Calendar, collegeOnly: true, description: 'Participation Logs' },
+  { section: 'core', label: 'Dashboard', href: '/instructor/dashboard', icon: LayoutDashboard, description: 'Overview' },
+  { section: 'core', label: 'Courses', href: '/instructor/courses', icon: Layers, description: 'Create & manage' },
+  { section: 'core', label: 'Students', href: '/instructor/students', icon: Users, description: 'Progress & engagement' },
+  { section: 'core', label: 'Live Classes', href: '/instructor/live-classes', icon: Video, description: 'Schedule & host' },
+
+  { section: 'academics', label: 'My Subjects', href: '/instructor/subjects', icon: Book, collegeOnly: true, description: 'College academics' },
+  { section: 'academics', label: 'Gradebook', href: '/instructor/gradebook', icon: Target, collegeOnly: true, description: 'Marks & grading' },
+  { section: 'academics', label: 'Attendance', href: '/instructor/attendance', icon: Calendar, collegeOnly: true, description: 'Track attendance' },
+
+  { section: 'engagement', label: 'Quizzes', href: '/instructor/quiz', icon: ClipboardList, description: 'Assessments' },
+  { section: 'engagement', label: 'Submissions', href: '/instructor/submissions', icon: FileText, description: 'Review work' },
+  { section: 'engagement', label: 'Messages', href: '/instructor/messages', icon: MessageSquare, description: 'Communicate' },
+  { section: 'engagement', label: 'Notifications', href: '/instructor/notifications', icon: Bell, description: 'Updates' },
+
+  { section: 'reports', label: 'Analytics', href: '/instructor/analytics', icon: BarChart3, description: 'Performance' },
+  { section: 'reports', label: 'Earnings', href: '/instructor/earnings', icon: Activity, description: 'Payouts' },
 ]
  
 export function InstructorSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
-  const router = useRouter()
   const { user, logout } = useAuth()
  
   const SidebarContent = () => (
@@ -71,36 +69,66 @@ export function InstructorSidebar() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
             <GraduationCap className="h-5 w-5" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-slate-900">
+          <span className="text-xl font-black tracking-tight text-slate-900">
             Instatute<span className="text-blue-600">.</span>
           </span>
         </Link>
       </div>
 
       {/* Primary Navigation */}
-      <nav className="mt-6 flex-1 space-y-1 px-3">
-        {navItems.filter(item => !item.collegeOnly || user?.organizationType === 'COLLEGE').map((item) => {
-          const isActive = pathname.startsWith(item.href)
+      <nav className="mt-6 flex-1 space-y-6 px-3 overflow-y-auto custom-scrollbar pb-6">
+        {(['core', 'academics', 'engagement', 'reports'] as const).map((section) => {
+          const items = navItems
+            .filter((i) => i.section === section)
+            .filter((i) => !i.collegeOnly || user?.organizationType === 'COLLEGE')
+          if (!items.length) return null
+
+          const title =
+            section === 'core' ? 'Teaching' :
+            section === 'academics' ? 'College' :
+            section === 'engagement' ? 'Engagement' :
+            'Reports'
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "group relative flex items-center rounded-md px-3 py-2 text-sm font-medium transition-all duration-150",
-                isActive 
-                  ? "bg-blue-50 text-blue-600" 
-                  : "text-slate-600 hover:bg-gray-50 hover:text-slate-900"
-              )}
-            >
-              <item.icon className={cn(
-                "mr-3 h-4 w-4 stroke-[1.5]",
-                isActive ? "text-blue-600" : "text-slate-500 group-hover:text-slate-900"
-              )} />
-              {item.label}
-              {isActive && (
-                <div className="absolute -left-3 h-4 w-1 rounded-r-full bg-blue-600" />
-              )}
-            </Link>
+            <div key={section} className="space-y-2">
+              <div className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                {title}
+              </div>
+              <div className="space-y-1">
+                {items.map((item) => {
+                  const isActive = pathname.startsWith(item.href)
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "group relative flex items-center rounded-xl px-3 py-2.5 text-sm font-bold transition-all duration-150",
+                        isActive
+                          ? "bg-blue-50 text-blue-700"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          "mr-3 h-4 w-4 stroke-[2]",
+                          isActive ? "text-blue-700" : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="flex-1">{item.label}</span>
+                      <ChevronRight
+                        className={cn(
+                          "h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-all",
+                          isActive && "opacity-100 text-blue-300"
+                        )}
+                      />
+                      {isActive && (
+                        <div className="absolute -left-3 h-6 w-1 rounded-r-full bg-blue-600" />
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
           )
         })}
       </nav>

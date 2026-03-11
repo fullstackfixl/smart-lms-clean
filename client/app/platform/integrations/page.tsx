@@ -88,7 +88,7 @@ export default function IntegrationsPage() {
       {/* Manual Webhook Section */}
       <SimpleCard className="flex items-center justify-between bg-gray-50 border-dashed border-gray-300">
         <div className="flex items-center space-x-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-orange-600 border border-gray-100 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-orange-600 border border-gray-100 shadow-none">
             <Puzzle className="h-6 w-6" />
           </div>
           <div>

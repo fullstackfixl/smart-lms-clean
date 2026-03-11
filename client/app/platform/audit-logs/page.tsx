@@ -27,8 +27,8 @@ import {
   SelectValue 
 } from '../../../components/ui/select'
 import { cn } from '../../../lib/utils'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function AuditLogsPage() {
   const [search, setSearch] = useState('')
@@ -36,8 +36,12 @@ export default function AuditLogsPage() {
   
   const { data: response, error, isLoading, mutate } = useSWR(
     `/api/platform/audit-logs?search=${search}${actionFilter !== 'all' ? `&action=${actionFilter}` : ''}`, 
-    fetcher
+    platformJsonFetcher
   )
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   const logs = response?.data || []
 
@@ -106,7 +110,7 @@ export default function AuditLogsPage() {
           <SelectTrigger className="w-full sm:w-48 h-10 border-gray-300 focus:ring-0 focus:border-blue-500">
             <SelectValue placeholder="Action: All" />
           </SelectTrigger>
-          <SelectContent className="bg-white border-gray-200 shadow-xl rounded-lg p-1">
+          <SelectContent className="bg-white border-gray-200 shadow-none rounded-lg p-1">
             <SelectItem value="all" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-md py-2">Action: All</SelectItem>
             <SelectItem value="CREATE" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-md py-2">Creation</SelectItem>
             <SelectItem value="UPDATE" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-md py-2">Modification</SelectItem>

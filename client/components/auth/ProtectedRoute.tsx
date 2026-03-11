@@ -41,10 +41,10 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo = "/login" }
   // Show loading state
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-500 border-r-transparent"></div>
-          <p className="mt-4 text-slate-400">Loading...</p>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="mt-4 text-slate-500">Loading...</p>
         </div>
       </div>
     )
@@ -54,10 +54,10 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo = "/login" }
   if (!isAuthenticated && typeof window !== 'undefined' &&
     (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-500 border-r-transparent"></div>
-          <p className="mt-4 text-slate-400">Loading...</p>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="mt-4 text-slate-500">Loading...</p>
         </div>
       </div>
     )

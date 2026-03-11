@@ -8,6 +8,7 @@ import {
     Search, Filter, Download, ArrowUpRight, ArrowDownRight
 } from "lucide-react"
 import { gpaApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 
 const COLORS = {
@@ -18,6 +19,7 @@ const COLORS = {
 }
 
 export default function GPAReportsPage() {
+    const { token } = useAuth()
     const [stats, setStats] = useState<any>(null)
     const [atRisk, setAtRisk] = useState<any[]>([])
     const [deptStats, setDeptStats] = useState<any[]>([])
@@ -25,16 +27,17 @@ export default function GPAReportsPage() {
     const [refreshing, setRefreshing] = useState(false)
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     async function loadData() {
         setLoading(true)
         try {
+            if (!token) return
             const [statsRes, riskRes, deptRes] = await Promise.all([
-                gpaApi.getStats(),
-                gpaApi.getAtRisk(),
-                gpaApi.getDepartments()
+                gpaApi.getStats(token),
+                gpaApi.getAtRisk(token),
+                gpaApi.getDepartments(token)
             ])
             if (statsRes.success) setStats(statsRes.data)
             if (riskRes.success) setAtRisk(riskRes.data)

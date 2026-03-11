@@ -3,15 +3,14 @@ const router = express.Router();
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const AdminFeesController = require('../controllers/AdminFeesController');
 
-const moduleGuard = require('../middleware/moduleGuard');
-
 // Define routes
-router.use(authMiddleware, requireRole(['org_admin']), moduleGuard('COURSE_SALES'));
+router.use(authMiddleware, requireRole(['org_admin']));
 
 router.post('/set', AdminFeesController.setFee);
 router.get('/pending', AdminFeesController.getPendingFees);
 router.get('/history', AdminFeesController.getFeeHistory);
 router.post('/reminder', AdminFeesController.sendReminder);
 router.get('/revenue', AdminFeesController.getRevenue);
+// console.log("AdminFeesController", AdminFeesController);
 
 module.exports = router;

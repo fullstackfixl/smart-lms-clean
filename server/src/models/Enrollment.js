@@ -6,6 +6,12 @@ const enrollmentSchema = new mongoose.Schema({
     ref: 'Organization',
     required: true
   },
+  organizationType: {
+    type: String,
+    enum: ['college', 'school', 'institute', 'corporate'],
+    default: null,
+    index: true
+  },
   student_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

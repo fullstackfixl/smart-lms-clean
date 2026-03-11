@@ -2,6 +2,22 @@ const reportService = require('../../services/platform/reportService');
 const auditLogService = require('../../services/platform/auditLogService');
 const path = require('path');
 
+exports.getReports = async (req, res) => {
+  try {
+    const result = await reportService.listReports(req.query);
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'REPORT_LIST_ERROR'
+    });
+  }
+};
+
 exports.generateReport = async (req, res) => {
   try {
     const report = await reportService.generateReport(req.body, req.user._id);

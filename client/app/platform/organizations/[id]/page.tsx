@@ -42,8 +42,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../components
 import { Input } from '../../../../components/ui/input'
 import { toast } from 'sonner'
 import { cn } from '../../../../lib/utils'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../../components/platform/platform-error-state'
 
 export default function OrganizationDetailsPage() {
   const params = useParams()
@@ -52,16 +52,16 @@ export default function OrganizationDetailsPage() {
   const [activeTab, setActiveTab] = useState('overview')
 
   // Data Fetching
-  const { data: orgRes, error: orgError, isLoading: orgLoading, mutate: mutateOrg } = useSWR(`/api/platform/organizations/${orgId}`, fetcher)
-  const { data: statsRes, isLoading: statsLoading } = useSWR(`/api/platform/organizations/${orgId}/stats`, fetcher)
-  const { data: studentsRes, isLoading: studentsLoading } = useSWR(`/api/platform/organizations/${orgId}/students`, fetcher)
-  const { data: instructorsRes, isLoading: instructorsLoading } = useSWR(`/api/platform/organizations/${orgId}/instructors`, fetcher)
-  const { data: coursesRes, isLoading: coursesLoading } = useSWR(`/api/platform/organizations/${orgId}/courses`, fetcher)
-  const { data: activityRes, isLoading: activityLoading } = useSWR(`/api/platform/organizations/${orgId}/activity`, fetcher)
-  const { data: liveRes, isLoading: liveLoading } = useSWR(`/api/platform/organizations/${orgId}/live-classes`, fetcher)
-  const { data: quizzesRes, isLoading: quizzesLoading } = useSWR(`/api/platform/organizations/${orgId}/quizzes`, fetcher)
-  const { data: certsRes, isLoading: certsLoading } = useSWR(`/api/platform/organizations/${orgId}/certificates`, fetcher)
-  const { data: attendanceRes, isLoading: attendanceLoading } = useSWR(`/api/platform/organizations/${orgId}/attendance`, fetcher)
+  const { data: orgRes, error: orgError, isLoading: orgLoading, mutate: mutateOrg } = useSWR<any>(`/api/platform/organizations/${orgId}`, platformJsonFetcher)
+  const { data: statsRes, isLoading: statsLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/stats`, platformJsonFetcher)
+  const { data: studentsRes, isLoading: studentsLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/students`, platformJsonFetcher)
+  const { data: instructorsRes, isLoading: instructorsLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/instructors`, platformJsonFetcher)
+  const { data: coursesRes, isLoading: coursesLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/courses`, platformJsonFetcher)
+  const { data: activityRes, isLoading: activityLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/activity`, platformJsonFetcher)
+  const { data: liveRes, isLoading: liveLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/live-classes`, platformJsonFetcher)
+  const { data: quizzesRes, isLoading: quizzesLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/quizzes`, platformJsonFetcher)
+  const { data: certsRes, isLoading: certsLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/certificates`, platformJsonFetcher)
+  const { data: attendanceRes, isLoading: attendanceLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/attendance`, platformJsonFetcher)
 
   const org = orgRes?.data
   const stats = statsRes?.data
@@ -88,16 +88,7 @@ export default function OrganizationDetailsPage() {
   )
 
   if (orgError || !org) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-        <AlertCircle className="h-12 w-12 mb-4 opacity-20" />
-        <h3 className="text-lg font-bold text-slate-900">Organization not found</h3>
-        <p className="text-sm text-slate-500">This organization doesn&apos;t exist or is no longer available.</p>
-        <Button variant="outline" className="mt-4" onClick={() => router.back()}>
-          <ChevronLeft className="mr-2 h-4 w-4" /> Back
-        </Button>
-      </div>
-    )
+    return <PlatformErrorState title="Organization not found" message="This organization doesn't exist or is no longer available." />
   }
 
   const tabs = [
@@ -127,7 +118,7 @@ export default function OrganizationDetailsPage() {
         </Button>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 shrink-0 shadow-sm shadow-slate-100">
+            <div className="h-12 w-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-blue-600 shrink-0">
               <Building2 className="h-6 w-6 stroke-[2.5]" />
             </div>
             <div>
@@ -159,7 +150,7 @@ export default function OrganizationDetailsPage() {
       {/* Main Layout: Sidebar Tabs */}
       <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-8">
         <aside className="space-y-4">
-          <Card className="border-slate-200 bg-white p-2 rounded-xl shadow-sm shadow-slate-100/60">
+          <Card className="border-slate-200 bg-white p-2 rounded-xl">
             <div className="space-y-1">
               {tabs.map(tab => (
                 <button
@@ -202,181 +193,72 @@ export default function OrganizationDetailsPage() {
 
 function OverviewTab({ org, stats }: { org: any, stats: any }) {
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
         <FlatMetricCard title="Enrollments" value={stats?.totalEnrollments || 0} icon={GraduationCap} subtitle="Total enrollments" />
         <FlatMetricCard title="Live classes" value={stats?.totalLiveClasses || 0} icon={Video} subtitle="Scheduled sessions" />
         <FlatMetricCard title="Certificates" value={stats?.certificatesIssued || 0} icon={Award} subtitle="Issued certificates" />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_350px] gap-8">
-        <div className="space-y-8">
-           <Card className="p-8 border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60">
-             <div className="flex items-center justify-between mb-8">
-                <h3 className="text-lg font-bold text-slate-900">Organization profile</h3>
-                <Button variant="ghost" size="sm" className="text-blue-500 font-bold hover:bg-blue-50">
-                  <ExternalLink className="h-4 w-4 mr-2" /> View public site
-                </Button>
-             </div>
-             
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12">
-                <ProfileItem label="Organization name" value={org.name} icon={Building2} />
-                <ProfileItem label="Type" value={org.type || 'Standard'} icon={Shield} />
-                <ProfileItem label="Email" value={org.email} icon={Mail} />
-                <ProfileItem label="Phone" value={org.phone || 'Not set'} icon={Phone} />
-                <ProfileItem label="Location" value={`${org.address?.city || ''}${org.address?.city && org.address?.country ? ', ' : ''}${org.address?.country || ''}`} icon={MapPin} />
-                <ProfileItem label="Website" value={org.website || 'Not set'} icon={Globe} link={org.website} />
-                <ProfileItem label="Created on" value={new Date(org.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })} icon={Calendar} />
-                <ProfileItem label="Status" value={org.status} icon={Activity} />
-             </div>
-
-             <div className="mt-12 pt-8 border-t border-gray-100">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Description</h4>
-                <p className="text-slate-600 text-sm leading-relaxed">
-                  {org.description || "No description has been added for this organization yet."}
-                </p>
-             </div>
-           </Card>
+      <Card className="p-8 border-slate-200 bg-white rounded-xl">
+        <div className="flex items-center justify-between mb-8">
+          <h3 className="text-lg font-bold text-slate-900">Organization profile</h3>
+          <Button variant="ghost" size="sm" className="text-blue-500 font-bold hover:bg-blue-50">
+            <ExternalLink className="h-4 w-4 mr-2" /> View public site
+          </Button>
         </div>
 
-        <div className="space-y-8">
-           <Card className="p-8 border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60">
-              <h3 className="text-lg font-bold text-slate-900 mb-6">Organization admin</h3>
-              <div className="space-y-6">
-                 <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-xl font-bold text-blue-700">
-                       {org.admin_user_id?.name?.charAt(0) || 'A'}
-                    </div>
-                    <div>
-                       <div className="font-bold text-slate-900">{org.admin_user_id?.name || "Unassigned"}</div>
-                       <div className="text-xs text-slate-500 font-medium">Primary administrator</div>
-                    </div>
-                 </div>
-                 <div className="space-y-3">
-                    <div className="flex items-center gap-3 text-sm text-slate-600">
-                       <Mail className="h-4 w-4 opacity-40" />
-                       <span className="truncate">{org.admin_user_id?.email || "No email linked"}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-slate-600">
-                       <Phone className="h-4 w-4 opacity-40" />
-                       <span>{org.admin_user_id?.phone || "No phone linked"}</span>
-                    </div>
-                 </div>
-                 <Button className="w-full bg-white border-slate-200 text-slate-900 hover:bg-slate-50 shadow-none font-bold" variant="outline">
-                    Email admin
-                 </Button>
-              </div>
-           </Card>
-
-           <Card className="p-8 border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60">
-              <h3 className="text-lg font-bold text-slate-900 mb-6">Overview</h3>
-              <div className="space-y-6">
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-slate-500 text-sm font-medium">
-                       <Users className="h-4 w-4 opacity-40" /> Instructors
-                    </div>
-                    <span className="font-bold text-slate-900">{stats?.totalInstructors || 0}</span>
-                 </div>
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-slate-500 text-sm font-medium">
-                       <GraduationCap className="h-4 w-4 opacity-40" /> Students
-                    </div>
-                    <span className="font-bold text-slate-900">{stats?.totalStudents || 0}</span>
-                 </div>
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-slate-500 text-sm font-medium">
-                       <BookOpen className="h-4 w-4 opacity-40" /> Courses
-                    </div>
-                    <span className="font-bold text-slate-900">{stats?.totalCourses || 0}</span>
-                 </div>
-                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-slate-500 text-sm font-medium">
-                       <BookOpen className="h-4 w-4 opacity-40" /> Quizzes
-                    </div>
-                    <span className="font-bold text-slate-900">{stats?.totalQuizzes || 0}</span>
-                 </div>
-              </div>
-           </Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12">
+          <ProfileItem label="Organization name" value={org.name} icon={Building2} />
+          <ProfileItem label="Type" value={org.type || 'Standard'} icon={Shield} />
+          <ProfileItem label="Email" value={org.email} icon={Mail} />
+          <ProfileItem label="Phone" value={org.phone || 'Not set'} icon={Phone} />
+          <ProfileItem label="Location" value={`${org.address?.city || ''}${org.address?.city && org.address?.country ? ', ' : ''}${org.address?.country || ''}` || 'Not set'} icon={MapPin} />
+          <ProfileItem label="Website" value={org.website || 'Not set'} icon={Globe} link={org.website} />
+          <ProfileItem label="Created on" value={org.created_at ? new Date(org.created_at).toLocaleDateString(undefined, { dateStyle: 'long' }) : '—'} icon={Calendar} />
+          <ProfileItem label="Status" value={org.status} icon={Activity} />
         </div>
-      </div>
+
+        <div className="mt-12 pt-8 border-t border-gray-100">
+          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Description</h4>
+          <p className="text-slate-600 text-sm leading-relaxed">
+            {org.description || 'No description has been added for this organization yet.'}
+          </p>
+        </div>
+      </Card>
     </div>
   )
 }
 
-function ProfileItem({ label, value, icon: Icon, link }: { label: string, value: string, icon: any, link?: string }) {
+function StudentsTab({ students, isLoading }: { students: any[]; isLoading: boolean }) {
   return (
-    <div className="flex gap-4">
-      <div className="h-10 w-10 shrink-0 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-        <Icon className="h-5 w-5 stroke-[1.5]" />
-      </div>
-      <div className="min-w-0">
-        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5">{label}</div>
-        {link ? (
-          <a href={link} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:underline truncate block">
-            {value}
-          </a>
-        ) : (
-          <div className="text-sm font-bold text-slate-900 truncate">{value}</div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function StudentsTab({ students, isLoading }: { students: any[], isLoading: boolean }) {
-  return (
-    <Card className="border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60 overflow-hidden">
+    <Card className="border-slate-200 bg-white rounded-xl overflow-hidden">
       <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
         <h3 className="font-bold text-slate-900">Students</h3>
-        <div className="flex gap-2">
-           <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input placeholder="Search students..." className="h-9 w-56 md:w-64 bg-white pl-9 text-xs border-slate-200" />
-           </div>
-           <Button variant="outline" size="sm" className="h-9 font-bold border-slate-200 bg-white shadow-none hover:bg-slate-50">
-              <Download className="h-3.5 w-3.5 mr-2" /> Export
-           </Button>
-        </div>
+        <Badge className="bg-slate-100 text-slate-700 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider shadow-none">
+          {students.length}
+        </Badge>
       </div>
-      <SimpleTable headers={['Student', 'Email', 'Status', 'Joined', 'Actions']}>
+      <SimpleTable headers={['Student', 'Email', 'Status']}>
         {isLoading ? (
-          [1,2,3].map(i => (
-            <SimpleTableRow key={i}>
-              <SimpleTableCell colSpan={6}><Skeleton className="h-12 w-full" /></SimpleTableCell>
-            </SimpleTableRow>
-          ))
-        ) : students.length > 0 ? (
-          students.map((student: any) => (
-            <SimpleTableRow key={student._id}>
+          <SimpleTableRow>
+            <SimpleTableCell colSpan={3} className="py-12 text-center text-slate-400">Loading...</SimpleTableCell>
+          </SimpleTableRow>
+        ) : students.length ? (
+          students.map((s: any) => (
+            <SimpleTableRow key={s._id || s.id}>
+              <SimpleTableCell className="font-bold text-slate-900">{s.name || '—'}</SimpleTableCell>
+              <SimpleTableCell className="text-slate-500">{s.email || '—'}</SimpleTableCell>
               <SimpleTableCell>
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-blue-50 text-[10px] font-bold text-blue-600 flex items-center justify-center shrink-0">
-                    {student.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="font-bold text-slate-900 text-sm leading-tight">{student.name}</div>
-                    <div className="text-[10px] text-slate-400">{student.email}</div>
-                  </div>
-                </div>
-              </SimpleTableCell>
-              <SimpleTableCell className="text-xs text-slate-600">{student.email}</SimpleTableCell>
-              <SimpleTableCell>
-                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-[10px] font-bold uppercase tracking-wider rounded-full">
-                  {student.status}
+                <Badge className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider', s.isActive === false ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')}>
+                  {s.isActive === false ? 'disabled' : 'active'}
                 </Badge>
-              </SimpleTableCell>
-              <SimpleTableCell className="text-right">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
-                   <MoreHorizontal className="h-4 w-4" />
-                </Button>
               </SimpleTableCell>
             </SimpleTableRow>
           ))
         ) : (
           <SimpleTableRow>
-             <SimpleTableCell colSpan={6} className="text-center py-20 text-slate-400">
-                No students found for this organization.
-             </SimpleTableCell>
+            <SimpleTableCell colSpan={3} className="py-12 text-center text-slate-400">No students found.</SimpleTableCell>
           </SimpleTableRow>
         )}
       </SimpleTable>
@@ -384,51 +266,35 @@ function StudentsTab({ students, isLoading }: { students: any[], isLoading: bool
   )
 }
 
-function InstructorsTab({ instructors, isLoading }: { instructors: any[], isLoading: boolean }) {
+function InstructorsTab({ instructors, isLoading }: { instructors: any[]; isLoading: boolean }) {
   return (
-    <Card className="border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60 overflow-hidden">
+    <Card className="border-slate-200 bg-white rounded-xl overflow-hidden">
       <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
         <h3 className="font-bold text-slate-900">Instructors</h3>
-        <Button variant="outline" size="sm" className="h-9 font-bold border-slate-200 bg-white shadow-none hover:bg-slate-50">
-          <Download className="h-3.5 w-3.5 mr-2" /> Export
-        </Button>
+        <Badge className="bg-slate-100 text-slate-700 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider shadow-none">
+          {instructors.length}
+        </Badge>
       </div>
-      <SimpleTable headers={['Instructor', 'Email', 'Status', 'Actions']}>
+      <SimpleTable headers={['Instructor', 'Email', 'Status']}>
         {isLoading ? (
-          [1,2,3].map(i => (
-            <SimpleTableRow key={i}>
-              <SimpleTableCell colSpan={6}><Skeleton className="h-12 w-full" /></SimpleTableCell>
-            </SimpleTableRow>
-          ))
-        ) : instructors.length > 0 ? (
-          instructors.map((instructor: any) => (
-            <SimpleTableRow key={instructor._id}>
+          <SimpleTableRow>
+            <SimpleTableCell colSpan={3} className="py-12 text-center text-slate-400">Loading...</SimpleTableCell>
+          </SimpleTableRow>
+        ) : instructors.length ? (
+          instructors.map((i: any) => (
+            <SimpleTableRow key={i._id || i.id}>
+              <SimpleTableCell className="font-bold text-slate-900">{i.name || '—'}</SimpleTableCell>
+              <SimpleTableCell className="text-slate-500">{i.email || '—'}</SimpleTableCell>
               <SimpleTableCell>
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-orange-50 text-[10px] font-bold text-orange-600 flex items-center justify-center shrink-0">
-                    {instructor.name.charAt(0)}
-                  </div>
-                  <div className="font-bold text-slate-900 text-sm leading-tight">{instructor.name}</div>
-                </div>
-              </SimpleTableCell>
-              <SimpleTableCell className="text-xs text-slate-500">{instructor.email}</SimpleTableCell>
-              <SimpleTableCell>
-                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-[10px] font-bold uppercase tracking-wider rounded-full">
-                  {instructor.status}
+                <Badge className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider', i.isActive === false ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')}>
+                  {i.isActive === false ? 'disabled' : 'active'}
                 </Badge>
-              </SimpleTableCell>
-              <SimpleTableCell className="text-right">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
-                   <MoreHorizontal className="h-4 w-4" />
-                </Button>
               </SimpleTableCell>
             </SimpleTableRow>
           ))
         ) : (
           <SimpleTableRow>
-             <SimpleTableCell colSpan={6} className="text-center py-20 text-slate-400">
-                No instructors found for this organization.
-             </SimpleTableCell>
+            <SimpleTableCell colSpan={3} className="py-12 text-center text-slate-400">No instructors found.</SimpleTableCell>
           </SimpleTableRow>
         )}
       </SimpleTable>
@@ -436,107 +302,35 @@ function InstructorsTab({ instructors, isLoading }: { instructors: any[], isLoad
   )
 }
 
-function CoursesTab({ courses, isLoading }: { courses: any, isLoading: boolean }) {
-  const data = courses?.data || []
+function CoursesTab({ courses, isLoading }: { courses: any[]; isLoading: boolean }) {
   return (
-    <Card className="border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60 overflow-hidden">
+    <Card className="border-slate-200 bg-white rounded-xl overflow-hidden">
       <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
         <h3 className="font-bold text-slate-900">Courses</h3>
-        <Button variant="outline" size="sm" className="h-9 font-bold border-slate-200 bg-white shadow-none hover:bg-slate-50">
-          <Download className="h-3.5 w-3.5 mr-2" /> Export
-        </Button>
+        <Badge className="bg-slate-100 text-slate-700 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider shadow-none">
+          {courses.length}
+        </Badge>
       </div>
-      <SimpleTable headers={['Course', 'Instructor', 'Status', 'Actions']}>
+      <SimpleTable headers={['Course', 'Status', 'Enrollments']}>
         {isLoading ? (
-          [1,2,3].map(i => (
-            <SimpleTableRow key={i}>
-              <SimpleTableCell colSpan={6}><Skeleton className="h-12 w-full" /></SimpleTableCell>
-            </SimpleTableRow>
-          ))
-        ) : data.length > 0 ? (
-          data.map((course: any) => (
-            <SimpleTableRow key={course._id}>
+          <SimpleTableRow>
+            <SimpleTableCell colSpan={3} className="py-12 text-center text-slate-400">Loading...</SimpleTableCell>
+          </SimpleTableRow>
+        ) : courses.length ? (
+          courses.map((c: any) => (
+            <SimpleTableRow key={c._id || c.id}>
+              <SimpleTableCell className="font-bold text-slate-900">{c.title || c.name || '—'}</SimpleTableCell>
               <SimpleTableCell>
-                <div className="font-bold text-blue-600 text-sm">{course.title}</div>
-                <div className="text-[10px] text-slate-400 uppercase tracking-tighter">ID: {course._id.slice(-8)}</div>
-              </SimpleTableCell>
-              <SimpleTableCell className="text-xs font-medium text-slate-600">{course.instructor_id?.name || 'Not set'}</SimpleTableCell>
-              <SimpleTableCell>
-                <Badge className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                  course.isPublished ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"
-                )}>
-                  {course.status || (course.isPublished ? 'published' : 'draft')}
+                <Badge className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider', (c.status || c.state) === 'published' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700')}>
+                  {c.status || c.state || 'draft'}
                 </Badge>
               </SimpleTableCell>
-              <SimpleTableCell className="text-right">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
-                   <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </SimpleTableCell>
+              <SimpleTableCell className="font-bold text-slate-700">{c.enrollmentCount || 0}</SimpleTableCell>
             </SimpleTableRow>
           ))
         ) : (
           <SimpleTableRow>
-             <SimpleTableCell colSpan={6} className="text-center py-20 text-slate-400">
-                Course inventory is currently empty for this node.
-             </SimpleTableCell>
-          </SimpleTableRow>
-        )}
-      </SimpleTable>
-    </Card>
-  )
-}
-
-function ActivityTab({ activity, isLoading }: { activity: any; isLoading: boolean }) {
-  const data = activity?.data || []
-
-  return (
-    <Card className="border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60 overflow-hidden">
-      <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
-        <h3 className="font-bold text-slate-900">Activity log</h3>
-        <Button variant="ghost" size="sm" className="h-9 font-bold text-blue-600 hover:bg-blue-50">
-          <RefreshCw className="h-3.5 w-3.5 mr-2" /> Refresh
-        </Button>
-      </div>
-      <SimpleTable headers={['Event', 'User', 'Action', 'Time']}>
-        {isLoading &&
-          [1, 2, 3].map((i) => (
-            <SimpleTableRow key={i}>
-              <SimpleTableCell colSpan={4}>
-                <Skeleton className="h-12 w-full" />
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))}
-        {!isLoading &&
-          data.map((log: any) => (
-            <SimpleTableRow key={log._id}>
-              <SimpleTableCell>
-                <div className="text-[10px] font-mono font-bold text-slate-400 uppercase">
-                  LOG-{log._id.slice(-6)}
-                </div>
-              </SimpleTableCell>
-              <SimpleTableCell>
-                <div className="text-xs font-bold text-slate-900">{log.user_id?.name || 'System'}</div>
-                <div className="text-[9px] text-slate-400 uppercase tracking-tighter">
-                  {log.user_role}
-                </div>
-              </SimpleTableCell>
-              <SimpleTableCell>
-                <Badge className="bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider border-none">
-                  {log.action}
-                </Badge>
-              </SimpleTableCell>
-              <SimpleTableCell className="text-[10px] text-slate-400 font-bold uppercase">
-                {new Date(log.timestamp).toLocaleString()}
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))}
-        {!isLoading && data.length === 0 && (
-          <SimpleTableRow>
-            <SimpleTableCell colSpan={4} className="text-center py-20 text-slate-400">
-              No activity recorded yet.
-            </SimpleTableCell>
+            <SimpleTableCell colSpan={3} className="py-12 text-center text-slate-400">No courses found.</SimpleTableCell>
           </SimpleTableRow>
         )}
       </SimpleTable>
@@ -545,185 +339,137 @@ function ActivityTab({ activity, isLoading }: { activity: any; isLoading: boolea
 }
 
 function LiveClassesTab({ data, isLoading }: { data: any[]; isLoading: boolean }) {
-  const hasData = !isLoading && Array.isArray(data) && data.length > 0
-
   return (
-    <Card className="border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60 overflow-hidden">
+    <Card className="border-slate-200 bg-white rounded-xl overflow-hidden">
       <div className="p-6 border-b border-slate-100 bg-slate-50/40">
         <h3 className="font-bold text-slate-900">Live classes</h3>
       </div>
-
-      <SimpleTable headers={['Session Title', 'Instructor', 'Course', 'Scheduled At', 'Status']}>
+      <div className="p-6">
         {isLoading ? (
-          [1, 2, 3].map((i) => (
-            <SimpleTableRow key={i}>
-              <SimpleTableCell colSpan={5}>
-                <Skeleton className="h-10 w-full" />
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))
-        ) : hasData ? (
-          data.map((session: any) => (
-            <SimpleTableRow key={session._id}>
-              <SimpleTableCell className="font-bold text-sm">{session.title}</SimpleTableCell>
-              <SimpleTableCell className="text-xs">
-                {session.instructor_id?.name || 'Academic System'}
-              </SimpleTableCell>
-              <SimpleTableCell className="text-xs">{session.course_id?.title || 'N/A'}</SimpleTableCell>
-              <SimpleTableCell className="text-xs">
-                {new Date(session.scheduled_at).toLocaleString()}
-              </SimpleTableCell>
-              <SimpleTableCell>
-                <Badge className="bg-blue-50 text-blue-600 rounded-full text-[10px] uppercase font-bold">
-                  {session.status}
+          <div className="text-sm text-slate-400">Loading...</div>
+        ) : data.length ? (
+          <div className="space-y-3">
+            {data.map((x: any) => (
+              <div key={x._id || x.id} className="flex items-center justify-between border border-slate-200 rounded-md p-4 bg-white">
+                <div>
+                  <div className="text-sm font-bold text-slate-900">{x.title || x.topic || 'Session'}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{x.scheduledAt ? new Date(x.scheduledAt).toLocaleString() : '—'}</div>
+                </div>
+                <Badge className="bg-slate-100 text-slate-700 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider shadow-none">
+                  {x.status || 'scheduled'}
                 </Badge>
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))
+              </div>
+            ))}
+          </div>
         ) : (
-          <SimpleTableRow>
-            <SimpleTableCell colSpan={5} className="text-center py-10 text-slate-400">
-              No live classes yet.
-            </SimpleTableCell>
-          </SimpleTableRow>
+          <div className="text-sm text-slate-400">No live classes found.</div>
         )}
-      </SimpleTable>
+      </div>
     </Card>
   )
 }
 
 function QuizzesTab({ data, isLoading }: { data: any[]; isLoading: boolean }) {
   return (
-    <Card className="border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60 overflow-hidden">
+    <Card className="border-slate-200 bg-white rounded-xl overflow-hidden">
       <div className="p-6 border-b border-slate-100 bg-slate-50/40">
         <h3 className="font-bold text-slate-900">Quizzes</h3>
       </div>
-      <SimpleTable headers={['Quiz Title', 'Course', 'Questions', 'Status']}>
-        {isLoading &&
-          [1, 2, 3].map((i) => (
-            <SimpleTableRow key={i}>
-              <SimpleTableCell colSpan={4}>
-                <Skeleton className="h-10 w-full" />
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))}
-        {!isLoading &&
-          data.map((quiz: any) => (
-            <SimpleTableRow key={quiz._id}>
-              <SimpleTableCell className="font-bold text-sm">{quiz.title}</SimpleTableCell>
-              <SimpleTableCell className="text-xs">{quiz.course_id?.title || 'N/A'}</SimpleTableCell>
-              <SimpleTableCell className="text-xs">
-                {quiz.questions?.length || 0} Items
-              </SimpleTableCell>
-              <SimpleTableCell>
-                <Badge className="bg-slate-100 text-slate-600 rounded-full text-[10px] uppercase font-bold">
-                  {quiz.status || 'Active'}
+      <div className="p-6">
+        {isLoading ? (
+          <div className="text-sm text-slate-400">Loading...</div>
+        ) : data.length ? (
+          <div className="space-y-3">
+            {data.map((q: any) => (
+              <div key={q._id || q.id} className="flex items-center justify-between border border-slate-200 rounded-md p-4 bg-white">
+                <div>
+                  <div className="text-sm font-bold text-slate-900">{q.title || 'Quiz'}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{q.questionsCount ? `${q.questionsCount} questions` : '—'}</div>
+                </div>
+                <Badge className="bg-slate-100 text-slate-700 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider shadow-none">
+                  {q.status || 'active'}
                 </Badge>
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))}
-        {!isLoading && data.length === 0 && (
-          <SimpleTableRow>
-            <SimpleTableCell colSpan={4} className="text-center py-10 text-slate-400">
-              No quizzes found.
-            </SimpleTableCell>
-          </SimpleTableRow>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-slate-400">No quizzes found.</div>
         )}
-      </SimpleTable>
+      </div>
     </Card>
   )
 }
 
 function CertificatesTab({ data, isLoading }: { data: any[]; isLoading: boolean }) {
   return (
-    <Card className="border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60 overflow-hidden">
+    <Card className="border-slate-200 bg-white rounded-xl overflow-hidden">
       <div className="p-6 border-b border-slate-100 bg-slate-50/40">
         <h3 className="font-bold text-slate-900">Certificates</h3>
       </div>
-      <SimpleTable headers={['Recipient', 'Course', 'Issued Date', 'Grade']}>
-        {isLoading &&
-          [1, 2, 3].map((i) => (
-            <SimpleTableRow key={i}>
-              <SimpleTableCell colSpan={4}>
-                <Skeleton className="h-10 w-full" />
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))}
-        {!isLoading &&
-          data.map((cert: any) => (
-            <SimpleTableRow key={cert._id}>
-              <SimpleTableCell className="font-bold text-sm">
-                {cert.user_id?.name || 'N/A'}
-              </SimpleTableCell>
-              <SimpleTableCell className="text-xs">
-                {cert.course_id?.title || 'N/A'}
-              </SimpleTableCell>
-              <SimpleTableCell className="text-xs">
-                {new Date(cert.issued_at).toLocaleDateString()}
-              </SimpleTableCell>
-              <SimpleTableCell className="font-bold text-blue-600 text-xs">
-                {cert.final_grade_percentage}%
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))}
-        {!isLoading && data.length === 0 && (
-          <SimpleTableRow>
-            <SimpleTableCell colSpan={4} className="text-center py-10 text-slate-400">
-              No certificates issued.
-            </SimpleTableCell>
-          </SimpleTableRow>
+      <div className="p-6">
+        {isLoading ? (
+          <div className="text-sm text-slate-400">Loading...</div>
+        ) : data.length ? (
+          <div className="space-y-3">
+            {data.map((c: any) => (
+              <div key={c._id || c.id} className="flex items-center justify-between border border-slate-200 rounded-md p-4 bg-white">
+                <div>
+                  <div className="text-sm font-bold text-slate-900">{c.title || c.name || 'Certificate'}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">{c.issuedAt ? new Date(c.issuedAt).toLocaleDateString() : '—'}</div>
+                </div>
+                <Button variant="outline" size="sm" className="h-9 border-slate-200 bg-white shadow-none font-bold">Download</Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-slate-400">No certificates found.</div>
         )}
-      </SimpleTable>
+      </div>
     </Card>
   )
 }
 
 function AttendanceTab({ data, isLoading }: { data: any[]; isLoading: boolean }) {
   return (
-    <Card className="border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60 overflow-hidden">
+    <Card className="border-slate-200 bg-white rounded-xl overflow-hidden">
       <div className="p-6 border-b border-slate-100 bg-slate-50/40">
         <h3 className="font-bold text-slate-900">Attendance</h3>
       </div>
-      <SimpleTable headers={['Student', 'Course', 'Date', 'Status']}>
-        {isLoading &&
-          [1, 2, 3].map((i) => (
-            <SimpleTableRow key={i}>
-              <SimpleTableCell colSpan={4}>
-                <Skeleton className="h-10 w-full" />
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))}
-        {!isLoading &&
-          data.map((record: any) => (
-            <SimpleTableRow key={record._id}>
-              <SimpleTableCell className="font-bold text-sm">
-                {record.user_id?.name || 'N/A'}
-              </SimpleTableCell>
-              <SimpleTableCell className="text-xs">
-                {record.course_id?.title || 'N/A'}
-              </SimpleTableCell>
-              <SimpleTableCell className="text-xs">
-                {new Date(record.date).toLocaleDateString()}
-              </SimpleTableCell>
-              <SimpleTableCell>
-                <Badge
-                  className={cn(
-                    'text-[10px] uppercase font-bold rounded-full',
-                    record.status === 'present'
-                      ? 'bg-green-50 text-green-600'
-                      : 'bg-red-50 text-red-600',
-                  )}
-                >
-                  {record.status}
-                </Badge>
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))}
-        {!isLoading && data.length === 0 && (
+      <div className="p-6">
+        {isLoading ? (
+          <div className="text-sm text-slate-400">Loading...</div>
+        ) : data.length ? (
+          <div className="text-sm text-slate-600">Attendance records: <span className="font-bold text-slate-900">{data.length}</span></div>
+        ) : (
+          <div className="text-sm text-slate-400">No attendance data found.</div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function ActivityTab({ activity, isLoading }: { activity: any[]; isLoading: boolean }) {
+  return (
+    <Card className="border-slate-200 bg-white rounded-xl overflow-hidden">
+      <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
+        <h3 className="font-bold text-slate-900">Activity log</h3>
+      </div>
+      <SimpleTable headers={['Actor', 'Action', 'Time']}>
+        {isLoading ? (
           <SimpleTableRow>
-            <SimpleTableCell colSpan={4} className="text-center py-10 text-slate-400">
-              No attendance records.
-            </SimpleTableCell>
+            <SimpleTableCell colSpan={3} className="py-12 text-center text-slate-400">Loading...</SimpleTableCell>
+          </SimpleTableRow>
+        ) : activity.length ? (
+          activity.map((a: any) => (
+            <SimpleTableRow key={a._id || a.id}>
+              <SimpleTableCell className="font-bold text-slate-900">{a.actor?.name || a.user?.name || 'System'}</SimpleTableCell>
+              <SimpleTableCell className="text-slate-500">{a.action || a.event || '—'}</SimpleTableCell>
+              <SimpleTableCell className="text-slate-400 font-bold text-[10px] uppercase">{a.createdAt ? new Date(a.createdAt).toLocaleString() : '—'}</SimpleTableCell>
+            </SimpleTableRow>
+          ))
+        ) : (
+          <SimpleTableRow>
+            <SimpleTableCell colSpan={3} className="py-12 text-center text-slate-400">No activity found.</SimpleTableCell>
           </SimpleTableRow>
         )}
       </SimpleTable>
@@ -731,108 +477,138 @@ function AttendanceTab({ data, isLoading }: { data: any[]; isLoading: boolean })
   )
 }
 
-function SettingsTab({ org, mutate }: { org: any, mutate: any }) {
-  const [loading, setLoading] = useState<string | null>(null)
+function SettingsTab({ org, mutate }: { org: any; mutate: any }) {
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const handleAction = async (action: string) => {
-    setLoading(action)
+    setActionLoading(action)
     try {
+      const method = action === 'delete' ? 'DELETE' : action === 'reset-password' ? 'POST' : 'PATCH'
       const endpoint = action === 'reset-password' ? 'reset-admin-password' : action
-      const method = action === 'delete' ? 'DELETE' : (action === 'reset-password' ? 'POST' : 'PATCH')
-      
+
       const res = await fetch(`/api/platform/organizations/${org._id}/${endpoint}`, {
         method,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       })
       const result = await res.json()
+
       if (result.success) {
-        toast.success(result.message || `Action ${action} finalized.`)
+        toast.success(result.message || `Action ${action} completed.`)
         mutate()
       } else {
-        toast.error(result.message || `Protocol failure for ${action}.`)
+        toast.error(result.message || `Failed to ${action}.`)
       }
-    } catch (err) {
-      toast.error("Network communication failure.")
+    } catch {
+      toast.error('Network error')
     } finally {
-      setLoading(null)
+      setActionLoading(null)
     }
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <Card className="p-8 border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60">
+    <div className="space-y-6">
+      <Card className="p-8 border-slate-200 bg-white rounded-xl">
         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-           <Shield className="h-5 w-5 text-orange-500" /> Organization status
+          <Shield className="h-5 w-5 text-orange-500" /> Organization status
         </h3>
-        
+
         <div className="space-y-4">
-           <div className="p-4 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
-              <div>
-                 <div className="text-sm font-bold text-slate-900">Suspend organization</div>
-                 <div className="text-xs text-slate-500 mt-0.5">Temporarily stop access for all users in this organization.</div>
-              </div>
-              <Button 
-                variant={org.status === 'active' ? "destructive" : "outline"} 
-                className="font-bold shadow-none h-10 px-6 min-w-[140px]"
-                disabled={loading === 'suspend' || loading === 'activate'}
-                onClick={() => handleAction(org.status === 'active' ? 'suspend' : 'activate')}
-              >
-                 {loading === 'suspend' || loading === 'activate' ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : 
-                  (org.status === 'active' ? <Lock className="mr-2 h-4 w-4" /> : <Unlock className="mr-2 h-4 w-4" />)}
-                 {org.status === 'active' ? "Suspend" : "Activate"}
-              </Button>
-           </div>
+          <div className="p-4 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
+            <div>
+              <div className="text-sm font-bold text-slate-900">Suspend organization</div>
+              <div className="text-xs text-slate-500 mt-0.5">Temporarily stop access for all users in this organization.</div>
+            </div>
+            <Button
+              variant={org.status === 'active' ? 'destructive' : 'outline'}
+              className="font-bold shadow-none h-10 px-6 min-w-[140px]"
+              disabled={actionLoading === 'suspend' || actionLoading === 'activate'}
+              onClick={() => handleAction(org.status === 'active' ? 'suspend' : 'activate')}
+            >
+              {actionLoading === 'suspend' || actionLoading === 'activate' ? (
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+              ) : org.status === 'active' ? (
+                <Lock className="mr-2 h-4 w-4" />
+              ) : (
+                <Unlock className="mr-2 h-4 w-4" />
+              )}
+              {org.status === 'active' ? 'Suspend' : 'Activate'}
+            </Button>
+          </div>
 
-           <div className="p-4 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
-              <div>
-                 <div className="text-sm font-bold text-slate-900">Reset admin password</div>
-                 <div className="text-xs text-slate-500 mt-0.5">Send a password reset link to the organization admin.</div>
-              </div>
-              <Button 
-                variant="outline" 
-                className="border-slate-200 bg-white text-slate-900 hover:bg-slate-50 font-bold shadow-none h-10 px-6"
-                disabled={loading === 'reset-password'}
-                onClick={() => handleAction('reset-password')}
-              >
-                 <RefreshCw className={cn("mr-2 h-4 w-4", loading === 'reset-password' && "animate-spin")} /> 
-                 Send reset link
-              </Button>
-           </div>
+          <div className="p-4 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
+            <div>
+              <div className="text-sm font-bold text-slate-900">Reset admin password</div>
+              <div className="text-xs text-slate-500 mt-0.5">Send a password reset link to the organization admin.</div>
+            </div>
+            <Button
+              variant="outline"
+              className="border-slate-200 bg-white text-slate-900 hover:bg-slate-50 font-bold shadow-none h-10 px-6"
+              disabled={actionLoading === 'reset-password'}
+              onClick={() => handleAction('reset-password')}
+            >
+              <RefreshCw className={cn('mr-2 h-4 w-4', actionLoading === 'reset-password' && 'animate-spin')} />
+              Send reset link
+            </Button>
+          </div>
 
-           <div className="p-4 rounded-lg bg-red-50 border border-red-100 flex items-center justify-between mt-8">
-              <div>
-                 <div className="text-sm font-bold text-red-900">Delete organization</div>
-                 <div className="text-xs text-red-700 mt-0.5">Soft‑delete this organization and disable all its users.</div>
-              </div>
-              <Button 
-                variant="destructive" 
-                className="bg-red-600 hover:bg-red-700 font-bold shadow-none h-10 px-6"
-                disabled={loading === 'delete'}
-                onClick={() => { if(confirm('Are you sure you want to delete this organization?')) handleAction('delete') }}
-              >
-                 <Trash2 className={cn("mr-2 h-4 w-4", loading === 'delete' && "animate-spin")} /> 
-                 Delete organization
-              </Button>
-           </div>
+          <div className="p-4 rounded-lg bg-red-50 border border-red-100 flex items-center justify-between mt-8">
+            <div>
+              <div className="text-sm font-bold text-red-900">Delete organization</div>
+              <div className="text-xs text-red-700 mt-0.5">Soft-delete this organization and disable all its users.</div>
+            </div>
+            <Button
+              variant="destructive"
+              className="bg-red-600 hover:bg-red-700 font-bold shadow-none h-10 px-6"
+              disabled={actionLoading === 'delete'}
+              onClick={() => {
+                if (confirm('Are you sure you want to delete this organization?')) handleAction('delete')
+              }}
+            >
+              <Trash2 className={cn('mr-2 h-4 w-4', actionLoading === 'delete' && 'animate-spin')} />
+              Delete
+            </Button>
+          </div>
         </div>
       </Card>
 
-      <Card className="p-8 border-slate-200 bg-white rounded-xl shadow-sm shadow-slate-100/60">
+      <Card className="p-8 border-slate-200 bg-white rounded-xl">
         <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-           <Calendar className="h-5 w-5 text-blue-500" /> Infrastructure Metadata
+          <Calendar className="h-5 w-5 text-blue-500" /> Infrastructure Metadata
         </h3>
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
           <div>
             <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Provisioned By</div>
-            <div className="text-sm font-bold text-slate-900">{org.created_by?.name || "Root System"}</div>
-            <div className="text-xs text-slate-500 mt-0.5">{org.created_by?.email}</div>
+            <div className="text-sm font-bold text-slate-900">{org.created_by?.name || 'Root System'}</div>
+            <div className="text-xs text-slate-500 mt-0.5">{org.created_by?.email || '—'}</div>
           </div>
           <div>
             <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Last Protocol Update</div>
-            <div className="text-sm font-bold text-slate-900">{new Date(org.updated_at).toLocaleString()}</div>
+            <div className="text-sm font-bold text-slate-900">{org.updated_at ? new Date(org.updated_at).toLocaleString() : '—'}</div>
           </div>
         </div>
       </Card>
+    </div>
+  )
+}
+
+function ProfileItem({ label, value, icon: Icon, link }: { label: string; value: string; icon: any; link?: string }) {
+  const content = link ? (
+    <a href={link} target="_blank" rel="noreferrer" className="text-blue-600 font-bold hover:underline">
+      {value}
+    </a>
+  ) : (
+    <div className="text-sm font-bold text-slate-900">{value}</div>
+  )
+
+  return (
+    <div className="flex items-start gap-3">
+      <div className="h-10 w-10 rounded-md border border-slate-200 bg-white flex items-center justify-center text-slate-400">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div>
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</div>
+        <div className="mt-1">{content}</div>
+      </div>
     </div>
   )
 }

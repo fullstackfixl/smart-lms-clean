@@ -49,10 +49,10 @@ export default function UserManagementPage() {
     try {
       if (roleFilter === 'instructor') {
         const res = await orgUsersApi.listInstructors(token!)
-        if ((res as any).success) setUsers(((res as any).data as any).users || [])
+        if ((res as any).success) setUsers((res as any).data || [])
       } else if (roleFilter === 'student') {
         const res = await orgUsersApi.listStudents(token!)
-        if ((res as any).success) setUsers(((res as any).data as any).users || [])
+        if ((res as any).success) setUsers((res as any).data || [])
       } else {
         const params = new URLSearchParams()
         if (statusFilter !== 'all') params.append('status', statusFilter)
@@ -89,10 +89,10 @@ export default function UserManagementPage() {
         setNewUser({ email: "", fullName: "", role: "instructor", admissionNumber: "" })
         if (newUser.role === 'instructor') {
           const list = await orgUsersApi.listInstructors(token!)
-          if ((list as any).success) setUsers(((list as any).data as any).users || [])
+          if ((list as any).success) setUsers((list as any).data || [])
         } else {
           const list = await orgUsersApi.listStudents(token!)
-          if ((list as any).success) setUsers(((list as any).data as any).users || [])
+          if ((list as any).success) setUsers((list as any).data || [])
         }
       } else {
         toast.error((res as any).error || 'Failed to send invitation')

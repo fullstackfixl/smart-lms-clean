@@ -18,6 +18,10 @@ const departmentSchema = new mongoose.Schema({
         trim: true
     },
     description: String,
+    headInstructor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'

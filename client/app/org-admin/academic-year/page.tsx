@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Calendar, Edit2, Trash2, Loader2, AlertCircle, X, Check } from "lucide-react"
 import { academicYearApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -18,6 +19,7 @@ interface AcademicYear {
 }
 
 export default function AcademicYearPage() {
+    const { token } = useAuth()
     const [data, setData] = useState<AcademicYear[]>([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -30,13 +32,14 @@ export default function AcademicYearPage() {
     })
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     async function loadData() {
         setLoading(true)
         try {
-            const response = await academicYearApi.list()
+            if (!token) return
+            const response = await academicYearApi.list(token)
             if (response.success) {
                 setData(response.data)
             }
@@ -51,11 +54,12 @@ export default function AcademicYearPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         try {
+            if (!token) throw new Error('No authentication token')
             if (editingYear) {
-                await academicYearApi.update(editingYear._id, formData)
+                await academicYearApi.update(token, editingYear._id, formData)
                 toast.success("Academic year updated successfully")
             } else {
-                await academicYearApi.create(formData)
+                await academicYearApi.create(token, formData)
                 toast.success("Academic year created successfully")
             }
             setIsModalOpen(false)
@@ -70,7 +74,8 @@ export default function AcademicYearPage() {
     async function handleDelete(id: string) {
         if (!confirm("Are you sure you want to delete this academic year?")) return
         try {
-            await academicYearApi.delete(id)
+            if (!token) throw new Error('No authentication token')
+            await academicYearApi.delete(token, id)
             toast.success("Deleted successfully")
             loadData()
         } catch (error) {

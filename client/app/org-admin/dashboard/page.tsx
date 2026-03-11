@@ -3,15 +3,15 @@
 import { useState, useEffect } from "react"
 import { 
   Users, 
-  ShoppingCart, 
-  Zap, 
-  DollarSign,
-  TrendingUp,
-  ShoppingCart as ShoppingCartIcon,
+  GraduationCap,
+  Building2,
+  Calendar,
+  BookOpen,
   Plus
 } from "lucide-react"
 import { getDashboardMetrics, getDashboardActivities } from '../../../lib/services/orgAdminApi'
 import { useAuth } from '../../../lib/auth-context'
+import { collegeApi } from '../../../lib/api'
 import { cn } from "../../../lib/utils"
 import { FlatCard } from "../../../components/org-admin/core/FlatCard"
 import { TextTable, TextRow, TextCell } from "../../../components/org-admin/core/TextTable"
@@ -20,10 +20,11 @@ import { PlainChart } from "../../../components/org-admin/core/PlainChart"
 import Link from "next/link"
  
 export default function OrgAdminDashboard() {
-  const { user, organization } = useAuth()
+  const { user, organization, token } = useAuth()
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState<any>(null)
   const [activities, setActivities] = useState<any>(null)
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
 
   const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
   const isCorporate = orgType === 'CORPORATE'
@@ -37,12 +38,48 @@ export default function OrgAdminDashboard() {
   async function loadDashboardData() {
     setLoading(true)
     try {
-      const [metricsData, activitiesData] = await Promise.all([
-        getDashboardMetrics(),
-        getDashboardActivities(10)
-      ])
-      if (metricsData.success) setMetrics(metricsData.data)
-      if (activitiesData.success) setActivities(activitiesData.data)
+      if (isCollege && token) {
+        const [dash, eventsRes] = await Promise.allSettled([
+          collegeApi.adminDashboard(token),
+          collegeApi.listAdminEvents(token, 'upcoming=true')
+        ])
+        
+        if (dash.status === 'fulfilled' && dash.value.success) {
+          const payload: any = dash.value.data
+          setMetrics({
+            metrics: {
+              totalStudents: payload?.stats?.totalStudents || 0,
+              totalInstructors: payload?.stats?.totalInstructors || 0,
+              totalCourses: payload?.stats?.totalCourses || 0,
+              totalDepartments: payload?.stats?.totalDepartments || 0,
+              totalBatches: payload?.stats?.totalBatches || 0,
+              attendanceRate: payload?.stats?.attendanceRate || 0,
+              trends: {}
+            },
+            charts: {
+              enrollmentGrowth: payload?.studentGrowth || []
+            }
+          })
+          setActivities({
+            recentEnrollments: [],
+            topCourses: [],
+            activityFeed: []
+          })
+        }
+        
+        if (eventsRes.status === 'fulfilled' && eventsRes.value.success) {
+          const data: any = eventsRes.value.data
+          setUpcomingEvents(data?.events || [])
+        }
+      } else {
+        if (!token) return
+        const [metricsData, activitiesData] = await Promise.all([
+          getDashboardMetrics(token),
+          getDashboardActivities(token, 10)
+        ])
+        if (metricsData.success) setMetrics(metricsData.data)
+        if (activitiesData.success) setActivities(activitiesData.data)
+      }
     } catch (err) {
       console.error('Failed to load dashboard data:', err)
     } finally {
@@ -92,30 +129,95 @@ export default function OrgAdminDashboard() {
  
       {/* ─── Metric Matrix ────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-         <MetricCard 
-           label={isCorporate ? "Total Workforce" : isSchool ? "Total Students" : "Total Learners"} 
-           value={metrics?.metrics?.totalStudents?.toLocaleString() || 0} 
-           trend={metrics?.metrics?.trends?.students}
-           subtext="Active engagement"
-         />
-         <MetricCard 
-           label={isCorporate ? "Active Assignments" : "Total Products"} 
-           value={metrics?.metrics?.activeCourses || 0} 
-           subtext={isCorporate ? "Current training" : "Live and selling"}
-         />
-         <MetricCard 
-           label={isSchool ? "Live Classes" : "Interactive Sessions"} 
-           value={metrics?.metrics?.liveClassesCount || 0} 
-           trend={metrics?.metrics?.trends?.liveSessions}
-           subtext="Scheduled this week"
-         />
-         <MetricCard 
-           label={isCorporate ? "Skill Index" : "Total Revenue"} 
-           value={isCorporate ? `${metrics?.metrics?.skillIndex || 85}%` : `₹${(metrics?.metrics?.totalRevenue || 0).toLocaleString()}`} 
-           trend={metrics?.metrics?.trends?.revenue}
-           subtext={isCorporate ? "Avg proficiency" : "Marketplace performance"}
-         />
+         {isCollege ? (
+           <>
+             <MetricCard 
+               label="Total Students" 
+               value={metrics?.metrics?.totalStudents?.toLocaleString() || 0} 
+               icon={Users}
+               subtext="Active learners"
+             />
+             <MetricCard 
+               label="Total Instructors" 
+               value={metrics?.metrics?.totalInstructors?.toLocaleString() || 0}
+               icon={GraduationCap}
+               subtext="Teaching staff"
+             />
+             <MetricCard 
+               label="Departments" 
+               value={metrics?.metrics?.totalDepartments || 0}
+               icon={Building2}
+               subtext="Academic departments"
+             />
+             <MetricCard 
+               label="Attendance Rate" 
+               value={`${metrics?.metrics?.attendanceRate || 0}%`}
+               icon={Calendar}
+               subtext="Average attendance"
+             />
+           </>
+         ) : (
+           <>
+             <MetricCard 
+               label={isCorporate ? "Total Workforce" : isSchool ? "Total Students" : "Total Learners"} 
+               value={metrics?.metrics?.totalStudents?.toLocaleString() || 0} 
+               trend={metrics?.metrics?.trends?.students}
+               subtext="Active engagement"
+             />
+             <MetricCard 
+               label={isCorporate ? "Active Assignments" : "Total Products"} 
+               value={metrics?.metrics?.activeCourses || 0} 
+               subtext={isCorporate ? "Current training" : "Live and selling"}
+             />
+             <MetricCard 
+               label={isSchool ? "Live Classes" : "Interactive Sessions"} 
+               value={metrics?.metrics?.liveClassesCount || 0} 
+               trend={metrics?.metrics?.trends?.liveSessions}
+               subtext="Scheduled this week"
+             />
+             <MetricCard 
+               label={isCorporate ? "Skill Index" : "Total Revenue"} 
+               value={isCorporate ? `${metrics?.metrics?.skillIndex || 85}%` : `₹${(metrics?.metrics?.totalRevenue || 0).toLocaleString()}`} 
+               trend={metrics?.metrics?.trends?.revenue}
+               subtext={isCorporate ? "Avg proficiency" : "Marketplace performance"}
+             />
+           </>
+         )}
       </div>
+
+      {/* ─── College Quick Links ───────────────────────────────────── */}
+      {isCollege && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Link href="/org-admin/departments">
+            <FlatCard className="hover:bg-slate-50 transition-colors cursor-pointer">
+              <Building2 className="h-5 w-5 text-blue-500 mb-2" />
+              <p className="text-sm font-semibold text-slate-900">Departments</p>
+              <p className="text-xs text-slate-500">Manage departments</p>
+            </FlatCard>
+          </Link>
+          <Link href="/org-admin/batches">
+            <FlatCard className="hover:bg-slate-50 transition-colors cursor-pointer">
+              <Users className="h-5 w-5 text-emerald-500 mb-2" />
+              <p className="text-sm font-semibold text-slate-900">Batches</p>
+              <p className="text-xs text-slate-500">Manage batches</p>
+            </FlatCard>
+          </Link>
+          <Link href="/org-admin/courses">
+            <FlatCard className="hover:bg-slate-50 transition-colors cursor-pointer">
+              <BookOpen className="h-5 w-5 text-purple-500 mb-2" />
+              <p className="text-sm font-semibold text-slate-900">Courses</p>
+              <p className="text-xs text-slate-500">Manage courses</p>
+            </FlatCard>
+          </Link>
+          <Link href="/org-admin/events">
+            <FlatCard className="hover:bg-slate-50 transition-colors cursor-pointer">
+              <Calendar className="h-5 w-5 text-orange-500 mb-2" />
+              <p className="text-sm font-semibold text-slate-900">Events</p>
+              <p className="text-xs text-slate-500">Manage events</p>
+            </FlatCard>
+          </Link>
+        </div>
+      )}
  
       {/* ─── Analytics Insight ─────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
@@ -207,10 +309,11 @@ export default function OrgAdminDashboard() {
   )
 }
  
-function MetricCard({ label, value, trend, subtext }: { label: string, value: string | number, trend?: string, subtext?: string }) {
+function MetricCard({ label, value, trend, subtext, icon: Icon }: { label: string, value: string | number, trend?: string, subtext?: string, icon?: any }) {
    const isPositive = trend?.startsWith('+')
    return (
       <FlatCard className="flex flex-col gap-4">
+         {Icon && <Icon className="h-5 w-5 text-slate-400 mb-1" />}
          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest opacity-60 italic">// {label}</p>
          <div className="flex items-end justify-between">
             <h3 className="text-3xl font-bold text-slate-900 tracking-tighter leading-none">{value}</h3>

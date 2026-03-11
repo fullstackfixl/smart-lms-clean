@@ -14,6 +14,7 @@ import {
     programApi,
     listInstructors
 } from '../../../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../../../lib/auth-context'
 import { toast } from "sonner"
 
 interface Subject {
@@ -44,6 +45,7 @@ export default function SubjectManagementPage() {
     const params = useParams()
     const router = useRouter()
     const courseId = params.courseId as string
+    const { token } = useAuth()
 
     const [program, setProgram] = useState<Program | null>(null)
     const [subjects, setSubjects] = useState<Subject[]>([])
@@ -63,18 +65,18 @@ export default function SubjectManagementPage() {
     })
 
     useEffect(() => {
-        if (courseId) {
+        if (courseId && token) {
             loadInitialData()
         }
-    }, [courseId])
+    }, [courseId, token])
 
     async function loadInitialData() {
         setLoading(true)
         try {
-            const token = sessionStorage.getItem('instatute_token') || localStorage.getItem('instatute_token') || ""
+            if (!token) return
             const [progRes, subRes, instRes] = await Promise.all([
-                programApi.get(courseId),
-                subjectApi.list(courseId),
+                programApi.get(token, courseId),
+                subjectApi.list(token, courseId),
                 listInstructors(token)
             ])
 
@@ -100,7 +102,8 @@ export default function SubjectManagementPage() {
         e.preventDefault()
         setIsSubmitting(true)
         try {
-            const response = await subjectApi.create(formData)
+            if (!token) throw new Error('No authentication token')
+            const response = await subjectApi.create(token, formData)
             if (response.success) {
                 toast.success("Subject added successfully")
                 setShowCreateModal(false)

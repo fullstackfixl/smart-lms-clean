@@ -12,6 +12,7 @@ import {
     departmentApi,
     semesterApi
 } from "../../../lib/services/orgAdminApi"
+import { useAuth } from "../../../lib/auth-context"
 import { toast } from "sonner"
 
 interface Subject {
@@ -26,6 +27,7 @@ interface Subject {
 }
 
 export default function SubjectsPage() {
+    const { token } = useAuth()
     const [subjects, setSubjects] = useState<Subject[]>([])
     const [departments, setDepartments] = useState<any[]>([])
     const [semesters, setSemesters] = useState<any[]>([])
@@ -47,16 +49,17 @@ export default function SubjectsPage() {
     })
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     const loadData = async () => {
         setLoading(true)
         try {
+            if (!token) return
             const [subs, deps, sems] = await Promise.all([
-                subjectApi.list(),
-                departmentApi.list(),
-                semesterApi.list()
+                subjectApi.list(token),
+                departmentApi.list(token),
+                semesterApi.list(token)
             ])
             // Handle the different response formats (sometimes data is nested)
             setSubjects(subs.data?.subjects || subs.data || [])
@@ -72,11 +75,12 @@ export default function SubjectsPage() {
         e.preventDefault()
         setSubmitting(true)
         try {
+            if (!token) throw new Error('No authentication token')
             if (editingSubject) {
-                await subjectApi.update(editingSubject._id, formData)
+                await subjectApi.update(token, editingSubject._id, formData)
                 toast.success("Subject updated successfully")
             } else {
-                await subjectApi.create(formData)
+                await subjectApi.create(token, formData)
                 toast.success("Subject created successfully")
             }
             setIsModalOpen(false)
@@ -92,7 +96,8 @@ export default function SubjectsPage() {
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this subject?")) return
         try {
-            await subjectApi.delete(id)
+            if (!token) throw new Error('No authentication token')
+            await subjectApi.delete(token, id)
             toast.success("Subject deleted")
             loadData()
         } catch (err) {

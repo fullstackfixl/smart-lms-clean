@@ -1,7 +1,8 @@
 "use client"
  
-import { Bell, User, Search, Zap, ShieldCheck, ChevronDown, Command } from "lucide-react"
+import { Bell, Search } from "lucide-react"
 import { Button } from '../../components/ui/button'
+import { useRouter } from "next/navigation"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,8 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '../../components/ui/avatar'
-import { ThemeToggle } from "./theme-toggle"
+import { useAuth } from "../../lib/auth-context"
  
 interface InstructorHeaderProps {
   userName?: string
@@ -19,6 +19,9 @@ interface InstructorHeaderProps {
 }
  
 export function InstructorHeader({ userName = "Instructor", userEmail = "instructor@example.com" }: InstructorHeaderProps) {
+  const router = useRouter()
+  const { logout } = useAuth()
+
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200 bg-white px-8">
       <div className="flex w-full max-w-xl items-center">
@@ -56,16 +59,12 @@ export function InstructorHeader({ userName = "Instructor", userEmail = "instruc
           <DropdownMenuContent align="end" className="w-56 rounded-md border-gray-200 shadow-none">
             <DropdownMenuLabel>Instructor Account</DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-gray-100" />
-            <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/instructor/profile')}>Profile</DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/instructor/settings')}>Settings</DropdownMenuItem>
             <DropdownMenuSeparator className="bg-gray-100" />
             <DropdownMenuItem 
               className="cursor-pointer text-red-600 focus:text-red-600"
-              onClick={() => {
-                window.localStorage.removeItem('instatute_token')
-                window.sessionStorage.removeItem('instatute_token')
-                window.location.href = '/login'
-              }}
+              onClick={logout}
             >
               Log out
             </DropdownMenuItem>

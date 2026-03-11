@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
 import { 
   Shield, 
   Plus, 
@@ -96,7 +95,7 @@ export default function PlatformAdminsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-none">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
               <Shield className="w-5 h-5" />
@@ -108,7 +107,7 @@ export default function PlatformAdminsPage() {
           </div>
         </div>
         
-        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-none">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
               <ShieldCheck className="w-5 h-5" />
@@ -120,7 +119,7 @@ export default function PlatformAdminsPage() {
           </div>
         </div>
         
-        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-none">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
               <Clock className="w-5 h-5" />
@@ -134,7 +133,7 @@ export default function PlatformAdminsPage() {
       </div>
 
       {/* Search and Table */}
-      <div className="bg-white border border-slate-200 rounded-lg shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-none">
         <div className="p-4 border-b border-slate-200">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -255,22 +254,21 @@ export default function PlatformAdminsPage() {
         )}
       </div>
 
-      <AnimatePresence>
-        {showInviteModal && (
-          <InviteAdminModal 
-            onClose={() => setShowInviteModal(false)} 
-            onSuccess={() => {
-              setShowInviteModal(false)
-              loadAdmins()
-            }} 
-          />
-        )}
-      </AnimatePresence>
+      {showInviteModal && (
+        <AddAdminModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          onAdminAdded={() => {
+            setShowInviteModal(false)
+            loadAdmins()
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function InviteAdminModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function AddAdminModal({ isOpen, onClose, onAdminAdded }: { isOpen: boolean; onClose: () => void; onAdminAdded: () => void }) {
   const { token } = useAuth()
   const [formData, setFormData] = useState({
     name: "",
@@ -290,7 +288,7 @@ function InviteAdminModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     try {
       const response = await platformApi.createAdmin(token, formData)
       if (response.success) {
-        onSuccess()
+        onAdminAdded()
       } else {
         setError(response.error || "Failed to provision administrator")
       }
@@ -302,13 +300,8 @@ function InviteAdminModal({ onClose, onSuccess }: { onClose: () => void; onSucce
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
-      >
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-none max-w-md w-full overflow-hidden border border-slate-200">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-900">Add Administrator</h3>
           <button 
@@ -404,7 +397,7 @@ function InviteAdminModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             </button>
           </div>
         </form>
-      </motion.div>
+      </div>
     </div>
   )
 }

@@ -212,8 +212,15 @@ router.get('/', optionalAuth, async (req, res) => {
 // 2️⃣ Get Courses For Student (Spec Alias)
 router.get('/student', authMiddleware, requireRole(['student']), async (req, res) => {
   try {
+    // Handle both populated organization_id (object with _id) and plain id
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    
+    if (!orgId) {
+      return res.success({ courses: [] }, 'No organization assigned');
+    }
+
     const courses = await Course.find({
-      organization_id: req.user.organization_id,
+      organization_id: orgId,
       status: 'published',
       isActive: true
     })

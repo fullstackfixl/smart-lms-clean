@@ -30,8 +30,8 @@ import {
 } from "../../../components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function CoursesPage() {
   const searchParams = useSearchParams()
@@ -40,10 +40,14 @@ export default function CoursesPage() {
   const [view, setView] = useState<'grid' | 'table'>('grid')
   const [search, setSearch] = useState('')
   
-  const { data: response, error, isLoading, mutate } = useSWR(
-    `/api/platform/courses?search=${search}${organizationId ? `&organization=${organizationId}` : ''}`, 
-    fetcher
+  const { data: response, error, isLoading, mutate } = useSWR<any>(
+    `/api/platform/courses?search=${search}${organizationId ? `&organization=${organizationId}` : ''}`,
+    platformJsonFetcher
   )
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   const courses = response?.data?.courses || []
   const stats = response?.data?.stats || { total: 0, published: 0, enrollments: 0 }
@@ -108,7 +112,7 @@ export default function CoursesPage() {
               variant="ghost" 
               size="sm" 
               onClick={() => setView('grid')}
-              className={cn("h-8 w-8 p-0 rounded", view === 'grid' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500")}
+              className={cn("h-8 w-8 p-0 rounded", view === 'grid' ? "bg-white text-blue-600" : "text-slate-500")}
             >
               <LayoutGrid className="h-4 w-4" />
             </Button>
@@ -116,7 +120,7 @@ export default function CoursesPage() {
               variant="ghost" 
               size="sm" 
               onClick={() => setView('table')}
-              className={cn("h-8 w-8 p-0 rounded", view === 'table' ? "bg-white text-blue-600 shadow-sm" : "text-slate-500")}
+              className={cn("h-8 w-8 p-0 rounded", view === 'table' ? "bg-white text-blue-600" : "text-slate-500")}
             >
               <List className="h-4 w-4" />
             </Button>
@@ -133,7 +137,7 @@ export default function CoursesPage() {
             <Card key={course._id} className="border-gray-200 p-0 rounded-md overflow-hidden no-shadow group hover:border-blue-500 transition-all">
               <div className="aspect-video bg-gray-50 relative overflow-hidden">
                 {course.thumbnail ? (
-                  <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-200">
                     <FileText size={48} strokeWidth={1} />
@@ -142,7 +146,7 @@ export default function CoursesPage() {
                 <div className="absolute top-3 right-3">
                   <Badge className={cn(
                     "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                    course.status === 'published' ? "bg-green-100/90 text-green-700 backdrop-blur-sm" : "bg-orange-100/90 text-orange-700 backdrop-blur-sm"
+                    course.status === 'published' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
                   )}>
                     {course.status}
                   </Badge>

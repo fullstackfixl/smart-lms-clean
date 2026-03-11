@@ -11,7 +11,7 @@ app.use(cors({
       'https://smart-lms-clean.vercel.app',
       'https://smart-lms-clean-1.onrender.com',
       'http://localhost:3000',
-      'http://localhost:3001'
+      'http://localhost:3000'
     ];
 
     // Allow any additional origin from CLIENT_URL env (comma-separated)
@@ -84,6 +84,7 @@ try {
   console.log(`[${new Date().toISOString()}]   - auth`);
   const authRoutes = require('./routes/auth');
   app.use('/auth', authRoutes);
+  app.use('/api/auth', authRoutes);
 
   console.log(`[${new Date().toISOString()}]   - health`);
   const healthRoutes = require('./routes/health');
@@ -249,6 +250,10 @@ try {
   app.use('/api/org-features', orgFeaturesRoutes);
   app.use('/api/org-admin', orgFeaturesRoutes);
 
+  console.log('  - org-admin applications');
+  const orgAdminRoutes = require('./routes/orgAdmin');
+  app.use('/org-admin', orgAdminRoutes);
+
   console.log('  - student-lectures');
   const studentLectureRoutes = require('./routes/studentLectures');
   app.use('/student', studentLectureRoutes);
@@ -260,6 +265,10 @@ try {
   console.log('  - student');
   const studentRoutes = require('./routes/student');
   app.use('/student', studentRoutes);
+
+  console.log('  - college-tenant');
+  const collegeTenantRoutes = require('./routes/college/index');
+  app.use('/api/college', collegeTenantRoutes);
 
   console.log('  - live-classes-simple');
   const liveClassesSimpleRoutes = require('./routes/liveClassesSimple');

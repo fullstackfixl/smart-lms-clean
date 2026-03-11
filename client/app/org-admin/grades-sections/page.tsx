@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, LayoutGrid, ListTree, Edit2, Trash2, Loader2, X, Users } from "lucide-react"
 import { schoolGradeApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 
@@ -23,6 +24,7 @@ interface GradeSection {
 }
 
 export default function GradesSectionsPage() {
+    const { token } = useAuth()
     const [activeTab, setActiveTab] = useState<"levels" | "sections">("levels")
     const [levels, setLevels] = useState<GradeLevel[]>([])
     const [sections, setSections] = useState<GradeSection[]>([])
@@ -42,15 +44,16 @@ export default function GradesSectionsPage() {
     })
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     async function loadData() {
         setLoading(true)
         try {
+            if (!token) return
             const [levelsRes, sectionsRes] = await Promise.all([
-                schoolGradeApi.listLevels(),
-                schoolGradeApi.listSections()
+                schoolGradeApi.listLevels(token),
+                schoolGradeApi.listSections(token)
             ])
             if (levelsRes.success) setLevels(levelsRes.data)
             if (sectionsRes.success) setSections(sectionsRes.data)
@@ -64,11 +67,12 @@ export default function GradesSectionsPage() {
     async function handleLevelSubmit(e: React.FormEvent) {
         e.preventDefault()
         try {
+            if (!token) throw new Error('No authentication token')
             if (editingLevel) {
-                await schoolGradeApi.updateLevel(editingLevel._id, levelFormData)
+                await schoolGradeApi.updateLevel(token, editingLevel._id, levelFormData)
                 toast.success("Grade Level updated")
             } else {
-                await schoolGradeApi.createLevel(levelFormData)
+                await schoolGradeApi.createLevel(token, levelFormData)
                 toast.success("Grade Level created")
             }
             setIsLevelModalOpen(false)
@@ -81,11 +85,12 @@ export default function GradesSectionsPage() {
     async function handleSectionSubmit(e: React.FormEvent) {
         e.preventDefault()
         try {
+            if (!token) throw new Error('No authentication token')
             if (editingSection) {
-                await schoolGradeApi.updateSection(editingSection._id, sectionFormData)
+                await schoolGradeApi.updateSection(token, editingSection._id, sectionFormData)
                 toast.success("Section updated")
             } else {
-                await schoolGradeApi.createSection(sectionFormData)
+                await schoolGradeApi.createSection(token, sectionFormData)
                 toast.success("Section created")
             }
             setIsSectionModalOpen(false)

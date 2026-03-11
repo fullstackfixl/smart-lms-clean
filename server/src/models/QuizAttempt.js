@@ -13,7 +13,8 @@ const answerSchema = new mongoose.Schema({
   },
   is_correct: {
     type: Boolean,
-    required: true
+    required: false,
+    default: false
   },
   time_spent_seconds: {
     type: Number,
@@ -269,24 +270,8 @@ quizAttemptSchema.statics.getQuizStatistics = async function (quizId, organizati
   };
 };
 
-// Pre-save middleware to calculate derived fields
-quizAttemptSchema.pre('save', function (next) {
-  if (this.isNew) {
-    // Calculate percentage
-    this.percentage = this.total_questions > 0 ?
-      Math.round((this.score / this.total_questions) * 100) : 0;
-
-    // Calculate time taken
-    if (this.started_at && this.submitted_at) {
-      this.time_taken_seconds = Math.floor((this.submitted_at - this.started_at) / 1000);
-    }
-  }
-
-  next();
-});
-
-// Pre-save middleware to validate organization consistency
-quizAttemptSchema.pre('save', async function (next) {
+// Pre-validate middleware to calculate derived fields
+quizAttemptSchema.pre('validate', async function (next) {
   if (this.isNew) {
     try {
       // Verify quiz belongs to same organization
@@ -347,6 +332,18 @@ quizAttemptSchema.pre('save', async function (next) {
 
     } catch (error) {
       return next(error);
+    }
+  }
+
+  next();
+});
+
+// Pre-save middleware to calculate time taken
+quizAttemptSchema.pre('save', function (next) {
+  if (this.isNew) {
+    // Calculate time taken
+    if (this.started_at && this.submitted_at) {
+      this.time_taken_seconds = Math.floor((this.submitted_at - this.started_at) / 1000);
     }
   }
 

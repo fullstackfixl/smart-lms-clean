@@ -20,12 +20,16 @@ import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { cn } from '../../../lib/utils'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function DashboardPage() {
-  const { data: response, error, isLoading } = useSWR('/api/platform/dashboard', fetcher)
+  const { data: response, error, isLoading } = useSWR<any>('/api/platform/dashboard', platformJsonFetcher)
   const stats = response?.data || null
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   if (isLoading) {
     return (
@@ -107,7 +111,7 @@ export default function DashboardPage() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card className="border-gray-200 bg-white p-6 rounded-lg shadow-sm">
+        <Card className="border-gray-200 bg-white p-6 rounded-lg">
           <div className="mb-6 flex items-center justify-between">
             <h3 className="text-base font-semibold text-slate-900">Enrollment Growth</h3>
             <div className="flex items-center text-xs font-medium text-emerald-600">
@@ -118,7 +122,7 @@ export default function DashboardPage() {
           <BasicChart data={enrollmentData} type="line" xKey="name" yKey="value" height={280} />
         </Card>
 
-        <Card className="border-gray-200 bg-white p-6 rounded-lg shadow-sm">
+        <Card className="border-gray-200 bg-white p-6 rounded-lg">
           <div className="mb-6 flex items-center justify-between">
             <h3 className="text-base font-semibold text-slate-900">Platform Distribution</h3>
             <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50 h-8 text-xs">

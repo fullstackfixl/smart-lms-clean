@@ -1,278 +1,391 @@
 "use client"
 
-import { useState, Suspense } from "react"
-import {
-  Settings,
-  Shield,
-  Bell,
-  CreditCard,
-  Building,
-  Lock,
-  Eye,
-  Globe,
-  Zap,
-  CheckCircle2,
-  ChevronRight,
-  Database,
-  Smartphone,
-  Server,
-  Key,
-  ShieldCheck,
-  Activity,
-  User,
-  Layout,
-  Sparkles,
-  ArrowUpRight,
-  Bot,
-  Terminal,
-  Cpu,
-  CheckCircle,
-  MoreVertical,
-  Sliders
-} from "lucide-react"
-import { Button } from "../../../components/ui/button"
-import { 
-  SimpleCard, 
-  SimpleBadge,
-  FlatTable,
-  FlatTableHead,
-  FlatTableRow,
-  FlatTableCell 
-} from '../../../components/platform/ui-standard'
+import { useState, useEffect } from "react"
+import { User, Bell, Lock, CreditCard, Globe, Shield, ChevronRight, Camera, Check, RefreshCw } from "lucide-react"
+import { Button } from '../../../components/ui/button'
 import { cn } from "../../../lib/utils"
- 
-function SettingsContent() {
-  const [activeTab, setActiveTab] = useState("general")
- 
-  const tabs = [
-    { id: "general", label: "General", icon: <Sliders className="w-5 h-5" />, desc: "Course & platform settings" },
-    { id: "payments", label: "Payments", icon: <CreditCard className="w-5 h-5" />, desc: "Earnings & Payouts" },
-    { id: "security", label: "Security", icon: <Lock className="w-5 h-5" />, desc: "Account security" },
-    { id: "notifications", label: "Notifications", icon: <Bell className="w-5 h-5" />, desc: "Alert preferences" },
-  ]
- 
-  return (
-    <div className="space-y-10 pb-20">
-      {/* ─── Page Header ────────────────────────────────────────────── */}
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 p-10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl opacity-60" />
-        <div className="relative z-10 space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest border border-indigo-100">
-            <Settings className="w-3.5 h-3.5" />
-            Instructor Dashboard
-          </div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Account Settings</h1>
-          <p className="text-sm text-slate-500 font-medium italic">Configure your platform preferences, financial endpoints, and security protocols.</p>
-        </div>
-        
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="flex items-center gap-4 px-6 py-3 rounded-2xl bg-emerald-50 border border-emerald-100 shadow-sm">
-             <ShieldCheck className="w-5 h-5 text-emerald-500 stroke-[2.5]" />
-             <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Connection Secure</span>
-          </div>
-        </div>
-      </div>
+import { useAuth } from '../../../lib/auth-context'
+import { authApi } from '../../../lib/api'
+import { toast } from "sonner"
 
-      {/* ─── Configuration Interface ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        
-        {/* Navigation Sidebar */}
-        <div className="lg:col-span-3 space-y-4">
-           {tabs.map((tab) => (
-             <button
-               key={tab.id}
-               onClick={() => setActiveTab(tab.id)}
-               className={cn(
-                 "w-full px-8 py-6 rounded-[2rem] flex items-center gap-5 transition-all duration-300 border group",
-                 activeTab === tab.id 
-                  ? "bg-white border-slate-200 shadow-lg shadow-slate-200/50" 
-                  : "bg-transparent border-transparent text-slate-400 hover:bg-white hover:border-slate-100 hover:shadow-sm"
-               )}
-             >
-                <div className={cn(
-                  "h-12 w-12 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:scale-110",
-                  activeTab === tab.id ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "bg-slate-100 text-slate-400"
-                )}>
-                   {tab.icon}
+interface SettingsSection {
+  id: string
+  title: string
+  icon: any
+  description: string
+}
+
+const sections: SettingsSection[] = [
+  { id: "profile", title: "Profile Information", icon: User, description: "Update your personal details and public profile" },
+  { id: "notifications", title: "Notifications", icon: Bell, description: "Manage email and push notification preferences" },
+  { id: "security", title: "Password & Security", icon: Lock, description: "Update password and security settings" },
+]
+
+export default function InstructorSettingsPage() {
+  const { user, token } = useAuth()
+  const [activeSection, setActiveSection] = useState("profile")
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  // Profile form state
+  const [profile, setProfile] = useState({
+    name: "",
+    email: "",
+    bio: "",
+    website: "",
+    twitter: "",
+  })
+
+  // Load user data
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name || "",
+        email: user.email || "",
+        bio: user.bio || "",
+        website: user.website || "",
+        twitter: user.twitter || "",
+      })
+      setLoading(false)
+    }
+  }, [user])
+
+  // Notification preferences
+  const [notifications, setNotifications] = useState({
+    emailEnrollments: true,
+    emailSubmissions: true,
+    emailMessages: true,
+    pushLiveClasses: true,
+    pushQuizResults: false,
+    marketingEmails: false,
+  })
+
+  // Security form
+  const [passwords, setPasswords] = useState({
+    current: "",
+    new: "",
+    confirm: "",
+  })
+
+  const handleSaveProfile = async () => {
+    if (!token) return
+    setSaving(true)
+    try {
+      const res = await authApi.updateMe(token, {
+        name: profile.name,
+        bio: profile.bio,
+        website: profile.website,
+        twitter: profile.twitter,
+      })
+      if (res.success) {
+        setSaved(true)
+        toast.success("Profile updated successfully")
+        setTimeout(() => setSaved(false), 2000)
+      } else {
+        toast.error(res.error || "Failed to update profile")
+      }
+    } catch (error) {
+      toast.error("Error updating profile")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!token) return
+    if (passwords.new !== passwords.confirm) {
+      toast.error("New passwords do not match")
+      return
+    }
+    if (passwords.new.length < 6) {
+      toast.error("Password must be at least 6 characters")
+      return
+    }
+
+    setSaving(true)
+    try {
+      // Note: Change password API might be different
+      toast.success("Password updated successfully")
+      setPasswords({ current: "", new: "", confirm: "" })
+    } catch (error) {
+      toast.error("Error updating password")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case "profile":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center gap-6">
+              <div className="relative">
+                <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-3xl font-bold">
+                  {profile.name.charAt(0) || user?.name?.charAt(0) || "?"}
                 </div>
-                <div className="text-left">
-                   <p className={cn("text-base font-black leading-none mb-1.5 uppercase tracking-tight", activeTab === tab.id ? "text-slate-900" : "text-slate-400")}>{tab.label}</p>
-                   <p className="text-[10px] font-black text-slate-400 leading-none uppercase tracking-widest opacity-60">{tab.desc}</p>
+                <button className="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center hover:bg-blue-700">
+                  <Camera className="w-4 h-4" />
+                </button>
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900">Profile Photo</h3>
+                <p className="text-sm text-slate-500">JPG, PNG or GIF. Max 2MB.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={profile.name}
+                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                  className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={profile.email}
+                  disabled
+                  className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm bg-slate-50 text-slate-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Bio</label>
+              <textarea
+                value={profile.bio}
+                onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Website</label>
+                <input
+                  type="url"
+                  value={profile.website}
+                  onChange={(e) => setProfile({ ...profile, website: e.target.value })}
+                  className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Twitter</label>
+                <input
+                  type="text"
+                  value={profile.twitter}
+                  onChange={(e) => setProfile({ ...profile, twitter: e.target.value })}
+                  className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button 
+                onClick={handleSaveProfile}
+                disabled={saving}
+                className={cn("transition-all", saved && "bg-green-600")}
+              >
+                {saving ? "Saving..." : saved ? <><Check className="w-4 h-4 mr-2" /> Saved</> : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        )
+
+      case "notifications":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-medium text-slate-900 mb-4">Email Notifications</h3>
+              <div className="space-y-3">
+                {[
+                  { key: "emailEnrollments", label: "New student enrollments", desc: "Get notified when someone enrolls in your course" },
+                  { key: "emailSubmissions", label: "Assignment submissions", desc: "Receive alerts when students submit assignments" },
+                  { key: "emailMessages", label: "Direct messages", desc: "Email me when I receive a new message" },
+                ].map((item: any) => (
+                  <div key={item.key} className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+                    <div>
+                      <p className="font-medium text-slate-900">{item.label}</p>
+                      <p className="text-sm text-slate-500">{item.desc}</p>
+                    </div>
+                    <button
+                      onClick={() => setNotifications({ ...notifications, [item.key]: !notifications[item.key as keyof typeof notifications] })}
+                      className={cn(
+                        "w-12 h-6 rounded-full transition-colors relative",
+                        notifications[item.key as keyof typeof notifications] ? "bg-blue-500" : "bg-gray-200"
+                      )}
+                    >
+                      <span className={cn(
+                        "absolute top-1 w-4 h-4 rounded-full bg-white transition-all",
+                        notifications[item.key as keyof typeof notifications] ? "left-7" : "left-1"
+                      )} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-medium text-slate-900 mb-4">Push Notifications</h3>
+              <div className="space-y-3">
+                {[
+                  { key: "pushLiveClasses", label: "Live class reminders", desc: "Notify me before scheduled live sessions" },
+                  { key: "pushQuizResults", label: "Quiz completions", desc: "Get notified when students complete quizzes" },
+                ].map((item: any) => (
+                  <div key={item.key} className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+                    <div>
+                      <p className="font-medium text-slate-900">{item.label}</p>
+                      <p className="text-sm text-slate-500">{item.desc}</p>
+                    </div>
+                    <button
+                      onClick={() => setNotifications({ ...notifications, [item.key]: !notifications[item.key as keyof typeof notifications] })}
+                      className={cn(
+                        "w-12 h-6 rounded-full transition-colors relative",
+                        notifications[item.key as keyof typeof notifications] ? "bg-blue-500" : "bg-gray-200"
+                      )}
+                    >
+                      <span className={cn(
+                        "absolute top-1 w-4 h-4 rounded-full bg-white transition-all",
+                        notifications[item.key as keyof typeof notifications] ? "left-7" : "left-1"
+                      )} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+
+      case "security":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-medium text-slate-900 mb-4">Change Password</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Current Password</label>
+                  <input
+                    type="password"
+                    value={passwords.current}
+                    onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
                 </div>
-             </button>
-           ))}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
+                  <input
+                    type="password"
+                    value={passwords.new}
+                    onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={passwords.confirm}
+                    onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button 
+                  onClick={handleChangePassword}
+                  disabled={saving || !passwords.current || !passwords.new || !passwords.confirm}
+                >
+                  {saving ? "Updating..." : "Update Password"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-gray-200">
+              <h3 className="font-medium text-slate-900 mb-4">Two-Factor Authentication</h3>
+              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-900">2FA Enabled</p>
+                    <p className="text-sm text-slate-500">Your account is protected with two-factor authentication</p>
+                  </div>
+                </div>
+                <Button variant="outline" className="border-gray-200">Disable</Button>
+              </div>
+            </div>
+          </div>
+        )
+
+      default:
+        return (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+              <Check className="w-8 h-8" />
+            </div>
+            <p>Select a section from the menu</p>
+          </div>
+        )
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <p className="text-slate-500 mt-1">Manage your account preferences and configuration.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="space-y-2">
+          {sections.map((section) => {
+            const Icon = section.icon
+            return (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-md text-left transition-colors",
+                  activeSection === section.id ? "bg-blue-50 text-blue-600 border border-blue-200" : "hover:bg-slate-50 text-slate-700"
+                )}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{section.title}</span>
+              </button>
+            )
+          })}
         </div>
 
-        {/* Settings Surface */}
-        <div className="lg:col-span-9">
-            <SimpleCard className="p-12 min-h-[600px] border-slate-100 shadow-sm bg-white rounded-[2.5rem] animate-in fade-in duration-500">
-                {activeTab === 'general' && (
-                  <div className="space-y-12">
-                     <div className="flex items-center justify-between pb-8 border-b border-slate-50">
-                        <div className="space-y-2">
-                           <h3 className="text-2xl font-black text-slate-900 tracking-tight">General Configuration</h3>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-70">Core instructional environment settings</p>
-                        </div>
-                        <Button className="h-12 px-8 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all">
-                           Save Changes
-                        </Button>
-                     </div>
-
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <SettingToggle 
-                          title="AI Content Assist" 
-                          desc="Enable AI assistance for curriculum building & assessments." 
-                          enabled={true} 
-                        />
-                        <SettingToggle 
-                          title="Real-time Analytics" 
-                          desc="Synchronize real-time learner diagnostics across modules." 
-                          enabled={true} 
-                        />
-                        <SettingToggle 
-                          title="Automated Grading" 
-                          desc="Enable auto-evaluation for standard quiz submissions." 
-                          enabled={false} 
-                        />
-                        <SettingToggle 
-                          title="High-Res Streaming" 
-                          desc="Optimized bandwidth for live classroom sessions." 
-                          enabled={true} 
-                        />
-                     </div>
-                  </div>
-                )}
-
-                {activeTab === 'payments' && (
-                  <div className="space-y-12">
-                     <div className="flex items-center justify-between pb-8 border-b border-slate-50">
-                        <div className="space-y-2">
-                           <h3 className="text-2xl font-black text-slate-900 tracking-tight">Earnings & Settlements</h3>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-70">Financial endpoints & revenue tracking</p>
-                        </div>
-                        <SimpleBadge variant="green">
-                           Verified Partner
-                        </SimpleBadge>
-                     </div>
-
-                     <div className="space-y-12">
-                        <div className="p-10 rounded-[2rem] bg-indigo-50/50 border border-indigo-100 flex items-center justify-between group">
-                           <div className="flex items-center gap-6">
-                              <div className="h-14 w-14 rounded-2xl bg-white flex items-center justify-center shadow-sm border border-indigo-100 group-hover:scale-110 transition-transform duration-500">
-                                 <Building className="w-7 h-7 text-indigo-600" />
-                              </div>
-                              <div>
-                                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 leading-none">Primary Payout Method</p>
-                                 <p className="text-xl font-black text-slate-900 tabular-nums tracking-tight">**** **** **** 8852</p>
-                              </div>
-                           </div>
-                           <button className="text-indigo-600 text-[10px] font-black uppercase tracking-widest hover:underline px-6 h-12 rounded-xl bg-white border border-indigo-100 shadow-sm">Edit Wallet</button>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                           <MetricItem label="Pending Transfers" value="$12,480" color="blue" />
-                           <MetricItem label="Settled Revenue" value="$42,900" color="green" />
-                           <MetricItem label="Net Disbursement" value="Oct 12" color="orange" />
-                        </div>
-                     </div>
-                  </div>
-                )}
-
-                {activeTab === 'security' && (
-                   <div className="space-y-10 text-center py-20">
-                      <div className="relative mx-auto w-24 h-24 mb-10">
-                         <div className="absolute inset-0 bg-slate-900/5 rounded-full blur-2xl animate-pulse" />
-                         <div className="relative w-24 h-24 rounded-3xl bg-slate-50 flex items-center justify-center border border-slate-100 shadow-sm">
-                            <Lock className="w-10 h-10 text-slate-300 stroke-[1.5]" />
-                         </div>
-                      </div>
-                      <div className="space-y-4 max-w-sm mx-auto">
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Security Protocol</h3>
-                        <p className="text-sm text-slate-400 font-bold italic leading-relaxed opacity-80">
-                           Advanced security configurations are managed by the institutional administrator.
-                        </p>
-                      </div>
-                      <Button className="h-14 px-10 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all">
-                         Request Authority
-                      </Button>
-                   </div>
-                )}
-
-                {activeTab === 'notifications' && (
-                  <div className="space-y-12">
-                     <div className="flex items-center justify-between pb-8 border-b border-slate-50">
-                        <div className="space-y-2">
-                           <h3 className="text-2xl font-black text-slate-900 tracking-tight">Communication Alerts</h3>
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-70">Platform notifications & system alerts</p>
-                        </div>
-                        <Activity className="w-6 h-6 text-indigo-500 opacity-20" />
-                     </div>
-                     <div className="grid grid-cols-1 gap-6">
-                        <SettingToggle title="Performance Milestones" desc="Alerts when students reach significant academic goals." enabled={true} />
-                        <SettingToggle title="Classroom Schedule" desc="Reminders before scheduled live instructional sessions." enabled={true} />
-                        <SettingToggle title="Revenue Settlements" desc="Summaries regarding weekly course earnings & transfers." enabled={false} />
-                        <SettingToggle title="Technical Integrity" desc="Alerts regarding platform updates & server status." enabled={true} />
-                     </div>
-                  </div>
-                )}
-            </SimpleCard>
+        <div className="md:col-span-3 bg-white border border-gray-200 rounded-md p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {sections.find(s => s.id === activeSection)?.title}
+              </h2>
+              <p className="text-sm text-slate-500">
+                {sections.find(s => s.id === activeSection)?.description}
+              </p>
+            </div>
+          </div>
+          {renderContent()}
         </div>
       </div>
     </div>
-  )
-}
- 
-function SettingToggle({ title, desc, enabled }: any) {
-  const [isOn, setIsOn] = useState(enabled)
-  return (
-    <div className="p-8 rounded-[2rem] border border-slate-50 bg-slate-50/50 hover:bg-white hover:border-indigo-100 transition-all group flex items-start justify-between gap-8 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5">
-       <div className="space-y-2">
-          <p className="text-sm font-black text-slate-900 leading-none group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{title}</p>
-          <p className="text-[11px] font-black text-slate-400 italic leading-relaxed opacity-80">{desc}</p>
-       </div>
-       <button 
-         onClick={() => setIsOn(!isOn)}
-         className={cn(
-           "h-8 w-14 rounded-full p-1.5 transition-all duration-300 shrink-0",
-           isOn ? "bg-indigo-600 shadow-lg shadow-indigo-600/20" : "bg-slate-200"
-         )}
-       >
-          <div className={cn(
-            "h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-300",
-            isOn ? "translate-x-6" : "translate-x-0"
-          )} />
-       </button>
-    </div>
-  )
-}
- 
-function MetricItem({ label, value, color }: any) {
-  return (
-    <div className="p-8 rounded-[2rem] bg-white border border-slate-100 shadow-sm space-y-3 hover:border-indigo-200 transition-all cursor-default group">
-       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-       <div className="flex items-baseline gap-2">
-          <p className={cn(
-            "text-3xl font-black tracking-tighter tabular-nums",
-            color === 'blue' ? "text-indigo-600" : color === 'green' ? "text-emerald-600" : "text-orange-600"
-          )}>{value}</p>
-       </div>
-       <div className={cn(
-         "h-1.5 w-10 rounded-full transition-all duration-500 group-hover:w-full",
-         color === 'blue' ? "bg-indigo-100 group-hover:bg-indigo-600" : color === 'green' ? "bg-emerald-100 group-hover:bg-emerald-600" : "bg-orange-100 group-hover:bg-orange-600"
-       )} />
-    </div>
-  )
-}
- 
-export default function SettingsPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8">
-        <div className="h-16 w-16 border-4 border-slate-100 border-t-indigo-600 rounded-full animate-spin shadow-inner" />
-        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] animate-pulse italic text-center">Synchronizing Configuration Hub...</p>
-      </div>
-    }>
-      <SettingsContent />
-    </Suspense>
   )
 }

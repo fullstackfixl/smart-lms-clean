@@ -4,9 +4,39 @@ const fs = require('fs');
 const multer = require('multer');
 const { authMiddleware } = require('../middleware/auth');
 const { localUpload, cloudinaryUpload, handleUploadError } = require('../middleware/upload');
-const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
+const { uploadToCloudinary, deleteFromCloudinary, cloudinary } = require('../config/cloudinary');
 
 const router = express.Router();
+
+// Generate Cloudinary signature for direct upload from frontend
+router.get('/signature', authMiddleware, async (req, res) => {
+  try {
+    const { type = 'image' } = req.query;
+    const orgId = req.user.organization_id?._id?.toString() || req.user.organization_id?.toString() || req.user.organization_id;
+    
+    const timestamp = Math.round(new Date().getTime() / 1000);
+    const folder = `smart-lms/${orgId}/${type}s`;
+    
+    // Generate signature
+    const signature = cloudinary.utils.api_sign_request({
+      timestamp,
+      folder
+    }, process.env.CLOUDINARY_API_SECRET);
+    
+    res.success({
+      signature,
+      timestamp,
+      folder,
+      apiKey: process.env.CLOUDINARY_API_KEY,
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      type
+    }, 'Signature generated successfully');
+    
+  } catch (error) {
+    console.error('Signature generation error:', error);
+    res.error(error.message, 'Failed to generate upload signature', 500);
+  }
+});
 
 // Local file upload
 router.post('/local', authMiddleware, localUpload.single('file'), handleUploadError, async (req, res) => {

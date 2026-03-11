@@ -28,12 +28,16 @@ import {
 } from "../../../components/ui/dropdown-menu"
 import { Skeleton } from '../../../components/ui/skeleton'
 import { cn } from '../../../lib/utils'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function BillingPage() {
-  const { data: response, error, isLoading } = useSWR('/api/platform/billing', fetcher)
+  const { data: response, error, isLoading } = useSWR('/api/platform/billing', platformJsonFetcher)
   const stats = response?.data || null
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   if (isLoading) {
     return (
@@ -117,7 +121,7 @@ export default function BillingPage() {
         </Card>
 
         <Card className="lg:col-span-4 border-orange-100 bg-orange-50/30 p-8 rounded-md no-shadow flex flex-col justify-center items-center text-center">
-          <div className="h-16 w-16 bg-orange-500 text-white rounded-full flex items-center justify-center mb-6 shadow-lg shadow-orange-200">
+          <div className="h-16 w-16 bg-orange-500 text-white rounded-full flex items-center justify-center mb-6">
             <TrendingUp size={32} />
           </div>
           <h3 className="text-xl font-bold text-slate-900 mb-2">Growth Milestone</h3>

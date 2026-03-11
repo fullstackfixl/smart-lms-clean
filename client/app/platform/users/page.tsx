@@ -29,8 +29,8 @@ import {
 } from "../../../components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function UsersPage() {
   const searchParams = useSearchParams()
@@ -39,17 +39,22 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState('student')
   const [search, setSearch] = useState('')
   
-  const { data: response, error, isLoading, mutate } = useSWR(
+  const { data: response, error, isLoading, mutate } = useSWR<any>(
     `/api/platform/users?role=${activeTab}&search=${search}${organizationId ? `&organization=${organizationId}` : ''}`, 
-    fetcher
+    platformJsonFetcher
   )
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   const users = response?.data?.users || []
   const stats = response?.data?.stats || { total: 0, active: 0, suspended: 0 }
 
   const handleAction = async (id: string, action: string) => {
     try {
-      const res = await fetch(`/api/platform/users/${id}/${action}`, {
+      const endpoint = action === 'reset-password' ? `/api/platform/users/${id}/reset-password` : `/api/platform/users/${id}/${action}`
+      const res = await fetch(endpoint, {
         method: action === 'reset-password' ? 'POST' : 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: action === 'reset-password' ? JSON.stringify({ password: 'NewPassword123' }) : undefined

@@ -5,21 +5,20 @@ import { motion } from "framer-motion"
 import {
   BookOpen, Search, Video, FileQuestion, ChevronRight,
   Clock, ArrowRight, TrendingUp, Award, Flame, Star,
-  BarChart3, Zap, GraduationCap, Calendar, Users
+  BarChart3, Zap, GraduationCap, Calendar, Users, CalendarDays
 } from "lucide-react"
 import { useAuth } from '../../../lib/auth-context'
 import { API_URL } from '../../../lib/config'
+import { collegeApi } from '../../../lib/api'
 import Link from "next/link"
 import { toast } from "sonner"
 
-const getToken = () =>
-  typeof window !== "undefined"
-    ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
-    : null
-
-async function apiFetch(path: string) {
+async function apiFetch(path: string, token?: string | null) {
   const r = await fetch(`${API_URL}${path}`, {
-    headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
     credentials: "include"
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -29,38 +28,83 @@ async function apiFetch(path: string) {
 const fadeUp = { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } }
 
 export default function StudentDashboard() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const [enrolled, setEnrolled] = useState<any[]>([])
   const [subjects, setSubjects] = useState<any[]>([])
   const [liveClasses, setLiveClasses] = useState<any[]>([])
   const [orgCourses, setOrgCourses] = useState<any[]>([])
-  const [academicOverview, setAcademicOverview] = useState<any>(null)
-  const [semesters, setSemesters] = useState<any[]>([])
+  const [attendanceRate, setAttendanceRate] = useState(0)
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
+  const [certificates, setCertificates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true)
     try {
-      const [myCourses, mySubjects, live, available, academic, sems] = await Promise.allSettled([
-        apiFetch("/api/courses/my-courses"),
-        user?.organizationType === 'COLLEGE' ? apiFetch("/student/subjects") : Promise.resolve({ success: false }),
-        apiFetch("/student/live-classes"),
-        apiFetch("/api/courses/student?limit=4"),
-        user?.organizationType === 'COLLEGE' ? apiFetch("/student/academic-overview") : Promise.resolve({ success: false }),
-        user?.organizationType === 'COLLEGE' ? apiFetch("/student/semesters") : Promise.resolve({ success: false })
-      ])
-      if (myCourses.status === "fulfilled" && myCourses.value.success) setEnrolled(myCourses.value.data?.courses || myCourses.value.data || [])
-      if (mySubjects.status === "fulfilled" && mySubjects.value.success) setSubjects(mySubjects.value.data || [])
-      if (live.status === "fulfilled" && live.value.success) setLiveClasses(live.value.data?.classes || [])
-      if (available.status === "fulfilled" && available.value.success) setOrgCourses(available.value.data?.courses || available.value.data || [])
-      if (academic.status === "fulfilled" && academic.value.success) setAcademicOverview(academic.value.data)
-      if (sems.status === "fulfilled" && sems.value.success) setSemesters(sems.value.data || [])
+      if (user?.organizationType === 'COLLEGE' && token) {
+        // Fetch college-specific dashboard data
+        const [dash, attendanceRes, eventsRes, certsRes] = await Promise.allSettled([
+          collegeApi.studentDashboard(token),
+          collegeApi.getStudentAttendance(token),
+          collegeApi.getStudentEvents(token, 'upcoming=true'),
+          collegeApi.getStudentCertificates(token)
+        ])
+        
+        if (dash.status === 'fulfilled' && dash.value.success) {
+          const payload: any = dash.value.data
+          setEnrolled(payload?.enrolledCourses?.map((e: any) => ({
+            ...e.course_id,
+            progress: e.progress,
+            enrollmentDate: e.enrollment_date
+          })) || [])
+          setLiveClasses(payload?.upcomingClasses || [])
+          setAttendanceRate(payload?.attendanceRate || 0)
+        }
+        
+        if (attendanceRes.status === 'fulfilled' && attendanceRes.value.success) {
+          // Calculate overall attendance from summary
+          const data: any = attendanceRes.value.data
+          const summary = data?.summary || []
+          if (summary.length > 0) {
+            const totalPresent = summary.reduce((acc: number, s: any) => acc + (s.present || 0), 0)
+            const totalClasses = summary.reduce((acc: number, s: any) => acc + (s.totalClasses || 0), 0)
+            if (totalClasses > 0) {
+              setAttendanceRate(Math.round((totalPresent / totalClasses) * 100))
+            }
+          }
+        }
+        
+        if (eventsRes.status === 'fulfilled' && eventsRes.value.success) {
+          const data: any = eventsRes.value.data
+          setUpcomingEvents(data?.events || [])
+        }
+        
+        if (certsRes.status === 'fulfilled' && certsRes.value.success) {
+          const data: any = certsRes.value.data
+          setCertificates(data?.certificates || [])
+        }
+        
+        // Fetch available courses
+        const available = await apiFetch("/api/courses/student?limit=4", token)
+        if (available.success) setOrgCourses(available.data?.courses || available.data || [])
+        
+      } else {
+        // Non-college flow
+        const [myCourses, live, available] = await Promise.allSettled([
+          apiFetch("/api/courses/my-courses", token),
+          apiFetch("/student/live-classes", token),
+          apiFetch("/api/courses/student?limit=4", token)
+        ])
+        if (myCourses.status === "fulfilled" && myCourses.value.success) setEnrolled(myCourses.value.data?.courses || myCourses.value.data || [])
+        if (live.status === "fulfilled" && live.value.success) setLiveClasses(live.value.data?.classes || [])
+        if (available.status === "fulfilled" && available.value.success) setOrgCourses(available.value.data?.courses || available.value.data || [])
+      }
     } catch {
       toast.error("Failed to load dashboard data")
     } finally {
       setLoading(false)
     }
-  }, [user?.organizationType])
+  }, [user?.organizationType, token])
 
   useEffect(() => { fetchDashboardData() }, [fetchDashboardData])
 
@@ -124,19 +168,13 @@ export default function StudentDashboard() {
               <BarChart3 className="h-4 w-4 text-purple-400" />
               Academic Overview
             </h2>
-            <select className="bg-white/4 border border-white/8 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 cursor-pointer">
-              <option value="all">All Semesters</option>
-              {semesters.map((s: any) => (
-                <option key={s._id} value={s.number}>Semester {s.number}</option>
-              ))}
-            </select>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: "Current Semester", value: academicOverview?.currentSemester?.number || '—', sub: "Active", color: "from-violet-500/15 to-purple-500/8", fg: "text-violet-300", icon: GraduationCap },
-              { label: "Total Credits", value: academicOverview?.totalCredits || 0, sub: "Completed", color: "from-blue-500/15 to-cyan-500/8", fg: "text-blue-300", icon: TrendingUp },
-              { label: "CGPA", value: academicOverview?.cgpa?.toFixed(2) || '0.00', sub: "Grade Point", color: "from-emerald-500/20 to-teal-500/10", fg: "text-emerald-300", icon: Award },
-              { label: "Attendance", value: `${academicOverview?.attendancePercentage?.toFixed(0) || 0}%`, sub: "Present", color: "from-orange-500/15 to-amber-500/8", fg: "text-orange-300", icon: Users },
+              { label: "My Courses", value: enrolled.length, sub: "Enrolled", color: "from-violet-500/15 to-purple-500/8", fg: "text-violet-300", icon: BookOpen },
+              { label: "Attendance", value: `${attendanceRate}%`, sub: "Present", color: "from-emerald-500/20 to-teal-500/10", fg: "text-emerald-300", icon: Users },
+              { label: "Certificates", value: certificates.length, sub: "Earned", color: "from-blue-500/15 to-cyan-500/8", fg: "text-blue-300", icon: Award },
+              { label: "Upcoming Events", value: upcomingEvents.length, sub: "This week", color: "from-orange-500/15 to-amber-500/8", fg: "text-orange-300", icon: CalendarDays },
             ].map((stat, i) => (
               <div key={i} className={`rounded-2xl p-4 bg-gradient-to-br ${stat.color} border border-white/6`}>
                 <stat.icon className={`h-4 w-4 ${stat.fg} mb-3`} />
@@ -145,6 +183,29 @@ export default function StudentDashboard() {
               </div>
             ))}
           </div>
+          
+          {/* Upcoming Events */}
+          {upcomingEvents.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-white/6 bg-white/3 p-4">
+              <h3 className="text-sm font-bold text-slate-100 mb-3 flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-purple-400" />
+                Upcoming College Events
+              </h3>
+              <div className="space-y-2">
+                {upcomingEvents.slice(0, 3).map((event: any) => (
+                  <div key={event._id} className="flex items-center gap-3 text-xs">
+                    <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+                      <CalendarDays className="h-4 w-4 text-purple-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-200 truncate">{event.title}</p>
+                      <p className="text-slate-500">{new Date(event.date).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </motion.section>
       )}
 

@@ -19,8 +19,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { Badge } from '../../../../../components/ui/badge'
 import { Progress } from '../../../../../components/ui/progress'
 import { toast } from "sonner"
-import { API_URL } from '../../../../../lib/config'
 import { cn } from "../../../../../lib/utils"
+import { useAuth } from '../../../../../lib/auth-context'
+import { instructorApi } from '../../../../../lib/api'
 
 
 interface DetailedAnswer {
@@ -61,6 +62,8 @@ export default function InstructorQuizReviewPage({ params }: { params: Promise<{
     const router = useRouter()
     const submissionId = unwrappedParams.id
 
+    const { token } = useAuth()
+
     const [loading, setLoading] = useState(true)
     const [submission, setSubmission] = useState<SubmissionDetail | null>(null)
 
@@ -71,24 +74,17 @@ export default function InstructorQuizReviewPage({ params }: { params: Promise<{
     const fetchSubmissionDetail = async () => {
         setLoading(true)
         try {
-            const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
             if (!token) {
                 router.push('/login')
                 return
             }
 
-            const response = await fetch(`${API_URL}/api/instructor/quiz-submissions/${submissionId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            })
-
-            const data = await response.json()
-            if (data.success) {
-                setSubmission(data.data.submission)
+            const res = await instructorApi.getQuizSubmissionById(token, submissionId)
+            if (res.success) {
+                const payload: any = res.data
+                setSubmission(payload?.submission || payload)
             } else {
-                toast.error(data.message || 'Failed to load submission details')
+                toast.error(res.error || 'Failed to load submission details')
                 router.push('/instructor/submissions')
             }
         } catch (error) {

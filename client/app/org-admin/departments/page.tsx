@@ -20,6 +20,7 @@ import {
   AlertCircle
 } from "lucide-react"
 import { departmentApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 
 interface Department {
@@ -45,6 +46,7 @@ function MetricCard({ title, value, icon: Icon, color }: { title: string, value:
 }
 
 export default function DepartmentsPage() {
+    const { token } = useAuth()
     const [data, setData] = useState<Department[]>([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -58,13 +60,14 @@ export default function DepartmentsPage() {
     })
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     async function loadData() {
         setLoading(true)
         try {
-            const response = await departmentApi.list()
+            if (!token) return
+            const response = await departmentApi.list(token)
             if (response.success) {
                 setData(response.data)
             }
@@ -80,11 +83,12 @@ export default function DepartmentsPage() {
         e.preventDefault()
         const loadingToast = toast.loading(editingDept ? "Updating department..." : "Creating department...")
         try {
+            if (!token) throw new Error('No authentication token')
             if (editingDept) {
-                await departmentApi.update(editingDept._id, formData)
+                await departmentApi.update(token, editingDept._id, formData)
                 toast.success("Department updated successfully", { id: loadingToast })
             } else {
-                await departmentApi.create(formData)
+                await departmentApi.create(token, formData)
                 toast.success("Department created successfully", { id: loadingToast })
             }
             setIsModalOpen(false)
@@ -100,7 +104,8 @@ export default function DepartmentsPage() {
         if (!confirm("Are you sure you want to delete this department?")) return
         const loadingToast = toast.loading("Deleting department...")
         try {
-            await departmentApi.delete(id)
+            if (!token) throw new Error('No authentication token')
+            await departmentApi.delete(token, id)
             toast.success("Deleted successfully", { id: loadingToast })
             loadData()
         } catch (error) {

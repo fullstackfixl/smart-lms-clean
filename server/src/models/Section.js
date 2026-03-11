@@ -21,7 +21,7 @@ const sectionSchema = new mongoose.Schema({
   description: String,
   order: {
     type: Number,
-    required: true,
+    required: false,
     min: 1
   },
   isActive: {
@@ -48,15 +48,17 @@ sectionSchema.virtual('lessonsCount', {
 sectionSchema.set('toJSON', { virtuals: true });
 sectionSchema.set('toObject', { virtuals: true });
 
-// Pre-save hook to auto-increment order if not provided
-sectionSchema.pre('save', async function(next) {
-  if (this.isNew && !this.order) {
+sectionSchema.pre('validate', async function(next) {
+  if (this.isNew && (this.order === undefined || this.order === null)) {
+    const query = { course_id: this.course_id };
+    if (this.organization_id) query.organization_id = this.organization_id;
+
     const maxOrderSection = await this.constructor
-      .findOne({ course_id: this.course_id })
+      .findOne(query)
       .sort({ order: -1 })
       .select('order');
-    
-    this.order = maxOrderSection ? maxOrderSection.order + 1 : 1;
+
+    this.order = maxOrderSection && maxOrderSection.order ? maxOrderSection.order + 1 : 1;
   }
   next();
 });

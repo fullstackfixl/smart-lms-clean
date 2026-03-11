@@ -21,9 +21,7 @@ export default function PlatformLayout({
           <PlatformHeader />
           
           <main className="mx-auto max-w-7xl p-6 lg:p-8">
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-              {children}
-            </div>
+            {children}
           </main>
         </div>
       </div>

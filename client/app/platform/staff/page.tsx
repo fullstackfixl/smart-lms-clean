@@ -31,12 +31,16 @@ import {
 } from "../../../components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function StaffPage() {
   const [search, setSearch] = useState('')
-  const { data: response, error, isLoading, mutate } = useSWR(`/api/platform/staff?search=${search}`, fetcher)
+  const { data: response, error, isLoading, mutate } = useSWR<any>(`/api/platform/staff?search=${search}`, platformJsonFetcher)
+
+  if (error) {
+    return <PlatformErrorState />
+  }
   
   const staff = response?.data || []
   

@@ -101,6 +101,32 @@ exports.suspendOrganization = async (req, res) => {
   }
 };
 
+exports.activateOrganization = async (req, res) => {
+  try {
+    const organization = await organizationService.activateOrganization(req.params.orgId);
+    
+    await auditLogService.logAction({
+      actorId: req.user._id,
+      actorRole: req.user.role,
+      action: 'organization_activated',
+      entityType: 'Organization',
+      entityId: organization._id,
+      ipAddress: req.ip
+    });
+
+    res.status(200).json({
+      success: true,
+      data: organization
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_ACTIVATE_ERROR'
+    });
+  }
+};
+
 exports.deleteOrganization = async (req, res) => {
   try {
     await organizationService.deleteOrganization(req.params.orgId, req.user._id);

@@ -83,7 +83,11 @@ const requireRole = (roles) => {
       return res.error('Authentication required', 'Access denied', 401);
     }
 
-    if (!roles.includes(req.user.role)) {
+    const expanded = new Set(Array.isArray(roles) ? roles : []);
+    if (expanded.has('org_admin')) expanded.add('organization_admin');
+    if (expanded.has('organization_admin')) expanded.add('org_admin');
+
+    if (!expanded.has(req.user.role)) {
       return res.error('Insufficient permissions', 'Access denied', 403);
     }
 

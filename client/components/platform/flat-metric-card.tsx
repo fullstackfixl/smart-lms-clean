@@ -26,7 +26,7 @@ export function FlatMetricCard({
   className
 }: FlatMetricCardProps) {
   return (
-    <Card className={cn("border-slate-200 bg-white p-6 rounded-xl shadow-sm shadow-slate-100/60 hover:shadow-md hover:shadow-slate-100 transition-shadow", className)}>
+    <Card className={cn("border-slate-200 bg-white p-6 rounded-xl", className)}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">

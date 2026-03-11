@@ -50,6 +50,10 @@ const OrgAuditLog = require('./OrgAuditLog');
 const Homework = require('./Homework');
 const TrainingAssignment = require('./TrainingAssignment');
 const Skill = require('./Skill');
+const ActivityLog = require('./ActivityLog');
+const CollegeInstructor = require('./CollegeInstructor');
+const CollegeStudent = require('./CollegeStudent');
+const CollegeEvent = require('./CollegeEvent');
 
 
 
@@ -104,5 +108,9 @@ module.exports = {
   OrgAuditLog,
   Homework,
   TrainingAssignment,
-  Skill
+  Skill,
+  ActivityLog,
+  CollegeInstructor,
+  CollegeStudent,
+  CollegeEvent
 };

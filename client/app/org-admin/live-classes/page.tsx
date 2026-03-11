@@ -63,7 +63,7 @@ function StatCard({ title, value, icon: Icon, color, subValue }: { title: string
 }
 
 export default function LiveClassesPage() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const [classes, setClasses] = useState<LiveClass[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -84,7 +84,8 @@ export default function LiveClassesPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await getLiveClasses({ 
+      if (!token) return
+      const res = await getLiveClasses(token, { 
         search: searchTerm !== "" ? searchTerm : undefined,
         status: statusFilter !== "all" ? statusFilter : undefined
       })
@@ -94,23 +95,25 @@ export default function LiveClassesPage() {
     } finally {
       setLoading(false)
     }
-  }, [searchTerm, statusFilter])
+  }, [searchTerm, statusFilter, token])
 
   useEffect(() => { loadData() }, [loadData])
 
   useEffect(() => {
     if (showCreate) {
-      getCourses().then(res => {
+      if (!token) return
+      getCourses(token).then(res => {
         if (res.success) setCourses(res.data.courses || res.data || [])
       })
     }
-  }, [showCreate])
+  }, [showCreate, token])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     const loadingToast = toast.loading("Scheduling live session...")
     try {
-      const res = await createLiveClass(newClass)
+      if (!token) throw new Error('No auth token')
+      const res = await createLiveClass(token, newClass)
       if (res.success) {
         toast.success("Live class scheduled successfully", { id: loadingToast })
         setShowCreate(false)
@@ -134,7 +137,8 @@ export default function LiveClassesPage() {
     if (!confirm("Are you sure you want to cancel this live session?")) return
     const loadingToast = toast.loading("Cancelling session...")
     try {
-      const res = await deleteLiveClass(id)
+      if (!token) throw new Error('No auth token')
+      const res = await deleteLiveClass(token, id)
       if (res.success) {
         toast.success("Session cancelled successfully", { id: loadingToast })
         loadData()

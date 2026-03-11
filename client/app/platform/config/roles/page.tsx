@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
 import { 
   Shield, 
   UserCheck, 
@@ -34,14 +33,14 @@ export default function RolesPage() {
   ]
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-[1400px] mx-auto space-y-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Security & Roles</h1>
           <p className="text-slate-500 text-[13px] mt-1 font-medium">Define access levels and system permissions for the platform ecosystem.</p>
         </div>
         <button
-          className="flex items-center gap-2 px-6 py-2.5 bg-[#2563EB] text-white rounded-lg text-[13px] font-bold hover:bg-[#1d4ed8] transition-all shadow-sm shadow-blue-50"
+          className="flex items-center gap-2 px-6 py-2.5 bg-[#2563EB] text-white rounded-lg text-[13px] font-bold hover:bg-[#1d4ed8] transition-colors"
         >
           <Plus className="h-4 w-4" strokeWidth={2.5} />
           Create Custom Role
@@ -60,7 +59,7 @@ export default function RolesPage() {
                   onClick={() => setSelectedRole(role.name)}
                   className={`w-full text-left p-4 rounded-xl border transition-all ${
                     selectedRole === role.name
-                      ? 'bg-white border-[#2563EB] shadow-md shadow-blue-50'
+                      ? 'bg-white border-[#2563EB]'
                       : 'bg-white border-slate-100 hover:border-slate-300'
                   }`}
                 >
@@ -88,7 +87,7 @@ export default function RolesPage() {
 
         {/* Permissions Grid */}
         <div className="lg:col-span-8">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden h-full">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-none overflow-hidden h-full">
             <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
               <div>
                 <h3 className="text-[15px] font-bold text-slate-900">Permission Matrix</h3>
@@ -120,7 +119,7 @@ export default function RolesPage() {
                           <div className="flex items-center gap-2 transition-all">
                             <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">Enabled</span>
                             <div className="w-8 h-4 bg-emerald-500 rounded-full relative">
-                              <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full shadow-sm" />
+                              <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full" />
                             </div>
                           </div>
                         </div>

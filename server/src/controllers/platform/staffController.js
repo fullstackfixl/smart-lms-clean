@@ -84,3 +84,29 @@ exports.disableStaff = async (req, res) => {
     });
   }
 };
+
+exports.enableStaff = async (req, res) => {
+  try {
+    const staff = await staffService.enableStaff(req.params.staffId);
+    
+    await auditLogService.logAction({
+      actorId: req.user._id,
+      actorRole: req.user.role,
+      action: 'staff_enabled',
+      entityType: 'User',
+      entityId: staff._id,
+      ipAddress: req.ip
+    });
+
+    res.status(200).json({
+      success: true,
+      data: staff
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+      errorCode: 'STAFF_ENABLE_ERROR'
+    });
+  }
+};

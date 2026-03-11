@@ -22,12 +22,16 @@ import { Card } from '../../../components/ui/card'
 import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Skeleton } from '../../../components/ui/skeleton'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function AnalyticsPage() {
-  const { data: response, error, isLoading } = useSWR('/api/platform/analytics/overview', fetcher)
+  const { data: response, error, isLoading } = useSWR<any>('/api/platform/analytics/overview', platformJsonFetcher)
   const stats = response?.data || null
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   if (isLoading) {
     return (

@@ -4,20 +4,23 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Trophy, Award, Medal, Crown, Star, Loader2 } from "lucide-react"
 import { leaderboardApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 
 export default function LeaderboardPage() {
+    const { token } = useAuth()
     const [data, setData] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     async function loadData() {
         setLoading(true)
         try {
-            const response = await leaderboardApi.getGlobal()
+            if (!token) return
+            const response = await leaderboardApi.getGlobal(token)
             if (response.success) {
                 setData(response.data)
             }

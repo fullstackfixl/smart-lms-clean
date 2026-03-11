@@ -29,13 +29,17 @@ import {
 } from "../../../components/ui/accordion"
 import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function SettingsPage() {
-  const { data: response, error, isLoading, mutate } = useSWR('/api/platform/settings', fetcher)
+  const { data: response, error, isLoading, mutate } = useSWR('/api/platform/settings', platformJsonFetcher)
   const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState<any>(null)
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   // Initialize form data when SWR finishes
   React.useEffect(() => {

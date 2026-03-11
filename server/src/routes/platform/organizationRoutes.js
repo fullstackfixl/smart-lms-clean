@@ -19,6 +19,7 @@ router.get('/:orgId/attendance', organizationController.getOrganizationAttendanc
 router.post('/:orgId/reset-admin-password', organizationController.resetAdminPassword);
 router.put('/:orgId', updateOrganizationValidator, organizationController.updateOrganization);
 router.patch('/:orgId/suspend', organizationController.suspendOrganization);
+router.patch('/:orgId/activate', organizationController.activateOrganization);
 router.delete('/:orgId', requirePlatformAdmin, organizationController.deleteOrganization);
 
 module.exports = router;

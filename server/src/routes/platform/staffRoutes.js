@@ -11,5 +11,6 @@ router.get('/', staffController.getStaffList);
 router.post('/', createStaffValidator, staffController.createStaff);
 router.put('/:staffId', updateStaffValidator, staffController.updateStaff);
 router.patch('/:staffId/disable', staffController.disableStaff);
+router.patch('/:staffId/enable', staffController.enableStaff);
 
 module.exports = router;

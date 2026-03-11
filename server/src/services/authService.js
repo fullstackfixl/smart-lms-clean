@@ -67,10 +67,13 @@ class AuthService {
     }
 
     // Generate token
+    const orgType = (user.organization_id?.type || user.organization_id?.organizationType || user.organizationType || null);
     const token = jwtUtils.generateToken({
       user_id: user._id,
       role: user.role,
       organization_id: user.organization_id?._id || user.organization_id,
+      organization_type: orgType,
+      organizationType: orgType,
       subdomain: user.role !== 'platform_admin' ? user.organization_id?.subdomain : null
     });
 

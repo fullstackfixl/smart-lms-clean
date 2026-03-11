@@ -36,12 +36,16 @@ import {
 } from "../../../components/ui/dropdown-menu"
 import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function ReportsPage() {
-  const { data: response, error, isLoading, mutate } = useSWR('/api/platform/reports', fetcher)
+  const { data: response, error, isLoading, mutate } = useSWR('/api/platform/reports', platformJsonFetcher)
   const reports = response?.data || []
+
+  if (error) {
+    return <PlatformErrorState />
+  }
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -139,7 +143,7 @@ export default function ReportsPage() {
                 <Badge className={cn(
                   "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
                   report.status === 'ready' ? "bg-green-100 text-green-700" : 
-                  report.status === 'processing' ? "bg-blue-100 text-blue-700 animate-pulse" : "bg-red-100 text-red-700"
+                  report.status === 'processing' ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"
                 )}>
                   {report.status}
                 </Badge>
@@ -197,7 +201,7 @@ export default function ReportsPage() {
                 <SelectTrigger className="h-10 border-gray-300">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+                <SelectContent className="bg-white border-gray-100 shadow-none rounded-xl p-1">
                   <SelectItem value="enrollment" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Enrollment Cycles</SelectItem>
                   <SelectItem value="revenue" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Financial Velocity</SelectItem>
                   <SelectItem value="activity" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">User Engagement</SelectItem>
@@ -211,7 +215,7 @@ export default function ReportsPage() {
                 <SelectTrigger className="h-10 border-gray-300">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+                <SelectContent className="bg-white border-gray-100 shadow-none rounded-xl p-1">
                   <SelectItem value="csv" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">CSV Spreadsheet</SelectItem>
                   <SelectItem value="pdf" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">PDF Document</SelectItem>
                   <SelectItem value="json" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">JSON Matrix</SelectItem>
@@ -225,7 +229,7 @@ export default function ReportsPage() {
               <SelectTrigger className="h-10 border-gray-300">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+              <SelectContent className="bg-white border-gray-100 shadow-none rounded-xl p-1">
                 <SelectItem value="last_24h" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Internal Last 24h</SelectItem>
                 <SelectItem value="last_7_days" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Last 7 Cycles</SelectItem>
                 <SelectItem value="last_30_days" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-2">Last 30 Cycles</SelectItem>

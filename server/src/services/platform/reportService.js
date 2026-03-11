@@ -84,3 +84,30 @@ exports.generateCSV = async (data, filePath) => {
   const csvContent = [headers, ...rows].join('\n');
   await fs.writeFile(filePath, csvContent);
 };
+
+exports.listReports = async (params = {}) => {
+  const { page = 1, limit = 20, type, status } = params;
+  
+  const query = {};
+  if (type) query.type = type;
+  if (status) query.status = status;
+  
+  const reports = await PlatformReport.find(query)
+    .populate('generatedBy', 'name email')
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .lean();
+    
+  const total = await PlatformReport.countDocuments(query);
+  
+  return {
+    data: reports,
+    pagination: {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      pages: Math.ceil(total / limit)
+    }
+  };
+};

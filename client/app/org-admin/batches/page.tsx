@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Users, Edit2, Trash2, Loader2, X } from "lucide-react"
 import { batchApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 
@@ -16,6 +17,7 @@ interface Batch {
 }
 
 export default function BatchesPage() {
+    const { token } = useAuth()
     const [data, setData] = useState<Batch[]>([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -28,13 +30,14 @@ export default function BatchesPage() {
     })
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     async function loadData() {
         setLoading(true)
         try {
-            const response = await batchApi.list()
+            if (!token) return
+            const response = await batchApi.list(token)
             if (response.success) {
                 setData(response.data)
             }
@@ -49,11 +52,12 @@ export default function BatchesPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         try {
+            if (!token) throw new Error('No authentication token')
             if (editingBatch) {
-                await batchApi.update(editingBatch._id, formData)
+                await batchApi.update(token, editingBatch._id, formData)
                 toast.success("Batch updated successfully")
             } else {
-                await batchApi.create(formData)
+                await batchApi.create(token, formData)
                 toast.success("Batch created successfully")
             }
             setIsModalOpen(false)
@@ -68,7 +72,8 @@ export default function BatchesPage() {
     async function handleDelete(id: string) {
         if (!confirm("Are you sure you want to delete this batch?")) return
         try {
-            await batchApi.delete(id)
+            if (!token) throw new Error('No authentication token')
+            await batchApi.delete(token, id)
             toast.success("Deleted successfully")
             loadData()
         } catch (error) {

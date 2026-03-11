@@ -59,3 +59,17 @@ exports.disableStaff = async (staffId) => {
   
   return staff;
 };
+
+exports.enableStaff = async (staffId) => {
+  const staff = await User.findOneAndUpdate(
+    { _id: staffId, role: 'platform_staff' },
+    { $set: { status: 'active' } },
+    { new: true }
+  );
+  
+  if (!staff || staff.is_deleted) {
+    throw new Error('Staff not found');
+  }
+  
+  return staff;
+};

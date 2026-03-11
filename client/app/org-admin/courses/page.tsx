@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Plus, Search } from "lucide-react"
 import { getCourses } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { FlatCard } from "../../../components/org-admin/core/FlatCard"
 import { TextTable, TextRow, TextCell } from "../../../components/org-admin/core/TextTable"
 import { MinimalButton, MinimalInput } from "../../../components/org-admin/core/MinimalForm"
@@ -11,18 +12,20 @@ import Link from "next/link"
 import { toast } from "sonner"
  
 export default function CoursesPage() {
+  const { token } = useAuth()
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
  
   useEffect(() => {
-    loadCourses()
-  }, [])
+    if (token) loadCourses()
+  }, [token])
  
   async function loadCourses() {
     setLoading(true)
     try {
-      const response = await getCourses()
+      if (!token) return
+      const response = await getCourses(token)
       if (response.success && response.data) {
         setCourses(Array.isArray(response.data) ? response.data : (response.data.courses || []))
       }

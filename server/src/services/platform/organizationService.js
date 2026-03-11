@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const emailService = require('../email.service');
 const authService = require('../authService');
-const { Organization, User, Course, Invite } = require('../../models');
+const { Organization, User, Course, Invite, ActivityLog } = require('../../models');
 const { paginate, getSortOptions } = require('../../utils/pagination');
 
 exports.listOrganizations = async (params) => {
@@ -183,6 +183,17 @@ exports.suspendOrganization = async (orgId) => {
   return organization;
 };
 
+exports.activateOrganization = async (orgId) => {
+  const organization = await Organization.findById(orgId);
+  if (!organization || organization.is_deleted) {
+    throw new Error('Organization not found');
+  }
+  
+  organization.status = 'active';
+  await organization.save();
+  return organization;
+};
+
 exports.deleteOrganization = async (orgId, deleterId) => {
   const organization = await Organization.findById(orgId);
   if (!organization || organization.is_deleted) {
@@ -247,10 +258,26 @@ exports.listOrganizationCourses = async (orgId, params) => {
 
 exports.getOrganizationActivity = async (orgId, params) => {
   const { page, limit } = params;
+
+  const org = await Organization.findById(orgId).select('type is_deleted');
+  if (!org || org.is_deleted) {
+    throw new Error('Organization not found');
+  }
+
+  const orgType = String(org.type || '').toLowerCase();
+
+  if (orgType === 'college') {
+    const query = { organizationId: orgId, organizationType: 'college' };
+    return paginate(ActivityLog, query, {
+      page,
+      limit,
+      sort: { createdAt: -1 },
+      populate: { path: 'userId', select: 'name email role' }
+    });
+  }
+
   const AuditLog = mongoose.model('AuditLog');
-  
   const query = { organization_id: orgId };
-  
   return paginate(AuditLog, query, {
     page,
     limit,

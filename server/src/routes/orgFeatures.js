@@ -44,8 +44,8 @@ router.delete('/departments/:id', moduleGuard('DEPARTMENTS'), departmentControll
 router.get('/courses', moduleGuard('DEPARTMENTS'), programController.getPrograms);
 router.post('/courses', moduleGuard('DEPARTMENTS'), createProgramValidator, validate, programController.createProgram);
 router.get('/courses/:id', moduleGuard('DEPARTMENTS'), programController.getProgramById); 
-router.put('/courses/:id', moduleGuard('DEPARTMENTS'), async (req, res) => res.status(501).json({message: "Not implemented"}));
-router.delete('/courses/:id', moduleGuard('DEPARTMENTS'), async (req, res) => res.status(501).json({message: "Not implemented"}));
+router.put('/courses/:id', moduleGuard('DEPARTMENTS'), programController.updateProgram);
+router.delete('/courses/:id', moduleGuard('DEPARTMENTS'), programController.deleteProgram);
 
 // Batch Routes
 router.get('/batches', moduleGuard('BATCHES'), batchController.getAll);
@@ -57,9 +57,9 @@ router.delete('/batches/:id', moduleGuard('BATCHES'), batchController.delete);
 // Semester Routes
 router.get('/semesters', moduleGuard('SEMESTERS'), semesterController.getSemesters);
 router.post('/semesters', moduleGuard('SEMESTERS'), createSemesterValidator, validate, semesterController.createSemester);
-router.get('/semesters/:id', moduleGuard('SEMESTERS'), semesterController.getSemesters);
-router.put('/semesters/:id', moduleGuard('SEMESTERS'), async (req, res) => res.status(501).json({message: "Not implemented"}));
-router.delete('/semesters/:id', moduleGuard('SEMESTERS'), async (req, res) => res.status(501).json({message: "Not implemented"}));
+router.get('/semesters/:id', moduleGuard('SEMESTERS'), semesterController.getSemesterById);
+router.put('/semesters/:id', moduleGuard('SEMESTERS'), semesterController.updateSemester);
+router.delete('/semesters/:id', moduleGuard('SEMESTERS'), semesterController.deleteSemester);
 
 // Subject Routes
 router.get('/subjects', moduleGuard('SUBJECTS'), SubjectController.getAll);

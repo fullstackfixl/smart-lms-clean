@@ -43,7 +43,7 @@ export function PlatformNavbar() {
             onClick={() => setProfileOpen(!profileOpen)}
             className="flex items-center gap-3 p-1 rounded-md hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100 active:scale-95"
           >
-            <div className="w-9 h-9 rounded-md bg-[#3B82F6] flex items-center justify-center text-[10px] font-bold text-white shadow-sm transition-transform duration-300">
+            <div className="w-9 h-9 rounded-md bg-[#3B82F6] flex items-center justify-center text-[10px] font-bold text-white transition-transform duration-300">
                {user?.name?.slice(0, 2).toUpperCase() || "PA"}
             </div>
             <div className="hidden sm:flex flex-col items-start pr-2">
@@ -63,7 +63,7 @@ export function PlatformNavbar() {
                 onClick={() => setProfileOpen(false)}
                 className="fixed inset-0 z-40"
               />
-              <div className="absolute right-0 mt-3 w-64 bg-white border border-gray-200 shadow-xl rounded-md overflow-hidden z-50 p-1.5 animate-in slide-in-from-top-1 duration-150">
+              <div className="absolute right-0 mt-3 w-64 bg-white border border-gray-200 rounded-md overflow-hidden z-50 p-1.5">
                 <div className="px-4 py-3 mb-1 bg-[#F8FAFC] rounded-sm">
                    <p className="text-[13.5px] font-bold text-slate-900">{user?.name || "Admin"}</p>
                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">{user?.email || "admin@platform.com"}</p>

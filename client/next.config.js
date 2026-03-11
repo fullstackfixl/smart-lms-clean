@@ -92,10 +92,6 @@ const nextConfig = {
       {
         source: '/auth/:path*',
         destination: 'http://localhost:5000/auth/:path*',
-      },
-      {
-        source: '/instructor/:path*',
-        destination: 'http://localhost:5000/instructor/:path*',
       }
     ]
   },

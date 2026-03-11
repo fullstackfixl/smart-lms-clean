@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, ListFilter, Edit2, Trash2, Loader2, X } from "lucide-react"
 import { semesterApi } from '../../../lib/services/orgAdminApi'
+import { useAuth } from '../../../lib/auth-context'
 import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
 
@@ -16,6 +17,7 @@ interface Semester {
 }
 
 export default function SemestersPage() {
+    const { token } = useAuth()
     const [data, setData] = useState<Semester[]>([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -28,13 +30,14 @@ export default function SemestersPage() {
     })
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (token) loadData()
+    }, [token])
 
     async function loadData() {
         setLoading(true)
         try {
-            const response = await semesterApi.list()
+            if (!token) return
+            const response = await semesterApi.list(token)
             if (response.success) {
                 setData(response.data)
             }
@@ -49,11 +52,12 @@ export default function SemestersPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         try {
+            if (!token) throw new Error('No authentication token')
             if (editingSemester) {
-                await semesterApi.update(editingSemester._id, formData)
+                await semesterApi.update(token, editingSemester._id, formData)
                 toast.success("Semester updated successfully")
             } else {
-                await semesterApi.create(formData)
+                await semesterApi.create(token, formData)
                 toast.success("Semester created successfully")
             }
             setIsModalOpen(false)
@@ -68,7 +72,8 @@ export default function SemestersPage() {
     async function handleDelete(id: string) {
         if (!confirm("Are you sure you want to delete this semester?")) return
         try {
-            await semesterApi.delete(id)
+            if (!token) throw new Error('No authentication token')
+            await semesterApi.delete(token, id)
             toast.success("Deleted successfully")
             loadData()
         } catch (error) {

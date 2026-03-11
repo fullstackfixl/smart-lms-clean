@@ -39,16 +39,20 @@ import {
 import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
 import Link from 'next/link'
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function OrganizationsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const { data: response, error, isLoading, mutate } = useSWR(
+  const { data: response, error, isLoading, mutate } = useSWR<any>(
     `/api/platform/organizations?search=${search}&status=${statusFilter === 'all' ? '' : statusFilter}`, 
-    fetcher
+    platformJsonFetcher
   )
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   const organizations = response?.data?.organizations || []
   const stats = response?.data?.stats || { total: 0, active: 0, suspended: 0 }
@@ -207,7 +211,7 @@ export default function OrganizationsPage() {
             <SelectTrigger className="w-full sm:w-48 h-10 border-gray-300 focus:ring-0 focus:border-blue-500">
               <SelectValue placeholder="Status: All" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-gray-200 shadow-xl rounded-lg p-1">
+            <SelectContent className="bg-white border-gray-200 shadow-none rounded-lg p-1">
               <SelectItem value="all" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-md py-2">Status: All</SelectItem>
               <SelectItem value="active" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-md py-2">Active</SelectItem>
               <SelectItem value="suspended" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-md py-2">Suspended</SelectItem>
@@ -345,7 +349,7 @@ export default function OrganizationsPage() {
               <SelectTrigger className="h-11 border-gray-200 bg-white text-slate-900 rounded-lg focus:ring-4 focus:ring-blue-50/50 transition-all">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+              <SelectContent className="bg-white border-gray-100 shadow-none rounded-xl p-1">
                 <SelectItem value="COLLEGE" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">College / University</SelectItem>
                 <SelectItem value="SCHOOL" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">K-12 School</SelectItem>
                 <SelectItem value="COACHING" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Institute / Coaching</SelectItem>
@@ -359,7 +363,7 @@ export default function OrganizationsPage() {
               <SelectTrigger className="h-11 border-gray-200 bg-white text-slate-900 rounded-lg focus:ring-4 focus:ring-blue-50/50 transition-all">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+              <SelectContent className="bg-white border-gray-100 shadow-none rounded-xl p-1">
                 <SelectItem value="basic" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Basic Tier</SelectItem>
                 <SelectItem value="premium" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Premium Tier</SelectItem>
                 <SelectItem value="enterprise" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Enterprise Tier</SelectItem>
@@ -413,7 +417,7 @@ export default function OrganizationsPage() {
               <SelectTrigger className="h-11 border-gray-200 bg-white text-slate-900 rounded-lg focus:ring-4 focus:ring-blue-50/50 transition-all">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border-gray-100 shadow-2xl rounded-xl p-1">
+              <SelectContent className="bg-white border-gray-100 shadow-none rounded-xl p-1">
                 <SelectItem value="basic" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Basic - Core Features</SelectItem>
                 <SelectItem value="premium" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Premium - Academic Layer</SelectItem>
                 <SelectItem value="enterprise" className="text-slate-700 focus:bg-blue-600 focus:text-white rounded-lg py-3">Enterprise - Unlimited</SelectItem>
@@ -424,4 +428,5 @@ export default function OrganizationsPage() {
       </MinimalModalForm>
     </div>
   )
+
 }
