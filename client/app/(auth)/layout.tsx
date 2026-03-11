@@ -1,6 +1,4 @@
 import React from "react"
-import Link from "next/link"
-import { GraduationCap } from "lucide-react"
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (

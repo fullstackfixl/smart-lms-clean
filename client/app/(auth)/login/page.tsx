@@ -1,18 +1,13 @@
 "use client"
 
-import React from "react"
-
 import { useState, useEffect, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { motion } from "framer-motion"
-import { Eye, EyeOff, Loader2, Mail } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
-import { Label } from '../../../components/ui/label'
 import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
-import { API_URL } from "../../../lib/config"
 
 function LoginContent() {
   const [email, setEmail] = useState("")

@@ -4,10 +4,9 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Eye, EyeOff, Loader2, ArrowLeft, Mail } from "lucide-react"
+import { Eye, Loader2, ArrowLeft, Mail } from "lucide-react"
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
-import { Label } from '../../../components/ui/label'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../../../components/ui/input-otp'
 import { toast } from "sonner"
 import { useAuth } from '../../../lib/auth-context'
@@ -18,12 +17,10 @@ export default function RegisterPage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [organizationCode, setOrganizationCode] = useState("")
   const [orgValidated, setOrgValidated] = useState(false)
   const [orgName, setOrgName] = useState<string>("")
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
   const [otp, setOtp] = useState("")
@@ -92,12 +89,6 @@ export default function RegisterPage() {
     e.preventDefault()
     if (password.length < 8) {
       toast.error("Password must be at least 8 characters")
-      return
-    }
-
-    // Check password confirmation
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match")
       return
     }
 
