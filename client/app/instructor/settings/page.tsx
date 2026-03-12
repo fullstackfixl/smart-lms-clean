@@ -37,20 +37,6 @@ export default function InstructorSettingsPage() {
     twitter: "",
   })
 
-  // Load user data
-  useEffect(() => {
-    if (user) {
-      setProfile({
-        name: user.name || "",
-        email: user.email || "",
-        bio: user.bio || "",
-        website: user.website || "",
-        twitter: user.twitter || "",
-      })
-      setLoading(false)
-    }
-  }, [user])
-
   // Notification preferences
   const [notifications, setNotifications] = useState({
     emailEnrollments: true,
@@ -67,6 +53,20 @@ export default function InstructorSettingsPage() {
     new: "",
     confirm: "",
   })
+
+  // Load user data
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        name: user.name || "",
+        email: user.email || "",
+        bio: user.profile?.bio || "",
+        website: (user as any).website || "",
+        twitter: (user as any).twitter || "",
+      })
+      setLoading(false)
+    }
+  }, [user])
 
   const handleSaveProfile = async () => {
     if (!token) return
