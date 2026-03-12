@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import useSWR from 'swr'
+import { useRouter } from 'next/navigation'
 import { 
   ShieldCheck, 
   Search, 
@@ -33,8 +34,12 @@ import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
+import { API_URL, getToken } from '../../../lib/config'
+import { useAuth } from '../../../lib/auth-context'
 
 export default function StaffPage() {
+  const router = useRouter()
+  const { user } = useAuth()
   const [search, setSearch] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,6 +52,13 @@ export default function StaffPage() {
 
   const { data: response, error, isLoading, mutate } = useSWR<any>(`/api/platform/staff?search=${search}`, platformJsonFetcher)
 
+  useEffect(() => {
+    if (!user) return
+    if (user.role !== 'platform_admin' && user.role !== ('platformAdmin' as any)) {
+      router.replace('/platform/dashboard')
+    }
+  }, [router, user])
+
   if (error) {
     return <PlatformErrorState />
   }
@@ -57,9 +69,14 @@ export default function StaffPage() {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      const res = await fetch('/api/platform/staff', {
+      const token = getToken()
+      const res = await fetch(`${API_URL}/api/platform/staff`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(formData)
       })
       const data = await res.json()
@@ -81,9 +98,14 @@ export default function StaffPage() {
   const handleStatusToggle = async (id: string, currentStatus: string) => {
     const action = currentStatus === 'active' ? 'disable' : 'enable'
     try {
-      const res = await fetch(`/api/platform/staff/${id}/${action}`, {
+      const token = getToken()
+      const res = await fetch(`${API_URL}/api/platform/staff/${id}/${action}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        }
       })
       const data = await res.json()
       if (data.success) {

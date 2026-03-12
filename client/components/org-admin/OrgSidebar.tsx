@@ -191,9 +191,9 @@ export function OrgSidebar() {
       </div>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72 lg:flex-col">
+      <div className="hidden lg:flex lg:h-full lg:flex-col">
         <SidebarContent />
-      </aside>
+      </div>
 
       {/* Mobile Drawer */}
       <AnimatePresence>
@@ -238,9 +238,6 @@ export function OrgSidebar() {
           </>
         )}
       </AnimatePresence>
-
-      {/* Main content padding for desktop */}
-      <div className="hidden lg:block lg:w-72" />
     </>
   )
 }

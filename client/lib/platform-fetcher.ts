@@ -10,11 +10,16 @@ export class PlatformFetchError extends Error {
   }
 }
 
+import { API_URL, getToken } from "./config"
+
 export async function platformJsonFetcher(url: string): Promise<any> {
-  const res = await fetch(url, {
+  const token = getToken()
+  const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`
+  const res = await fetch(fullUrl, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   })
 

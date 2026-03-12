@@ -130,14 +130,14 @@ export default function SubjectsPage() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <div className="h-10 w-10 rounded-md bg-blue-600 flex items-center justify-center">
                             <BookOpen className="h-5 w-5 text-white" />
                         </div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">
+                        <h1 className="text-2xl font-bold text-slate-900">
                             Academic Subjects
                         </h1>
                     </div>
-                    <p className="text-slate-400 text-sm">Manage subject catalog, credit units, and department links</p>
+                    <p className="text-slate-500 text-sm">Manage subject catalog, credit units, and department links</p>
                 </div>
 
                 <button
@@ -146,7 +146,7 @@ export default function SubjectsPage() {
                         setFormData({ name: "", code: "", department_id: "", semester_id: "", credits: 3, description: "", isActive: true })
                         setIsModalOpen(true)
                     }}
-                    className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all shadow-lg shadow-indigo-600/20"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-medium transition-colors"
                 >
                     <Plus className="h-5 w-5" />
                     Add Subject
@@ -154,18 +154,18 @@ export default function SubjectsPage() {
             </div>
 
             {/* Filters */}
-            <div className="flex items-center gap-4 p-2 bg-slate-900/40 border border-slate-800/50 rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center gap-4 p-2 bg-white border border-gray-200 rounded-md">
                 <div className="relative flex-1">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         placeholder="Search by name or code..."
-                        className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-200 placeholder-slate-500 focus:outline-none"
+                        className="w-full pl-11 pr-4 py-3 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
                     />
                 </div>
-                <div className="h-8 w-px bg-slate-800" />
-                <button className="flex items-center gap-2 px-4 py-2 text-slate-400 hover:text-slate-200 transition-colors">
+                <div className="h-8 w-px bg-gray-200" />
+                <button className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-slate-900 transition-colors">
                     <Filter className="h-4 w-4" />
                     <span className="text-sm font-medium">Filter</span>
                 </button>
@@ -175,12 +175,12 @@ export default function SubjectsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {loading ? (
                     Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="h-48 rounded-3xl bg-slate-800/20 animate-pulse border border-slate-800/50" />
+                        <div key={i} className="h-48 rounded-md bg-white animate-pulse border border-gray-200" />
                     ))
                 ) : filtered.length === 0 ? (
-                    <div className="col-span-full text-center py-20 bg-slate-900/20 rounded-3xl border border-dashed border-slate-800">
-                        <BookOpen className="h-12 w-12 mx-auto mb-4 text-slate-700" />
-                        <p className="text-slate-500">No subjects found. Start by adding one!</p>
+                    <div className="col-span-full text-center py-20 bg-white rounded-md border border-dashed border-gray-200">
+                        <BookOpen className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                        <p className="text-slate-500">No subjects found.</p>
                     </div>
                 ) : (
                     filtered.map((subject, idx) => (
@@ -189,33 +189,33 @@ export default function SubjectsPage() {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.05 }}
-                            className="group bg-slate-900/40 border border-slate-800/50 hover:border-indigo-500/30 rounded-3xl p-6 transition-all backdrop-blur-sm relative overflow-hidden"
+                            className="group bg-white border border-gray-200 hover:border-gray-300 rounded-md p-6 transition-colors relative overflow-hidden"
                         >
                             <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <div className="flex gap-2">
-                                    <button onClick={() => openEditModal(subject)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-indigo-400 transition-colors">
+                                    <button onClick={() => openEditModal(subject)} className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-500 hover:text-blue-700 transition-colors border border-gray-200">
                                         <Edit2 className="h-4 w-4" />
                                     </button>
-                                    <button onClick={() => handleDelete(subject._id)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-red-400 transition-colors">
+                                    <button onClick={() => handleDelete(subject._id)} className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-500 hover:text-red-600 transition-colors border border-gray-200">
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
                             </div>
 
                             <div className="flex items-start gap-4 mb-4">
-                                <div className="h-12 w-12 rounded-2xl bg-slate-800 flex items-center justify-center text-indigo-400 border border-slate-700 shadow-inner font-bold text-sm">
+                                <div className="h-12 w-12 rounded-md bg-slate-50 flex items-center justify-center text-blue-700 border border-gray-200 font-bold text-sm">
                                     {subject.code}
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-100 group-hover:text-white transition-colors">
+                                    <h3 className="text-lg font-semibold text-slate-900">
                                         {subject.name}
                                     </h3>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs font-medium text-slate-500 px-2 py-0.5 rounded-full bg-slate-800/50">
+                                        <span className="text-xs font-medium text-slate-600 px-2 py-0.5 rounded-full bg-slate-50 border border-gray-200">
                                             {subject.credits} Credits
                                         </span>
                                         {!subject.isActive && (
-                                            <span className="text-xs font-semibold text-red-400 flex items-center gap-1">
+                                            <span className="text-xs font-semibold text-red-600 flex items-center gap-1">
                                                 <XCircle className="h-3 w-3" /> Inactive
                                             </span>
                                         )}
@@ -223,14 +223,14 @@ export default function SubjectsPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-3 pt-4 border-t border-slate-800/50">
-                                <div className="flex items-center gap-2 text-sm text-slate-400">
+                            <div className="space-y-3 pt-4 border-t border-gray-100">
+                                <div className="flex items-center gap-2 text-sm text-slate-600">
                                     <Building2 className="h-4 w-4" />
                                     <span className="truncate">
                                         {typeof subject.department_id === 'object' ? subject.department_id?.name : 'No Department'}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm text-slate-400">
+                                <div className="flex items-center gap-2 text-sm text-slate-600">
                                     <Layers className="h-4 w-4" />
                                     <span>
                                         {typeof subject.semester_id === 'object' ? `Semester ${subject.semester_id?.number || '?'}` : 'No Semester'}
@@ -239,10 +239,10 @@ export default function SubjectsPage() {
                             </div>
 
                             <div className="mt-6 flex items-center justify-between">
-                                <p className="text-xs text-slate-500 italic max-w-[70%] truncate">
+                                <p className="text-xs text-slate-500 max-w-[70%] truncate">
                                     {subject.description || "No description provided"}
                                 </p>
-                                <div className="h-8 w-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                                <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                                     <ChevronRight className="h-4 w-4" />
                                 </div>
                             </div>
@@ -260,16 +260,16 @@ export default function SubjectsPage() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setIsModalOpen(false)}
-                            className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                         />
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+                            className="relative w-full max-w-lg bg-white border border-gray-200 rounded-md shadow-2xl overflow-hidden"
                         >
                             <div className="p-8">
-                                <h2 className="text-2xl font-bold text-white mb-6">
+                                <h2 className="text-xl font-semibold text-slate-900 mb-6">
                                     {editingSubject ? "Edit Subject" : "Create New Subject"}
                                 </h2>
 
@@ -282,7 +282,7 @@ export default function SubjectsPage() {
                                                 value={formData.code}
                                                 onChange={e => setFormData({ ...formData, code: e.target.value })}
                                                 placeholder="CS101"
-                                                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -292,7 +292,7 @@ export default function SubjectsPage() {
                                                 required
                                                 value={formData.credits}
                                                 onChange={e => setFormData({ ...formData, credits: parseInt(e.target.value) })}
-                                                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                             />
                                         </div>
                                     </div>
@@ -304,7 +304,7 @@ export default function SubjectsPage() {
                                             value={formData.name}
                                             onChange={e => setFormData({ ...formData, name: e.target.value })}
                                             placeholder="Introduction to Computer Science"
-                                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                         />
                                     </div>
 
@@ -315,7 +315,7 @@ export default function SubjectsPage() {
                                                 required
                                                 value={formData.department_id}
                                                 onChange={e => setFormData({ ...formData, department_id: e.target.value })}
-                                                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
+                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                                             >
                                                 <option value="">Select Dept</option>
                                                 {departments.map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
@@ -327,7 +327,7 @@ export default function SubjectsPage() {
                                                 required
                                                 value={formData.semester_id}
                                                 onChange={e => setFormData({ ...formData, semester_id: e.target.value })}
-                                                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none"
+                                                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                                             >
                                                 <option value="">Select Sem</option>
                                                 {semesters.map(s => <option key={s._id} value={s._id}>Sem {s.number} - {s.name}</option>)}
@@ -342,7 +342,7 @@ export default function SubjectsPage() {
                                             value={formData.description}
                                             onChange={e => setFormData({ ...formData, description: e.target.value })}
                                             placeholder="Brief overview of the subject..."
-                                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
                                         />
                                     </div>
 
@@ -352,22 +352,22 @@ export default function SubjectsPage() {
                                             id="isActive"
                                             checked={formData.isActive}
                                             onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
-                                            className="h-4 w-4 rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-indigo-500/50"
+                                            className="h-4 w-4 rounded border-gray-300 bg-white text-blue-600 focus:ring-blue-500/20"
                                         />
-                                        <label htmlFor="isActive" className="text-sm text-slate-400">Subject is active and linkable</label>
+                                        <label htmlFor="isActive" className="text-sm text-slate-600">Subject is active and linkable</label>
                                     </div>
 
                                     <div className="flex gap-4 pt-4">
                                         <button
                                             type="button"
                                             onClick={() => setIsModalOpen(false)}
-                                            className="flex-1 px-6 py-3 border border-slate-700 text-slate-300 rounded-xl font-medium hover:bg-slate-800 transition-colors"
+                                            className="flex-1 px-6 py-3 border border-gray-200 text-slate-700 rounded-md font-medium hover:bg-slate-50 transition-colors"
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             disabled={submitting}
-                                            className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                            className="flex-1 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                                         >
                                             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                                             {editingSubject ? "Update Subject" : "Create Subject"}

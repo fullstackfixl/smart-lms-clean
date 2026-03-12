@@ -21,14 +21,16 @@ import {
   BarChart, Bar, Cell, PieChart, Pie
 } from "recharts"
 import { getDashboardMetrics } from '../../../lib/services/orgAdminApi'
+import { collegeApi } from '../../../lib/api'
 import { useAuth } from '../../../lib/auth-context'
+import { Button } from '../../../components/ui/button'
 
 function AnalyticsMetric({ title, value, change, icon: Icon, trend }: { title: string, value: string | number, change: string, icon: any, trend: 'up' | 'down' }) {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+    <div className="bg-white p-6 rounded-md border border-gray-200 shadow-sm transition-all hover:shadow-md">
       <div className="flex items-center justify-between mb-4">
-        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-          <Icon className="w-5 h-5 text-blue-600" />
+        <div className="w-10 h-10 rounded-md bg-slate-50 flex items-center justify-center border border-gray-100">
+          <Icon className="w-5 h-5 text-slate-700" />
         </div>
         <div className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-black uppercase ${
           trend === 'up' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
@@ -38,30 +40,38 @@ function AnalyticsMetric({ title, value, change, icon: Icon, trend }: { title: s
         </div>
       </div>
       <div>
-        <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">{title}</p>
-        <h3 className="text-2xl font-black text-slate-900 mt-1 tracking-tight">{value}</h3>
+        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{title}</p>
+        <h3 className="text-2xl font-bold text-slate-900 mt-1 tracking-tight">{value}</h3>
       </div>
     </div>
   )
 }
 
 export default function StudentAnalyticsPage() {
-  const { token } = useAuth()
+  const { token, organization } = useAuth()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
+
+  const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+  const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
 
   useEffect(() => {
     async function load() {
       try {
         if (!token) return
-        const res = await getDashboardMetrics(token)
+        let res
+        if (isCollege) {
+          res = await collegeApi.getAnalytics(token)
+        } else {
+          res = await getDashboardMetrics(token)
+        }
         if (res.success) setData(res.data)
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [token])
+  }, [token, isCollege])
 
   if (loading) {
     return (
@@ -92,22 +102,22 @@ export default function StudentAnalyticsPage() {
   const COLORS = ['#2563EB', '#8B5CF6', '#EC4899', '#F59E0B']
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="text-[28px] font-black text-slate-900 tracking-tight leading-none">Analytics</h1>
-          <p className="text-[14px] text-slate-500 font-medium mt-3">Comprehensive insights into your organization's learning lifecycle.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-8">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
+          <p className="text-[14px] text-slate-500 font-medium">Comprehensive insights into your organization's learning lifecycle.</p>
         </div>
         <div className="hidden md:flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 h-11 bg-white border border-slate-200 rounded-xl text-[13px] font-bold text-slate-600 hover:bg-slate-50 transition-all">
-            <Calendar className="w-4 h-4" />
+          <Button variant="outline" className="h-11 border-gray-200">
+            <Calendar className="w-4 h-4 mr-2" />
             Last 30 Days
-          </button>
-          <button className="flex items-center gap-2 px-4 h-11 bg-slate-900 text-white rounded-xl text-[13px] font-bold hover:bg-slate-800 transition-all">
-            <Download className="w-4 h-4" />
+          </Button>
+          <Button className="h-11 bg-orange-500 hover:bg-orange-600 text-white">
+            <Download className="w-4 h-4 mr-2" />
             Export Data
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -122,20 +132,20 @@ export default function StudentAnalyticsPage() {
       {/* Chart Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Performance Chart */}
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
+        <div className="bg-white p-6 rounded-md border border-gray-200 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
              <div>
-               <h3 className="text-[16px] font-black text-slate-900 tracking-tight uppercase">Performance Overview</h3>
-               <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-1 opacity-60">Enrollments vs Completions</p>
+               <h3 className="text-[16px] font-semibold text-slate-900">Performance Overview</h3>
+               <p className="text-[12px] text-slate-500 font-medium mt-1">Enrollments vs Completions</p>
              </div>
              <div className="hidden sm:flex items-center gap-4">
                 <div className="flex items-center gap-2">
                    <div className="w-2 h-2 rounded-full bg-blue-600" />
-                   <span className="text-[10px] font-black text-slate-500 uppercase">Enrollments</span>
+                   <span className="text-[11px] font-semibold text-slate-500">Enrollments</span>
                 </div>
                 <div className="flex items-center gap-2">
                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                   <span className="text-[10px] font-black text-slate-500 uppercase">Completions</span>
+                   <span className="text-[11px] font-semibold text-slate-500">Completions</span>
                 </div>
              </div>
           </div>
@@ -160,10 +170,7 @@ export default function StudentAnalyticsPage() {
                      tick={{ fontSize: 11, fontWeight: 700, fill: '#64748B' }} 
                    />
                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#64748B' }} />
-                   <Tooltip 
-                     contentStyle={{ backgroundColor: '#0F172A', border: 'none', borderRadius: '12px' }}
-                     itemStyle={{ fontSize: '12px', fontWeight: 800, color: '#fff' }}
-                   />
+                   <Tooltip />
                    <Area type="monotone" dataKey="enrollments" stroke="#2563EB" strokeWidth={3} fillOpacity={1} fill="url(#pEnroll)" />
                    <Area type="monotone" dataKey="completions" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#pComp)" />
                 </AreaChart>
@@ -172,10 +179,10 @@ export default function StudentAnalyticsPage() {
         </div>
 
         {/* Category Distribution */}
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8 flex flex-col">
+        <div className="bg-white p-6 rounded-md border border-gray-200 shadow-sm space-y-6 flex flex-col">
            <div>
-              <h3 className="text-[16px] font-black text-slate-900 tracking-tight uppercase">Category Distribution</h3>
-              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-1 opacity-60">Learning areas breakdown</p>
+              <h3 className="text-[16px] font-semibold text-slate-900">Category Distribution</h3>
+              <p className="text-[12px] text-slate-500 font-medium mt-1">Learning areas breakdown</p>
            </div>
            <div className="flex-1 flex flex-col sm:flex-row items-center justify-center gap-8">
               <div className="w-full h-[240px] max-w-[240px]">
@@ -214,20 +221,20 @@ export default function StudentAnalyticsPage() {
       </div>
 
       {/* Bottom Table: Course Performance */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-[16px] font-black text-slate-900 tracking-tight uppercase">Course Performance Deep-Dive</h3>
-          <button className="text-[11px] font-black text-blue-600 uppercase tracking-widest hover:underline">Full Audit Report</button>
+      <div className="bg-white rounded-md border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-[16px] font-semibold text-slate-900">Course Performance Deep-Dive</h3>
+          <Button variant="ghost" className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 p-0 h-auto text-sm">Full Audit Report</Button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50/50">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.1em]">Course Program</th>
-                <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.1em]">Enrollment Growth</th>
-                <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.1em]">Retention Rate</th>
-                <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-[0.1em]">Avg. Time to Complete</th>
-                <th className="px-6 py-4 text-right text-[11px] font-black text-slate-500 uppercase tracking-[0.1em]">Review Status</th>
+                <th className="px-6 py-4 text-[11px] font-semibold text-slate-600 uppercase tracking-widest">Course Program</th>
+                <th className="px-6 py-4 text-[11px] font-semibold text-slate-600 uppercase tracking-widest">Enrollment Growth</th>
+                <th className="px-6 py-4 text-[11px] font-semibold text-slate-600 uppercase tracking-widest">Retention Rate</th>
+                <th className="px-6 py-4 text-[11px] font-semibold text-slate-600 uppercase tracking-widest">Avg. Time to Complete</th>
+                <th className="px-6 py-4 text-right text-[11px] font-semibold text-slate-600 uppercase tracking-widest">Review Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

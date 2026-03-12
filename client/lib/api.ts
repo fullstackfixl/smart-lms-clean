@@ -272,6 +272,44 @@ export const collegeApi = {
     apiRequest(`/api/college/student/live-class/${liveClassId}/join`, { method: 'POST', token }),
   submitQuiz: (token: string, quizId: string, data: Record<string, unknown>) =>
     apiRequest(`/api/college/student/quiz/${quizId}/submit`, { method: 'POST', token, body: data }),
+
+  // Admin - Academic Programs
+  listPrograms: (token: string) =>
+    apiRequest('/api/college/admin/programs', { token }),
+  createProgram: (token: string, data: Record<string, unknown>) =>
+    apiRequest('/api/college/admin/programs', { method: 'POST', token, body: data }),
+  getProgram: (token: string, id: string) =>
+    apiRequest(`/api/college/admin/programs/${id}`, { token }),
+  updateProgram: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/api/college/admin/programs/${id}`, { method: 'PUT', token, body: data }),
+  deleteProgram: (token: string, id: string) =>
+    apiRequest(`/api/college/admin/programs/${id}`, { method: 'DELETE', token }),
+
+  // Admin - Subjects
+  listSubjects: (token: string, params?: string) =>
+    apiRequest(`/api/college/admin/subjects${params ? `?${params}` : ''}`, { token }),
+  createSubject: (token: string, data: Record<string, unknown>) =>
+    apiRequest('/api/college/admin/subjects', { method: 'POST', token, body: data }),
+  assignInstructorToSubject: (token: string, id: string, instructorId: string) =>
+    apiRequest(`/api/college/admin/subjects/${id}/assign-instructor`, { method: 'PUT', token, body: { instructorId } }),
+
+  // Admin - Timetable
+  listTimetable: (token: string, params?: string) =>
+    apiRequest(`/api/college/admin/timetable${params ? `?${params}` : ''}`, { token }),
+  createTimetableEntry: (token: string, data: Record<string, unknown>) =>
+    apiRequest('/api/college/admin/timetable', { method: 'POST', token, body: data }),
+  deleteTimetableEntry: (token: string, id: string) =>
+    apiRequest(`/api/college/admin/timetable/${id}`, { method: 'DELETE', token }),
+
+  // Admin - Attendance Summary
+  getAttendanceSummary: (token: string, params?: string) =>
+    apiRequest(`/api/college/admin/attendance/summary${params ? `?${params}` : ''}`, { token }),
+
+  // Admin - Course Approval
+  listPendingCourses: (token: string) =>
+    apiRequest('/api/college/admin/courses/pending', { token }),
+  approveCourse: (token: string, id: string, data?: { status?: string; rejectionReason?: string }) =>
+    apiRequest(`/api/college/admin/courses/${id}/approve`, { method: 'PATCH', token, body: data || {} }),
 }
 
 // Course APIs

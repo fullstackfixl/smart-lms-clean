@@ -13,6 +13,7 @@ import { useAuth } from '../../../lib/auth-context'
 import { API_URL } from '../../../lib/config'
 import { toast } from "sonner"
 import { Badge } from "../../../components/ui/badge"
+import { Button } from "../../../components/ui/button"
 
 interface OrgUser {
   _id: string
@@ -139,13 +140,10 @@ export default function UsersPage() {
           <h1 className="text-[28px] font-black text-slate-900 tracking-tight leading-none">Users</h1>
           <p className="text-[14px] text-slate-500 font-medium mt-3">Manage students, instructors and staff permissions.</p>
         </div>
-        <button 
-          onClick={() => setShowInvite(true)}
-          className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[13px] font-bold shadow-lg shadow-blue-600/20 transition-all duration-200 active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
+        <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={() => setShowInvite(true)}>
+          <Plus className="w-4 h-4 mr-2" />
           Invite User
-        </button>
+        </Button>
       </div>
 
       {/* Tabs */}
@@ -191,12 +189,10 @@ export default function UsersPage() {
             <option value="instructor">Instructors</option>
             <option value="org_admin">Admins</option>
           </select>
-          <button 
-            onClick={loadData}
-            className="flex-1 md:flex-none h-11 px-6 bg-slate-900 text-white rounded-lg text-[13px] font-bold hover:bg-slate-800 transition-colors"
-          >
+          <Button variant="outline" onClick={loadData} className="flex-1 md:flex-none h-11 border-gray-200">
+            <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
-          </button>
+          </Button>
         </div>
       </div>
 

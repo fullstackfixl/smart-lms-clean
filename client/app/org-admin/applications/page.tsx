@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { 
   BookOpen, CheckCircle, XCircle, Eye, Play, FileText, 
   ChevronLeft, RefreshCw, Edit, Trash2, Save, X, Video, Upload, Loader2
@@ -13,6 +12,7 @@ import { Textarea } from "../../../components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog"
 import { Progress } from "../../../components/ui/progress"
 import { useAuth } from "../../../lib/auth-context"
+import { collegeApi } from "../../../lib/api"
 import { API_URL } from "../../../lib/config"
 import { toast } from "sonner"
 import { cn } from "../../../lib/utils"
@@ -50,8 +50,7 @@ interface CourseApplication {
 }
 
 export default function OrgAdminApplicationsPage() {
-  const router = useRouter()
-  const { token, user } = useAuth()
+  const { token, user, organization } = useAuth()
   const [applications, setApplications] = useState<CourseApplication[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedApp, setSelectedApp] = useState<CourseApplication | null>(null)
@@ -60,6 +59,9 @@ export default function OrgAdminApplicationsPage() {
   const [editLessonTitle, setEditLessonTitle] = useState("")
   const [editLessonVideoUrl, setEditLessonVideoUrl] = useState("")
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null)
+  
+  const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+  const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
   
   // Upload state
   const [uploading, setUploading] = useState(false)
@@ -81,12 +83,19 @@ export default function OrgAdminApplicationsPage() {
     if (!token) return
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/org-admin/applications`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-      const data = await res.json()
-      if (data.success) {
-        setApplications(data.data?.applications || [])
+      let res
+      if (isCollege) {
+        res = await collegeApi.listPendingCourses(token)
+      } else {
+        res = await fetch(`${API_URL}/org-admin/applications`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await res.json()
+        res = { success: data.success, data: data.data }
+      }
+      if (res.success) {
+        const data = res.data as { courses?: CourseApplication[] }
+        setApplications(data.courses || [])
       }
     } catch (error) {
       toast.error("Failed to load applications")
@@ -98,20 +107,26 @@ export default function OrgAdminApplicationsPage() {
   async function handleApprove(courseId: string) {
     if (!token) return
     try {
-      const res = await fetch(`${API_URL}/org-admin/applications/${courseId}/approve`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      const data = await res.json()
-      if (data.success) {
+      let res
+      if (isCollege) {
+        res = await collegeApi.approveCourse(token, courseId, { status: 'published' })
+      } else {
+        const response = await fetch(`${API_URL}/org-admin/applications/${courseId}/approve`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        const data = await response.json()
+        res = { success: data.success, data }
+      }
+      if (res.success) {
         toast.success("Course approved and published to students in your organization")
         loadApplications()
         setSelectedApp(null)
       } else {
-        toast.error(data.error || "Failed to approve")
+        toast.error(res.data?.error || "Failed to approve")
       }
     } catch (error) {
       toast.error("Error approving course")
@@ -124,16 +139,22 @@ export default function OrgAdminApplicationsPage() {
     if (!reason) return
 
     try {
-      const res = await fetch(`${API_URL}/org-admin/applications/${courseId}/reject`, {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ reason })
-      })
-      const data = await res.json()
-      if (data.success) {
+      let res
+      if (isCollege) {
+        res = await collegeApi.approveCourse(token, courseId, { status: 'rejected', rejectionReason: reason })
+      } else {
+        const response = await fetch(`${API_URL}/org-admin/applications/${courseId}/reject`, {
+          method: 'POST',
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ reason })
+        })
+        const data = await response.json()
+        res = { success: data.success, data }
+      }
+      if (res.success) {
         toast.success("Course rejected")
         loadApplications()
         setSelectedApp(null)
@@ -342,19 +363,19 @@ export default function OrgAdminApplicationsPage() {
 
   if (selectedApp) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => {setSelectedApp(null); setEditing(false);}} className="h-10 w-10 p-0">
+      <div className="space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-8">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" onClick={() => {setSelectedApp(null); setEditing(false);}} className="h-10 w-10 p-0">
             <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-slate-900">
-              {editing ? 'Edit Course' : selectedApp.title}
-            </h1>
-            <p className="text-slate-500">{editing ? 'Make changes before approval' : 'Review and approve course'}</p>
+            </Button>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold text-slate-900">{editing ? 'Edit Course' : selectedApp.title}</h1>
+              <p className="text-[14px] text-slate-500 font-medium">{editing ? 'Make changes before approval' : 'Review and approve course'}</p>
+            </div>
           </div>
           {!editing && (
-            <Button variant="outline" onClick={() => startEditing(selectedApp)}>
+            <Button variant="outline" onClick={() => startEditing(selectedApp)} className="h-11 border-gray-200">
               <Edit className="w-4 h-4 mr-2" />
               Edit Course
             </Button>
@@ -518,7 +539,7 @@ export default function OrgAdminApplicationsPage() {
               <div className="space-y-3">
                 <Button 
                   onClick={() => handleApprove(selectedApp._id)}
-                  className="w-full bg-green-600 hover:bg-green-700"
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                   disabled={editing}
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
@@ -650,12 +671,12 @@ export default function OrgAdminApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-8">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold text-slate-900">Course Applications</h1>
-          <p className="text-slate-500 mt-1">Review and approve courses from instructors</p>
+          <p className="text-[14px] text-slate-500 font-medium">Review and approve courses from instructors</p>
         </div>
-        <Button variant="outline" onClick={loadApplications}>
+        <Button variant="outline" onClick={loadApplications} className="h-11 border-gray-200">
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
         </Button>
@@ -707,7 +728,7 @@ export default function OrgAdminApplicationsPage() {
                     {new Date(app.submittedAt).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <Button size="sm" onClick={() => setSelectedApp(app)}>
+                    <Button size="sm" onClick={() => setSelectedApp(app)} className="bg-orange-500 hover:bg-orange-600 text-white">
                       <Eye className="w-4 h-4 mr-2" />
                       Review
                     </Button>

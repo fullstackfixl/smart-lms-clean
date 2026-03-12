@@ -3,27 +3,32 @@
 import { ProtectedRoute } from '../../components/auth/ProtectedRoute'
 import { OrgSidebar } from '../../components/org-admin/OrgSidebar'
 import { OrgNavbar } from '../../components/org-admin/OrgNavbar'
+import { ThemeProvider } from '../../components/theme-provider'
  
 export default function OrgAdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ProtectedRoute allowedRoles={["org_admin"]}>
-      <div className="min-h-screen bg-white flex font-inter">
-        {/* Fixed Left Sidebar */}
-        <div className="fixed inset-y-0 left-0 w-[220px] bg-white border-r border-gray-200 z-50 overflow-y-auto">
-          <OrgSidebar />
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <ProtectedRoute allowedRoles={["org_admin"]}>
+        <div className="flex h-screen overflow-hidden bg-slate-50">
+          <div className="hidden lg:block w-72 h-screen shrink-0 sticky top-0">
+            <OrgSidebar />
+          </div>
+
+          <div className="flex flex-1 flex-col overflow-hidden relative min-w-0">
+            <OrgNavbar />
+            <main className="flex-1 overflow-y-auto relative custom-scrollbar">
+              <div className="min-h-full p-8">
+                {children}
+              </div>
+            </main>
+          </div>
         </div>
- 
-        {/* Main Content Area */}
-        <div className="flex-1 pl-[220px] flex flex-col min-h-screen">
-          {/* Top Navbar */}
-          <OrgNavbar />
- 
-          {/* Page Content */}
-          <main className="flex-1 p-6 max-w-6xl w-full mx-auto">
-            {children}
-          </main>
-        </div>
-      </div>
-    </ProtectedRoute>
+      </ProtectedRoute>
+    </ThemeProvider>
   )
 }

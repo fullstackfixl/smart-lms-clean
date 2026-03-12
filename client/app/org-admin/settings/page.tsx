@@ -1,9 +1,8 @@
 "use client"
  
-import { useState } from "react"
-import { FlatCard } from "../../../components/org-admin/core/FlatCard"
-import { MinimalButton, MinimalInput } from "../../../components/org-admin/core/MinimalForm"
+import { MinimalInput } from "../../../components/org-admin/core/MinimalForm"
 import { useAuth } from "../../../lib/auth-context"
+import { Button } from "../../../components/ui/button"
  
 export default function SettingsPage() {
   const { organization } = useAuth()
@@ -12,14 +11,12 @@ export default function SettingsPage() {
     <div className="space-y-10 pb-20">
       
       {/* ─── Hero Header ────────────────────────────────────────── */}
-      <div className="flex items-center justify-between border-b border-gray-100 pb-8">
-         <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-[#3B82F6] tracking-tight leading-none uppercase">Settings</h1>
-            <p className="text-[14px] text-slate-500 font-medium italic">Configure institutional protocols and platform preferences.</p>
-         </div>
-         <MinimalButton variant="secondary" className="text-[15px]">
-            Save Changes
-         </MinimalButton>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-8">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+          <p className="text-[14px] text-slate-500 font-medium">Configure institutional protocols and platform preferences.</p>
+        </div>
+        <Button className="bg-orange-500 hover:bg-orange-600 text-white">Save Changes</Button>
       </div>
  
       {/* ─── Configuration Stack ────────────────────────────────────── */}
