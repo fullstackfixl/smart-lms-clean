@@ -21,6 +21,15 @@ export default function SettingsPage() {
 
   const authHeader = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token])
 
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result))
+      reader.onerror = () => reject(new Error('Failed to read file'))
+      reader.readAsDataURL(file)
+    })
+  }
+
   async function uploadLogo(file: File) {
     if (!token) {
       toast.error('Not authenticated')
@@ -40,12 +49,27 @@ export default function SettingsPage() {
       })
 
       const json = await res.json().catch(() => null)
-      if (!res.ok || !json?.success) {
-        throw new Error(json?.message || 'Failed to upload logo')
+      if (res.ok && json?.success) {
+        setLogoUrl(json.data?.logo || json.logo || null)
+        toast.success('Logo uploaded', { id: t })
+        await refreshMe()
+        return
       }
 
-      setLogoUrl(json.data?.logo || json.logo || null)
-      toast.success('Logo uploaded', { id: t })
+      // Fallback: store base64 in branding settings
+      const dataUrl = await fileToDataUrl(file)
+      const saveRes = await fetch(`${API_URL}/api/admin/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeader },
+        body: JSON.stringify({ logo: dataUrl }),
+        credentials: 'include'
+      })
+      const saveJson = await saveRes.json().catch(() => null)
+      if (!saveRes.ok || !saveJson?.success) {
+        throw new Error(saveJson?.message || json?.message || 'Failed to upload logo')
+      }
+      setLogoUrl(dataUrl)
+      toast.success('Logo saved', { id: t })
       await refreshMe()
     } catch (e: any) {
       toast.error(e?.message || 'Upload failed', { id: t })

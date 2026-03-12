@@ -27,7 +27,7 @@ export default function InstructorSubjectsPage() {
 
   useEffect(() => {
     if (!token) return
-    if (user?.organizationType && user.organizationType !== 'COLLEGE') return
+    if (user?.organizationType && String(user.organizationType).toUpperCase() !== 'COLLEGE') return
 
     loadSubjects()
   }, [token, user])
@@ -64,7 +64,7 @@ export default function InstructorSubjectsPage() {
   )
 
   // Show empty state for non-college organizations
-  if (user?.organizationType && user.organizationType !== 'COLLEGE') {
+  if (user?.organizationType && String(user.organizationType).toUpperCase() !== 'COLLEGE') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh]">
         <Book className="w-16 h-16 text-slate-300 mb-4" />

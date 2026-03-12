@@ -67,7 +67,7 @@ export function StudentSidebar() {
 
   const isItemVisible = (item: any) => {
     if (item.module && !user?.modulesEnabled?.includes(item.module)) return false
-    if (item.collegeOnly && user?.organizationType !== 'COLLEGE') return false
+    if (item.collegeOnly && String(user?.organizationType || '').toUpperCase() !== 'COLLEGE') return false
     return true
   }
 

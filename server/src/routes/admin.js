@@ -1732,20 +1732,37 @@ router.post('/settings/logo', cloudinaryUpload.single('logo'), handleUploadError
       return res.error('Organization not found', 'Not found', 404);
     }
 
-    const folder = `smart-lms/${organizationId}/branding`;
-    const publicId = `org_logo_${organizationId}_${Date.now()}`;
-    const result = await uploadToCloudinary(req.file.buffer, {
-      folder,
-      public_id: publicId,
-      resource_type: 'image'
-    });
-
     if (!organization.branding) organization.branding = {};
-    organization.branding.logo = result.secure_url;
-    organization.logo_url = result.secure_url;
+
+    let logoUrl;
+    const hasCloudinary = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+
+    if (hasCloudinary) {
+      try {
+        const folder = `smart-lms/${organizationId}/branding`;
+        const publicId = `org_logo_${organizationId}_${Date.now()}`;
+        const result = await uploadToCloudinary(req.file.buffer, {
+          folder,
+          public_id: publicId,
+          resource_type: 'image'
+        });
+        logoUrl = result.secure_url;
+      } catch (cloudErr) {
+        console.warn('[AdminSettingsLogo] Cloudinary upload failed, falling back to base64:', cloudErr.message);
+      }
+    }
+
+    if (!logoUrl) {
+      const mime = req.file.mimetype || 'image/png';
+      const base64 = req.file.buffer.toString('base64');
+      logoUrl = `data:${mime};base64,${base64}`;
+    }
+
+    organization.branding.logo = logoUrl;
+    organization.logo_url = logoUrl;
     await organization.save();
 
-    res.success({ logo: result.secure_url }, 'Logo uploaded successfully');
+    res.success({ logo: logoUrl }, 'Logo uploaded successfully');
   } catch (error) {
     console.error('Upload logo error:', error);
     res.error(error.message, 'Failed to upload logo', 500);

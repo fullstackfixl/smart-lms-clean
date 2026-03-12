@@ -80,7 +80,7 @@ export function InstructorSidebar() {
         {(['core', 'academics', 'engagement', 'reports'] as const).map((section) => {
           const items = navItems
             .filter((i) => i.section === section)
-            .filter((i) => !i.collegeOnly || user?.organizationType === 'COLLEGE')
+            .filter((i) => !i.collegeOnly || String(user?.organizationType || '').toUpperCase() === 'COLLEGE')
           if (!items.length) return null
 
           const title =
