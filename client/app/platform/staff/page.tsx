@@ -36,14 +36,6 @@ import { PlatformErrorState } from '../../../components/platform/platform-error-
 
 export default function StaffPage() {
   const [search, setSearch] = useState('')
-  const { data: response, error, isLoading, mutate } = useSWR<any>(`/api/platform/staff?search=${search}`, platformJsonFetcher)
-
-  if (error) {
-    return <PlatformErrorState />
-  }
-  
-  const staff = response?.data || []
-  
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
@@ -52,6 +44,14 @@ export default function StaffPage() {
     password: '',
     role: 'platform_staff'
   })
+
+  const { data: response, error, isLoading, mutate } = useSWR<any>(`/api/platform/staff?search=${search}`, platformJsonFetcher)
+
+  if (error) {
+    return <PlatformErrorState />
+  }
+  
+  const staff = response?.data || []
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()

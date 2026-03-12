@@ -45,6 +45,19 @@ import { PlatformErrorState } from '../../../components/platform/platform-error-
 export default function OrganizationsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedOrg, setSelectedOrg] = useState<any>(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    type: 'COLLEGE',
+    plan: 'basic',
+    maxStudents: 1000,
+    maxInstructors: 50
+  })
+
   const { data: response, error, isLoading, mutate } = useSWR<any>(
     `/api/platform/organizations?search=${search}&status=${statusFilter === 'all' ? '' : statusFilter}`, 
     platformJsonFetcher
@@ -56,20 +69,6 @@ export default function OrganizationsPage() {
 
   const organizations = response?.data?.organizations || []
   const stats = response?.data?.stats || { total: 0, active: 0, suspended: 0 }
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [selectedOrg, setSelectedOrg] = useState<any>(null)
-
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    type: 'COLLEGE',
-    plan: 'basic',
-    maxStudents: 1000,
-    maxInstructors: 50
-  })
 
   const resetForm = () => {
     setFormData({

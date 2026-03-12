@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { 
   Settings, 
@@ -33,20 +33,20 @@ import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function SettingsPage() {
-  const { data: response, error, isLoading, mutate } = useSWR('/api/platform/settings', platformJsonFetcher)
   const [isSaving, setIsSaving] = useState(false)
   const [formData, setFormData] = useState<any>(null)
 
-  if (error) {
-    return <PlatformErrorState />
-  }
+  const { data: response, error, isLoading, mutate } = useSWR('/api/platform/settings', platformJsonFetcher)
 
-  // Initialize form data when SWR finishes
-  React.useEffect(() => {
+  useEffect(() => {
     if (response?.success && !formData) {
       setFormData(response.data)
     }
   }, [response, formData])
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   const handleSave = async () => {
     setIsSaving(true)

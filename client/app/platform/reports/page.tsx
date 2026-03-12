@@ -40,13 +40,6 @@ import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 
 export default function ReportsPage() {
-  const { data: response, error, isLoading, mutate } = useSWR('/api/platform/reports', platformJsonFetcher)
-  const reports = response?.data || []
-
-  if (error) {
-    return <PlatformErrorState />
-  }
-  
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
@@ -55,6 +48,13 @@ export default function ReportsPage() {
     format: 'csv',
     range: 'last_30_days'
   })
+
+  const { data: response, error, isLoading, mutate } = useSWR('/api/platform/reports', platformJsonFetcher)
+  const reports = response?.data || []
+
+  if (error) {
+    return <PlatformErrorState />
+  }
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
