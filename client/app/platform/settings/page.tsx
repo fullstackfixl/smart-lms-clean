@@ -31,6 +31,7 @@ import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
+import { API_URL, getToken } from '../../../lib/config'
 
 export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false)
@@ -51,9 +52,14 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const res = await fetch('/api/platform/settings', {
+      const token = getToken()
+      const res = await fetch(`${API_URL}/api/platform/settings`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(formData)
       })
       const data = await res.json()

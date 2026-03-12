@@ -31,6 +31,7 @@ import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
+import { API_URL, getToken } from '../../../lib/config'
 
 export default function UsersPage() {
   const searchParams = useSearchParams()
@@ -54,9 +55,14 @@ export default function UsersPage() {
   const handleAction = async (id: string, action: string) => {
     try {
       const endpoint = action === 'reset-password' ? `/api/platform/users/${id}/reset-password` : `/api/platform/users/${id}/${action}`
-      const res = await fetch(endpoint, {
+      const token = getToken()
+      const res = await fetch(`${API_URL}${endpoint}`, {
         method: action === 'reset-password' ? 'POST' : 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: action === 'reset-password' ? JSON.stringify({ password: 'NewPassword123' }) : undefined
       })
       const data = await res.json()

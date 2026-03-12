@@ -38,6 +38,7 @@ import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
+import { API_URL, getToken } from '../../../lib/config'
 
 export default function ReportsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -50,7 +51,9 @@ export default function ReportsPage() {
   })
 
   const { data: response, error, isLoading, mutate } = useSWR('/api/platform/reports', platformJsonFetcher)
-  const reports = response?.data || []
+  const reports = Array.isArray(response?.data)
+    ? response.data
+    : (Array.isArray((response as any)?.data?.reports) ? (response as any).data.reports : [])
 
   if (error) {
     return <PlatformErrorState />
@@ -60,9 +63,14 @@ export default function ReportsPage() {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      const res = await fetch('/api/platform/reports/generate', {
+      const token = getToken()
+      const res = await fetch(`${API_URL}/api/platform/reports/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(formData)
       })
       const data = await res.json()
@@ -153,7 +161,14 @@ export default function ReportsPage() {
               </SimpleTableCell>
               <SimpleTableCell className="text-right">
                 {report.status === 'ready' ? (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:bg-blue-50">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-blue-500 hover:bg-blue-50"
+                    onClick={() => {
+                      window.open(`${API_URL}/api/platform/reports/${report._id}/download?token=${encodeURIComponent(getToken() || '')}`, '_blank')
+                    }}
+                  >
                     <Download className="h-4 w-4" />
                   </Button>
                 ) : (
