@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const batchSchema = new mongoose.Schema({
-    organization_id: {
+    organizationId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Organization',
         required: true,
@@ -22,6 +22,11 @@ const batchSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true
+    },
+    programId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'AcademicProgram',
+        required: true
     },
     departmentId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -44,7 +49,7 @@ const batchSchema = new mongoose.Schema({
     }],
     startDate: Date,
     endDate: Date,
-    instructor_ids: [{
+    instructorIds: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
@@ -56,7 +61,7 @@ const batchSchema = new mongoose.Schema({
     timestamps: true
 });
 
-batchSchema.index({ organization_id: 1, code: 1 }, { unique: true });
-batchSchema.index({ departmentId: 1, year: 1, semester: 1 });
+batchSchema.index({ organizationId: 1, code: 1 }, { unique: true });
+batchSchema.index({ programId: 1, year: 1, semester: 1 });
 
 module.exports = mongoose.model('Batch', batchSchema);

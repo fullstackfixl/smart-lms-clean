@@ -1,20 +1,24 @@
 const mongoose = require('mongoose');
 
 const subjectSchema = new mongoose.Schema({
-    organization_id: {
+    organizationId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Organization',
         required: true,
         index: true
     },
-    department_id: {
+    organizationType: {
+        type: String,
+        default: 'college'
+    },
+    departmentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Department',
         required: true
     },
-    program_id: {
+    programId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Program',
+        ref: 'AcademicProgram',
         required: true
     },
     name: {
@@ -31,9 +35,15 @@ const subjectSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
-    instructor_id: {
+    instructorId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+    },
+    credits: {
+        type: Number,
+        default: 3,
+        min: 1,
+        max: 10
     },
     contentCourseId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -51,6 +61,6 @@ const subjectSchema = new mongoose.Schema({
     timestamps: true
 });
 
-subjectSchema.index({ organization_id: 1, code: 1 }, { unique: true });
+subjectSchema.index({ organizationId: 1, code: 1 }, { unique: true });
 
 module.exports = mongoose.model('Subject', subjectSchema);

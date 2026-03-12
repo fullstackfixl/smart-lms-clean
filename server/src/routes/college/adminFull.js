@@ -664,4 +664,330 @@ router.get('/analytics', async (req, res) => {
   }
 });
 
+// ===== ACADEMIC PROGRAMS =====
+// GET /api/college/admin/programs
+router.get('/programs', async (req, res) => {
+  try {
+    const { AcademicProgram, Department } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const programs = await AcademicProgram.find({ organizationId: orgId, isActive: true })
+      .populate('departmentId', 'name code')
+      .sort({ name: 1 });
+    res.success({ programs }, 'Programs retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load programs', 500);
+  }
+});
+
+// POST /api/college/admin/programs
+router.post('/programs', async (req, res) => {
+  try {
+    const { AcademicProgram } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { name, code, duration, durationUnit, departmentId, description } = req.body;
+
+    const program = new AcademicProgram({
+      name,
+      code: code.toUpperCase(),
+      duration,
+      durationUnit: durationUnit || 'years',
+      departmentId,
+      description,
+      organizationId: orgId,
+      organizationType: req.user.organization_type || 'college'
+    });
+    await program.save();
+
+    res.success({ program }, 'Program created successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to create program', 500);
+  }
+});
+
+// GET /api/college/admin/programs/:id
+router.get('/programs/:id', async (req, res) => {
+  try {
+    const { AcademicProgram, Subject, Batch } = require('../../models');
+    const program = await AcademicProgram.findById(req.params.id)
+      .populate('departmentId', 'name code');
+    if (!program) return res.error('Program not found', 'Not found', 404);
+
+    const subjects = await Subject.find({ programId: req.params.id, isActive: true });
+    const batches = await Batch.find({ programId: req.params.id, isActive: true });
+
+    res.success({ program, subjects, batches }, 'Program retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load program', 500);
+  }
+});
+
+// PUT /api/college/admin/programs/:id
+router.put('/programs/:id', async (req, res) => {
+  try {
+    const { AcademicProgram } = require('../../models');
+    const updates = req.body;
+    const program = await AcademicProgram.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true }
+    );
+    res.success({ program }, 'Program updated successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to update program', 500);
+  }
+});
+
+// DELETE /api/college/admin/programs/:id
+router.delete('/programs/:id', async (req, res) => {
+  try {
+    const { AcademicProgram } = require('../../models');
+    await AcademicProgram.findByIdAndUpdate(req.params.id, { isActive: false });
+    res.success({}, 'Program deleted successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to delete program', 500);
+  }
+});
+
+// ===== SUBJECTS =====
+// GET /api/college/admin/subjects
+router.get('/subjects', async (req, res) => {
+  try {
+    const { Subject, AcademicProgram, Department } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { programId, semester } = req.query;
+
+    let query = { organizationId: orgId, isActive: true };
+    if (programId) query.programId = programId;
+    if (semester) query.semester = parseInt(semester);
+
+    const subjects = await Subject.find(query)
+      .populate('programId', 'name code')
+      .populate('departmentId', 'name code')
+      .populate('instructorId', 'profile.firstName profile.lastName email')
+      .sort({ semester: 1, name: 1 });
+    res.success({ subjects }, 'Subjects retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load subjects', 500);
+  }
+});
+
+// POST /api/college/admin/subjects
+router.post('/subjects', async (req, res) => {
+  try {
+    const { Subject } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { name, code, programId, departmentId, semester, credits, description } = req.body;
+
+    const subject = new Subject({
+      name,
+      code: code.toUpperCase(),
+      programId,
+      departmentId,
+      semester,
+      credits: credits || 3,
+      description,
+      organizationId: orgId,
+      organizationType: req.user.organization_type || 'college'
+    });
+    await subject.save();
+
+    res.success({ subject }, 'Subject created successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to create subject', 500);
+  }
+});
+
+// PUT /api/college/admin/subjects/:id/assign-instructor
+router.put('/subjects/:id/assign-instructor', async (req, res) => {
+  try {
+    const { Subject } = require('../../models');
+    const { instructorId } = req.body;
+    const subject = await Subject.findByIdAndUpdate(
+      req.params.id,
+      { instructorId },
+      { new: true }
+    ).populate('instructorId', 'profile.firstName profile.lastName email');
+    res.success({ subject }, 'Instructor assigned successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to assign instructor', 500);
+  }
+});
+
+// ===== TIMETABLE =====
+// GET /api/college/admin/timetable
+router.get('/timetable', async (req, res) => {
+  try {
+    const { Timetable, Subject, User, Batch, AcademicProgram } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { batchId, day, programId } = req.query;
+
+    let query = { organizationId: orgId, isActive: true };
+    if (batchId) query.batchId = batchId;
+    if (day) query.day = day;
+    if (programId) query.programId = programId;
+
+    const entries = await Timetable.find(query)
+      .populate('programId', 'name code')
+      .populate('batchId', 'name code')
+      .populate('subjectId', 'name code')
+      .populate('instructorId', 'profile.firstName profile.lastName email')
+      .sort({ day: 1, startTime: 1 });
+
+    res.success({ entries }, 'Timetable entries retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load timetable', 500);
+  }
+});
+
+// POST /api/college/admin/timetable
+router.post('/timetable', async (req, res) => {
+  try {
+    const { Timetable } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { programId, batchId, subjectId, instructorId, day, startTime, endTime, room } = req.body;
+
+    const entry = new Timetable({
+      programId,
+      batchId,
+      subjectId,
+      instructorId,
+      day,
+      startTime,
+      endTime,
+      room,
+      organizationId: orgId,
+      organizationType: req.user.organization_type || 'college'
+    });
+    await entry.save();
+
+    res.success({ entry }, 'Timetable entry created successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to create timetable entry', 500);
+  }
+});
+
+// DELETE /api/college/admin/timetable/:id
+router.delete('/timetable/:id', async (req, res) => {
+  try {
+    const { Timetable } = require('../../models');
+    await Timetable.findByIdAndUpdate(req.params.id, { isActive: false });
+    res.success({}, 'Timetable entry deleted successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to delete timetable entry', 500);
+  }
+});
+
+// ===== ATTENDANCE =====
+// GET /api/college/admin/attendance
+router.get('/attendance', async (req, res) => {
+  try {
+    const { Attendance, Subject, Batch, User } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { programId, batchId, subjectId, date, studentId } = req.query;
+
+    let query = { organizationId: orgId };
+    if (batchId) query.batchId = batchId;
+    if (subjectId) query.subjectId = subjectId;
+    if (date) query.date = new Date(date);
+    if (studentId) query.studentId = studentId;
+
+    const records = await Attendance.find(query)
+      .populate('studentId', 'profile.firstName profile.lastName email')
+      .populate('subjectId', 'name code')
+      .populate('batchId', 'name code')
+      .populate('markedBy', 'profile.firstName profile.lastName')
+      .sort({ date: -1 });
+
+    res.success({ records }, 'Attendance records retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load attendance', 500);
+  }
+});
+
+// GET /api/college/admin/attendance/summary
+router.get('/attendance/summary', async (req, res) => {
+  try {
+    const { Attendance, Subject } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { batchId, subjectId, startDate, endDate } = req.query;
+
+    let matchQuery = { organizationId: orgId };
+    if (batchId) matchQuery.batchId = batchId;
+    if (subjectId) matchQuery.subjectId = subjectId;
+    if (startDate || endDate) {
+      matchQuery.date = {};
+      if (startDate) matchQuery.date.$gte = new Date(startDate);
+      if (endDate) matchQuery.date.$lte = new Date(endDate);
+    }
+
+    const summary = await Attendance.aggregate([
+      { $match: matchQuery },
+      { $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }}
+    ]);
+
+    const total = summary.reduce((acc, curr) => acc + curr.count, 0);
+    const present = summary.find(s => s._id === 'present')?.count || 0;
+    const absent = summary.find(s => s._id === 'absent')?.count || 0;
+    const late = summary.find(s => s._id === 'late')?.count || 0;
+
+    res.success({
+      summary: { total, present, absent, late },
+      presentPercentage: total > 0 ? Math.round((present / total) * 100) : 0
+    }, 'Attendance summary retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load attendance summary', 500);
+  }
+});
+
+// ===== INSTRUCTOR COURSE APPROVAL =====
+// GET /api/college/admin/courses/pending
+router.get('/courses/pending', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const courses = await Course.find({ 
+      organization_id: orgId, 
+      status: 'pending',
+      isActive: true 
+    })
+      .populate('instructor_id', 'profile.firstName profile.lastName email')
+      .sort({ createdAt: -1 });
+    res.success({ courses }, 'Pending courses retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load pending courses', 500);
+  }
+});
+
+// PATCH /api/college/admin/courses/:id/approve
+router.patch('/courses/:id/approve', async (req, res) => {
+  try {
+    const { status, rejectionReason } = req.body;
+    const update = { 
+      status: status || 'published',
+      approvedBy: req.user._id,
+      approvedAt: new Date()
+    };
+    if (status === 'rejected' && rejectionReason) {
+      update.rejectionReason = rejectionReason;
+    }
+
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      update,
+      { new: true }
+    );
+
+    if (!course) return res.error('Course not found', 'Not found', 404);
+
+    // Notify instructor
+    // TODO: Add notification system
+
+    res.success({ course }, `Course ${status || 'published'} successfully`);
+  } catch (error) {
+    res.error(error.message, 'Failed to update course status', 500);
+  }
+});
+
 module.exports = router;

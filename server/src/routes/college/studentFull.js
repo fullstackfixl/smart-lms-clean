@@ -414,4 +414,183 @@ router.get('/progress', async (req, res) => {
   }
 });
 
+// ===== MY ACADEMIC SUBJECTS =====
+// GET /api/college/student/subjects
+router.get('/subjects', async (req, res) => {
+  try {
+    const { Subject, AcademicProgram, Batch, User } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    // Find student's batch
+    const student = await User.findById(userId).populate('profile.batch');
+    const batchId = student?.profile?.batch;
+
+    if (!batchId) {
+      return res.success({ subjects: [] }, 'No batch assigned to student');
+    }
+
+    const batch = await Batch.findById(batchId).populate('programId');
+    if (!batch) {
+      return res.success({ subjects: [] }, 'Batch not found');
+    }
+
+    // Get subjects for student's program and current semester
+    const subjects = await Subject.find({
+      programId: batch.programId,
+      semester: batch.semester,
+      organizationId: orgId,
+      isActive: true
+    })
+      .populate('programId', 'name code')
+      .populate('departmentId', 'name code')
+      .populate('instructorId', 'profile.firstName profile.lastName email')
+      .sort({ name: 1 });
+
+    res.success({ subjects, batch }, 'Subjects retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load subjects', 500);
+  }
+});
+
+// ===== TIMETABLE =====
+// GET /api/college/student/timetable
+router.get('/timetable', async (req, res) => {
+  try {
+    const { Timetable, Subject, Batch, User } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { day } = req.query;
+
+    // Find student's batch
+    const student = await User.findById(userId).populate('profile.batch');
+    const batchId = student?.profile?.batch;
+
+    if (!batchId) {
+      return res.success({ entries: [] }, 'No batch assigned');
+    }
+
+    let query = { batchId, organizationId: orgId, isActive: true };
+    if (day) query.day = day;
+
+    const entries = await Timetable.find(query)
+      .populate('subjectId', 'name code')
+      .populate('instructorId', 'profile.firstName profile.lastName')
+      .populate('batchId', 'name code')
+      .sort({ day: 1, startTime: 1 });
+
+    res.success({ entries }, 'Timetable retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load timetable', 500);
+  }
+});
+
+// ===== BROWSE COURSES (Published Instructor Courses) =====
+// GET /api/college/student/browse-courses
+router.get('/browse-courses', async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { category, search, page = 1, limit = 10 } = req.query;
+
+    let query = { 
+      organization_id: orgId, 
+      status: 'published',
+      isActive: true 
+    };
+    
+    if (category) query.category = category;
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [courses, total] = await Promise.all([
+      Course.find(query)
+        .populate('instructor_id', 'profile.firstName profile.lastName email')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Course.countDocuments(query)
+    ]);
+
+    // Check enrollment status for each course
+    const coursesWithEnrollment = await Promise.all(
+      courses.map(async (course) => {
+        const enrollment = await Enrollment.findOne({
+          student_id: userId,
+          course_id: course._id
+        });
+        return {
+          ...course.toObject(),
+          isEnrolled: !!enrollment,
+          enrollmentStatus: enrollment?.status || null
+        };
+      })
+    );
+
+    res.success({ 
+      courses: coursesWithEnrollment, 
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    }, 'Courses retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load courses', 500);
+  }
+});
+
+// ===== MY ATTENDANCE =====
+// GET /api/college/student/attendance
+router.get('/attendance', async (req, res) => {
+  try {
+    const { Attendance, Subject } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { subjectId, startDate, endDate } = req.query;
+
+    let query = { studentId: userId, organizationId: orgId };
+    if (subjectId) query.subjectId = subjectId;
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) query.date.$gte = new Date(startDate);
+      if (endDate) query.date.$lte = new Date(endDate);
+    }
+
+    const records = await Attendance.find(query)
+      .populate('subjectId', 'name code')
+      .populate('markedBy', 'profile.firstName profile.lastName')
+      .sort({ date: -1 });
+
+    // Calculate statistics
+    const summary = await Attendance.aggregate([
+      { $match: { studentId: userId, organizationId: orgId } },
+      { $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }}
+    ]);
+
+    const total = summary.reduce((acc, curr) => acc + curr.count, 0);
+    const present = summary.find(s => s._id === 'present')?.count || 0;
+    const absent = summary.find(s => s._id === 'absent')?.count || 0;
+    const late = summary.find(s => s._id === 'late')?.count || 0;
+
+    res.success({
+      records,
+      summary: { total, present, absent, late },
+      presentPercentage: total > 0 ? Math.round((present / total) * 100) : 0
+    }, 'Attendance records retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load attendance', 500);
+  }
+});
+
 module.exports = router;

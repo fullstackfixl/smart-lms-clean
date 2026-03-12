@@ -21,6 +21,10 @@ import {
   FileText,
   Bell,
   BarChart3,
+  Clock,
+  BookMarked,
+  CheckCircle,
+  ClipboardList,
 } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
 import { cn } from '../../lib/utils'
@@ -35,15 +39,18 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { section: 'core', label: 'Dashboard', href: '/org-admin/dashboard', icon: LayoutDashboard, description: 'Overview' },
-  { section: 'core', label: 'Courses', href: '/org-admin/courses', icon: BookOpen, description: 'Manage courses' },
   { section: 'core', label: 'Events', href: '/org-admin/events', icon: Calendar, description: 'College events' },
 
   { section: 'academics', label: 'Departments', href: '/org-admin/departments', icon: Building2, description: 'Academic departments' },
-  { section: 'academics', label: 'Batches', href: '/org-admin/batches', icon: School, description: 'Student batches' },
   { section: 'academics', label: 'Programs', href: '/org-admin/programs', icon: Layers, description: 'Academic programs' },
+  { section: 'academics', label: 'Subjects', href: '/org-admin/subjects', icon: BookMarked, description: 'Program subjects' },
+  { section: 'academics', label: 'Batches', href: '/org-admin/batches', icon: School, description: 'Student batches' },
+  { section: 'academics', label: 'Timetable', href: '/org-admin/timetable', icon: Clock, description: 'Class schedules' },
+  { section: 'academics', label: 'Attendance', href: '/org-admin/attendance', icon: CheckCircle, description: 'View attendance' },
 
   { section: 'management', label: 'Students', href: '/org-admin/users?role=student', icon: Users, description: 'Learners' },
   { section: 'management', label: 'Instructors', href: '/org-admin/users?role=instructor', icon: GraduationCap, description: 'Teaching staff' },
+  { section: 'management', label: 'Instructor Courses', href: '/org-admin/courses/pending', icon: BookOpen, description: 'Approve courses' },
   { section: 'management', label: 'Applications', href: '/org-admin/applications', icon: FileText, description: 'Pending apps' },
   { section: 'management', label: 'Analytics', href: '/org-admin/analytics', icon: BarChart3, description: 'Reports' },
   { section: 'management', label: 'Notifications', href: '/org-admin/notifications', icon: Bell, description: 'Updates' },

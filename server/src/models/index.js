@@ -54,8 +54,8 @@ const ActivityLog = require('./ActivityLog');
 const CollegeInstructor = require('./CollegeInstructor');
 const CollegeStudent = require('./CollegeStudent');
 const CollegeEvent = require('./CollegeEvent');
-
-
+const AcademicProgram = require('./AcademicProgram');
+const Timetable = require('./Timetable');
 
 module.exports = {
   Organization,
@@ -112,5 +112,7 @@ module.exports = {
   ActivityLog,
   CollegeInstructor,
   CollegeStudent,
-  CollegeEvent
+  CollegeEvent,
+  AcademicProgram,
+  Timetable
 };

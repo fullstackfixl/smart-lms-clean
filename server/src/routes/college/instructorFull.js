@@ -477,4 +477,140 @@ router.get('/analytics', async (req, res) => {
   }
 });
 
+// ===== MY SUBJECTS (Academic) =====
+// GET /api/college/instructor/subjects
+router.get('/subjects', async (req, res) => {
+  try {
+    const { Subject, AcademicProgram, Batch } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const subjects = await Subject.find({ 
+      instructorId: userId, 
+      organizationId: orgId,
+      isActive: true 
+    })
+      .populate('programId', 'name code')
+      .populate('departmentId', 'name code')
+      .sort({ semester: 1, name: 1 });
+
+    res.success({ subjects }, 'Subjects retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load subjects', 500);
+  }
+});
+
+// GET /api/college/instructor/subjects/:id/students
+router.get('/subjects/:id/students', async (req, res) => {
+  try {
+    const { Subject, Batch, User } = require('../../models');
+    const subject = await Subject.findById(req.params.id)
+      .populate('programId', 'name code');
+    
+    if (!subject) return res.error('Subject not found', 'Not found', 404);
+
+    // Find batches for this program
+    const batches = await Batch.find({ 
+      programId: subject.programId, 
+      isActive: true 
+    });
+
+    // Get students from all batches
+    const studentIds = batches.flatMap(b => b.students);
+    const students = await User.find({
+      _id: { $in: studentIds },
+      role: 'student',
+      isActive: true
+    }).select('profile.firstName profile.lastName email profile.rollNumber');
+
+    res.success({ subject, students, batches }, 'Subject students retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load students', 500);
+  }
+});
+
+// ===== TIMETABLE =====
+// GET /api/college/instructor/timetable
+router.get('/timetable', async (req, res) => {
+  try {
+    const { Timetable, Subject, Batch, AcademicProgram } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { day } = req.query;
+
+    let query = { instructorId: userId, organizationId: orgId, isActive: true };
+    if (day) query.day = day;
+
+    const entries = await Timetable.find(query)
+      .populate('subjectId', 'name code')
+      .populate('batchId', 'name code')
+      .populate('programId', 'name code')
+      .sort({ day: 1, startTime: 1 });
+
+    res.success({ entries }, 'Timetable retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load timetable', 500);
+  }
+});
+
+// ===== ATTENDANCE =====
+// POST /api/college/instructor/attendance
+router.post('/attendance', async (req, res) => {
+  try {
+    const { Attendance } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { subjectId, batchId, studentId, date, status } = req.body;
+
+    // Check if attendance already marked
+    let attendance = await Attendance.findOne({
+      subjectId,
+      studentId,
+      date: new Date(date)
+    });
+
+    if (attendance) {
+      attendance.status = status;
+      attendance.markedBy = userId;
+      await attendance.save();
+    } else {
+      attendance = new Attendance({
+        subjectId,
+        batchId,
+        studentId,
+        date: new Date(date),
+        status,
+        markedBy: userId,
+        organizationId: orgId,
+        organizationType: req.user.organization_type || 'college'
+      });
+      await attendance.save();
+    }
+
+    res.success({ attendance }, 'Attendance marked successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to mark attendance', 500);
+  }
+});
+
+// GET /api/college/instructor/attendance/batch/:batchId/subject/:subjectId
+router.get('/attendance/batch/:batchId/subject/:subjectId', async (req, res) => {
+  try {
+    const { Attendance, User } = require('../../models');
+    const { batchId, subjectId } = req.params;
+    const { date } = req.query;
+
+    let query = { batchId, subjectId };
+    if (date) query.date = new Date(date);
+
+    const records = await Attendance.find(query)
+      .populate('studentId', 'profile.firstName profile.lastName email profile.rollNumber')
+      .sort({ date: -1 });
+
+    res.success({ records }, 'Attendance records retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load attendance', 500);
+  }
+});
+
 module.exports = router;
