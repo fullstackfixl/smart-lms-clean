@@ -81,7 +81,9 @@ export default function DepartmentsPage() {
                 response = await departmentApi.list(token)
             }
             if (response.success) {
-                setData(response.data || [])
+                const payload = response.data as any
+                const departments = payload?.departments || payload || []
+                setData(Array.isArray(departments) ? departments : [])
             }
         } catch (error) {
             console.error("Failed to load departments:", error)

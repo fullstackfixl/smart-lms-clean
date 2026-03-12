@@ -8,6 +8,8 @@ import { Skeleton } from '../../../components/ui/skeleton'
 import { Button } from '../../../components/ui/button'
 import { toast } from "sonner"
 import { getEvents, registerForEvent } from '../../../lib/services/studentApi'
+import { useAuth } from "../../../lib/auth-context"
+import { collegeApi } from "../../../lib/api"
 
 interface Event {
   _id: string
@@ -26,11 +28,44 @@ interface Event {
   }
 }
 
+interface CollegeEventDto {
+  _id: string
+  title: string
+  description?: string
+  date: string
+  endDate?: string
+  location?: string
+  eventType?: string
+}
+
+function toStudentEventFromCollege(e: CollegeEventDto): Event {
+  const start = new Date(e.date)
+  const end = e.endDate ? new Date(e.endDate) : null
+
+  const pad2 = (n: number) => String(n).padStart(2, '0')
+  const toTime = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+
+  return {
+    _id: e._id,
+    title: e.title,
+    description: e.description || '',
+    event_date: start.toISOString().slice(0, 10),
+    start_time: toTime(start),
+    end_time: end ? toTime(end) : toTime(new Date(start.getTime() + 60 * 60 * 1000)),
+    location: e.location,
+    event_type: e.eventType || 'other'
+  }
+}
+
 export default function EventsPage() {
+  const { token, organization } = useAuth()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [registering, setRegistering] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+  const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
 
   useEffect(() => {
     loadEvents()
@@ -40,14 +75,30 @@ export default function EventsPage() {
     setLoading(true)
     setError(null)
     try {
-      const response = await getEvents()
-
-      if (response.success && response.data) {
-        // The API returns an object containing the events array and pagination metadata
-        const eventsData = response.data.events || []
-        setEvents(Array.isArray(eventsData) ? eventsData : [])
+      if (isCollege) {
+        if (!token) {
+          setError('No authentication token')
+          return
+        }
+        const response = await collegeApi.getStudentEvents(token)
+        if (response.success) {
+          const payload = response.data as any
+          const eventsData = payload?.events || payload || []
+          const normalized = Array.isArray(eventsData) ? eventsData.map(toStudentEventFromCollege) : []
+          setEvents(normalized)
+        } else {
+          setError(response.message || 'Failed to load events')
+        }
       } else {
-        setError(response.message || "Failed to load events")
+        const response = await getEvents()
+
+        if (response.success && response.data) {
+          // The API returns an object containing the events array and pagination metadata
+          const eventsData = response.data.events || []
+          setEvents(Array.isArray(eventsData) ? eventsData : [])
+        } else {
+          setError(response.message || "Failed to load events")
+        }
       }
     } catch (err: any) {
       console.error('Events error:', err)

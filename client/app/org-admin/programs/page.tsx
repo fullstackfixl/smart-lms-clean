@@ -293,60 +293,60 @@ export default function CoursesPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCreateModal(false)}
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden"
             >
-              <div className="p-8 border-b border-slate-800">
+              <div className="p-7 border-b border-slate-100 bg-gradient-to-b from-orange-50/60 to-white">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-white mb-1">Create Academic Program</h2>
-                    <p className="text-slate-400 text-sm">Add a new academic program to your organization</p>
+                    <h2 className="text-[22px] font-black text-slate-900 tracking-tight mb-1">Create Academic Program</h2>
+                    <p className="text-slate-500 text-[13px] font-medium">Add a new academic program to your organization</p>
                   </div>
                   <button
                     onClick={() => setShowCreateModal(false)}
-                    className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 transition-colors"
+                    className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-900 transition-colors"
                   >
                     <X className="w-6 h-6" />
                   </button>
                 </div>
               </div>
 
-              <form onSubmit={handleCreateCourse} className="p-8 space-y-6">
+              <form onSubmit={handleCreateCourse} className="p-7 space-y-5">
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Course Name</label>
+                    <label className="text-[12px] font-black text-slate-600 uppercase tracking-widest ml-1">Course Name</label>
                     <input
                       required
                       placeholder="e.g. BCA, MBA"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full h-11 px-4 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500/60 outline-none transition-all"
+                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/50 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Course Code</label>
+                    <label className="text-[12px] font-black text-slate-600 uppercase tracking-widest ml-1">Course Code</label>
                     <input
                       required
                       placeholder="e.g. BCA101"
                       value={formData.code}
                       onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                      className="w-full h-11 px-4 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500/60 outline-none transition-all"
+                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/50 outline-none transition-all"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300 ml-1">Department</label>
+                  <label className="text-[12px] font-black text-slate-600 uppercase tracking-widest ml-1">Department</label>
                   <select
                     required
                     value={formData.department_id}
                     onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-                    className="w-full h-11 px-4 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 focus:ring-2 focus:ring-indigo-500/60 outline-none transition-all"
+                    className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/50 outline-none transition-all"
                   >
                     <option value="">Select Department</option>
                     {departments.map(dept => (
@@ -357,7 +357,7 @@ export default function CoursesPage() {
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Duration (Years)</label>
+                    <label className="text-[12px] font-black text-slate-600 uppercase tracking-widest ml-1">Duration (Years)</label>
                     <input
                       type="number"
                       required
@@ -365,11 +365,11 @@ export default function CoursesPage() {
                       max="10"
                       value={formData.duration_years}
                       onChange={(e) => setFormData({ ...formData, duration_years: parseInt(e.target.value) })}
-                      className="w-full h-11 px-4 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 focus:ring-2 focus:ring-indigo-500/60 outline-none transition-all"
+                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/50 outline-none transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">Total Semesters</label>
+                    <label className="text-[12px] font-black text-slate-600 uppercase tracking-widest ml-1">Total Semesters</label>
                     <input
                       type="number"
                       required
@@ -377,19 +377,19 @@ export default function CoursesPage() {
                       max="20"
                       value={formData.total_semesters}
                       onChange={(e) => setFormData({ ...formData, total_semesters: parseInt(e.target.value) })}
-                      className="w-full h-11 px-4 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 focus:ring-2 focus:ring-indigo-500/60 outline-none transition-all"
+                      className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/50 outline-none transition-all"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300 ml-1">Description</label>
+                  <label className="text-[12px] font-black text-slate-600 uppercase tracking-widest ml-1">Description</label>
                   <textarea
                     rows={3}
                     placeholder="Brief description of the academic program..."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-indigo-500/60 outline-none transition-all resize-none"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/50 outline-none transition-all resize-none"
                   />
                 </div>
 
@@ -397,14 +397,14 @@ export default function CoursesPage() {
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="flex-1 h-12 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-2xl transition-all"
+                    className="flex-1 h-12 bg-white hover:bg-slate-50 text-slate-700 font-black rounded-2xl transition-all border border-slate-200 uppercase tracking-widest text-[12px]"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-[2] h-12 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
+                    className="flex-[2] h-12 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-lg shadow-orange-500/20 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[12px] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
                     Create Program

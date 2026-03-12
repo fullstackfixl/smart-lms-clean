@@ -49,7 +49,9 @@ export default function BatchesPage() {
                 response = await batchApi.list(token)
             }
             if (response.success) {
-                setData(response.data || [])
+                const payload = response.data as any
+                const batches = payload?.batches || payload || []
+                setData(Array.isArray(batches) ? batches : [])
             }
         } catch (error) {
             console.error("Failed to load batches:", error)
