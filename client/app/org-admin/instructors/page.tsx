@@ -2,6 +2,7 @@
  
 import { useState, useEffect } from "react"
 import { listInstructors } from '../../../lib/services/orgAdminApi'
+import { collegeApi } from '../../../lib/api'
 import { useAuth } from '../../../lib/auth-context'
 import { FlatCard } from "../../../components/org-admin/core/FlatCard"
 import { TextTable, TextRow, TextCell } from "../../../components/org-admin/core/TextTable"
@@ -10,10 +11,13 @@ import { StatusBadge } from "../../../components/org-admin/core/StatusBadge"
 import { toast } from "sonner"
  
 export default function InstructorsPage() {
-  const { token } = useAuth()
+  const { token, organization } = useAuth()
   const [instructors, setInstructors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+
+  const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+  const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
  
   useEffect(() => {
     if (token) loadInstructors()
@@ -22,7 +26,12 @@ export default function InstructorsPage() {
   async function loadInstructors() {
     setLoading(true)
     try {
-      const response = await listInstructors(token!)
+      let response
+      if (isCollege) {
+        response = await collegeApi.listInstructors(token!)
+      } else {
+        response = await listInstructors(token!)
+      }
       if (response.success) {
         setInstructors(response.data || [])
       }

@@ -515,3 +515,122 @@ export const leaderboardApi = {
   getGlobal: (token: string) => orgFeatureRequest(token, 'leaderboard'),
   getBadges: (token: string, userId: string) => orgFeatureRequest(token, `leaderboard/badges/${userId}`),
 }
+
+// ==================== COLLEGE-SPECIFIC APIS ====================
+
+// College Dashboard
+export async function getCollegeDashboard(token: string) {
+  return apiRequest('/api/college/admin/dashboard', { token });
+}
+
+// College Departments
+export async function getCollegeDepartments(token: string) {
+  return apiRequest('/api/college/admin/departments', { token });
+}
+
+export async function createCollegeDepartment(token: string, data: { name: string; code: string; description?: string; headInstructor?: string }) {
+  return apiRequest('/api/college/admin/departments', { method: 'POST', body: data, token });
+}
+
+export async function getCollegeDepartment(token: string, id: string) {
+  return apiRequest(`/api/college/admin/departments/${id}`, { token });
+}
+
+export async function updateCollegeDepartment(token: string, id: string, data: { name: string; code: string; description?: string; headInstructor?: string }) {
+  return apiRequest(`/api/college/admin/departments/${id}`, { method: 'PUT', body: data, token });
+}
+
+// College Batches
+export async function getCollegeBatches(token: string, filters?: { departmentId?: string; year?: number; semester?: number }) {
+  const query = new URLSearchParams();
+  if (filters?.departmentId) query.append('departmentId', filters.departmentId);
+  if (filters?.year) query.append('year', filters.year.toString());
+  if (filters?.semester) query.append('semester', filters.semester.toString());
+  return apiRequest(`/api/college/admin/batches${query.toString() ? `?${query}` : ''}`, { token });
+}
+
+export async function createCollegeBatch(token: string, data: { name: string; code?: string; departmentId: string; year: number; semester?: number; startDate?: Date; endDate?: Date }) {
+  return apiRequest('/api/college/admin/batches', { method: 'POST', body: data, token });
+}
+
+export async function getCollegeBatch(token: string, id: string) {
+  return apiRequest(`/api/college/admin/batches/${id}`, { token });
+}
+
+export async function updateCollegeBatch(token: string, id: string, data: any) {
+  return apiRequest(`/api/college/admin/batches/${id}`, { method: 'PUT', body: data, token });
+}
+
+// College Students
+export async function getCollegeStudents(token: string, filters?: { department?: string; batch?: string; year?: number; search?: string }) {
+  const query = new URLSearchParams();
+  if (filters?.department) query.append('department', filters.department);
+  if (filters?.batch) query.append('batch', filters.batch);
+  if (filters?.year) query.append('year', filters.year.toString());
+  if (filters?.search) query.append('search', filters.search);
+  return apiRequest(`/api/college/admin/students${query.toString() ? `?${query}` : ''}`, { token });
+}
+
+export async function createCollegeStudent(token: string, data: { firstName: string; lastName: string; email: string; phone?: string; departmentId?: string; batchId?: string; rollNumber?: string; year?: number }) {
+  return apiRequest('/api/college/admin/students', { method: 'POST', body: data, token });
+}
+
+export async function getCollegeStudent(token: string, id: string) {
+  return apiRequest(`/api/college/admin/students/${id}`, { token });
+}
+
+// College Instructors
+export async function getCollegeInstructors(token: string, filters?: { department?: string; search?: string }) {
+  const query = new URLSearchParams();
+  if (filters?.department) query.append('department', filters.department);
+  if (filters?.search) query.append('search', filters.search);
+  return apiRequest(`/api/college/admin/instructors${query.toString() ? `?${query}` : ''}`, { token });
+}
+
+export async function createCollegeInstructor(token: string, data: { firstName: string; lastName: string; email: string; phone?: string; departmentId?: string; bio?: string }) {
+  return apiRequest('/api/college/admin/instructors', { method: 'POST', body: data, token });
+}
+
+export async function getCollegeInstructor(token: string, id: string) {
+  return apiRequest(`/api/college/admin/instructors/${id}`, { token });
+}
+
+// College Courses
+export async function getCollegeCourses(token: string, filters?: { department?: string; batch?: string; status?: string }) {
+  const query = new URLSearchParams();
+  if (filters?.department) query.append('department', filters.department);
+  if (filters?.batch) query.append('batch', filters.batch);
+  if (filters?.status) query.append('status', filters.status);
+  return apiRequest(`/api/college/admin/courses${query.toString() ? `?${query}` : ''}`, { token });
+}
+
+export async function getCollegeCourse(token: string, id: string) {
+  return apiRequest(`/api/college/admin/courses/${id}`, { token });
+}
+
+// College Attendance
+export async function getCollegeAttendance(token: string, filters?: { course?: string; department?: string; batch?: string; date?: string }) {
+  const query = new URLSearchParams();
+  if (filters?.course) query.append('course', filters.course);
+  if (filters?.department) query.append('department', filters.department);
+  if (filters?.batch) query.append('batch', filters.batch);
+  if (filters?.date) query.append('date', filters.date);
+  return apiRequest(`/api/college/admin/attendance${query.toString() ? `?${query}` : ''}`, { token });
+}
+
+// College Events
+export async function getCollegeEvents(token: string, filters?: { department?: string; upcoming?: boolean }) {
+  const query = new URLSearchParams();
+  if (filters?.department) query.append('department', filters.department);
+  if (filters?.upcoming) query.append('upcoming', 'true');
+  return apiRequest(`/api/college/admin/events${query.toString() ? `?${query}` : ''}`, { token });
+}
+
+export async function createCollegeEvent(token: string, data: { title: string; description?: string; date: Date; endDate?: Date; location?: string; departmentId?: string; batchId?: string; eventType?: string }) {
+  return apiRequest('/api/college/admin/events', { method: 'POST', body: data, token });
+}
+
+// College Analytics
+export async function getCollegeAnalytics(token: string) {
+  return apiRequest('/api/college/admin/analytics', { token });
+}

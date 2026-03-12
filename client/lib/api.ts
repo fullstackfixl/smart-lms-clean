@@ -129,13 +129,15 @@ export const collegeApi = {
 
   // Admin - Departments
   listDepartments: (token: string) =>
-    apiRequest('/api/college/admin/departments', { token }),
+    apiRequest("/api/college/admin/departments", { token }),
   createDepartment: (token: string, data: Record<string, unknown>) =>
-    apiRequest('/api/college/admin/departments', { method: 'POST', token, body: data }),
+    apiRequest("/api/college/admin/departments", { method: "POST", token, body: data }),
   getDepartment: (token: string, id: string) =>
     apiRequest(`/api/college/admin/departments/${id}`, { token }),
   updateDepartment: (token: string, id: string, data: Record<string, unknown>) =>
-    apiRequest(`/api/college/admin/departments/${id}`, { method: 'PUT', token, body: data }),
+    apiRequest(`/api/college/admin/departments/${id}`, { method: "PUT", token, body: data }),
+  deleteDepartment: (token: string, id: string) =>
+    apiRequest(`/api/college/admin/departments/${id}`, { method: "DELETE", token }),
 
   // Admin - Batches
   listBatches: (token: string, params?: string) =>
@@ -146,6 +148,8 @@ export const collegeApi = {
     apiRequest(`/api/college/admin/batches/${id}`, { token }),
   updateBatch: (token: string, id: string, data: Record<string, unknown>) =>
     apiRequest(`/api/college/admin/batches/${id}`, { method: 'PUT', token, body: data }),
+  deleteBatch: (token: string, id: string) =>
+    apiRequest(`/api/college/admin/batches/${id}`, { method: 'DELETE', token }),
 
   // Admin - Students
   listStudents: (token: string, params?: string) =>
@@ -154,6 +158,10 @@ export const collegeApi = {
     apiRequest('/api/college/admin/students', { method: 'POST', token, body: data }),
   getStudent: (token: string, id: string) =>
     apiRequest(`/api/college/admin/students/${id}`, { token }),
+  updateStudent: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/api/college/admin/students/${id}`, { method: 'PUT', token, body: data }),
+  deleteStudent: (token: string, id: string) =>
+    apiRequest(`/api/college/admin/students/${id}`, { method: 'DELETE', token }),
 
   // Admin - Instructors
   listInstructors: (token: string, params?: string) =>
@@ -162,6 +170,10 @@ export const collegeApi = {
     apiRequest('/api/college/admin/instructors', { method: 'POST', token, body: data }),
   getInstructor: (token: string, id: string) =>
     apiRequest(`/api/college/admin/instructors/${id}`, { token }),
+  updateInstructor: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/api/college/admin/instructors/${id}`, { method: 'PUT', token, body: data }),
+  deleteInstructor: (token: string, id: string) =>
+    apiRequest(`/api/college/admin/instructors/${id}`, { method: 'DELETE', token }),
 
   // Admin - Courses
   listCollegeCourses: (token: string, params?: string) =>
@@ -178,6 +190,10 @@ export const collegeApi = {
     apiRequest(`/api/college/admin/events${params ? `?${params}` : ''}`, { token }),
   createEvent: (token: string, data: Record<string, unknown>) =>
     apiRequest('/api/college/admin/events', { method: 'POST', token, body: data }),
+  updateEvent: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/api/college/admin/events/${id}`, { method: 'PUT', token, body: data }),
+  deleteEvent: (token: string, id: string) =>
+    apiRequest(`/api/college/admin/events/${id}`, { method: 'DELETE', token }),
 
   // Admin - Analytics
   getAnalytics: (token: string) =>

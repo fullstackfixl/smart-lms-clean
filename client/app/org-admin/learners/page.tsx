@@ -2,6 +2,7 @@
  
 import { useState, useEffect } from "react"
 import { listStudents } from '../../../lib/services/orgAdminApi'
+import { collegeApi } from '../../../lib/api'
 import { useAuth } from '../../../lib/auth-context'
 import { FlatCard } from "../../../components/org-admin/core/FlatCard"
 import { TextTable, TextRow, TextCell } from "../../../components/org-admin/core/TextTable"
@@ -10,10 +11,13 @@ import { StatusBadge } from "../../../components/org-admin/core/StatusBadge"
 import { toast } from "sonner"
  
 export default function LearnersPage() {
-  const { token } = useAuth()
+  const { token, organization } = useAuth()
   const [learners, setLearners] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+
+  const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+  const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
  
   useEffect(() => {
     if (token) loadLearners()
@@ -22,7 +26,12 @@ export default function LearnersPage() {
   async function loadLearners() {
     setLoading(true)
     try {
-      const response = await listStudents(token!)
+      let response
+      if (isCollege) {
+        response = await collegeApi.listStudents(token!)
+      } else {
+        response = await listStudents(token!)
+      }
       if (response.success) {
         setLearners(response.data || [])
       }
