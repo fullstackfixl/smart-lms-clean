@@ -24,6 +24,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
+import { cn } from '../../../lib/utils'
 
 export default function AnalyticsPage() {
   const { data: response, error, isLoading } = useSWR<any>('/api/platform/analytics/overview', platformJsonFetcher)
@@ -45,17 +46,10 @@ export default function AnalyticsPage() {
     )
   }
 
-  const enrollmentTrend = stats?.enrollmentTrend || [
-    { date: '2026-03-01', value: 450 },
-    { date: '2026-03-02', value: 520 },
-    { date: '2026-03-03', value: 480 },
-    { date: '2026-03-04', value: 610 },
-    { date: '2026-03-05', value: 580 },
-    { date: '2026-03-06', value: 720 },
-    { date: '2026-03-07', value: 850 },
-  ]
-
-  const topNodes = stats?.topNodes || []
+  const enrollmentTrend = Array.isArray(stats?.enrollmentTrend) ? stats.enrollmentTrend : []
+  const topNodes = Array.isArray(stats?.topNodes) ? stats.topNodes : []
+  const regionalDistribution = Array.isArray(stats?.regionalDistribution) ? stats.regionalDistribution : []
+  const avgProgress = typeof stats?.avgProgress === 'number' ? stats.avgProgress : null
 
   return (
     <div className="space-y-8">
@@ -73,7 +67,7 @@ export default function AnalyticsPage() {
           <Button variant="outline" className="border-gray-300 text-slate-600 font-bold h-10 px-4">
             <Filter className="mr-2 h-4 w-4" /> Last 30 Days
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 px-4 shadow-none">
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white font-bold h-10 px-4 shadow-none">
             <Download className="mr-2 h-4 w-4" /> Export Data
           </Button>
         </div>
@@ -103,7 +97,7 @@ export default function AnalyticsPage() {
         />
         <FlatMetricCard
           title="Avg Progress"
-          value="68.4%"
+          value={avgProgress !== null ? `${avgProgress.toFixed(1)}%` : 0}
           icon={TrendingUp}
           trend={{ value: 2.1, isPositive: true }}
           subtitle="Completion efficiency"
@@ -122,43 +116,42 @@ export default function AnalyticsPage() {
               <Badge className="bg-blue-50 text-blue-600 border-none rounded-sm px-2 py-0.5 text-[10px] font-bold uppercase">Enrollments</Badge>
             </div>
           </div>
-          <BasicChart data={enrollmentTrend} type="line" xKey="date" yKey="value" height={320} />
+          {enrollmentTrend.length > 0 ? (
+            <BasicChart data={enrollmentTrend} type="line" xKey="date" yKey="value" height={320} />
+          ) : (
+            <div className="h-[320px] flex items-center justify-center text-sm text-slate-500">
+              No analytics data available.
+            </div>
+          )}
         </Card>
 
         <Card className="lg:col-span-4 border-gray-200 bg-white p-6 rounded-md no-shadow flex flex-col">
           <h3 className="text-lg font-bold text-slate-900 mb-6 font-bold">Regional Distribution</h3>
           <div className="flex-1 space-y-8">
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                <span className="text-slate-500">North America</span>
-                <span className="text-slate-900">42%</span>
+            {regionalDistribution.length > 0 ? (
+              regionalDistribution.map((region: any, idx: number) => {
+                const name = region?.name || region?.region || `Region ${idx + 1}`
+                const percent = typeof region?.percent === 'number' ? region.percent : (typeof region?.value === 'number' ? region.value : 0)
+                const color = idx % 3 === 0 ? 'bg-blue-500' : (idx % 3 === 1 ? 'bg-orange-500' : 'bg-green-500')
+                return (
+                  <div key={String(name)} className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
+                      <span className="text-slate-500">{name}</span>
+                      <span className="text-slate-900">{percent}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div className={cn("h-full rounded-full", color)} style={{ width: `${percent}%` }} />
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="h-[240px] flex items-center justify-center text-sm text-slate-500">
+                No regional breakdown available.
               </div>
-              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full" style={{ width: '42%' }} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                <span className="text-slate-500">Europe & Asia</span>
-                <span className="text-slate-900">36%</span>
-              </div>
-              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-orange-500 rounded-full" style={{ width: '36%' }} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs font-bold uppercase tracking-wider">
-                <span className="text-slate-500">Other Clusters</span>
-                <span className="text-slate-900">22%</span>
-              </div>
-              <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-green-500 rounded-full" style={{ width: '22%' }} />
-              </div>
-            </div>
+            )}
           </div>
-          <div className="mt-8 pt-8 border-t border-gray-100 text-center">
-            <p className="text-sm text-slate-400 italic">"Global reach expanded by 8% this quarter"</p>
-          </div>
+          <div className="mt-8 pt-8 border-t border-gray-100 text-center" />
         </Card>
       </div>
 

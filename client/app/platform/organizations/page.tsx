@@ -41,6 +41,7 @@ import { cn } from '../../../lib/utils'
 import Link from 'next/link'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
+import { API_URL, getToken } from '../../../lib/config'
 
 export default function OrganizationsPage() {
   const [search, setSearch] = useState('')
@@ -85,9 +86,14 @@ export default function OrganizationsPage() {
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      const res = await fetch('/api/platform/organizations', {
+      const token = getToken()
+      const res = await fetch(`${API_URL}/api/platform/organizations`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(formData)
       })
       const data = await res.json()
@@ -111,9 +117,14 @@ export default function OrganizationsPage() {
     if (!selectedOrg) return
     setIsSubmitting(true)
     try {
-      const res = await fetch(`/api/platform/organizations/${selectedOrg._id}`, {
+      const token = getToken()
+      const res = await fetch(`${API_URL}/api/platform/organizations/${selectedOrg._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(formData)
       })
       const data = await res.json()
@@ -133,9 +144,14 @@ export default function OrganizationsPage() {
 
   const handleAction = async (id: string, action: string) => {
     try {
-      const res = await fetch(`/api/platform/organizations/${id}/${action}`, {
+      const token = getToken()
+      const res = await fetch(`${API_URL}/api/platform/organizations/${id}/${action}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' }
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        }
       })
       const data = await res.json()
       if (data.success) {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { 
   ArrowLeft, Upload, Video, FileText, CheckCircle, X, 
   Play, Clock, Save, Loader2
@@ -32,10 +33,11 @@ interface Lesson {
   course_id: string
 }
 
-export default function LessonDetailPage({ params }: { params: { id: string } }) {
+export default function LessonDetailPage() {
   const router = useRouter()
   const { token } = useAuth()
-  const lessonId = params.id
+  const params = useParams<{ id: string }>()
+  const lessonId = params?.id
 
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [loading, setLoading] = useState(true)

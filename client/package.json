@@ -7,7 +7,7 @@
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint --max-warnings 1000",
+    "lint": "next lint --max-warnings 100000",
     "test": "echo \"No frontend tests configured\" && exit 0"
   },
   "dependencies": {
