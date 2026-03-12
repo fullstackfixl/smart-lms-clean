@@ -10,7 +10,7 @@ import {
 import { ChevronDown, User, LogOut } from "lucide-react"
 
 export function StudentHeader() {
-    const { user, logout } = useAuth()
+    const { user, logout, organization } = useAuth()
 
     return (
         <header className="fixed top-0 right-0 left-0 md:left-[240px] h-16 bg-slate-900/40 backdrop-blur-xl border-b border-slate-800/50 z-40 px-8 flex items-center justify-between shadow-2xl">
@@ -28,12 +28,23 @@ export function StudentHeader() {
 
                 <DropdownMenu>
                     <DropdownMenuTrigger className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition-all outline-none group">
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-500 flex items-center justify-center text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105">
-                            {user?.name?.charAt(0) || 'S'}
-                        </div>
+                        {organization?.branding?.logo || (organization as any)?.logo_url ? (
+                            <div className="h-8 w-8 rounded-lg bg-slate-900/30 border border-slate-700/50 overflow-hidden flex items-center justify-center shadow-lg transition-transform group-hover:scale-105">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
+                                    alt="Organization logo"
+                                    className="h-full w-full object-contain"
+                                />
+                            </div>
+                        ) : (
+                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-500 flex items-center justify-center text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105">
+                                {user?.name?.charAt(0) || 'S'}
+                            </div>
+                        )}
                         <div className="text-left hidden sm:block">
                             <p className="text-xs font-bold text-slate-100 leading-none">{user?.name || 'Learner'}</p>
-                            <p className="text-[10px] font-medium text-slate-500 mt-1">Free Tier</p>
+                            <p className="text-[10px] font-medium text-slate-500 mt-1">{organization?.name || 'Student'}</p>
                         </div>
                         <ChevronDown className="h-3 w-3 text-slate-500 transition-transform group-data-[state=open]:rotate-180" />
                     </DropdownMenuTrigger>

@@ -59,18 +59,29 @@ const navItems: NavItem[] = [
 export function InstructorSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, organization } = useAuth()
  
   const SidebarContent = () => (
     <div className="flex h-full flex-col bg-white border-r border-gray-200">
       {/* Header / Logo */}
       <div className="flex h-16 items-center border-b border-gray-100 px-6">
         <Link href="/instructor/dashboard" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <GraduationCap className="h-5 w-5" />
-          </div>
+          {organization?.branding?.logo || (organization as any)?.logo_url ? (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-gray-200 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
+                alt="Organization logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
+              <GraduationCap className="h-5 w-5" />
+            </div>
+          )}
           <span className="text-xl font-black tracking-tight text-slate-900">
-            Instatute<span className="text-blue-600">.</span>
+            {organization?.name || 'SmartLMS'}
           </span>
         </Link>
       </div>
@@ -161,10 +172,21 @@ export function InstructorSidebar() {
 
       <div className="fixed left-0 right-0 top-0 z-[60] flex items-center justify-between bg-white px-6 py-4 lg:hidden border-b border-gray-200">
         <Link href="/instructor/dashboard" className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
-            <GraduationCap className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-slate-900">Instatute</span>
+          {organization?.branding?.logo || (organization as any)?.logo_url ? (
+            <div className="h-10 w-10 rounded-lg bg-white border border-gray-200 overflow-hidden flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
+                alt="Organization logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center">
+              <GraduationCap className="h-5 w-5 text-white" />
+            </div>
+          )}
+          <span className="text-xl font-bold text-slate-900">{organization?.name || 'SmartLMS'}</span>
         </Link>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
