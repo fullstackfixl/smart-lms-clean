@@ -23,10 +23,10 @@ class SubjectController extends BaseController {
             }
 
             const subjects = await Subject.find({
-                program_id,
+                programId: program_id,
                 semester: current_semester,
-                organization_id: organizationId
-            }).populate('instructor_id', 'name email profile');
+                organizationId
+            }).populate('instructorId', 'name email profile');
 
             return this.sendSuccess(res, subjects);
         } catch (error) {
@@ -38,9 +38,9 @@ class SubjectController extends BaseController {
         try {
             const organizationId = req.user.organization_id?._id || req.user.organization_id;
             const subjects = await Subject.find({
-                instructor_id: req.user._id,
-                organization_id: organizationId
-            }).populate('program_id', 'name code');
+                instructorId: req.user._id,
+                organizationId
+            }).populate('programId', 'name code');
 
             return this.sendSuccess(res, subjects);
         } catch (error) {
@@ -84,7 +84,7 @@ class SubjectController extends BaseController {
             if (program_id) query.programId = program_id;
 
             const subjects = await Subject.find(query)
-                .populate('instructor_id', 'profile.fullName email')
+                .populate('instructorId', 'profile.fullName email')
                 .populate('contentCourseId', 'title')
                 .sort({ name: 1 });
 
@@ -96,9 +96,10 @@ class SubjectController extends BaseController {
 
     async getById(req, res) {
         try {
+            const organizationId = req.user.organization_id?._id || req.user.organization_id;
             const subject = await Subject.findOne({
                 _id: req.params.id,
-                organizationId: req.user.organization_id
+                organizationId
             });
             if (!subject) return this.sendError(res, 'Subject not found', 404);
             return this.sendSuccess(res, subject);
@@ -109,8 +110,9 @@ class SubjectController extends BaseController {
 
     async update(req, res) {
         try {
+            const organizationId = req.user.organization_id?._id || req.user.organization_id;
             const subject = await Subject.findOneAndUpdate(
-                { _id: req.params.id, organizationId: req.user.organization_id },
+                { _id: req.params.id, organizationId },
                 {
                     ...req.body,
                     departmentId: req.body.departmentId || req.body.department_id,
@@ -130,9 +132,10 @@ class SubjectController extends BaseController {
 
     async delete(req, res) {
         try {
+            const organizationId = req.user.organization_id?._id || req.user.organization_id;
             const subject = await Subject.findOneAndDelete({
                 _id: req.params.id,
-                organizationId: req.user.organization_id
+                organizationId
             });
             if (!subject) return this.sendError(res, 'Subject not found', 404);
             return this.sendSuccess(res, null, 'Subject deleted successfully');
