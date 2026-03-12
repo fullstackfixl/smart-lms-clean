@@ -26,6 +26,12 @@ interface Organization {
   name: string
   type: string
   modulesEnabled: string[]
+  logo_url?: string
+  branding?: {
+    logo?: string
+    primaryColor?: string
+    secondaryColor?: string
+  }
 }
 
 interface AuthContextType {
@@ -41,6 +47,7 @@ interface AuthContextType {
   resendOtp: (email: string) => Promise<{ success: boolean; error?: string; data?: any }>
   logout: () => void
   loginWithGoogle: () => Promise<{ success: boolean; error?: string; redirectUrl?: string }>
+  refreshMe: () => Promise<void>
   isAuthenticated: boolean
 }
 
@@ -51,6 +58,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null)
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const refreshMe = useCallback(async () => {
+    const activeToken = typeof window !== 'undefined'
+      ? (window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token'))
+      : token
+
+    if (!activeToken) return
+
+    const res = await authApi.getMe(activeToken)
+    if (res.success && res.data) {
+      const userData = (res.data as any).user || res.data
+      const orgData = (res.data as any).organization || null
+      setUser(userData as User)
+      if (orgData) setOrganization(orgData)
+    }
+  }, [token])
 
   useEffect(() => {
     // Try URL parameter first (for social login callbacks), then sessionStorage/localStorage
@@ -331,7 +354,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resendOtp,
         logout,
         loginWithGoogle,
-        isAuthenticated: !!user && !!token,
+        refreshMe,
+        isAuthenticated: !!token && !!user,
       }}
     >
       {children}

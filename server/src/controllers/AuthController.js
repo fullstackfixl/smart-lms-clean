@@ -407,7 +407,7 @@ class AuthController {
             if (req.user.organization_id) {
                 const Organization = require('../models/Organization');
                 const orgId = req.user.organization_id?._id || req.user.organization_id;
-                const org = await Organization.findById(orgId).select('name type modulesEnabled status plan subdomain');
+                const org = await Organization.findById(orgId).select('name type modulesEnabled status plan subdomain branding logo_url');
                 if (org) {
                     organization = {
                         _id: org._id,
@@ -416,7 +416,9 @@ class AuthController {
                         modulesEnabled: org.modulesEnabled || [],
                         status: org.status,
                         plan: org.plan,
-                        subdomain: org.subdomain
+                        subdomain: org.subdomain,
+                        branding: org.branding || undefined,
+                        logo_url: org.logo_url || undefined
                     };
                 }
             }

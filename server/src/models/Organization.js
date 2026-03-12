@@ -110,6 +110,11 @@ const organizationSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  branding: {
+    logo: { type: String, trim: true },
+    primaryColor: { type: String, trim: true },
+    secondaryColor: { type: String, trim: true }
+  },
   admin_user_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

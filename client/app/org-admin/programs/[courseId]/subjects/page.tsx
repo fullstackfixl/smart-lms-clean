@@ -103,7 +103,15 @@ export default function SubjectManagementPage() {
         setIsSubmitting(true)
         try {
             if (!token) throw new Error('No authentication token')
-            const response = await subjectApi.create(token, formData)
+            const response = await subjectApi.create(token, {
+                name: formData.name,
+                code: formData.code,
+                description: formData.description,
+                semester: Number(formData.semester),
+                program_id: formData.program_id,
+                department_id: formData.department_id,
+                instructor_id: formData.instructor_id || undefined
+            })
             if (response.success) {
                 toast.success("Subject added successfully")
                 setShowCreateModal(false)

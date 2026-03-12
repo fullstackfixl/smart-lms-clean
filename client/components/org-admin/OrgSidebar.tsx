@@ -78,9 +78,20 @@ export function OrgSidebar() {
       {/* Header / Logo */}
       <div className="flex h-16 items-center border-b border-gray-100 px-6">
         <Link href="/org-admin/dashboard" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <GraduationCap className="h-5 w-5" />
-          </div>
+          {organization?.branding?.logo || (organization as any)?.logo_url ? (
+            <div className="h-10 w-10 rounded-lg bg-white border border-slate-200 overflow-hidden flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
+                alt="Organization logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
+              <GraduationCap className="h-5 w-5" />
+            </div>
+          )}
           <div>
             <span className="text-xl font-black tracking-tight text-slate-900">
               {organization?.name || 'Instatute'}

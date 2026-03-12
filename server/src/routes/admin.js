@@ -1,5 +1,8 @@
 const express = require('express');
+const router = express.Router();
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const { cloudinaryUpload, handleUploadError } = require('../middleware/upload');
+const { uploadToCloudinary } = require('../config/cloudinary');
 const requireOrganization = require('../middleware/orgProtection');
 const mongoose = require('mongoose');
 const User = require('../models/User');
@@ -9,7 +12,6 @@ const Fee = require('../models/Fee');
 const Attendance = require('../models/Attendance');
 const Grade = require('../models/Grade');
 
-const router = express.Router();
 const Organization = require('../models/Organization');
 const GradeLevel = require('../models/GradeLevel');
 const GradeSection = require('../models/GradeSection');
@@ -1716,6 +1718,40 @@ router.get('/analytics/revenue', async (req, res) => {
 // BRANDING & SETTINGS
 // ============================================
 
+// Upload organization logo (Cloudinary)
+router.post('/settings/logo', cloudinaryUpload.single('logo'), handleUploadError, async (req, res) => {
+  try {
+    const organizationId = req.user.organization_id;
+    if (!req.file) {
+      return res.error('Logo file is required', 'Bad request', 400);
+    }
+
+    const Organization = require('../models/Organization');
+    const organization = await Organization.findById(organizationId);
+    if (!organization) {
+      return res.error('Organization not found', 'Not found', 404);
+    }
+
+    const folder = `smart-lms/${organizationId}/branding`;
+    const publicId = `org_logo_${organizationId}_${Date.now()}`;
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder,
+      public_id: publicId,
+      resource_type: 'image'
+    });
+
+    if (!organization.branding) organization.branding = {};
+    organization.branding.logo = result.secure_url;
+    organization.logo_url = result.secure_url;
+    await organization.save();
+
+    res.success({ logo: result.secure_url }, 'Logo uploaded successfully');
+  } catch (error) {
+    console.error('Upload logo error:', error);
+    res.error(error.message, 'Failed to upload logo', 500);
+  }
+});
+
 // Get organization settings
 router.get('/settings', async (req, res) => {
   try {
@@ -1734,7 +1770,7 @@ router.get('/settings', async (req, res) => {
         domain: organization.domain,
         code: organization.code, // 6-character code
         organizationId: organization._id.toString(), // 24-character ObjectId
-        logo: organization.branding?.logo || null,
+        logo: organization.branding?.logo || organization.logo_url || null,
         primaryColor: organization.branding?.primaryColor || '#3b82f6',
         secondaryColor: organization.branding?.secondaryColor || '#06b6d4',
         preferences: organization.settings || {}
@@ -1767,6 +1803,7 @@ router.put('/settings', async (req, res) => {
     if (logo !== undefined) organization.branding.logo = logo;
     if (primaryColor) organization.branding.primaryColor = primaryColor;
     if (secondaryColor) organization.branding.secondaryColor = secondaryColor;
+    if (logo !== undefined) organization.logo_url = logo;
 
     // Update preferences
     if (preferences) {
@@ -1779,7 +1816,7 @@ router.put('/settings', async (req, res) => {
       settings: {
         name: organization.name,
         domain: organization.domain,
-        logo: organization.branding.logo,
+        logo: organization.branding.logo || organization.logo_url || null,
         primaryColor: organization.branding.primaryColor,
         secondaryColor: organization.branding.secondaryColor,
         preferences: organization.settings

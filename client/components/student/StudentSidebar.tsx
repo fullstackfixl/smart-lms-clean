@@ -62,7 +62,7 @@ const navGroups = [
 
 export function StudentSidebar() {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, organization } = useAuth()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
   const isItemVisible = (item: any) => {
@@ -77,12 +77,31 @@ export function StudentSidebar() {
     <div className="flex h-full flex-col" style={{ background: 'linear-gradient(180deg, #0a0f1e 0%, #0d1117 100%)' }}>
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25 shrink-0">
-          <Zap className="h-5 w-5 text-white" fill="white" />
-        </div>
+        {organization?.branding?.logo || (organization as any)?.logo_url ? (
+          <div className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
+              alt="Organization logo"
+              className="h-full w-full object-contain"
+            />
+          </div>
+        ) : (
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25 shrink-0">
+            <Zap className="h-5 w-5 text-white" fill="white" />
+          </div>
+        )}
         <div>
           <span className="text-[15px] font-bold tracking-tight text-white">
-            Smart<span className="text-emerald-400">LMS</span>
+            {organization?.name ? (
+              <>
+                {organization.name}
+              </>
+            ) : (
+              <>
+                Smart<span className="text-emerald-400">LMS</span>
+              </>
+            )}
           </span>
           <p className="text-[10px] font-medium text-slate-500 -mt-0.5">Learner Portal</p>
         </div>
