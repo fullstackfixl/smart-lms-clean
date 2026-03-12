@@ -224,7 +224,7 @@ export default function RevenuePage() {
                          <Inbox className="w-6 h-6 text-slate-400" />
                       </div>
                       <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">No transactions identified</p>
-                      <p className="text-[10px] text-slate-200 font-bold uppercase tracking-tighter italic">// Ledger ready for incoming fiscal cycles</p>
+                      <p className="text-[10px] text-slate-200 font-bold uppercase tracking-tighter italic">{'// Ledger ready for incoming fiscal cycles'}</p>
                     </div>
                   </td>
                 </tr>
