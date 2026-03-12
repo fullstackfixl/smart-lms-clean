@@ -171,7 +171,7 @@ export default function GradesSectionsPage() {
                         actions={(row) => (
                             <div className="flex gap-2">
                                 <button onClick={() => { setEditingLevel(row); setLevelFormData({ name: row.name, code: row.code, order: row.order }); setIsLevelModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-400"><Edit2 className="w-4 h-4" /></button>
-                                <button onClick={() => schoolGradeApi.deleteLevel(row._id).then(loadData)} className="p-2 text-slate-400 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={() => schoolGradeApi.deleteLevel(token!, row._id).then(loadData)} className="p-2 text-slate-400 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         )}
                     />
@@ -182,7 +182,7 @@ export default function GradesSectionsPage() {
                         actions={(row) => (
                             <div className="flex gap-2">
                                 <button onClick={() => { setEditingSection(row); setSectionFormData({ name: row.name, grade_level_id: row.grade_level_id?._id || "", room_number: row.room_number || "", capacity: row.capacity || 30 }); setIsSectionModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-400"><Edit2 className="w-4 h-4" /></button>
-                                <button onClick={() => schoolGradeApi.deleteSection(row._id).then(loadData)} className="p-2 text-slate-400 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={() => schoolGradeApi.deleteSection(token!, row._id).then(loadData)} className="p-2 text-slate-400 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         )}
                     />

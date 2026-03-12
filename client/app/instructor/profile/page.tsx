@@ -156,12 +156,12 @@ export default function InstructorProfilePage() {
           </div>
           <div className="flex justify-between py-2 border-b border-gray-100">
             <span className="text-slate-500">Organization</span>
-            <span className="font-medium text-slate-900">{user.organizationName || "-"}</span>
+            <span className="font-medium text-slate-900">{(user as any).organizationName || "-"}</span>
           </div>
           <div className="flex justify-between py-2 border-b border-gray-100">
             <span className="text-slate-500">Member Since</span>
             <span className="font-medium text-slate-900">
-              {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "-"}
+              {(user as any).createdAt ? new Date((user as any).createdAt).toLocaleDateString() : "-"}
             </span>
           </div>
         </div>
