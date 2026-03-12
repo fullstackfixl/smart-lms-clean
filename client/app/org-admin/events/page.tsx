@@ -57,8 +57,9 @@ export default function EventsPage() {
                 response = { success: true, data: [] }
             }
             if (response.success) {
-                const eventsData = (response.data as Event[]) || []
-                setData(eventsData)
+                const payload = response.data as any
+                const eventsData = payload?.events || payload || []
+                setData(Array.isArray(eventsData) ? eventsData : [])
             }
         } catch (error) {
             console.error("Failed to load events:", error)
