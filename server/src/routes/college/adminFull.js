@@ -292,6 +292,7 @@ router.post('/students', async (req, res) => {
       email,
       role: 'student',
       organization_id: orgId,
+      organizationType: req.user.organization_type || 'college',
       profile: {
         firstName,
         lastName,
@@ -391,6 +392,7 @@ router.post('/instructors', async (req, res) => {
       email,
       role: 'instructor',
       organization_id: orgId,
+      organizationType: req.user.organization_type || 'college',
       profile: {
         firstName,
         lastName,

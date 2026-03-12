@@ -1,332 +1,335 @@
 "use client"
- 
-import { useState, useEffect } from "react"
+
+import React, { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { 
   Users, 
-  GraduationCap,
+  BookOpen, 
   Building2,
   Calendar,
-  BookOpen,
-  Plus
+  Plus, 
+  ChevronRight,
+  CheckCircle,
+  RefreshCw,
+  GraduationCap,
+  Layers,
+  School,
+  ArrowUpRight
 } from "lucide-react"
-import { getDashboardMetrics, getDashboardActivities } from '../../../lib/services/orgAdminApi'
+import { Button } from '../../../components/ui/button'
+import { toast } from "sonner"
 import { useAuth } from '../../../lib/auth-context'
 import { collegeApi } from '../../../lib/api'
-import { cn } from "../../../lib/utils"
-import { FlatCard } from "../../../components/org-admin/core/FlatCard"
-import { TextTable, TextRow, TextCell } from "../../../components/org-admin/core/TextTable"
-import { MinimalButton } from "../../../components/org-admin/core/MinimalForm"
-import { PlainChart } from "../../../components/org-admin/core/PlainChart"
-import Link from "next/link"
- 
-export default function OrgAdminDashboard() {
-  const { user, organization, token } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [metrics, setMetrics] = useState<any>(null)
-  const [activities, setActivities] = useState<any>(null)
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
 
+interface DashboardData {
+  totalStudents: number
+  totalInstructors: number
+  totalCourses: number
+  totalDepartments: number
+  totalBatches: number
+  attendanceRate: number
+}
+
+function MetricCard({ title, value, icon: Icon, color = "blue", subtext }: { title: string; value: string | number; icon: any; color?: "blue" | "orange" | "green" | "purple" | "teal"; subtext?: string }) {
+  const colors = {
+    blue: { bg: "bg-blue-50", icon: "text-blue-500", text: "text-blue-600" },
+    orange: { bg: "bg-orange-50", icon: "text-orange-500", text: "text-orange-600" },
+    green: { bg: "bg-green-50", icon: "text-green-500", text: "text-green-600" },
+    purple: { bg: "bg-purple-50", icon: "text-purple-500", text: "text-purple-600" },
+    teal: { bg: "bg-teal-50", icon: "text-teal-500", text: "text-teal-600" },
+  }
+  const c = colors[color]
+  
+  return (
+    <div className="bg-white border border-gray-200 rounded-md p-6 hover:border-gray-300 transition-colors">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-600 mb-1">{title}</p>
+          <p className="text-3xl font-bold text-slate-900">{value}</p>
+          {subtext && <p className="text-xs text-slate-500 mt-1">{subtext}</p>}
+        </div>
+        <div className={`p-3 rounded-md ${c.bg}`}>
+          <Icon className={`w-6 h-6 stroke-[1.5] ${c.icon}`} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function OrgAdminDashboardPage() {
+  const { user, organization, token } = useAuth()
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+  
   const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
-  const isCorporate = orgType === 'CORPORATE'
-  const isSchool = orgType === 'SCHOOL'
   const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
- 
+
   useEffect(() => {
-    loadDashboardData()
-  }, [])
- 
-  async function loadDashboardData() {
+    fetchDashboardData()
+  }, [token])
+
+  const fetchDashboardData = async () => {
+    if (!token) {
+      setLoading(false)
+      return
+    }
+    
     setLoading(true)
     try {
-      if (isCollege && token) {
-        const [dash, eventsRes] = await Promise.allSettled([
+      if (isCollege) {
+        const [dashRes, eventsRes] = await Promise.all([
           collegeApi.adminDashboard(token),
           collegeApi.listAdminEvents(token, 'upcoming=true')
         ])
-        
-        if (dash.status === 'fulfilled' && dash.value.success) {
-          const payload: any = dash.value.data
-          setMetrics({
-            metrics: {
-              totalStudents: payload?.stats?.totalStudents || 0,
-              totalInstructors: payload?.stats?.totalInstructors || 0,
-              totalCourses: payload?.stats?.totalCourses || 0,
-              totalDepartments: payload?.stats?.totalDepartments || 0,
-              totalBatches: payload?.stats?.totalBatches || 0,
-              attendanceRate: payload?.stats?.attendanceRate || 0,
-              trends: {}
-            },
-            charts: {
-              enrollmentGrowth: payload?.studentGrowth || []
-            }
-          })
-          setActivities({
-            recentEnrollments: [],
-            topCourses: [],
-            activityFeed: []
+
+        if (dashRes.success && dashRes.data) {
+          const payload: any = dashRes.data
+          setData({
+            totalStudents: payload?.stats?.totalStudents || 0,
+            totalInstructors: payload?.stats?.totalInstructors || 0,
+            totalCourses: payload?.stats?.totalCourses || 0,
+            totalDepartments: payload?.stats?.totalDepartments || 0,
+            totalBatches: payload?.stats?.totalBatches || 0,
+            attendanceRate: payload?.stats?.attendanceRate || 0
           })
         }
-        
-        if (eventsRes.status === 'fulfilled' && eventsRes.value.success) {
-          const data: any = eventsRes.value.data
-          setUpcomingEvents(data?.events || [])
+
+        if (eventsRes.success) {
+          const payload: any = eventsRes.data
+          setUpcomingEvents(payload?.events || [])
         }
-      } else {
-        if (!token) return
-        const [metricsData, activitiesData] = await Promise.all([
-          getDashboardMetrics(token),
-          getDashboardActivities(token, 10)
-        ])
-        if (metricsData.success) setMetrics(metricsData.data)
-        if (activitiesData.success) setActivities(activitiesData.data)
       }
-    } catch (err) {
-      console.error('Failed to load dashboard data:', err)
+    } catch (error) {
+      console.error('Dashboard error:', error)
+      toast.error('Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
   }
- 
+
   if (loading) {
     return (
-      <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
-        <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-500 rounded-full animate-spin" />
-        <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">Identifying Data Nodes...</p>
+      <div className="space-y-8">
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-gray-100 rounded-md animate-pulse" />
+          ))}
+        </div>
       </div>
     )
   }
- 
-  const chartData = metrics?.charts?.enrollmentGrowth?.map((m: any) => ({
-    name: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m._id.month - 1],
-    enrollments: m.count
-  })) || []
- 
-  const topCourses = activities?.topCourses || []
-  const recentStudents = activities?.recentEnrollments || []
- 
-  return (
-    <div className="space-y-10 pb-20">
-      
-      {/* ─── Hero Header ────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-         <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-[#3B82F6] tracking-tight leading-none uppercase">
-              {isCorporate ? 'Workforce Oversight' : isSchool ? 'School Hub' : isCollege ? 'Academic Registry' : 'At a Glance'}
-            </h1>
-            <p className="text-[14px] text-slate-500 font-medium italic">
-              {isCorporate ? 'Monitoring employee growth and skill acquisition matrix.' : 
-               isSchool ? 'Daily operations and student performance telemetry.' :
-               'Comprehensive overview of your organization\'s digital learning ecosystem.'}
-            </p>
-         </div>
-         <Link href="/org-admin/courses">
-            <MinimalButton variant="text" className="text-[#F97316]">
-               <Plus className="w-4 h-4 mr-2" />
-               {isCorporate ? 'Assign Training' : 'Add Content'}
-            </MinimalButton>
-         </Link>
+
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <p className="text-slate-500 mb-4">Failed to load dashboard</p>
+        <Button onClick={fetchDashboardData}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Retry
+        </Button>
       </div>
- 
-      {/* ─── Metric Matrix ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-         {isCollege ? (
-           <>
-             <MetricCard 
-               label="Total Students" 
-               value={metrics?.metrics?.totalStudents?.toLocaleString() || 0} 
-               icon={Users}
-               subtext="Active learners"
-             />
-             <MetricCard 
-               label="Total Instructors" 
-               value={metrics?.metrics?.totalInstructors?.toLocaleString() || 0}
-               icon={GraduationCap}
-               subtext="Teaching staff"
-             />
-             <MetricCard 
-               label="Departments" 
-               value={metrics?.metrics?.totalDepartments || 0}
-               icon={Building2}
-               subtext="Academic departments"
-             />
-             <MetricCard 
-               label="Attendance Rate" 
-               value={`${metrics?.metrics?.attendanceRate || 0}%`}
-               icon={Calendar}
-               subtext="Average attendance"
-             />
-           </>
-         ) : (
-           <>
-             <MetricCard 
-               label={isCorporate ? "Total Workforce" : isSchool ? "Total Students" : "Total Learners"} 
-               value={metrics?.metrics?.totalStudents?.toLocaleString() || 0} 
-               trend={metrics?.metrics?.trends?.students}
-               subtext="Active engagement"
-             />
-             <MetricCard 
-               label={isCorporate ? "Active Assignments" : "Total Products"} 
-               value={metrics?.metrics?.activeCourses || 0} 
-               subtext={isCorporate ? "Current training" : "Live and selling"}
-             />
-             <MetricCard 
-               label={isSchool ? "Live Classes" : "Interactive Sessions"} 
-               value={metrics?.metrics?.liveClassesCount || 0} 
-               trend={metrics?.metrics?.trends?.liveSessions}
-               subtext="Scheduled this week"
-             />
-             <MetricCard 
-               label={isCorporate ? "Skill Index" : "Total Revenue"} 
-               value={isCorporate ? `${metrics?.metrics?.skillIndex || 85}%` : `₹${(metrics?.metrics?.totalRevenue || 0).toLocaleString()}`} 
-               trend={metrics?.metrics?.trends?.revenue}
-               subtext={isCorporate ? "Avg proficiency" : "Marketplace performance"}
-             />
-           </>
-         )}
+    )
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            Welcome back, {user?.name || "Admin"} 👋
+          </h1>
+          <p className="text-slate-500 mt-1">Manage your {isCollege ? 'college' : 'organization'} from here.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={fetchDashboardData} className="border-gray-200">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Button 
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+            onClick={() => router.push('/org-admin/courses')}
+          >
+            <Plus className="mr-2 h-4 w-4 stroke-[1.5]" /> 
+            Add Course
+          </Button>
+        </div>
       </div>
 
-      {/* ─── College Quick Links ───────────────────────────────────── */}
-      {isCollege && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Link href="/org-admin/departments">
-            <FlatCard className="hover:bg-slate-50 transition-colors cursor-pointer">
-              <Building2 className="h-5 w-5 text-blue-500 mb-2" />
-              <p className="text-sm font-semibold text-slate-900">Departments</p>
-              <p className="text-xs text-slate-500">Manage departments</p>
-            </FlatCard>
-          </Link>
-          <Link href="/org-admin/batches">
-            <FlatCard className="hover:bg-slate-50 transition-colors cursor-pointer">
-              <Users className="h-5 w-5 text-emerald-500 mb-2" />
-              <p className="text-sm font-semibold text-slate-900">Batches</p>
-              <p className="text-xs text-slate-500">Manage batches</p>
-            </FlatCard>
-          </Link>
-          <Link href="/org-admin/courses">
-            <FlatCard className="hover:bg-slate-50 transition-colors cursor-pointer">
-              <BookOpen className="h-5 w-5 text-purple-500 mb-2" />
-              <p className="text-sm font-semibold text-slate-900">Courses</p>
-              <p className="text-xs text-slate-500">Manage courses</p>
-            </FlatCard>
-          </Link>
-          <Link href="/org-admin/events">
-            <FlatCard className="hover:bg-slate-50 transition-colors cursor-pointer">
-              <Calendar className="h-5 w-5 text-orange-500 mb-2" />
-              <p className="text-sm font-semibold text-slate-900">Events</p>
-              <p className="text-xs text-slate-500">Manage events</p>
-            </FlatCard>
-          </Link>
+      {/* Metrics */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+        {isCollege ? (
+          <>
+            <MetricCard 
+              title="Total Students" 
+              value={data.totalStudents?.toLocaleString() || "0"} 
+              icon={Users} 
+              color="blue" 
+              subtext="Active learners"
+            />
+            <MetricCard 
+              title="Total Instructors" 
+              value={data.totalInstructors?.toLocaleString() || "0"} 
+              icon={GraduationCap} 
+              color="orange"
+              subtext="Teaching staff"
+            />
+            <MetricCard 
+              title="Departments" 
+              value={data.totalDepartments || 0} 
+              icon={Building2} 
+              color="purple"
+              subtext="Academic departments"
+            />
+            <MetricCard 
+              title="Attendance Rate" 
+              value={`${Math.round(data.attendanceRate || 0)}%`} 
+              icon={CheckCircle} 
+              color="green"
+              subtext="Average attendance"
+            />
+          </>
+        ) : (
+          <>
+            <MetricCard title="Total Learners" value={data.totalStudents?.toLocaleString() || "0"} icon={Users} color="blue" />
+            <MetricCard title="Courses" value={data.totalCourses || 0} icon={BookOpen} color="orange" />
+            <MetricCard title="Instructors" value={data.totalInstructors || 0} icon={GraduationCap} color="green" />
+            <MetricCard title="Batches" value={data.totalBatches || 0} icon={Layers} color="purple" />
+          </>
+        )}
+      </div>
+
+      {/* Quick Actions & Recent Activity */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        {/* Quick Links */}
+        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-md">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Quick Actions</h3>
+              <p className="text-sm text-slate-500">Manage your organization efficiently</p>
+            </div>
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {isCollege && (
+              <>
+                <Button 
+                  variant="outline" 
+                  className="h-auto py-4 justify-start text-left border-gray-200 hover:bg-blue-50 hover:border-blue-200"
+                  onClick={() => router.push('/org-admin/departments')}
+                >
+                  <div className="p-2 bg-blue-100 rounded-md mr-3">
+                    <Building2 className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-slate-900">Departments</p>
+                    <p className="text-xs text-slate-500">Manage academic departments</p>
+                  </div>
+                  <ArrowUpRight className="w-4 h-4 ml-auto text-slate-400" />
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="h-auto py-4 justify-start text-left border-gray-200 hover:bg-purple-50 hover:border-purple-200"
+                  onClick={() => router.push('/org-admin/batches')}
+                >
+                  <div className="p-2 bg-purple-100 rounded-md mr-3">
+                    <School className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-slate-900">Batches</p>
+                    <p className="text-xs text-slate-500">Manage student batches</p>
+                  </div>
+                  <ArrowUpRight className="w-4 h-4 ml-auto text-slate-400" />
+                </Button>
+              </>
+            )}
+            
+            <Button 
+              variant="outline" 
+              className="h-auto py-4 justify-start text-left border-gray-200 hover:bg-green-50 hover:border-green-200"
+              onClick={() => router.push('/org-admin/users?role=student')}
+            >
+              <div className="p-2 bg-green-100 rounded-md mr-3">
+                <Users className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-slate-900">Students</p>
+                <p className="text-xs text-slate-500">Manage enrolled students</p>
+              </div>
+              <ArrowUpRight className="w-4 h-4 ml-auto text-slate-400" />
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="h-auto py-4 justify-start text-left border-gray-200 hover:bg-orange-50 hover:border-orange-200"
+              onClick={() => router.push('/org-admin/users?role=instructor')}
+            >
+              <div className="p-2 bg-orange-100 rounded-md mr-3">
+                <GraduationCap className="w-5 h-5 text-orange-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-slate-900">Instructors</p>
+                <p className="text-xs text-slate-500">Manage teaching staff</p>
+              </div>
+              <ArrowUpRight className="w-4 h-4 ml-auto text-slate-400" />
+            </Button>
+          </div>
         </div>
-      )}
- 
-      {/* ─── Analytics Insight ─────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-         <FlatCard className="lg:col-span-8 space-y-8">
-            <div className="flex items-center justify-between">
-               <div className="space-y-1">
-                  <h3 className="text-[16px] font-bold text-slate-900">Acquisition Analytics</h3>
-                  <p className="text-[12px] text-slate-500 font-medium">Learnyst Insight: Student acquisition trends across 6 months.</p>
-               </div>
-               <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                     <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
-                     <span className="text-[11px] font-bold text-slate-500 uppercase">Acquisition</span>
+
+        {/* Upcoming Events */}
+        <div className="space-y-6">
+          <div className="bg-blue-600 text-white rounded-md overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-10 h-10 bg-white/20 rounded flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-white stroke-[1.5]" />
+                </div>
+                <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-medium">
+                  {upcomingEvents.length > 0 ? "Upcoming" : "No Events"}
+                </span>
+              </div>
+              <p className="text-sm text-blue-200 mb-1">Events</p>
+              <h4 className="text-xl font-bold">
+                {upcomingEvents.length > 0 ? `${upcomingEvents.length} Events` : "No Upcoming Events"}
+              </h4>
+              <Button 
+                className="w-full mt-4 bg-white text-blue-600 hover:bg-blue-50"
+                onClick={() => router.push('/org-admin/events')}
+              >
+                Manage Events
+              </Button>
+            </div>
+          </div>
+
+          {upcomingEvents.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-md">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <div>
+                  <p className="text-xs text-slate-500 uppercase">Upcoming</p>
+                  <h3 className="font-semibold text-slate-900">Events</h3>
+                </div>
+                <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => router.push('/org-admin/events')}>
+                  View All
+                </Button>
+              </div>
+              <div className="p-6 space-y-3">
+                {upcomingEvents.slice(0, 4).map((event) => (
+                  <div key={event._id} className="flex items-center justify-between py-2">
+                    <div>
+                      <p className="font-medium text-slate-900 text-sm">{event.title || '—'}</p>
+                      <p className="text-xs text-slate-500">{event.date ? new Date(event.date).toLocaleDateString() : '—'}</p>
+                    </div>
+                    <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded">{event.eventType || 'Event'}</span>
                   </div>
-               </div>
+                ))}
+              </div>
             </div>
-            <PlainChart data={chartData} type="line" dataKey="enrollments" />
-         </FlatCard>
- 
-         <FlatCard className="lg:col-span-4 space-y-8">
-            <div className="flex items-center justify-between">
-               <h3 className="text-[16px] font-bold text-slate-900">Top Products</h3>
-               <span className="text-[11px] font-bold text-[#F97316] uppercase">High Volume</span>
-            </div>
-            <div className="space-y-6">
-               {topCourses.map((course: any, idx: number) => (
-                  <div key={idx} className="flex flex-col gap-1.5 border-b border-gray-50 pb-4 last:border-0 last:pb-0">
-                     <p className="text-[13.5px] font-bold text-[#3B82F6] truncate uppercase italic">{course.title}</p>
-                     <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{course.enrollments} Enrollments</span>
-                        <span className="text-[11px] font-bold text-[#10B981] uppercase tracking-widest">{course.rate}% Growth</span>
-                     </div>
-                  </div>
-               ))}
-               {topCourses.length === 0 && (
-                  <p className="text-[13px] text-slate-400 font-medium italic text-center py-10">Marketplace idle. No product telemetry identified.</p>
-               )}
-            </div>
-         </FlatCard>
+          )}
+        </div>
       </div>
- 
-      {/* ─── Recent Telemetry ───────────────────────────────────────── */}
-      <div className="space-y-6">
-         <div className="flex items-center justify-between">
-            <div className="space-y-1">
-               <h3 className="text-[16px] font-bold text-slate-900">Recent Enrollments</h3>
-               <p className="text-[12px] text-slate-500 font-medium">Live transaction stream from marketplace infrastructure.</p>
-            </div>
-            <Link href="/org-admin/users?role=student" className="text-[13.5px] font-bold text-[#3B82F6] hover:underline">
-               View All Learners →
-            </Link>
-         </div>
- 
-         <FlatCard noPadding>
-            <TextTable headers={["Learner Profile", "Product / Program", "Access Type", "Transaction Date", "Hub"]}>
-               {recentStudents.map((enr: any) => (
-                  <TextRow key={enr._id}>
-                     <TextCell bold>
-                        <div className="flex flex-col">
-                           <span>{enr.student_id?.name || 'Standard User'}</span>
-                           <span className="text-[11px] text-slate-400 font-medium lowercase tracking-tighter opacity-70">{enr.student_id?.email}</span>
-                        </div>
-                     </TextCell>
-                     <TextCell className="uppercase italic text-[#3B82F6]">{enr.course_id?.title}</TextCell>
-                     <TextCell>
-                        <span className={cn(
-                           "text-[10px] font-bold uppercase tracking-widest",
-                           enr.enrollmentType === 'paid' ? "text-[#F97316]" : "text-slate-500"
-                        )}>
-                           {enr.enrollmentType === 'paid' ? 'Paid Access' : 'Free / Platform'}
-                        </span>
-                     </TextCell>
-                     <TextCell className="text-slate-500">{new Date(enr.createdAt).toLocaleDateString()}</TextCell>
-                     <TextCell className="text-[#3B82F6] font-bold">LMS-CORE</TextCell>
-                  </TextRow>
-               ))}
-               {recentStudents.length === 0 && (
-                  <TextRow>
-                     <TextCell colSpan={5} className="text-center py-20 text-slate-400 font-medium italic">
-                        No enrollments identified. Standby for student acquisition.
-                     </TextCell>
-                  </TextRow>
-               )}
-            </TextTable>
-         </FlatCard>
-      </div>
- 
     </div>
   )
-}
- 
-function MetricCard({ label, value, trend, subtext, icon: Icon }: { label: string, value: string | number, trend?: string, subtext?: string, icon?: any }) {
-   const isPositive = trend?.startsWith('+')
-   return (
-      <FlatCard className="flex flex-col gap-4">
-         {Icon && <Icon className="h-5 w-5 text-slate-400 mb-1" />}
-         <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest opacity-60 italic">{'// '}{label}</p>
-         <div className="flex items-end justify-between">
-            <h3 className="text-3xl font-bold text-slate-900 tracking-tighter leading-none">{value}</h3>
-            {trend && (
-               <span className={cn(
-                  "text-[11px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter",
-                  isPositive ? "text-[#10B981] bg-green-50" : "text-[#EF4444] bg-red-50"
-               )}>
-                  {trend}
-               </span>
-            )}
-         </div>
-         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{subtext}</p>
-      </FlatCard>
-   )
 }

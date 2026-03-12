@@ -1,104 +1,239 @@
 "use client"
- 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  GraduationCap,
+  BookOpen,
+  Calendar,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  School,
+  Layers,
+  ChevronRight,
+  FileText,
+  Bell,
+  BarChart3,
+} from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
-import { cn } from "../../lib/utils"
- 
+import { cn } from '../../lib/utils'
+
+interface NavItem {
+  label: string
+  href: string
+  icon: any
+  description?: string
+  section?: 'core' | 'academics' | 'management' | 'settings'
+}
+
+const navItems: NavItem[] = [
+  { section: 'core', label: 'Dashboard', href: '/org-admin/dashboard', icon: LayoutDashboard, description: 'Overview' },
+  { section: 'core', label: 'Courses', href: '/org-admin/courses', icon: BookOpen, description: 'Manage courses' },
+  { section: 'core', label: 'Events', href: '/org-admin/events', icon: Calendar, description: 'College events' },
+
+  { section: 'academics', label: 'Departments', href: '/org-admin/departments', icon: Building2, description: 'Academic departments' },
+  { section: 'academics', label: 'Batches', href: '/org-admin/batches', icon: School, description: 'Student batches' },
+  { section: 'academics', label: 'Programs', href: '/org-admin/programs', icon: Layers, description: 'Academic programs' },
+
+  { section: 'management', label: 'Students', href: '/org-admin/users?role=student', icon: Users, description: 'Learners' },
+  { section: 'management', label: 'Instructors', href: '/org-admin/users?role=instructor', icon: GraduationCap, description: 'Teaching staff' },
+  { section: 'management', label: 'Applications', href: '/org-admin/applications', icon: FileText, description: 'Pending apps' },
+  { section: 'management', label: 'Analytics', href: '/org-admin/analytics', icon: BarChart3, description: 'Reports' },
+  { section: 'management', label: 'Notifications', href: '/org-admin/notifications', icon: Bell, description: 'Updates' },
+
+  { section: 'settings', label: 'Settings', href: '/org-admin/settings', icon: Settings, description: 'Configuration' },
+]
+
 export function OrgSidebar() {
+  const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
-  const { organization } = useAuth()
+  const { user, logout, organization } = useAuth()
+
   const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+  const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
 
-  // Base items common to all
-  const navItems = [
-    { name: "Dashboard", href: "/org-admin/dashboard" },
-    { name: "Courses", href: "/org-admin/courses" },
-    { name: "Applications", href: "/org-admin/applications" },
-  ]
+  const filteredNavItems = navItems.filter(item => {
+    // Filter college-only items for non-college orgs
+    const collegeOnlyItems = ['Departments', 'Batches', 'Programs', 'Events']
+    if (collegeOnlyItems.includes(item.label) && !isCollege) return false
+    return true
+  })
 
-  // Type-specific extensions
-  if (orgType === 'COLLEGE' || orgType === 'UNIVERSITY') {
-    navItems.push(
-      { name: "Departments", href: "/org-admin/departments" },
-      { name: "Programs", href: "/org-admin/programs" },
-      { name: "Academic Years", href: "/org-admin/academic-year" },
-      { name: "Batches", href: "/org-admin/batches" }
-    )
-  } else if (orgType === 'SCHOOL') {
-    navItems.push(
-      { name: "Classes", href: "/org-admin/grade-levels" },
-      { name: "Sections", href: "/org-admin/grades-sections" },
-      { name: "Homework", href: "/org-admin/homework" },
-      { name: "Attendance", href: "/org-admin/attendance" }
-    )
-  } else if (orgType === 'CORPORATE') {
-    navItems.push(
-      { name: "Trainers", href: "/org-admin/trainers" },
-      { name: "Skills", href: "/org-admin/skills" },
-      { name: "Assignments", href: "/org-admin/training-assignments" }
-    )
-  } else {
-    // Institute / Coaching / Others
-    navItems.push(
-      { name: "Subjects", href: "/org-admin/subjects" },
-      { name: "Attendance", href: "/org-admin/attendance" },
-      { name: "Batches", href: "/org-admin/batches" }
-    )
-  }
-
-  // Common management items at the bottom
-  navItems.push(
-    { name: "Learners", href: "/org-admin/users?role=student" },
-    { name: "Instructors", href: "/org-admin/users?role=instructor" },
-    { name: "Settings", href: "/org-admin/settings" }
-  )
-
-  return (
-    <div className="h-full flex flex-col bg-white">
-      {/* Brand Header */}
-      <div className="h-16 flex items-center px-6 border-b border-gray-100">
-        <Link href="/org-admin/dashboard" className="flex flex-col">
-          <span className="text-[16px] font-bold text-slate-900 leading-none">
-            {organization?.name || "Learnyst"}
-          </span>
-          <span className="text-[10px] text-blue-600 font-bold uppercase mt-1 tracking-tight">
-            {orgType} ADMIN
-          </span>
+  const SidebarContent = () => (
+    <div className="flex h-full flex-col bg-white border-r border-gray-200">
+      {/* Header / Logo */}
+      <div className="flex h-16 items-center border-b border-gray-100 px-6">
+        <Link href="/org-admin/dashboard" className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white">
+            <GraduationCap className="h-5 w-5" />
+          </div>
+          <div>
+            <span className="text-xl font-black tracking-tight text-slate-900">
+              {organization?.name || 'Instatute'}
+            </span>
+            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">
+              {orgType} Admin
+            </p>
+          </div>
         </Link>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href)
+      {/* Primary Navigation */}
+      <nav className="mt-6 flex-1 space-y-6 px-3 overflow-y-auto custom-scrollbar pb-6">
+        {(['core', 'academics', 'management', 'settings'] as const).map((section) => {
+          const items = filteredNavItems.filter((i) => i.section === section)
+          if (!items.length) return null
+
+          const title =
+            section === 'core' ? 'Overview' :
+            section === 'academics' ? 'Academics' :
+            section === 'management' ? 'Management' :
+            'System'
+
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center h-10 px-3 text-[13px] font-bold transition-all relative group",
-                isActive 
-                  ? "text-[#3B82F6]" 
-                  : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              <span>{item.name}</span>
-              {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#3B82F6] rounded-r-full" />
-              )}
-            </Link>
+            <div key={section} className="space-y-2">
+              <div className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                {title}
+              </div>
+              <div className="space-y-1">
+                {items.map((item) => {
+                  const isActive = pathname.startsWith(item.href.split('?')[0])
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all',
+                        isActive
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      )}
+                    >
+                      <item.icon className={cn(
+                        'h-5 w-5 shrink-0',
+                        isActive ? 'text-blue-600' : 'text-slate-400'
+                      )} />
+                      <div className="flex-1">
+                        <span>{item.label}</span>
+                        {item.description && (
+                          <p className="text-[11px] text-slate-400 font-normal leading-tight">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                      {isActive && (
+                        <ChevronRight className="h-4 w-4 text-blue-600" />
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
           )
         })}
       </nav>
- 
-      {/* Footer / Support */}
-      <div className="p-6 border-t border-gray-100">
-         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Support Hub</p>
-         <button className="mt-2 text-[12px] font-bold text-[#3B82F6] hover:underline">
-            Knowledge Base
-         </button>
+
+      {/* User Profile & Logout */}
+      <div className="border-t border-gray-100 p-4">
+        <div className="flex items-center gap-3 mb-3 px-2">
+          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+            {user?.name?.charAt(0).toUpperCase() || 'A'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-900 truncate">{user?.name || 'Admin'}</p>
+            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+          </div>
+        </div>
+        <button
+          onClick={logout}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-red-600 transition-colors hover:bg-red-50"
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          <span>Log Out</span>
+        </button>
       </div>
     </div>
+  )
+
+  return (
+    <>
+      {/* Mobile Header */}
+      <div className="fixed left-0 right-0 top-0 z-40 flex h-16 items-center justify-between border-b border-gray-100 bg-white px-4 lg:hidden">
+        <Link href="/org-admin/dashboard" className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+            <GraduationCap className="h-4 w-4" />
+          </div>
+          <span className="text-lg font-bold text-slate-900">
+            {organization?.name || 'Admin'}
+          </span>
+        </Link>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+      </div>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:flex lg:w-72 lg:flex-col">
+        <SidebarContent />
+      </aside>
+
+      {/* Mobile Drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+            />
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 z-50 w-72 lg:hidden"
+            >
+              <div className="h-full bg-white shadow-xl">
+                <div className="flex h-16 items-center justify-between border-b border-gray-100 px-4">
+                  <Link href="/org-admin/dashboard" className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+                      <GraduationCap className="h-4 w-4" />
+                    </div>
+                    <span className="text-lg font-bold text-slate-900">
+                      {organization?.name || 'Admin'}
+                    </span>
+                  </Link>
+                  <button
+                    onClick={() => setMobileOpen(false)}
+                    className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+                <div className="h-[calc(100%-4rem)] overflow-y-auto">
+                  <SidebarContent />
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main content padding for desktop */}
+      <div className="hidden lg:block lg:w-72" />
+    </>
   )
 }
