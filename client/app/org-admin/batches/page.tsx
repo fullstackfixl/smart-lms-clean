@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Users, Edit2, Trash2, Loader2, X } from "lucide-react"
 import { batchApi } from '../../../lib/services/orgAdminApi'
+import { collegeApi } from '../../../lib/api'
 import { useAuth } from '../../../lib/auth-context'
 import { DataTable, DataTableColumn } from '../../../components/instructor/data-table'
 import { toast } from "sonner"
@@ -17,7 +18,7 @@ interface Batch {
 }
 
 export default function BatchesPage() {
-    const { token } = useAuth()
+    const { token, organization } = useAuth()
     const [data, setData] = useState<Batch[]>([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -29,6 +30,9 @@ export default function BatchesPage() {
         isActive: true
     })
 
+    const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+    const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
+
     useEffect(() => {
         if (token) loadData()
     }, [token])
@@ -37,9 +41,14 @@ export default function BatchesPage() {
         setLoading(true)
         try {
             if (!token) return
-            const response = await batchApi.list(token)
+            let response
+            if (isCollege) {
+                response = await collegeApi.listBatches(token)
+            } else {
+                response = await batchApi.list(token)
+            }
             if (response.success) {
-                setData(response.data)
+                setData(response.data || [])
             }
         } catch (error) {
             console.error("Failed to load batches:", error)
@@ -54,10 +63,18 @@ export default function BatchesPage() {
         try {
             if (!token) throw new Error('No authentication token')
             if (editingBatch) {
-                await batchApi.update(token, editingBatch._id, formData)
+                if (isCollege) {
+                    await collegeApi.updateBatch(token, editingBatch._id, formData)
+                } else {
+                    await batchApi.update(token, editingBatch._id, formData)
+                }
                 toast.success("Batch updated successfully")
             } else {
-                await batchApi.create(token, formData)
+                if (isCollege) {
+                    await collegeApi.createBatch(token, formData)
+                } else {
+                    await batchApi.create(token, formData)
+                }
                 toast.success("Batch created successfully")
             }
             setIsModalOpen(false)
@@ -73,7 +90,11 @@ export default function BatchesPage() {
         if (!confirm("Are you sure you want to delete this batch?")) return
         try {
             if (!token) throw new Error('No authentication token')
-            await batchApi.delete(token, id)
+            if (isCollege) {
+                await collegeApi.deleteBatch(token, id)
+            } else {
+                await batchApi.delete(token, id)
+            }
             toast.success("Deleted successfully")
             loadData()
         } catch (error) {

@@ -20,6 +20,7 @@ import {
   AlertCircle
 } from "lucide-react"
 import { departmentApi } from '../../../lib/services/orgAdminApi'
+import { collegeApi } from '../../../lib/api'
 import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 
@@ -46,7 +47,7 @@ function MetricCard({ title, value, icon: Icon, color }: { title: string, value:
 }
 
 export default function DepartmentsPage() {
-    const { token } = useAuth()
+    const { token, organization } = useAuth()
     const [data, setData] = useState<Department[]>([])
     const [loading, setLoading] = useState(true)
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -59,6 +60,12 @@ export default function DepartmentsPage() {
         isActive: true
     })
 
+    const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+    const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
+    
+    // Use college API for college tenants, generic API for others
+    const api = isCollege ? collegeApi : departmentApi
+
     useEffect(() => {
         if (token) loadData()
     }, [token])
@@ -67,9 +74,14 @@ export default function DepartmentsPage() {
         setLoading(true)
         try {
             if (!token) return
-            const response = await departmentApi.list(token)
+            let response
+            if (isCollege) {
+                response = await collegeApi.listDepartments(token)
+            } else {
+                response = await departmentApi.list(token)
+            }
             if (response.success) {
-                setData(response.data)
+                setData(response.data || [])
             }
         } catch (error) {
             console.error("Failed to load departments:", error)
@@ -85,10 +97,18 @@ export default function DepartmentsPage() {
         try {
             if (!token) throw new Error('No authentication token')
             if (editingDept) {
-                await departmentApi.update(token, editingDept._id, formData)
+                if (isCollege) {
+                    await collegeApi.updateDepartment(token, editingDept._id, formData)
+                } else {
+                    await departmentApi.update(token, editingDept._id, formData)
+                }
                 toast.success("Department updated successfully", { id: loadingToast })
             } else {
-                await departmentApi.create(token, formData)
+                if (isCollege) {
+                    await collegeApi.createDepartment(token, formData)
+                } else {
+                    await departmentApi.create(token, formData)
+                }
                 toast.success("Department created successfully", { id: loadingToast })
             }
             setIsModalOpen(false)
@@ -105,7 +125,11 @@ export default function DepartmentsPage() {
         const loadingToast = toast.loading("Deleting department...")
         try {
             if (!token) throw new Error('No authentication token')
-            await departmentApi.delete(token, id)
+            if (isCollege) {
+                await collegeApi.deleteDepartment(token, id)
+            } else {
+                await departmentApi.delete(token, id)
+            }
             toast.success("Deleted successfully", { id: loadingToast })
             loadData()
         } catch (error) {
