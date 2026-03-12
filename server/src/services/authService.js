@@ -455,6 +455,29 @@ class AuthService {
 
     return user.toPublicJSON();
   }
+
+  async verifyInviteToken(token) {
+    if (!token) {
+      throw new ValidationError('Invitation token is required');
+    }
+
+    const invite = await Invite.findOne({ token, used: false, expires_at: { $gt: new Date() } });
+    if (!invite) {
+      throw new ValidationError('Invalid or expired invitation token');
+    }
+
+    const organization = await Organization.findById(invite.organization_id).select('name type');
+
+    return {
+      email: invite.email,
+      role: invite.role,
+      expiresAt: invite.expires_at,
+      organization: {
+        name: organization?.name || 'Your Organization',
+        type: organization?.type || 'SCHOOL'
+      }
+    };
+  }
   /**
    * Forgot Password - Generate token and send email
    */

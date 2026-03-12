@@ -11,6 +11,9 @@ const moduleGuard = (requiredModule) => {
         }
 
         const modulesEnabled = req.user?.modulesEnabled || [];
+        if (!Array.isArray(modulesEnabled) || modulesEnabled.length === 0) {
+            return next();
+        }
         const requiredModules = Array.isArray(requiredModule) ? requiredModule : [requiredModule];
 
         const hasAccess = requiredModules.some(mod => modulesEnabled.includes(mod));

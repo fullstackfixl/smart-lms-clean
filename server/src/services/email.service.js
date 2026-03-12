@@ -152,16 +152,35 @@ class EmailService {
 
     generateInvitationTemplate(orgName, link) {
         return `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-        <h2 style="color: #4f46e5;">Welcome to Smart LMS</h2>
-        <p>You have been invited to join <strong>${orgName}</strong>.</p>
-        <p>Click the button below to set up your account:</p>
-        <div style="margin: 30px 0;">
-          <a href="${link}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Accept Invitation</a>
+      <div style="background:#f8fafc;padding:28px 0;">
+        <div style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:640px;margin:0 auto;padding:0 16px;">
+          <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
+            <div style="padding:22px 24px;border-bottom:1px solid #f1f5f9;background:linear-gradient(180deg,#fff7ed 0%, #ffffff 80%);">
+              <div style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#64748b;font-weight:800;">Smart LMS Invitation</div>
+              <div style="margin-top:6px;font-size:20px;line-height:1.25;font-weight:900;color:#0f172a;">Join ${orgName}</div>
+              <div style="margin-top:6px;font-size:14px;color:#475569;">You’ve been invited to activate your account and join your organization workspace.</div>
+            </div>
+
+            <div style="padding:22px 24px;">
+              <div style="font-size:14px;color:#334155;line-height:1.6;">
+                Click the button below to finish setup. This link is single-use and expires in <strong>7 days</strong>.
+              </div>
+
+              <div style="margin:18px 0 8px;">
+                <a href="${link}" style="background:#f97316;color:#ffffff;padding:12px 18px;text-decoration:none;border-radius:12px;font-weight:900;display:inline-block;">Accept Invitation</a>
+              </div>
+
+              <div style="margin-top:12px;font-size:12px;color:#64748b;line-height:1.5;">
+                If the button doesn’t work, copy and paste this link:
+                <div style="margin-top:8px;word-break:break-all;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;color:#0f172a;">${link}</div>
+              </div>
+            </div>
+
+            <div style="padding:16px 24px;border-top:1px solid #f1f5f9;background:#ffffff;">
+              <div style="font-size:12px;color:#94a3b8;line-height:1.5;">If you didn’t expect this invitation, you can safely ignore this email.</div>
+            </div>
+          </div>
         </div>
-        <p style="color: #64748b; font-size: 14px;">If the button doesn't work, copy and paste this link: <br> ${link}</p>
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
-        <p style="font-size: 12px; color: #94a3b8;">This invitation will expire in 7 days.</p>
       </div>
     `;
     }

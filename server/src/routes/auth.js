@@ -40,6 +40,7 @@ router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password/:token', authController.resetPassword);
 
 // Accept Invite
+router.get('/accept-invite/verify', authController.verifyInviteToken);
 router.post('/accept-invite', authController.acceptInvite);
 
 // Password setup (alias using invite token)

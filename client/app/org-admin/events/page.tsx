@@ -9,6 +9,18 @@ import { DataTable, DataTableColumn } from '../../../components/instructor/data-
 import { Button } from '../../../components/ui/button'
 import { toast } from "sonner"
 
+function toIsoOrThrow(value: string) {
+    // datetime-local value format: YYYY-MM-DDTHH:mm
+    if (!value || value.length < 16) {
+        throw new Error('Please select a valid date and time')
+    }
+    const dt = new Date(value)
+    if (Number.isNaN(dt.getTime())) {
+        throw new Error('Please select a valid date and time')
+    }
+    return dt.toISOString()
+}
+
 interface Event {
     _id: string
     title: string
@@ -77,8 +89,8 @@ export default function EventsPage() {
             if (!token) throw new Error('No authentication token')
             const submitData = {
                 ...formData,
-                date: new Date(formData.date).toISOString(),
-                endDate: formData.endDate ? new Date(formData.endDate).toISOString() : undefined
+                date: toIsoOrThrow(formData.date),
+                endDate: formData.endDate ? toIsoOrThrow(formData.endDate) : undefined
             }
             if (editingEvent) {
                 await collegeApi.updateEvent(token, editingEvent._id, submitData)

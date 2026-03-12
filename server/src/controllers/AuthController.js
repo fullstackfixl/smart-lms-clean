@@ -37,6 +37,19 @@ class AuthController {
         }
     }
 
+    async verifyInviteToken(req, res) {
+        try {
+            const { token } = req.query;
+            if (!token) {
+                return res.status(400).json({ success: false, message: 'Token is required' });
+            }
+            const data = await authService.verifyInviteToken(token);
+            return res.status(200).json({ success: true, data });
+        } catch (error) {
+            return res.status(error.statusCode || 400).json({ success: false, message: error.message });
+        }
+    }
+
     /**
      * Submit an organization application
      */

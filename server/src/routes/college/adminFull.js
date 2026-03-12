@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { authMiddleware, requireRole } = require('../../middleware/auth');
 const { Course, Section, Lesson, User, Department, Batch, CollegeEvent, Enrollment, Attendance, Quiz, LiveClass } = require('../../models');
+const Notification = require('../../models/Notification');
+const socketService = require('../../services/socketService');
 
 // All routes require org_admin role
 router.use(authMiddleware, requireRole(['org_admin']));
@@ -589,9 +591,101 @@ router.post('/events', async (req, res) => {
     });
     await event.save();
 
+    // Notify instructors + students in the same organization
+    try {
+      const recipients = await User.find({ organization_id: orgId, role: { $in: ['student', 'instructor'] }, isActive: true })
+        .select('_id')
+        .lean();
+
+      const notifications = recipients.map((u) => ({
+        organization_id: orgId,
+        recipient_id: u._id,
+        sender_id: req.user._id,
+        type: 'general',
+        title: `New Event: ${title}`,
+        message: description ? String(description).slice(0, 900) : 'A new event has been posted for your organization.',
+        data: { eventId: event._id, scope: 'college_event' },
+        priority: 'low',
+        status: 'pending',
+        action_url: '/student/events',
+        action_text: 'View Event'
+      }));
+
+      if (notifications.length > 0) {
+        await Notification.insertMany(notifications, { ordered: false });
+      }
+
+      socketService.broadcastToOrganization(String(orgId), 'event:new', { event });
+    } catch (notifyErr) {
+      // do not fail event creation if notifications fail
+      console.warn('[CollegeAdminEvents] notify failed:', notifyErr.message);
+    }
+
     res.success({ event }, 'Event created successfully');
   } catch (error) {
     res.error(error.message, 'Failed to create event', 500);
+  }
+});
+
+// PUT /api/college/admin/events/:id
+router.put('/events/:id', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { id } = req.params;
+
+    const event = await CollegeEvent.findOne({ _id: id, organization_id: orgId, isActive: true });
+    if (!event) {
+      return res.error('Event not found', 'Not found', 404);
+    }
+
+    const { title, description, date, endDate, location, departmentId, batchId, eventType, isActive } = req.body;
+    if (title !== undefined) event.title = title;
+    if (description !== undefined) event.description = description;
+    if (date !== undefined) event.date = date;
+    if (endDate !== undefined) event.endDate = endDate;
+    if (location !== undefined) event.location = location;
+    if (departmentId !== undefined) event.departmentId = departmentId;
+    if (batchId !== undefined) event.batchId = batchId;
+    if (eventType !== undefined) event.eventType = eventType;
+    if (isActive !== undefined) event.isActive = isActive;
+
+    await event.save();
+
+    try {
+      socketService.broadcastToOrganization(String(orgId), 'event:updated', { event });
+    } catch (broadcastErr) {
+      console.warn('[CollegeAdminEvents] broadcast update failed:', broadcastErr.message);
+    }
+
+    res.success({ event }, 'Event updated successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to update event', 500);
+  }
+});
+
+// DELETE /api/college/admin/events/:id
+router.delete('/events/:id', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { id } = req.params;
+
+    const event = await CollegeEvent.findOne({ _id: id, organization_id: orgId, isActive: true });
+    if (!event) {
+      return res.error('Event not found', 'Not found', 404);
+    }
+
+    event.isActive = false;
+    await event.save();
+
+    try {
+      socketService.broadcastToOrganization(String(orgId), 'event:deleted', { eventId: id });
+    } catch (broadcastErr) {
+      console.warn('[CollegeAdminEvents] broadcast delete failed:', broadcastErr.message);
+    }
+
+    res.success({ eventId: id }, 'Event deleted successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to delete event', 500);
   }
 });
 
