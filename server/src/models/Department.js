@@ -7,6 +7,12 @@ const departmentSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    organizationType: {
+        type: String,
+        enum: ['college', 'school', 'coaching', 'corporate', 'university'],
+        default: 'college',
+        index: true
+    },
     name: {
         type: String,
         required: true,

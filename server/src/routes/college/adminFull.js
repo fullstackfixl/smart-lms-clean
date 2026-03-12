@@ -80,6 +80,7 @@ router.post('/departments', async (req, res) => {
 
     const department = new Department({
       organization_id: orgId,
+      organizationType: req.user.organization_type || 'college',
       name,
       code,
       description,
@@ -179,6 +180,7 @@ router.post('/batches', async (req, res) => {
 
     const batch = new Batch({
       organization_id: orgId,
+      organizationType: req.user.organization_type || 'college',
       name,
       code,
       departmentId,
@@ -572,6 +574,7 @@ router.post('/events', async (req, res) => {
 
     const event = new CollegeEvent({
       organization_id: orgId,
+      organizationType: req.user.organization_type || 'college',
       title,
       description,
       date,

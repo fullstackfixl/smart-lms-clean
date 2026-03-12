@@ -7,6 +7,12 @@ const eventSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    organizationType: {
+        type: String,
+        enum: ['college', 'school', 'coaching', 'corporate', 'university'],
+        default: 'college',
+        index: true
+    },
     title: {
         type: String,
         required: true,

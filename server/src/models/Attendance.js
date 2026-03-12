@@ -42,6 +42,12 @@ const attendanceSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  organizationType: {
+    type: String,
+    enum: ['college', 'school', 'coaching', 'corporate', 'university'],
+    default: 'college',
+    index: true
+  },
   course_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
