@@ -94,8 +94,8 @@ export default function OrgAdminApplicationsPage() {
         res = { success: data.success, data: data.data }
       }
       if (res.success) {
-        const data = res.data as { courses?: CourseApplication[] }
-        setApplications(data.courses || [])
+        const data = res.data as { applications?: CourseApplication[]; courses?: CourseApplication[] }
+        setApplications(data.applications || data.courses || [])
       }
     } catch (error) {
       toast.error("Failed to load applications")
