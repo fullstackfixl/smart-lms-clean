@@ -13,10 +13,49 @@ router.get('/dashboard', async (req, res) => {
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
 
+    const { Subject, Timetable, Batch } = require('../../models');
+
+    const subjectsTeaching = await Subject.find({
+      instructorId: userId,
+      organizationId: orgId,
+      isActive: true
+    })
+      .populate('programId', 'name code')
+      .populate('departmentId', 'name code')
+      .sort({ semester: 1, name: 1 })
+      .lean();
+
+    const timetableEntries = await Timetable.find({
+      instructorId: userId,
+      organizationId: orgId,
+      isActive: true
+    })
+      .populate('subjectId', 'name code')
+      .populate('batchId', 'name code year semester')
+      .sort({ day: 1, startTime: 1 })
+      .lean();
+
+    const assignedBatchIds = [...new Set(timetableEntries.map(e => String(e.batchId?._id || e.batchId)).filter(Boolean))];
+    const assignedBatches = assignedBatchIds.length
+      ? await Batch.find({ _id: { $in: assignedBatchIds }, organizationId: orgId, isActive: true })
+          .populate('programId', 'name code')
+          .populate('departmentId', 'name code')
+          .lean()
+      : [];
+
+    const studentsCount = assignedBatchIds.length
+      ? await User.countDocuments({ organization_id: orgId, role: 'student', isActive: true, 'profile.batch': { $in: assignedBatchIds } })
+      : 0;
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayName = dayNames[new Date().getDay()];
+    const todayClasses = timetableEntries.filter(e => e.day === todayName);
+    const upcomingAcademicClasses = timetableEntries.filter(e => e.day !== todayName).slice(0, 10);
+
     const [
       coursesTeaching,
       totalStudents,
-      upcomingClasses,
+      upcomingLiveClasses,
       pendingAssignments,
       recentQuizzes
     ] = await Promise.all([
@@ -37,11 +76,19 @@ router.get('/dashboard', async (req, res) => {
       stats: {
         coursesTeaching,
         totalStudents,
-        upcomingClassesCount: upcomingClasses.length,
+        upcomingClassesCount: upcomingLiveClasses.length,
         pendingAssignments
       },
-      upcomingClasses,
+      upcomingClasses: upcomingLiveClasses,
       recentQuizzes
+      ,
+      academic: {
+        subjectsTeaching,
+        assignedBatches,
+        studentsCount,
+        todayClasses,
+        upcomingClasses: upcomingAcademicClasses
+      }
     }, 'Dashboard data retrieved');
   } catch (error) {
     console.error('Instructor dashboard error:', error);
@@ -212,9 +259,9 @@ router.get('/students/:id', async (req, res) => {
   }
 });
 
-// ===== ATTENDANCE =====
-// POST /api/college/instructor/attendance
-router.post('/attendance', async (req, res) => {
+// ===== COURSE ATTENDANCE (Udemy-style) =====
+// POST /api/college/instructor/course-attendance
+router.post('/course-attendance', async (req, res) => {
   try {
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
@@ -261,8 +308,8 @@ router.post('/attendance', async (req, res) => {
   }
 });
 
-// GET /api/college/instructor/attendance
-router.get('/attendance', async (req, res) => {
+// GET /api/college/instructor/course-attendance
+router.get('/course-attendance', async (req, res) => {
   try {
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
@@ -296,8 +343,8 @@ router.get('/attendance', async (req, res) => {
   }
 });
 
-// GET /api/college/instructor/attendance/course/:courseId
-router.get('/attendance/course/:courseId', async (req, res) => {
+// GET /api/college/instructor/course-attendance/course/:courseId
+router.get('/course-attendance/course/:courseId', async (req, res) => {
   try {
     const userId = req.user._id;
     const { courseId } = req.params;
@@ -553,41 +600,75 @@ router.get('/timetable', async (req, res) => {
   }
 });
 
-// ===== ATTENDANCE =====
+// ===== ATTENDANCE (Academic Subject) =====
 // POST /api/college/instructor/attendance
 router.post('/attendance', async (req, res) => {
   try {
-    const { Attendance } = require('../../models');
+    const { Attendance, Timetable, Subject } = require('../../models');
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const { subjectId, batchId, studentId, date, status } = req.body;
+    const orgType = String(req.user.organization_type || req.user.organizationType || 'college').toLowerCase();
+    const { subjectId, batchId, studentId, date, status, startTime, endTime } = req.body;
 
-    // Check if attendance already marked
-    let attendance = await Attendance.findOne({
-      subjectId,
-      studentId,
-      date: new Date(date)
-    });
-
-    if (attendance) {
-      attendance.status = status;
-      attendance.markedBy = userId;
-      await attendance.save();
-    } else {
-      attendance = new Attendance({
-        subjectId,
-        batchId,
-        studentId,
-        date: new Date(date),
-        status,
-        markedBy: userId,
-        organizationId: orgId,
-        organizationType: req.user.organization_type || 'college'
-      });
-      await attendance.save();
+    if (!subjectId || !studentId || !date || !status) {
+      return res.error('Missing required fields', 'subjectId, studentId, date, status are required', 400);
     }
 
-    res.success({ attendance }, 'Attendance marked successfully');
+    const subject = await Subject.findOne({ _id: subjectId, organizationId: orgId, isActive: true });
+    if (!subject) {
+      return res.error('Subject not found', 'Subject not found', 404);
+    }
+
+    // Try to derive times from timetable if not provided
+    let resolvedStart = startTime;
+    let resolvedEnd = endTime;
+    if (!resolvedStart || !resolvedEnd) {
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const d = new Date(date);
+      const dayName = dayNames[d.getDay()];
+      const tt = await Timetable.findOne({
+        organizationId: orgId,
+        subjectId,
+        ...(batchId ? { batchId } : {}),
+        instructorId: userId,
+        day: dayName,
+        isActive: true
+      }).sort({ startTime: 1 });
+      resolvedStart = resolvedStart || tt?.startTime || '10:00';
+      resolvedEnd = resolvedEnd || tt?.endTime || '11:00';
+    }
+
+    const sessionDate = new Date(date);
+    sessionDate.setHours(0, 0, 0, 0);
+
+    const [sh, sm] = String(resolvedStart).split(':').map(n => parseInt(n, 10));
+    const [eh, em] = String(resolvedEnd).split(':').map(n => parseInt(n, 10));
+    const duration = Math.max(1, ((eh * 60 + em) - (sh * 60 + sm)) || 60);
+
+    let session = await Attendance.findOne({
+      organization_id: orgId,
+      subjectId,
+      session_date: sessionDate,
+      start_time: resolvedStart,
+      is_active: true
+    });
+
+    if (!session) {
+      session = new Attendance({
+        organization_id: orgId,
+        organizationType: orgType,
+        subjectId,
+        instructor_id: userId,
+        session_date: sessionDate,
+        start_time: resolvedStart,
+        end_time: resolvedEnd,
+        total_duration_minutes: duration,
+        attendance_records: []
+      });
+    }
+
+    const saved = await session.markStudentAttendance(studentId, status, { marked_by: userId });
+    res.success({ attendance: saved }, 'Attendance marked successfully');
   } catch (error) {
     res.error(error.message, 'Failed to mark attendance', 500);
   }

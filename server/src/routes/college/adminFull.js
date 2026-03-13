@@ -26,7 +26,7 @@ router.get('/dashboard', async (req, res) => {
       User.countDocuments({ organization_id: orgId, role: 'instructor', isActive: true }),
       Department.countDocuments({ organization_id: orgId, isActive: true }),
       Course.countDocuments({ organization_id: orgId, isActive: true }),
-      Batch.countDocuments({ organization_id: orgId, isActive: true }),
+      Batch.countDocuments({ organizationId: orgId, isActive: true }),
       CollegeEvent.find({ 
         organization_id: orgId, 
         date: { $gte: new Date() },
@@ -113,7 +113,7 @@ router.get('/departments/:id', async (req, res) => {
       User.find({ organization_id: orgId, role: 'instructor', 'profile.department': department._id }),
       User.find({ organization_id: orgId, role: 'student', 'profile.department': department._id }),
       Course.find({ organization_id: orgId, departmentId: department._id, isActive: true }),
-      Batch.find({ organization_id: orgId, departmentId: department._id, isActive: true })
+      Batch.find({ organizationId: orgId, departmentId: department._id, isActive: true })
     ]);
 
     res.success({ 
@@ -157,13 +157,14 @@ router.get('/batches', async (req, res) => {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
     const { departmentId, year, semester } = req.query;
 
-    let query = { organization_id: orgId, isActive: true };
+    let query = { organizationId: orgId, isActive: true };
     if (departmentId) query.departmentId = departmentId;
     if (year) query.year = parseInt(year);
     if (semester) query.semester = parseInt(semester);
 
     const batches = await Batch.find(query)
       .populate('departmentId', 'name code')
+      .populate('programId', 'name code')
       .populate('students', 'profile.firstName profile.lastName email')
       .populate('instructor_ids', 'profile.firstName profile.lastName email')
       .sort({ year: -1, semester: 1 });
@@ -178,13 +179,18 @@ router.get('/batches', async (req, res) => {
 router.post('/batches', async (req, res) => {
   try {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const { name, code, departmentId, year, semester, startDate, endDate } = req.body;
+    const { name, code, programId, departmentId, year, semester, startDate, endDate } = req.body;
+
+    if (!programId) {
+      return res.error('Program is required', 'programId is required', 400);
+    }
 
     const batch = new Batch({
-      organization_id: orgId,
+      organizationId: orgId,
       organizationType: req.user.organization_type || 'college',
       name,
       code,
+      programId,
       departmentId,
       year,
       semester,
@@ -203,8 +209,9 @@ router.post('/batches', async (req, res) => {
 router.get('/batches/:id', async (req, res) => {
   try {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const batch = await Batch.findOne({ _id: req.params.id, organization_id: orgId })
+    const batch = await Batch.findOne({ _id: req.params.id, organizationId: orgId })
       .populate('departmentId', 'name code')
+      .populate('programId', 'name code')
       .populate('students', 'profile.firstName profile.lastName email rollNumber')
       .populate('instructor_ids', 'profile.firstName profile.lastName email');
 
@@ -235,11 +242,11 @@ router.get('/batches/:id', async (req, res) => {
 router.put('/batches/:id', async (req, res) => {
   try {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const { name, code, departmentId, year, semester, students, instructor_ids } = req.body;
+    const { name, code, programId, departmentId, year, semester, students, instructor_ids } = req.body;
 
     const batch = await Batch.findOneAndUpdate(
-      { _id: req.params.id, organization_id: orgId },
-      { name, code, departmentId, year, semester, students, instructor_ids },
+      { _id: req.params.id, organizationId: orgId },
+      { name, code, programId, departmentId, year, semester, students, instructor_ids },
       { new: true }
     );
 
@@ -250,6 +257,41 @@ router.put('/batches/:id', async (req, res) => {
     res.success({ batch }, 'Batch updated successfully');
   } catch (error) {
     res.error(error.message, 'Failed to update batch', 500);
+  }
+});
+
+// PUT /api/college/admin/batches/:id/assign-students
+router.put('/batches/:id/assign-students', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { studentIds } = req.body;
+
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.error('studentIds is required', 'studentIds[] is required', 400);
+    }
+
+    const batch = await Batch.findOneAndUpdate(
+      { _id: req.params.id, organizationId: orgId, isActive: true },
+      { $addToSet: { students: { $each: studentIds } } },
+      { new: true }
+    )
+      .populate('departmentId', 'name code')
+      .populate('programId', 'name code')
+      .populate('students', 'profile.firstName profile.lastName email');
+
+    if (!batch) {
+      return res.error('Batch not found', 'Batch not found', 404);
+    }
+
+    // Also write batchId into student profile if present in schema usage
+    await User.updateMany(
+      { _id: { $in: studentIds }, organization_id: orgId, role: 'student' },
+      { $set: { 'profile.batch': batch._id } }
+    );
+
+    res.success({ batch }, 'Students assigned to batch successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to assign students to batch', 500);
   }
 });
 
@@ -288,13 +330,20 @@ router.get('/students', async (req, res) => {
 router.post('/students', async (req, res) => {
   try {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const { firstName, lastName, email, phone, departmentId, batchId, rollNumber, year } = req.body;
+    const { firstName, lastName, email, phone, departmentId, batchId, rollNumber, year, password } = req.body;
+
+    if (!email || !firstName || !lastName) {
+      return res.error('Missing required fields', 'firstName, lastName, email are required', 400);
+    }
 
     const student = new User({
       email,
+      name: `${firstName} ${lastName}`.trim(),
       role: 'student',
       organization_id: orgId,
       organizationType: req.user.organization_type || 'college',
+      password_hash: password || 'demo12345',
+      email_verified: true,
       profile: {
         firstName,
         lastName,
@@ -388,13 +437,20 @@ router.get('/instructors', async (req, res) => {
 router.post('/instructors', async (req, res) => {
   try {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const { firstName, lastName, email, phone, departmentId, bio } = req.body;
+    const { firstName, lastName, email, phone, departmentId, bio, password } = req.body;
+
+    if (!email || !firstName || !lastName) {
+      return res.error('Missing required fields', 'firstName, lastName, email are required', 400);
+    }
 
     const instructor = new User({
       email,
+      name: `${firstName} ${lastName}`.trim(),
       role: 'instructor',
       organization_id: orgId,
       organizationType: req.user.organization_type || 'college',
+      password_hash: password || 'demo12345',
+      email_verified: true,
       profile: {
         firstName,
         lastName,
@@ -907,6 +963,33 @@ router.put('/subjects/:id/assign-instructor', async (req, res) => {
   }
 });
 
+// POST /api/college/admin/subjects/assign-instructor (spec alias)
+router.post('/subjects/assign-instructor', async (req, res) => {
+  try {
+    const { Subject } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { subjectId, instructorId } = req.body;
+
+    if (!subjectId || !instructorId) {
+      return res.error('Missing required fields', 'subjectId and instructorId are required', 400);
+    }
+
+    const subject = await Subject.findOneAndUpdate(
+      { _id: subjectId, organizationId: orgId },
+      { instructorId },
+      { new: true }
+    ).populate('instructorId', 'profile.firstName profile.lastName email');
+
+    if (!subject) {
+      return res.error('Subject not found', 'Subject not found', 404);
+    }
+
+    res.success({ subject }, 'Instructor assigned successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to assign instructor', 500);
+  }
+});
+
 // ===== TIMETABLE =====
 // GET /api/college/admin/timetable
 router.get('/timetable', async (req, res) => {
@@ -1043,7 +1126,7 @@ router.get('/courses/pending', async (req, res) => {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
     const courses = await Course.find({ 
       organization_id: orgId, 
-      status: 'pending',
+      status: { $in: ['pending_review', 'pending'] },
       isActive: true 
     })
       .populate('instructor_id', 'profile.firstName profile.lastName email')

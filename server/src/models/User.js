@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
       return this.role !== 'platform_admin' && this.role !== 'platform_staff' && this.role !== 'platformAdmin' && this.role !== 'student';
     }
   },
+
   organization_code: {
     type: String,
     trim: true
@@ -49,6 +50,7 @@ const userSchema = new mongoose.Schema({
     phone: {
       type: String
     },
+
     dob: {
       type: Date
     },
@@ -69,7 +71,19 @@ const userSchema = new mongoose.Schema({
       maxlength: 500
     },
     department: {
-      type: String
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Department'
+    },
+    batch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch'
+    },
+    rollNumber: {
+      type: String,
+      trim: true
+    },
+    year: {
+      type: Number
     },
     program_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -79,6 +93,7 @@ const userSchema = new mongoose.Schema({
       type: Number
     }
   },
+
   preferences: {
     language: {
       type: String,

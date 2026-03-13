@@ -13,6 +13,39 @@ router.get('/dashboard', async (req, res) => {
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
 
+    const { Subject, Timetable } = require('../../models');
+
+    const studentDoc = await User.findById(userId).select('profile.batch').lean();
+    const batchId = studentDoc?.profile?.batch;
+
+    let academicSubjects = [];
+    let academicTimetable = [];
+    if (batchId) {
+      const batch = await Batch.findById(batchId).populate('programId').lean();
+      if (batch?.programId) {
+        academicSubjects = await Subject.find({
+          programId: batch.programId._id || batch.programId,
+          semester: batch.semester,
+          organizationId: orgId,
+          isActive: true
+        })
+          .populate('instructorId', 'profile.firstName profile.lastName email')
+          .populate('departmentId', 'name code')
+          .populate('programId', 'name code')
+          .lean();
+      }
+
+      academicTimetable = await Timetable.find({
+        batchId,
+        organizationId: orgId,
+        isActive: true
+      })
+        .populate('subjectId', 'name code')
+        .populate('instructorId', 'profile.firstName profile.lastName email')
+        .sort({ day: 1, startTime: 1 })
+        .lean();
+    }
+
     const [
       enrolledCourses,
       upcomingClasses,
@@ -52,7 +85,11 @@ router.get('/dashboard', async (req, res) => {
       upcomingClasses,
       upcomingEvents,
       recentAssignments,
-      certificates
+      certificates,
+      academic: {
+        subjects: academicSubjects,
+        timetable: academicTimetable
+      }
     }, 'Dashboard data retrieved');
   } catch (error) {
     console.error('Student dashboard error:', error);
@@ -219,9 +256,9 @@ router.post('/courses/:id/enroll', async (req, res) => {
   }
 });
 
-// ===== ATTENDANCE =====
-// GET /api/college/student/attendance
-router.get('/attendance', async (req, res) => {
+// ===== COURSE ATTENDANCE (Udemy-style) =====
+// GET /api/college/student/course-attendance
+router.get('/course-attendance', async (req, res) => {
   try {
     const userId = req.user._id;
     const { course } = req.query;
@@ -556,32 +593,51 @@ router.get('/attendance', async (req, res) => {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
     const { subjectId, startDate, endDate } = req.query;
 
-    let query = { studentId: userId, organizationId: orgId };
-    if (subjectId) query.subjectId = subjectId;
+    const match = {
+      organization_id: orgId,
+      is_active: true,
+      'attendance_records.student_id': userId
+    };
+
+    if (subjectId) match.subjectId = subjectId;
+
     if (startDate || endDate) {
-      query.date = {};
-      if (startDate) query.date.$gte = new Date(startDate);
-      if (endDate) query.date.$lte = new Date(endDate);
+      match.session_date = {};
+      if (startDate) match.session_date.$gte = new Date(startDate);
+      if (endDate) match.session_date.$lte = new Date(endDate);
     }
 
-    const records = await Attendance.find(query)
+    const sessions = await Attendance.find(match)
       .populate('subjectId', 'name code')
-      .populate('markedBy', 'profile.firstName profile.lastName')
-      .sort({ date: -1 });
+      .populate('instructor_id', 'profile.firstName profile.lastName email')
+      .sort({ session_date: -1, start_time: -1 })
+      .lean();
 
-    // Calculate statistics
-    const summary = await Attendance.aggregate([
-      { $match: { studentId: userId, organizationId: orgId } },
-      { $group: {
-        _id: '$status',
-        count: { $sum: 1 }
-      }}
+    const records = sessions.map(s => {
+      const rec = (s.attendance_records || []).find(r => String(r.student_id) === String(userId));
+      return {
+        _id: s._id,
+        subjectId: s.subjectId,
+        instructor: s.instructor_id,
+        date: s.session_date,
+        startTime: s.start_time,
+        endTime: s.end_time,
+        status: rec?.status || null,
+        markedAt: rec?.marked_at || null
+      };
+    });
+
+    const summaryAgg = await Attendance.aggregate([
+      { $match: match },
+      { $unwind: '$attendance_records' },
+      { $match: { 'attendance_records.student_id': userId } },
+      { $group: { _id: '$attendance_records.status', count: { $sum: 1 } } }
     ]);
 
-    const total = summary.reduce((acc, curr) => acc + curr.count, 0);
-    const present = summary.find(s => s._id === 'present')?.count || 0;
-    const absent = summary.find(s => s._id === 'absent')?.count || 0;
-    const late = summary.find(s => s._id === 'late')?.count || 0;
+    const total = summaryAgg.reduce((acc, curr) => acc + curr.count, 0);
+    const present = summaryAgg.find(s => s._id === 'present')?.count || 0;
+    const absent = summaryAgg.find(s => s._id === 'absent')?.count || 0;
+    const late = summaryAgg.find(s => s._id === 'late')?.count || 0;
 
     res.success({
       records,

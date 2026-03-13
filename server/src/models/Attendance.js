@@ -565,16 +565,31 @@ attendanceSchema.methods.timeToMinutes = function (timeString) {
 attendanceSchema.pre('save', async function (next) {
   if (this.isNew) {
     try {
-      // Verify course belongs to same organization
-      const Course = mongoose.model('Course');
-      const course = await Course.findById(this.course_id);
+      if (this.course_id) {
+        const Course = mongoose.model('Course');
+        const course = await Course.findById(this.course_id);
 
-      if (!course) {
-        return next(new Error('Course not found'));
+        if (!course) {
+          return next(new Error('Course not found'));
+        }
+
+        if (course.organization_id.toString() !== this.organization_id.toString()) {
+          return next(new Error('Course must belong to the same organization'));
+        }
       }
 
-      if (course.organization_id.toString() !== this.organization_id.toString()) {
-        return next(new Error('Course must belong to the same organization'));
+      if (this.subjectId) {
+        const Subject = mongoose.model('Subject');
+        const subject = await Subject.findById(this.subjectId);
+
+        if (!subject) {
+          return next(new Error('Subject not found'));
+        }
+
+        const subjectOrgId = subject.organizationId || subject.organization_id;
+        if (subjectOrgId && subjectOrgId.toString() !== this.organization_id.toString()) {
+          return next(new Error('Subject must belong to the same organization'));
+        }
       }
 
       // Verify instructor belongs to same organization
