@@ -39,7 +39,7 @@ interface AuthContextType {
   token: string | null
   organization: Organization | null
   loading: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectUrl?: string }>
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectUrl?: string; role?: User['role'] }>
   register: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
   registerOrganization: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
   acceptInvite: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
@@ -180,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log("🔐 [AuthContext] Redirect URL:", redirectUrl)
 
-      return { success: true, redirectUrl }
+      return { success: true, redirectUrl, role: userData.role }
     }
     console.error("❌ [AuthContext] Login failed:", res.error)
     return { success: false, error: res.error || "Login failed" }
