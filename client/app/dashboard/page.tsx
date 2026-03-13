@@ -14,9 +14,9 @@ export default function DashboardPage() {
       const roleRoutes: Record<string, string> = {
         student: '/student/dashboard',
         instructor: '/instructor/dashboard',
-        org_admin: '/admin/dashboard',
+        org_admin: '/org-admin/dashboard',
         platform_admin: '/platform',
-        platform_staff: '/platform',
+        platform_staff: '/platform-staff',
         parent: '/parent/dashboard',
         support_staff: '/support/dashboard'
       }

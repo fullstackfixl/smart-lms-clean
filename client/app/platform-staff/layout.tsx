@@ -2,24 +2,21 @@
 
 import React from 'react'
 import { ProtectedRoute } from '../../components/auth/ProtectedRoute'
-import { PlatformSidebar } from '../../components/platform/platform-sidebar'
-import { PlatformHeader } from '../../components/platform/platform-header'
+import { PlatformStaffSidebar } from '../../components/platform/platform-staff-sidebar'
+import { PlatformStaffHeader } from '../../components/platform/platform-staff-header'
 
-export default function PlatformLayout({
+export default function PlatformStaffLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <ProtectedRoute allowedRoles={["platform_admin"]}>
+    <ProtectedRoute allowedRoles={["platform_staff"]}>
       <div className="min-h-screen bg-slate-50 font-sans text-slate-700 antialiased">
-        {/* Sidebar - Fixed Left */}
-        <PlatformSidebar />
+        <PlatformStaffSidebar />
 
-        {/* Main Content Area */}
         <div className="pl-[220px]">
-          <PlatformHeader />
-          
+          <PlatformStaffHeader />
           <main className="mx-auto max-w-7xl p-6 lg:p-8">
             {children}
           </main>

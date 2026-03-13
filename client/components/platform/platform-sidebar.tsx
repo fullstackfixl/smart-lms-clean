@@ -34,14 +34,6 @@ const navItems = [
 
 export function PlatformSidebar() {
   const pathname = usePathname()
-  const { user } = useAuth()
-
-  const visibleNavItems = navItems.filter((item) => {
-    if (item.href === '/platform/staff') {
-      return user?.role === 'platform_admin'
-    }
-    return true
-  })
 
   return (
     <aside className="fixed left-0 top-0 h-full w-[220px] border-r border-slate-200 bg-white z-50">
@@ -52,7 +44,7 @@ export function PlatformSidebar() {
       </div>
       
       <nav className="mt-3 space-y-1 px-3">
-        {visibleNavItems.map((item) => {
+        {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href)
           return (
             <Link

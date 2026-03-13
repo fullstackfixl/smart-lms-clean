@@ -3,23 +3,21 @@
 import React from 'react'
 import { Search, Bell, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
 import { useAuth } from '../../lib/auth-context'
 
-export function PlatformHeader() {
+export function PlatformStaffHeader() {
   const router = useRouter()
   const { user, logout } = useAuth()
 
-  const displayName = user?.name || 'Platform User'
-  const displayRole = user?.role === 'platform_admin' ? 'Platform Admin' : (user?.role === 'platform_staff' ? 'Platform Staff' : 'Platform')
-  const settingsHref = user?.role === 'platform_staff' ? '/platform-staff/settings' : '/platform/settings'
+  const displayName = user?.name || 'Platform Staff'
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-6 lg:px-8">
@@ -50,13 +48,18 @@ export function PlatformHeader() {
               </div>
               <div className="hidden text-left sm:block">
                 <p className="text-sm font-bold text-slate-900 leading-none">{displayName}</p>
-                <p className="mt-1 text-xs text-slate-500">{displayRole}</p>
+                <p className="mt-1 text-xs text-slate-500">Platform Staff</p>
               </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-lg border-slate-200 shadow-none p-1">
             <DropdownMenuLabel className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2 py-1.5">My Account</DropdownMenuLabel>
-            <DropdownMenuItem className="cursor-pointer rounded-md text-sm text-slate-700 focus:bg-orange-50 focus:text-orange-600" onClick={() => router.push(settingsHref)}>Settings</DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer rounded-md text-sm text-slate-700 focus:bg-orange-50 focus:text-orange-600"
+              onClick={() => router.push('/platform-staff/settings')}
+            >
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-gray-100 mx-1 my-1" />
             <DropdownMenuItem
               className="cursor-pointer rounded-md text-sm text-red-600 focus:bg-red-50 focus:text-red-600"
