@@ -20,11 +20,12 @@ interface PendingCourse {
   thumbnail?: string
   instructor_id: {
     _id: string
-    profile: {
+    name?: string
+    email: string
+    profile?: {
       firstName: string
       lastName: string
     }
-    email: string
   }
   createdAt: string
   status: string
@@ -48,10 +49,15 @@ export default function PendingCoursesPage() {
     setLoading(true)
     try {
       if (!token) return
+      console.log('[DEBUG] Frontend: Loading pending courses...')
       const response = await collegeApi.listPendingCourses(token)
+      console.log('[DEBUG] Frontend: API response:', response)
       if (response.success && response.data) {
         const data = response.data as { courses?: PendingCourse[] }
+        console.log('[DEBUG] Frontend: Courses count:', data.courses?.length || 0)
         setCourses(data.courses || [])
+      } else {
+        console.log('[DEBUG] Frontend: Response not successful:', response)
       }
     } catch (error) {
       console.error('Error loading pending courses:', error)
@@ -107,8 +113,10 @@ export default function PendingCoursesPage() {
 
   const filteredCourses = courses.filter(course =>
     course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.instructor_id?.profile?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    course.category?.toLowerCase().includes(searchTerm.toLowerCase())
+    (course.instructor_id?.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (course.instructor_id?.profile?.firstName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (course.instructor_id?.profile?.lastName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (course.category?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   )
 
   if (loading) {
@@ -207,11 +215,15 @@ export default function PendingCoursesPage() {
                 {/* Instructor */}
                 <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200">
                   <div className="w-8 h-8 rounded-md bg-blue-50 flex items-center justify-center text-blue-600 text-sm font-bold">
-                    {course.instructor_id?.profile?.firstName?.charAt(0) || 'I'}
+                    {(course.instructor_id?.name?.charAt(0) || 
+                      course.instructor_id?.profile?.firstName?.charAt(0) || 
+                      'I')}
                   </div>
                   <div>
                     <p className="text-sm text-slate-900 font-medium">
-                      {course.instructor_id?.profile?.firstName} {course.instructor_id?.profile?.lastName}
+                      {course.instructor_id?.name || 
+                       `${course.instructor_id?.profile?.firstName || ''} ${course.instructor_id?.profile?.lastName || ''}`.trim() || 
+                       'Unknown Instructor'}
                     </p>
                     <p className="text-xs text-slate-500">{course.instructor_id?.email}</p>
                   </div>

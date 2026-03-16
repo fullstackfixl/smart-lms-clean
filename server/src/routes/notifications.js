@@ -245,6 +245,7 @@ router.put('/mark-all-read', auth, async (req, res) => {
  * POST /api/notifications/test-risk-alert
  * Test endpoint to create a sample risk alert (development only)
  */
+
 router.post('/test-risk-alert', auth, async (req, res) => {
   try {
     // Only allow in development environment

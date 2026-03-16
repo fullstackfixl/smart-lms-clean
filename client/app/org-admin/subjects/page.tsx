@@ -80,7 +80,7 @@ export default function SubjectsPage() {
                 insts = instsRes
                 // College subjects don't use semester collection, they use semester number directly
                 sems = { success: true, data: [] }
-                setInstructors(insts.data?.instructors || insts.data || [])
+                setInstructors((insts.data as any)?.instructors || (insts.data as any) || [])
             } else {
                 const [subsRes, depsRes, semsRes] = await Promise.all([
                     subjectApi.list(token),
@@ -133,7 +133,7 @@ export default function SubjectsPage() {
             }
             setIsModalOpen(false)
             setEditingSubject(null)
-            setFormData({ name: "", code: "", department_id: "", semester_id: "", credits: 3, description: "", isActive: true })
+            setFormData({ name: "", code: "", department_id: "", semester_id: "", credits: 3, description: "", isActive: true, instructor_id: "" })
             loadData()
         } catch (err: any) {
             toast.error(err.message || "Operation failed")
@@ -202,7 +202,7 @@ export default function SubjectsPage() {
                 <button
                     onClick={() => {
                         setEditingSubject(null)
-                        setFormData({ name: "", code: "", department_id: "", semester_id: "", credits: 3, description: "", isActive: true })
+                        setFormData({ name: "", code: "", department_id: "", semester_id: "", credits: 3, description: "", isActive: true, instructor_id: "" })
                         setIsModalOpen(true)
                     }}
                     className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md font-medium transition-colors"

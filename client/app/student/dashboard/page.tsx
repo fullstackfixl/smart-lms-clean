@@ -183,6 +183,38 @@ export default function StudentDashboard() {
         </div>
       </div>
 
+      {/* Student Profile Info - Shows assigned batch/program/semester */}
+      {isCollege && (
+        <div className="bg-white border border-gray-200 rounded-md p-4">
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-slate-600">Batch:</span>
+              <span className="text-slate-900">
+                {user?.profile?.batchId?.name || user?.profile?.batch || 'Not assigned'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-slate-600">Program:</span>
+              <span className="text-slate-900">
+                {user?.profile?.programId?.name || user?.profile?.program || (typeof user?.profile?.program_id === 'object' ? user?.profile?.program_id?.name : user?.profile?.program_id) || 'Not assigned'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-slate-600">Semester:</span>
+              <span className="text-slate-900">
+                {user?.profile?.current_semester || user?.profile?.semester || '-'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-slate-600">Roll Number:</span>
+              <span className="text-slate-900">
+                {user?.profile?.rollNumber || '-'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Stats - Instructor Style */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
         <MetricCard 

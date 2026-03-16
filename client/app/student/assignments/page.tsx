@@ -34,7 +34,7 @@ export default function StudentAssignmentsPage() {
       if (isCollege) {
         const res = await collegeApi.getStudentAssignments(token)
         if (res.success) {
-          data = res.data?.assignments || []
+          data = (res.data as any)?.assignments || []
         } else {
           toast.error(res.error || 'Failed to load assignments')
           setLoading(false)

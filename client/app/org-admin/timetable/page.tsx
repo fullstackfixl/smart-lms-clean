@@ -166,7 +166,7 @@ export default function TimetablePage() {
           room: ''
         })
         // Optimistic update
-        const newEntry = response.data?.entry || response.data
+        const newEntry = (response.data as any)?.entry || (response.data as any)
         if (newEntry) {
           console.log('[Timetable] Optimistically adding entry:', newEntry)
           setEntries(prev => [newEntry, ...prev])

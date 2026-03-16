@@ -31,7 +31,7 @@ interface Course {
   thumbnail?: string
   category: string
   level: string
-  status: 'draft' | 'published' | 'archived'
+  status: 'draft' | 'pending_review' | 'published' | 'archived'
   enrollmentCount: number
   createdAt: string
   course_credits?: number
@@ -101,6 +101,22 @@ export default function InstructorCoursesPage() {
     }
   }
 
+  const handleSubmitForApproval = async (e: React.MouseEvent, courseId: string) => {
+    e.stopPropagation()
+    try {
+      const response = await instructorApi.submitCourseForApproval(token!, courseId)
+      if (response.success) {
+        toast.success("Course submitted for approval")
+        fetchCourses()
+      } else {
+        toast.error(response.error || "Failed to submit for approval")
+      }
+    } catch (error) {
+      console.error('Submit error:', error)
+      toast.error('Failed to submit for approval')
+    }
+  }
+
   const filteredCourses = courses.filter(course =>
     course.title.toLowerCase().includes(search.toLowerCase()) ||
     course.description.toLowerCase().includes(search.toLowerCase())
@@ -135,8 +151,10 @@ export default function InstructorCoursesPage() {
     const statusColors = {
       published: "bg-green-100 text-green-700 border-green-200",
       draft: "bg-yellow-100 text-yellow-700 border-yellow-200",
+      pending_review: "bg-orange-100 text-orange-700 border-orange-200",
       archived: "bg-gray-100 text-gray-700 border-gray-200",
     }
+
     return (
       <div className="bg-white border border-gray-200 rounded-md p-5 hover:border-blue-300 transition-all group">
         <div 
@@ -155,12 +173,27 @@ export default function InstructorCoursesPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <Users className="w-4 h-4 text-orange-500 stroke-[1.5]" />
-            <span>{course.enrollmentCount} students</span>
-          </div>
+        {/* Status Badge and Actions */}
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+          <span className={cn("px-2 py-1 text-xs font-medium rounded border",
+            course.status === 'published' ? 'bg-green-100 text-green-700 border-green-200' :
+            course.status === 'draft' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+            course.status === 'pending_review' ? 'bg-orange-100 text-orange-700 border-orange-200' :
+            'bg-gray-100 text-gray-700 border-gray-200'
+          )}>
+            {course.status === 'pending_review' ? 'Pending' : course.status}
+          </span>
           <div className="flex items-center gap-2">
+            {course.status === 'draft' && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="h-7 px-2 text-xs border-orange-200 text-orange-600 hover:bg-orange-50"
+                onClick={(e) => handleSubmitForApproval(e, course._id)}
+              >
+                Submit for Approval
+              </Button>
+            )}
             <Button 
               variant="ghost" 
               size="sm" 
@@ -215,18 +248,18 @@ export default function InstructorCoursesPage() {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex bg-white border border-gray-200 rounded-md p-1">
-            {['all', 'draft', 'published', 'archived'].map((status) => (
+            {['all', 'draft', 'pending_review', 'published', 'archived'].map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
                 className={cn(
-                  "px-4 py-1.5 rounded text-xs font-medium transition-all",
+                  "px-3 py-1.5 rounded text-xs font-medium transition-all",
                   statusFilter === status 
                     ? "bg-blue-50 text-blue-600" 
                     : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {status === 'pending_review' ? 'Pending' : status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
             ))}
           </div>
@@ -333,9 +366,10 @@ export default function InstructorCoursesPage() {
                     <span className={cn("px-2 py-1 text-xs font-medium rounded border",
                       course.status === 'published' ? 'bg-green-100 text-green-700 border-green-200' :
                       course.status === 'draft' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
+                      course.status === 'pending_review' ? 'bg-orange-100 text-orange-700 border-orange-200' :
                       'bg-gray-100 text-gray-700 border-gray-200'
                     )}>
-                      {course.status}
+                      {course.status === 'pending_review' ? 'Pending' : course.status}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-700">{course.enrollmentCount}</td>
@@ -346,6 +380,19 @@ export default function InstructorCoursesPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {course.status === 'draft' && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs border-orange-200 text-orange-600 hover:bg-orange-50"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSubmitForApproval(e as any, course._id);
+                          }}
+                        >
+                          Submit for Approval
+                        </Button>
+                      )}
                       <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(course._id, course.title)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>

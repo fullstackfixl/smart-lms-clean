@@ -116,8 +116,8 @@ export default function StudentMySubjectsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">My Subjects</h1>
           <p className="text-slate-500 mt-1">
-            {studentBatchId && `Batch: ${studentBatchId.substring(0, 8)}...`}
-            {studentProgramId && ` • Program: ${studentProgramId.substring(0, 8)}...`}
+            {studentBatchId && typeof studentBatchId === 'string' && `Batch: ${studentBatchId.substring(0, 8)}...`}
+            {studentProgramId && typeof studentProgramId === 'string' && ` • Program: ${studentProgramId.substring(0, 8)}...`}
             {studentSemester && ` • Current Semester: ${studentSemester}`}
           </p>
         </div>

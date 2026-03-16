@@ -26,6 +26,16 @@ interface TimetableEntry {
   type: string
 }
 
+type CollegeTimetableEntry = {
+  _id: string
+  subjectId?: { _id: string; name: string; code?: string }
+  instructorId?: { _id: string; profile?: { firstName?: string; lastName?: string } }
+  day: string
+  startTime: string
+  endTime: string
+  room?: string
+}
+
 const DAYS_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 export default function TimetablePage() {
@@ -55,14 +65,36 @@ export default function TimetablePage() {
       if (response.success && response.data) {
         // Handle different response structures
         const data = response.data
-        if (Array.isArray(data)) {
-          setTimetable(data)
-        } else if (data.entries) {
-          setTimetable(data.entries)
-        } else if (data.timetable) {
-          setTimetable(data.timetable)
+        const rawEntries: any[] = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any).entries)
+            ? (data as any).entries
+            : Array.isArray((data as any).timetable)
+              ? (data as any).timetable
+              : []
+
+        if (isCollege) {
+          const normalized = rawEntries.map((e: CollegeTimetableEntry) => {
+            const instructorName = `${e.instructorId?.profile?.firstName || ''} ${e.instructorId?.profile?.lastName || ''}`.trim()
+            return {
+              _id: e._id,
+              course_id: {
+                _id: e.subjectId?._id || e._id,
+                title: e.subjectId?.name || 'Subject'
+              },
+              instructor_id: {
+                name: instructorName || 'Instructor'
+              },
+              day_of_week: e.day,
+              start_time: e.startTime,
+              end_time: e.endTime,
+              room: e.room,
+              type: 'lecture'
+            } as TimetableEntry
+          })
+          setTimetable(normalized)
         } else {
-          setTimetable([])
+          setTimetable(rawEntries as TimetableEntry[])
         }
       } else {
         setError(response.message || "Failed to load timetable")

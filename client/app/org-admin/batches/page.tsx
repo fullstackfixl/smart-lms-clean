@@ -149,10 +149,10 @@ export default function BatchesPage() {
                 let newBatch;
                 if (isCollege) {
                     const response = await collegeApi.createBatch(token, formData)
-                    newBatch = response.data?.batch || response.data
+                    newBatch = (response.data as any)?.batch || (response.data as any)
                 } else {
                     const response = await batchApi.create(token, formData)
-                    newBatch = response.data?.batch || response.data
+                    newBatch = (response.data as any)?.batch || (response.data as any)
                 }
                 
                 toast.success("Batch created successfully")

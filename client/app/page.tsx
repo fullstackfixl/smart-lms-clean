@@ -1,8 +1,4 @@
-import { Navbar } from '../components/landing/navbar'
-import { Hero } from '../components/landing/hero'
-import { CourseShowcase } from '../components/landing/course-showcase'
-import { Features } from '../components/landing/features'
-import { CTASection, Footer } from '../components/landing/footer'
+import { CreatifyLanding } from '../components/landing/CreatifyLanding'
 
 export const metadata = {
   title: "Smart LMS – AI-Powered Learning Platform for Institutes & Colleges",
@@ -18,13 +14,6 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <main style={{ background: "#0A0F1E", minHeight: "100vh" }}>
-      <Navbar />
-      <Hero />
-      <CourseShowcase />
-      <Features />
-      <CTASection />
-      <Footer />
-    </main>
+    <CreatifyLanding />
   )
 }

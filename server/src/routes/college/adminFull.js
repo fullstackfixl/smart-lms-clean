@@ -796,6 +796,35 @@ router.get('/courses', async (req, res) => {
   }
 });
 
+ // ===== INSTRUCTOR COURSE APPROVAL =====
+ // GET /api/college/admin/courses/pending
+ router.get('/courses/pending', async (req, res) => {
+   try {
+     const orgId = req.user.organization_id?._id || req.user.organization_id;
+     console.log('[DEBUG] Admin orgId:', orgId, 'User:', req.user._id, 'Role:', req.user.role);
+     
+     const allPending = await Course.find({ 
+       status: { $in: ['pending_review', 'pending'] },
+       is_deleted: { $ne: true }
+     }).select('_id title organization_id status instructor_id');
+     console.log('[DEBUG] All pending courses (no org filter):', allPending.length, allPending.map(c => ({ id: c._id, title: c.title, org: c.organization_id?.toString(), status: c.status })));
+     
+     const courses = await Course.find({ 
+       organization_id: orgId, 
+       status: { $in: ['pending_review', 'pending'] },
+       is_deleted: { $ne: true }
+     })
+       .populate('instructor_id', 'name email profile.firstName profile.lastName')
+       .sort({ createdAt: -1 });
+     console.log('[DEBUG] Filtered courses for org:', orgId?.toString(), 'Count:', courses.length);
+     
+     res.success({ courses }, 'Pending courses retrieved');
+   } catch (error) {
+     console.error('[DEBUG] Error loading pending courses:', error);
+     res.error(error.message, 'Failed to load pending courses', 500);
+   }
+ });
+
 // GET /api/college/admin/courses/:id
 router.get('/courses/:id', async (req, res) => {
   try {
@@ -1528,27 +1557,12 @@ router.get('/attendance/summary', async (req, res) => {
 });
 
 // ===== INSTRUCTOR COURSE APPROVAL =====
-// GET /api/college/admin/courses/pending
-router.get('/courses/pending', async (req, res) => {
-  try {
-    const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const courses = await Course.find({ 
-      organization_id: orgId, 
-      status: { $in: ['pending_review', 'pending'] },
-      isActive: true 
-    })
-      .populate('instructor_id', 'profile.firstName profile.lastName email')
-      .sort({ createdAt: -1 });
-    res.success({ courses }, 'Pending courses retrieved');
-  } catch (error) {
-    res.error(error.message, 'Failed to load pending courses', 500);
-  }
-});
-
 // PATCH /api/college/admin/courses/:id/approve
 router.patch('/courses/:id/approve', async (req, res) => {
   try {
     const { status, rejectionReason } = req.body;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    
     const update = { 
       status: status || 'published',
       approvedBy: req.user._id,
@@ -1558,16 +1572,71 @@ router.patch('/courses/:id/approve', async (req, res) => {
       update.rejectionReason = rejectionReason;
     }
 
-    const course = await Course.findByIdAndUpdate(
-      req.params.id,
+    const course = await Course.findOneAndUpdate(
+      { _id: req.params.id, organization_id: orgId },
       update,
       { new: true }
     );
 
     if (!course) return res.error('Course not found', 'Not found', 404);
 
-    // Notify instructor
-    // TODO: Add notification system
+    // If published, auto-enroll all students in the organization
+    if (update.status === 'published') {
+      const { User } = require('../../models');
+      const Enrollment = require('../../models/Enrollment');
+      
+      // Find all active students in this organization
+      const students = await User.find({
+        organization_id: orgId,
+        role: 'student',
+        status: 'active',
+        is_deleted: { $ne: true }
+      }).select('_id');
+      
+      // Create enrollments for each student
+      const enrollments = [];
+      for (const student of students) {
+        const existing = await Enrollment.findOne({
+          student_id: student._id,
+          course_id: course._id
+        });
+        
+        if (!existing) {
+          enrollments.push({
+            student_id: student._id,
+            course_id: course._id,
+            organization_id: orgId,
+            organizationType: req.user.organization_type || 'college',
+            enrollmentType: 'free',
+            status: 'active',
+            enrolledAt: new Date(),
+            enrolledBy: req.user._id
+          });
+        }
+      }
+      
+      if (enrollments.length > 0) {
+        await Enrollment.insertMany(enrollments);
+        // Update course enrollment count
+        course.enrollmentCount = await Enrollment.countDocuments({ course_id: course._id });
+        await course.save();
+      }
+      
+      // Notify instructor
+      try {
+        const Notification = require('../../models/Notification');
+        await Notification.create({
+          user_id: course.instructor_id,
+          type: 'course_approved',
+          title: 'Course Approved',
+          message: `Your course "${course.title}" has been approved and published. ${enrollments.length} students have been auto-enrolled.`,
+          organization_id: orgId,
+          data: { course_id: course._id }
+        });
+      } catch (notifErr) {
+        console.error('Failed to create notification:', notifErr);
+      }
+    }
 
     res.success({ course }, `Course ${status || 'published'} successfully`);
   } catch (error) {

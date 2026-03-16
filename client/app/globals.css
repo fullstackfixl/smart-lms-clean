@@ -207,12 +207,81 @@ html {
 
 .lp-skeleton {
   background: linear-gradient(90deg, #1a2030 25%, #1f2840 50%, #1a2030 75%);
-  background-size: 200% 100%;
-  animation: lp-shimmer 1.4s infinite;
-  border-radius: 0.5rem;
 }
 
 @keyframes lp-shimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+@keyframes orbRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes marqueeLeft {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes marqueeRight {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes blobFloat {
+  0%, 100% { transform: translateX(-50%) translateY(0px); }
+  50% { transform: translateX(-50%) translateY(-20px); }
+}
+
+.creatify-search-bar:focus-within {
+  border-color: #E8FF47;
+  box-shadow: 0 0 0 3px rgba(232,255,71,0.1);
+  transition: all 0.2s;
+}
+
+.creatify-marquee {
+  position: relative;
+  overflow: hidden;
+}
+
+.creatify-marquee::before,
+.creatify-marquee::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 100px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.creatify-marquee::before {
+  left: 0;
+  background: linear-gradient(to right, #080808, transparent);
+}
+
+.creatify-marquee::after {
+  right: 0;
+  background: linear-gradient(to left, #080808, transparent);
+}
+
+.creatify-track {
+  width: max-content;
+  will-change: transform;
+}
+
+.creatify-row-wrapper:hover .creatify-track {
+  animation-play-state: paused;
 }

@@ -6,7 +6,7 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "build": "echo 'No build step required for Node.js backend'",
-    "validate-env": "node -e \"require('./src/utils/envValidator').validateAndExit()\"",
+    "validate-env": "node -e \"require('dotenv').config(); require('./src/utils/envValidator').validateAndExit()\"",
     "env-guide": "node -e \"console.log(require('./src/utils/envValidator').generateSetupGuide())\"",
     "seed:public": "node src/utils/seedPublicData.js",
     "test": "jest",

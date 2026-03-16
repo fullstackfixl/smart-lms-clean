@@ -824,6 +824,11 @@ export const instructorApi = {
       method: "PATCH",
       token,
     }),
+  submitCourseForApproval: (token: string, id: string) =>
+    apiRequest(`/instructor/courses/${id}/submit-for-approval`, {
+      method: "POST",
+      token,
+    }),
 
   // Modules
   createModule: (token: string, courseId: string, data: Record<string, unknown>) =>
