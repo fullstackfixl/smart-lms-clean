@@ -40,6 +40,10 @@ const timetableSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  meetingLink: {
+    type: String,
+    trim: true
+  },
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',

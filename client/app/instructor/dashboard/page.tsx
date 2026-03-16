@@ -14,7 +14,7 @@ import {
 import { Button } from '../../../components/ui/button'
 import { toast } from "sonner"
 import { useAuth } from '../../../lib/auth-context'
-import { instructorApi } from '../../../lib/api'
+import { instructorApi, collegeApi } from '../../../lib/api'
 
 interface DashboardData {
   totalCourses: number
@@ -73,6 +73,8 @@ export default function InstructorDashboardPage() {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
   useEffect(() => {
     fetchDashboardData()
   }, [token])
@@ -86,8 +88,10 @@ export default function InstructorDashboardPage() {
     setLoading(true)
     try {
       const [dashRes, subRes] = await Promise.all([
-        instructorApi.dashboardOverview(token),
-        user?.organizationType === 'COLLEGE' ? instructorApi.listSubjects(token) : Promise.resolve({ success: true, data: [] })
+        isCollege 
+          ? await collegeApi.instructorDashboard(token)
+          : await instructorApi.dashboardOverview(token),
+        isCollege ? collegeApi.listSubjects(token) : Promise.resolve({ success: true, data: [] })
       ])
 
       if (dashRes.success && dashRes.data) {
@@ -96,7 +100,7 @@ export default function InstructorDashboardPage() {
         toast.error('Failed to load dashboard data')
       }
 
-      if (user?.organizationType === 'COLLEGE' && subRes.success) {
+      if (isCollege && subRes.success) {
         const payload: any = subRes.data
         const list: SubjectItem[] = payload?.subjects || payload || []
         setSubjects(Array.isArray(list) ? list : [])

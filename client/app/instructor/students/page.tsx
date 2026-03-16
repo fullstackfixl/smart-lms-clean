@@ -33,7 +33,7 @@ import {
 import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 import { cn } from "../../../lib/utils"
-import { instructorApi } from '../../../lib/api'
+import { instructorApi, collegeApi } from '../../../lib/api'
 
 interface Course {
   _id: string
@@ -84,12 +84,14 @@ function MetricCard({ label, value, icon: Icon, color = "blue" }: { label: strin
 function StudentsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [courses, setCourses] = useState<Course[]>([])
   const [selectedCourseId, setSelectedCourseId] = useState<string>("")
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
 
   useEffect(() => {
     if (token) loadCourses()
@@ -107,9 +109,11 @@ function StudentsContent() {
   async function loadCourses() {
     setLoading(true)
     try {
-      const res = await instructorApi.listCourses(token!, "limit=100")
+      const res = isCollege
+        ? await collegeApi.getInstructorCourses(token!)
+        : await instructorApi.listCourses(token!, "limit=100")
       if (res.success && res.data) {
-        const courseList = (res.data as any).courses || []
+        const courseList = (res.data as any).courses || (res.data as any) || []
         setCourses(courseList)
         if (courseList.length > 0 && !selectedCourseId && !searchParams.get("courseId")) {
           setSelectedCourseId(courseList[0]._id)
@@ -125,7 +129,9 @@ function StudentsContent() {
   async function loadStudents() {
     setLoading(true)
     try {
-      const res = await instructorApi.getStudents(token!, selectedCourseId)
+      const res = isCollege
+        ? await collegeApi.getInstructorStudents(token!)
+        : await instructorApi.getStudents(token!, selectedCourseId)
       if (res.success && res.data) {
         setStudents((res.data as any).students || [])
       }

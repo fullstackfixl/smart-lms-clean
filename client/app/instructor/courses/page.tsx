@@ -39,17 +39,6 @@ interface Course {
   semester_id?: { name: string, number: number }
 }
 
-// Mock courses for demo
-const mockCourses: Course[] = [
-  { _id: "1", title: "JavaScript Mastery", description: "Complete guide to modern JavaScript", category: "Programming", level: "Intermediate", status: "published", enrollmentCount: 1247, createdAt: "2026-01-15", course_credits: 4 },
-  { _id: "2", title: "React Fundamentals", description: "Learn React from scratch with projects", category: "Frontend", level: "Beginner", status: "published", enrollmentCount: 892, createdAt: "2026-01-20", course_credits: 3 },
-  { _id: "3", title: "Backend Development", description: "Node.js, Express, and MongoDB", category: "Backend", level: "Advanced", status: "published", enrollmentCount: 456, createdAt: "2026-02-01", course_credits: 4 },
-  { _id: "4", title: "CSS Animations", description: "Create stunning animations with CSS", category: "Design", level: "Intermediate", status: "published", enrollmentCount: 234, createdAt: "2026-02-10", course_credits: 2 },
-  { _id: "5", title: "TypeScript Pro", description: "Advanced TypeScript patterns", category: "Programming", level: "Advanced", status: "draft", enrollmentCount: 0, createdAt: "2026-02-15", course_credits: 3 },
-  { _id: "6", title: "Web Performance", description: "Optimize your web applications", category: "Performance", level: "Advanced", status: "draft", enrollmentCount: 0, createdAt: "2026-02-20", course_credits: 2 },
-  { _id: "7", title: "GraphQL API Design", description: "Build efficient APIs with GraphQL", category: "Backend", level: "Intermediate", status: "published", enrollmentCount: 567, createdAt: "2026-03-01", course_credits: 3 },
-  { _id: "8", title: "Docker & Kubernetes", description: "Container orchestration mastery", category: "DevOps", level: "Advanced", status: "archived", enrollmentCount: 0, createdAt: "2025-12-01", course_credits: 4 },
-]
  
 export default function InstructorCoursesPage() {
   const { token, user } = useAuth()
@@ -66,7 +55,6 @@ export default function InstructorCoursesPage() {
     if (token) {
       fetchCourses()
     } else {
-      setCourses(mockCourses)
       setLoading(false)
     }
   }, [token, page, statusFilter])
@@ -85,22 +73,34 @@ export default function InstructorCoursesPage() {
       if (response.success && response.data) {
         const payload = response.data as any
         const courseList = payload.courses || payload || []
-        setCourses(courseList.length > 0 ? courseList : mockCourses)
+        setCourses(courseList)
         if (payload.pagination) {
           setTotalPages(payload.pagination.pages)
         }
       } else {
-        setCourses(mockCourses)
+        toast.error("Failed to load courses")
       }
     } catch (error) {
       console.error('Courses fetch error:', error)
-      setCourses(mockCourses)
-      toast.error('Failed to load courses - showing demo data')
+      toast.error('Failed to load courses')
     } finally {
       setLoading(false)
     }
   }
  
+  const handleDelete = async (courseId: string, courseTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${courseTitle}"? This action cannot be undone.`)) return
+    
+    try {
+      await instructorApi.deleteCourse(token!, courseId)
+      toast.success('Course deleted successfully')
+      fetchCourses()
+    } catch (error) {
+      console.error('Delete error:', error)
+      toast.error('Failed to delete course')
+    }
+  }
+
   const filteredCourses = courses.filter(course =>
     course.title.toLowerCase().includes(search.toLowerCase()) ||
     course.description.toLowerCase().includes(search.toLowerCase())
@@ -161,9 +161,17 @@ export default function InstructorCoursesPage() {
             <span>{course.enrollmentCount} students</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 text-xs font-medium rounded border ${statusColors[course.status]}`}>
-              {course.status}
-            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 w-7 p-0 text-red-600 hover:bg-red-50"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDelete(course._id, course.title)
+              }}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
             <Button 
               variant="ghost" 
               size="sm" 
@@ -191,7 +199,7 @@ export default function InstructorCoursesPage() {
     )
   }
 
-  const coursesToShow = filteredCourses.length > 0 ? filteredCourses : mockCourses
+  const coursesToShow = filteredCourses
  
   return (
     <div className="space-y-6">
@@ -272,7 +280,24 @@ export default function InstructorCoursesPage() {
       </div>
 
       {/* Course Grid */}
-      {viewMode === "grid" ? (
+      {coursesToShow.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 px-4">
+          <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+            <BookOpen className="w-8 h-8 text-blue-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">No courses yet</h3>
+          <p className="text-slate-500 text-center max-w-md mb-6">
+            Get started by creating your first course. Click the button below to begin.
+          </p>
+          <Button 
+            onClick={() => router.push('/instructor/courses/new')}
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create First Course
+          </Button>
+        </div>
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {coursesToShow.map((course) => (
             <CourseCard key={course._id} course={course} />
@@ -321,6 +346,9 @@ export default function InstructorCoursesPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(course._id, course.title)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                       <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50" onClick={() => router.push(`/instructor/courses/${course._id}`)}>
                         <Edit2 className="w-4 h-4" />
                       </Button>

@@ -10,19 +10,19 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4CAF50]" />
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
       </div>
     )
   }
 
   return (
     <ProtectedRoute allowedRoles={["student"]}>
-      <div className="flex h-screen overflow-hidden bg-slate-950">
+      <div className="flex h-screen overflow-hidden bg-gray-50">
         <StudentSidebar />
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative md:ml-[220px]">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
           <StudentHeader />
-          <main className="flex-1 overflow-y-auto mt-16 scroll-smooth">
+          <main className="flex-1 overflow-y-auto scroll-smooth">
             <div className="max-w-[1400px] mx-auto p-6 md:p-8">
               {children}
             </div>

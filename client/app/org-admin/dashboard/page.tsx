@@ -215,67 +215,63 @@ export default function OrgAdminDashboardPage() {
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {isCollege && (
               <>
-                <Button 
-                  variant="outline" 
-                  className="h-auto py-4 justify-start text-left border-gray-200 hover:bg-blue-50/60 hover:border-blue-200 shadow-sm hover:shadow-md transition-all rounded-xl"
+                <div 
+                  className="h-auto py-4 px-4 justify-start text-left bg-white border border-gray-200 hover:bg-blue-50/60 hover:border-blue-200 shadow-sm hover:shadow-md transition-all rounded-xl cursor-pointer flex items-center"
                   onClick={() => router.push('/org-admin/departments')}
                 >
                   <div className="p-2 bg-blue-100 rounded-xl mr-3">
                     <Building2 className="w-5 h-5 text-blue-600" />
                   </div>
-                  <div className="text-left">
+                  <div className="text-left flex-1">
                     <p className="font-medium text-slate-900">Departments</p>
                     <p className="text-xs text-slate-500">Manage academic departments</p>
                   </div>
-                  <ArrowUpRight className="w-4 h-4 ml-auto text-slate-400" />
-                </Button>
+                  <ArrowUpRight className="w-4 h-4 text-slate-400" />
+                </div>
                 
-                <Button 
-                  variant="outline" 
-                  className="h-auto py-4 justify-start text-left border-gray-200 hover:bg-purple-50/60 hover:border-purple-200 shadow-sm hover:shadow-md transition-all rounded-xl"
+                <div 
+                  className="h-auto py-4 px-4 justify-start text-left bg-white border border-gray-200 hover:bg-purple-50/60 hover:border-purple-200 shadow-sm hover:shadow-md transition-all rounded-xl cursor-pointer flex items-center"
                   onClick={() => router.push('/org-admin/batches')}
                 >
                   <div className="p-2 bg-purple-100 rounded-xl mr-3">
                     <School className="w-5 h-5 text-purple-600" />
                   </div>
-                  <div className="text-left">
+                  <div className="text-left flex-1">
                     <p className="font-medium text-slate-900">Batches</p>
                     <p className="text-xs text-slate-500">Manage student batches</p>
                   </div>
-                  <ArrowUpRight className="w-4 h-4 ml-auto text-slate-400" />
-                </Button>
+                  <ArrowUpRight className="w-4 h-4 text-slate-400" />
+                </div>
               </>
             )}
             
-            <Button 
-              variant="outline" 
-              className="h-auto py-4 justify-start text-left border-gray-200 hover:bg-green-50/60 hover:border-green-200 shadow-sm hover:shadow-md transition-all rounded-xl"
+            <div 
+              className="h-auto py-4 px-4 justify-start text-left bg-white border border-gray-200 hover:bg-green-50/60 hover:border-green-200 shadow-sm hover:shadow-md transition-all rounded-xl cursor-pointer flex items-center"
               onClick={() => router.push('/org-admin/users?role=student')}
             >
               <div className="p-2 bg-green-100 rounded-xl mr-3">
                 <Users className="w-5 h-5 text-green-600" />
               </div>
-              <div className="text-left">
+              <div className="text-left flex-1">
                 <p className="font-medium text-slate-900">Students</p>
                 <p className="text-xs text-slate-500">Manage enrolled students</p>
               </div>
-              <ArrowUpRight className="w-4 h-4 ml-auto text-slate-400" />
-            </Button>
+              <ArrowUpRight className="w-4 h-4 text-slate-400" />
+            </div>
             
-            <Button 
-              variant="outline" 
-              className="h-auto py-4 justify-start text-left border-gray-200 hover:bg-orange-50/60 hover:border-orange-200 shadow-sm hover:shadow-md transition-all rounded-xl"
+            <div 
+              className="h-auto py-4 px-4 justify-start text-left bg-white border border-gray-200 hover:bg-orange-50/60 hover:border-orange-200 shadow-sm hover:shadow-md transition-all rounded-xl cursor-pointer flex items-center"
               onClick={() => router.push('/org-admin/users?role=instructor')}
             >
               <div className="p-2 bg-orange-100 rounded-xl mr-3">
                 <GraduationCap className="w-5 h-5 text-orange-600" />
               </div>
-              <div className="text-left">
+              <div className="text-left flex-1">
                 <p className="font-medium text-slate-900">Instructors</p>
                 <p className="text-xs text-slate-500">Manage teaching staff</p>
               </div>
-              <ArrowUpRight className="w-4 h-4 ml-auto text-slate-400" />
-            </Button>
+              <ArrowUpRight className="w-4 h-4 text-slate-400" />
+            </div>
           </div>
         </div>
 

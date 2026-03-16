@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import {
     Calendar, Clock, CheckCircle, XCircle,
     Loader2, BookOpen, TrendingUp, ChevronRight,
-    Monitor, Info
+    Monitor, Info, RefreshCw
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/ui/card"
 import { Button } from "../../../components/ui/button"
@@ -13,35 +13,50 @@ import { Badge } from "../../../components/ui/badge"
 import { Progress } from "../../../components/ui/progress"
 import { toast } from "sonner"
 import { API_URL } from "../../../lib/config"
+import { useAuth } from "../../../lib/auth-context"
+import { collegeApi } from "../../../lib/api"
 import Link from "next/link"
 
-const getToken = () =>
-    typeof window !== "undefined"
-        ? window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
-        : null
-
 export default function StudentAttendancePage() {
+    const { user, token } = useAuth()
     const [courses, setCourses] = useState<any[]>([])
     const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
     const [attendanceData, setAttendanceData] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [loadingDetails, setLoadingDetails] = useState(false)
 
+    const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
     const fetchCourses = useCallback(async () => {
+        if (!token) return
         setLoading(true)
         try {
-            const r = await fetch(`${API_URL}/api/courses/my-courses`, {
-                headers: { Authorization: `Bearer ${getToken()}` },
-                credentials: "include"
-            })
-            const data = await r.json()
-            if (data.success) {
-                const enrolledCourses = data.data?.courses || data.data || []
-                setCourses(enrolledCourses)
-                if (enrolledCourses.length > 0) {
-                    const firstId = enrolledCourses[0].course?._id || enrolledCourses[0]._id
-                    setSelectedCourseId(firstId)
-                    fetchAttendance(firstId)
+            if (isCollege) {
+                const res = await collegeApi.getStudentCourses(token)
+                if (res.success) {
+                    const payload: any = res.data || {}
+                    const enrolledCourses = payload?.courses || payload || []
+                    setCourses(enrolledCourses)
+                    if (enrolledCourses.length > 0) {
+                        const firstId = enrolledCourses[0].course?._id || enrolledCourses[0]._id
+                        setSelectedCourseId(firstId)
+                        fetchAttendance(firstId)
+                    }
+                }
+            } else {
+                const r = await fetch(`${API_URL}/api/courses/my-courses`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    credentials: "include"
+                })
+                const data = await r.json()
+                if (data.success) {
+                    const enrolledCourses = data.data?.courses || data.data || []
+                    setCourses(enrolledCourses)
+                    if (enrolledCourses.length > 0) {
+                        const firstId = enrolledCourses[0].course?._id || enrolledCourses[0]._id
+                        setSelectedCourseId(firstId)
+                        fetchAttendance(firstId)
+                    }
                 }
             }
         } catch {
@@ -49,18 +64,26 @@ export default function StudentAttendancePage() {
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [token, isCollege])
 
     const fetchAttendance = async (courseId: string) => {
+        if (!token) return
         setLoadingDetails(true)
         try {
-            const r = await fetch(`${API_URL}/attendance/student/course/${courseId}`, {
-                headers: { Authorization: `Bearer ${getToken()}` },
-                credentials: "include"
-            })
-            const data = await r.json()
-            if (data.success) {
-                setAttendanceData(data.data)
+            if (isCollege) {
+                const res = await collegeApi.getStudentAttendance(token)
+                if (res.success) {
+                    setAttendanceData(res.data)
+                }
+            } else {
+                const r = await fetch(`${API_URL}/attendance/student/course/${courseId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    credentials: "include"
+                })
+                const data = await r.json()
+                if (data.success) {
+                    setAttendanceData(data.data)
+                }
             }
         } catch {
             toast.error("Failed to load attendance summary")

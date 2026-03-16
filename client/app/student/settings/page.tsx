@@ -25,10 +25,10 @@ export default function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <h1 className="text-6xl font-bold text-white mb-3">
+        <h1 className="text-6xl font-bold text-slate-900 mb-3">
           Settings
         </h1>
-        <p className="text-xl text-slate-300">
+        <p className="text-xl text-slate-600">
           Customize your learning experience
         </p>
       </motion.div>
@@ -39,16 +39,16 @@ export default function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
       >
-        <h2 className="text-3xl font-bold text-white mb-6">
+        <h2 className="text-3xl font-bold text-slate-900 mb-6">
           Appearance
         </h2>
-        <div className="rounded-2xl bg-black/50 backdrop-blur-md border border-slate-700/50 p-8">
+        <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-8">
           <div className="space-y-6">
             <div>
-              <h3 className="text-xl font-semibold text-white mb-2">
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">
                 Theme
               </h3>
-              <p className="text-sm text-slate-400 mb-6">
+              <p className="text-sm text-slate-600 mb-6">
                 Choose how Instatute looks to you
               </p>
             </div>
@@ -66,26 +66,26 @@ export default function SettingsPage() {
                       "relative p-6 rounded-2xl border-2 transition-all duration-300 text-left",
                       isActive
                         ? "border-orange-500 bg-orange-500/10 shadow-lg shadow-orange-500/20"
-                        : "border-slate-700/50 bg-slate-900/30 hover:border-orange-500/50"
+                        : "border-gray-200 bg-slate-50 hover:border-orange-500/50"
                     )}
                   >
                     <div className={cn(
                       "h-12 w-12 rounded-xl flex items-center justify-center mb-4",
                       isActive
                         ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white"
-                        : "bg-slate-800/50 text-slate-400"
+                        : "bg-gray-100 text-slate-600"
                     )}>
                       <Icon className="h-6 w-6" strokeWidth={1.5} />
                     </div>
                     <h4 className={cn(
                       "text-base font-semibold mb-1",
                       isActive
-                        ? "text-orange-400"
-                        : "text-white"
+                        ? "text-orange-600"
+                        : "text-slate-900"
                     )}>
                       {option.label}
                     </h4>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-slate-600">
                       {option.description}
                     </p>
                     {isActive && (
@@ -109,10 +109,10 @@ export default function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <h2 className="text-3xl font-bold text-white mb-6">
+        <h2 className="text-3xl font-bold text-slate-900 mb-6">
           Notifications
         </h2>
-        <div className="rounded-2xl bg-black/50 backdrop-blur-md border border-slate-700/50 p-8">
+        <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-8">
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -120,10 +120,10 @@ export default function SettingsPage() {
                   <Bell className="h-6 w-6 text-blue-400" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <Label htmlFor="email-notifications" className="text-base font-semibold text-white">
+                  <Label htmlFor="email-notifications" className="text-base font-semibold text-slate-900">
                     Email Notifications
                   </Label>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-600">
                     Receive updates about your courses
                   </p>
                 </div>
@@ -137,10 +137,10 @@ export default function SettingsPage() {
                   <Bell className="h-6 w-6 text-green-400" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <Label htmlFor="push-notifications" className="text-base font-semibold text-white">
+                  <Label htmlFor="push-notifications" className="text-base font-semibold text-slate-900">
                     Push Notifications
                   </Label>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-600">
                     Get notified about live classes
                   </p>
                 </div>
@@ -157,53 +157,53 @@ export default function SettingsPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
       >
-        <h2 className="text-3xl font-bold text-white mb-6">
+        <h2 className="text-3xl font-bold text-slate-900 mb-6">
           Account
         </h2>
-        <div className="rounded-2xl bg-black/50 backdrop-blur-md border border-slate-700/50 p-8">
+        <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-8">
           <div className="space-y-4">
-            <Button variant="outline" className="w-full justify-start h-auto p-4 border-slate-700/50 bg-slate-900/30 hover:bg-slate-800/50 hover:border-orange-500/50">
+            <Button variant="outline" className="w-full justify-start h-auto p-4 border-gray-200 bg-white hover:bg-slate-50 hover:border-orange-500/50">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-xl bg-purple-600/10 flex items-center justify-center">
                   <User className="h-6 w-6 text-purple-400" strokeWidth={1.5} />
                 </div>
                 <div className="text-left">
-                  <p className="text-base font-semibold text-white">
+                  <p className="text-base font-semibold text-slate-900">
                     Edit Profile
                   </p>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-600">
                     Update your personal information
                   </p>
                 </div>
               </div>
             </Button>
 
-            <Button variant="outline" className="w-full justify-start h-auto p-4 border-slate-700/50 bg-slate-900/30 hover:bg-slate-800/50 hover:border-orange-500/50">
+            <Button variant="outline" className="w-full justify-start h-auto p-4 border-gray-200 bg-white hover:bg-slate-50 hover:border-orange-500/50">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-xl bg-red-600/10 flex items-center justify-center">
                   <Lock className="h-6 w-6 text-red-400" strokeWidth={1.5} />
                 </div>
                 <div className="text-left">
-                  <p className="text-base font-semibold text-white">
+                  <p className="text-base font-semibold text-slate-900">
                     Change Password
                   </p>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-600">
                     Update your password
                   </p>
                 </div>
               </div>
             </Button>
 
-            <Button variant="outline" className="w-full justify-start h-auto p-4 border-slate-700/50 bg-slate-900/30 hover:bg-slate-800/50 hover:border-orange-500/50">
+            <Button variant="outline" className="w-full justify-start h-auto p-4 border-gray-200 bg-white hover:bg-slate-50 hover:border-orange-500/50">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-xl bg-teal-600/10 flex items-center justify-center">
                   <Globe className="h-6 w-6 text-teal-400" strokeWidth={1.5} />
                 </div>
                 <div className="text-left">
-                  <p className="text-base font-semibold text-white">
+                  <p className="text-base font-semibold text-slate-900">
                     Language & Region
                   </p>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-600">
                     English (US)
                   </p>
                 </div>

@@ -217,7 +217,7 @@ export const collegeApi = {
   getInstructorAttendance: (token: string, params?: string) =>
     apiRequest(`/api/college/instructor/attendance${params ? `?${params}` : ''}`, { token }),
   getCourseAttendance: (token: string, courseId: string, params?: string) =>
-    apiRequest(`/api/college/instructor/attendance/course/${courseId}${params ? `?${params}` : ''}`, { token }),
+    apiRequest(`/api/college/instructor/course-attendance/course/${courseId}${params ? `?${params}` : ''}`, { token }),
 
   // Instructor - Live Classes
   getInstructorLiveClasses: (token: string) =>
@@ -251,6 +251,10 @@ export const collegeApi = {
   getStudentQuizzes: (token: string) =>
     apiRequest('/api/college/student/quizzes', { token }),
 
+  // Student - Assignments
+  getStudentAssignments: (token: string) =>
+    apiRequest('/api/college/student/assignments', { token }),
+
   // Student - Live Classes
   getStudentLiveClasses: (token: string) =>
     apiRequest('/api/college/student/live-classes', { token }),
@@ -266,6 +270,30 @@ export const collegeApi = {
   // Student - Progress
   getStudentProgress: (token: string) =>
     apiRequest('/api/college/student/progress', { token }),
+
+  // Student - Grades
+  getStudentGrades: (token: string, params?: string) =>
+    apiRequest(`/api/college/student/grades${params ? `?${params}` : ''}`, { token }),
+
+  // Student - Timetable
+  getStudentTimetable: (token: string, params?: string) =>
+    apiRequest(`/api/college/student/timetable${params ? `?${params}` : ''}`, { token }),
+
+  // Student - Subjects
+  getMySubjects: (token: string) =>
+    apiRequest('/api/college/student/subjects', { token }),
+
+  // Student - Announcements
+  getStudentAnnouncements: (token: string, params?: string) =>
+    apiRequest(`/api/college/student/announcements${params ? `?${params}` : ''}`, { token }),
+
+  // Student - Results
+  getStudentResults: (token: string, params?: string) =>
+    apiRequest(`/api/college/student/results${params ? `?${params}` : ''}`, { token }),
+
+  // Student - Exams
+  getStudentExams: (token: string, params?: string) =>
+    apiRequest(`/api/college/student/exams${params ? `?${params}` : ''}`, { token }),
 
   // Student actions
   joinLiveClass: (token: string, liveClassId: string) =>
@@ -290,6 +318,12 @@ export const collegeApi = {
     apiRequest(`/api/college/admin/subjects${params ? `?${params}` : ''}`, { token }),
   createSubject: (token: string, data: Record<string, unknown>) =>
     apiRequest('/api/college/admin/subjects', { method: 'POST', token, body: data }),
+  getProgramSubjects: (token: string, programId: string) =>
+    apiRequest(`/api/college/admin/programs/${programId}/subjects`, { token }),
+  updateSubject: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/api/college/admin/subjects/${id}`, { method: 'PUT', token, body: data }),
+  deleteSubject: (token: string, id: string) =>
+    apiRequest(`/api/college/admin/subjects/${id}`, { method: 'DELETE', token }),
   assignInstructorToSubject: (token: string, id: string, instructorId: string) =>
     apiRequest(`/api/college/admin/subjects/${id}/assign-instructor`, { method: 'PUT', token, body: { instructorId } }),
 
@@ -418,13 +452,37 @@ export const gradeApi = {
   update: (token: string, data: Record<string, unknown>) =>
     apiRequest("/api/grades/update", { method: "POST", token, body: data }),
   getStudent: (token: string, userId: string) =>
-    apiRequest(`/api/grades/${userId}`, { token }),
+    apiRequest(`/api/grades/student/${userId}`, { token }),
   getCourse: (token: string, courseId: string) =>
     apiRequest(`/api/grades/course/${courseId}`, { token }),
-  export: (token: string, data: Record<string, unknown>) =>
-    apiRequest("/api/grades/export", { method: "POST", token, body: data }),
-  analytics: (token: string, courseId: string) =>
-    apiRequest(`/api/grades/analytics/${courseId}`, { token }),
+}
+
+// Assignments APIs
+export const assignmentApi = {
+  list: (token: string, params?: string) =>
+    apiRequest(`/api/assignments${params ? `?${params}` : ""}`, { token }),
+  get: (token: string, id: string) =>
+    apiRequest(`/api/assignments/${id}`, { token }),
+  create: (token: string, data: Record<string, unknown>) =>
+    apiRequest('/api/assignments', { method: 'POST', token, body: data }),
+  update: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/api/assignments/${id}`, { method: 'PUT', token, body: data }),
+  remove: (token: string, id: string) =>
+    apiRequest(`/api/assignments/${id}`, { method: 'DELETE', token })
+}
+
+// Submissions APIs
+export const submissionApi = {
+  list: (token: string, params?: string) =>
+    apiRequest(`/api/submissions${params ? `?${params}` : ""}`, { token }),
+  get: (token: string, id: string) =>
+    apiRequest(`/api/submissions/${id}`, { token }),
+  create: (token: string, data: Record<string, unknown>) =>
+    apiRequest('/api/submissions', { method: 'POST', token, body: data }),
+  grade: (token: string, id: string, data: Record<string, unknown>) =>
+    apiRequest(`/api/submissions/${id}/grade`, { method: 'PATCH', token, body: data }),
+  remove: (token: string, id: string) =>
+    apiRequest(`/api/submissions/${id}`, { method: 'DELETE', token })
 }
 
 // Timetable APIs
@@ -482,12 +540,12 @@ export const notificationApi = {
     apiRequest(`/notifications${params ? `?${params}` : ""}`, { token }),
   markAsRead: (token: string, id: string) =>
     apiRequest(`/notifications/${id}/read`, {
-      method: "PATCH",
+      method: "PUT",
       token,
     }),
   markAllAsRead: (token: string) =>
-    apiRequest("/notifications/read-all", {
-      method: "PATCH",
+    apiRequest("/notifications/mark-all-read", {
+      method: "PUT",
       token,
     }),
 }
@@ -837,7 +895,10 @@ export const instructorApi = {
     apiRequest(`/api/quizzes/${quizId}/unpublish`, { method: "PATCH", token }),
   // List quizzes for a course
   listCourseQuizzes: (token: string, courseId: string) =>
-    apiRequest(`/api/quizzes?course_id=${courseId}`, { token }),
+    apiRequest(`/api/quizzes?course_id=${courseId}&limit=100`, { token }),
+  // List all quizzes for instructor
+  listAllQuizzes: (token: string) =>
+    apiRequest(`/api/quizzes?limit=100`, { token }),
 
   // Students & analytics
   getStudents: (token: string, courseId: string) =>

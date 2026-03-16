@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { UserCheck, Users, Calendar, Search, RefreshCw, CheckCircle, XCircle } from "lucide-react"
-import { instructorApi } from "../../../lib/api"
+import { instructorApi, collegeApi } from "../../../lib/api"
 import { useAuth } from "../../../lib/auth-context"
 import { toast } from "sonner"
 import { Button } from "../../../components/ui/button"
@@ -17,11 +17,13 @@ interface AttendanceRecord {
 }
 
 export default function InstructorAttendancePage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
 
   useEffect(() => {
     if (token) loadAttendance()
@@ -31,9 +33,11 @@ export default function InstructorAttendancePage() {
     if (!token) return
     setLoading(true)
     try {
-      const res = await instructorApi.attendanceSummary(token)
+      const res = isCollege 
+        ? await collegeApi.getInstructorAttendance(token)
+        : await instructorApi.attendanceSummary(token)
       if (res.success) {
-        const data = (res.data as any)?.attendance || []
+        const data = (res.data as any)?.attendance || (res.data as any)?.sessions || []
         setRecords(Array.isArray(data) ? data : [])
       } else {
         toast.error("Failed to load attendance")

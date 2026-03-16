@@ -8,6 +8,8 @@ import { Button } from '../../../components/ui/button'
 import CourseCard from '../../../components/student/CourseCard'
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { useAuth } from '../../../lib/auth-context'
+import { collegeApi } from '../../../lib/api'
 
 import { API_URL } from '../../../lib/config'
 const getToken = () =>
@@ -17,28 +19,42 @@ const getToken = () =>
 
 export default function AvailableCourses() {
     const router = useRouter()
+    const { user, token } = useAuth()
     const [courses, setCourses] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
     const [enrollingId, setEnrollingId] = useState<string | null>(null)
 
+    const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
     const fetchCourses = useCallback(async () => {
+        if (!token) return
         setLoading(true)
         try {
-            const r = await fetch(`${API_URL}/api/courses/student`, {
-                headers: { Authorization: `Bearer ${getToken()}` },
-                credentials: "include"
-            })
-            const data = await r.json()
-            if (data.success) {
-                setCourses(data.data?.courses || data.data || [])
+            if (isCollege) {
+                const res = await collegeApi.getStudentCourses(token)
+                if (res.success) {
+                    const payload: any = res.data || {}
+                    setCourses(payload.courses || [])
+                } else {
+                    toast.error(res.error || "Failed to fetch courses")
+                }
+            } else {
+                const r = await fetch(`${API_URL}/api/courses/student`, {
+                    headers: { Authorization: `Bearer ${getToken()}` },
+                    credentials: "include"
+                })
+                const data = await r.json()
+                if (data.success) {
+                    setCourses(data.data?.courses || data.data || [])
+                }
             }
         } catch (e) {
             toast.error("Failed to fetch courses")
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [token, isCollege])
 
     useEffect(() => {
         fetchCourses()
@@ -47,20 +63,30 @@ export default function AvailableCourses() {
     const handleEnroll = async (courseId: string) => {
         setEnrollingId(courseId)
         try {
-            const r = await fetch(`${API_URL}/api/courses/enroll/${courseId}`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${getToken()}`,
-                    "Content-Type": "application/json"
-                },
-                credentials: "include"
-            })
-            const data = await r.json()
-            if (data.success) {
-                toast.success("Succesfully enrolled!")
-                router.push(`/student/course/${courseId}`)
+            if (isCollege) {
+                const res = await collegeApi.enrollInCourse(token!, courseId)
+                if (res.success) {
+                    toast.success("Successfully enrolled!")
+                    router.push(`/student/course/${courseId}`)
+                } else {
+                    toast.error(res.error || "Enrollment failed")
+                }
             } else {
-                toast.error(data.message || "Enrollment failed")
+                const r = await fetch(`${API_URL}/api/courses/enroll/${courseId}`, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${getToken()}`,
+                        "Content-Type": "application/json"
+                    },
+                    credentials: "include"
+                })
+                const data = await r.json()
+                if (data.success) {
+                    toast.success("Successfully enrolled!")
+                    router.push(`/student/course/${courseId}`)
+                } else {
+                    toast.error(data.message || "Enrollment failed")
+                }
             }
         } catch {
             toast.error("Network error during enrollment")

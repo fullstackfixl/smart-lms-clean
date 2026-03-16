@@ -27,6 +27,8 @@ import {
 } from '../../../../components/ui/accordion'
 import AIChatSidebar from '../../../../components/student/AIChatSidebar'
 import { useSearchParams } from "next/navigation"
+import { useAuth } from '../../../../lib/auth-context'
+import { collegeApi } from '../../../../lib/api'
 import { API_URL } from '../../../../lib/config'
 
 const getToken = () =>
@@ -36,6 +38,7 @@ const getToken = () =>
 
 export default function CoursePlayerPage({ params }: { params: Promise<{ courseId: string }> }) {
     const { courseId } = use(params)
+    const { user, token } = useAuth()
     const searchParams = useSearchParams()
     const lessonIdParam = searchParams.get("lessonId")
     const [course, setCourse] = useState<any>(null)
@@ -46,27 +49,52 @@ export default function CoursePlayerPage({ params }: { params: Promise<{ courseI
     const [completing, setCompleting] = useState(false)
     const [aiChatOpen, setAiChatOpen] = useState(false)
 
+    const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
     const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
         const fetchDetail = async () => {
+            if (!token) return
             try {
-                const r = await fetch(`${API_URL}/student/course/${courseId}`, {
-                    headers: { Authorization: `Bearer ${getToken()}` },
-                    credentials: "include"
-                })
-                const data = await r.json()
-                if (data.success) {
-                    setCourse(data.data.course)
-                    setSections(data.data.sections)
+                let data
+                if (isCollege) {
+                    const res = await collegeApi.getStudentCourse(token, courseId)
+                    if (res.success) {
+                        data = res.data
+                    } else {
+                        toast.error(res.error || "Failed to load course")
+                        setLoading(false)
+                        return
+                    }
+                } else {
+                    const r = await fetch(`${API_URL}/student/course/${courseId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                        credentials: "include"
+                    })
+                    const response = await r.json()
+                    if (response.success) {
+                        data = response.data
+                    } else {
+                        toast.error(response.message || "Failed to load course")
+                        setLoading(false)
+                        return
+                    }
+                }
+                
+                if (data) {
+                    setCourse(data.course)
+                    setSections(data.modules || data.sections || [])
 
                     // Auto-select priority: 1. URL param, 2. Last accessed, 3. First lesson
-                    const lastAccessed = data.data.enrollment?.progress?.lastAccessedLesson
+                    const lastAccessed = data.enrollment?.progress?.lastAccessedLesson
                     let lessonToSelect = null
+                    const allSections = data.modules || data.sections || []
 
                     if (lessonIdParam) {
-                        for (const s of data.data.sections) {
-                            const l = s.lessons.find((ll: any) => ll._id === lessonIdParam)
+                        for (const s of allSections) {
+                            const lessons = s.lessons || []
+                            const l = lessons.find((ll: any) => ll._id === lessonIdParam)
                             if (l) {
                                 lessonToSelect = l
                                 break
@@ -75,8 +103,9 @@ export default function CoursePlayerPage({ params }: { params: Promise<{ courseI
                     }
 
                     if (!lessonToSelect && lastAccessed) {
-                        for (const s of data.data.sections) {
-                            const l = s.lessons.find((ll: any) => ll._id === lastAccessed)
+                        for (const s of allSections) {
+                            const lessons = s.lessons || []
+                            const l = lessons.find((ll: any) => ll._id === lastAccessed)
                             if (l) {
                                 lessonToSelect = l
                                 break
@@ -84,8 +113,9 @@ export default function CoursePlayerPage({ params }: { params: Promise<{ courseI
                         }
                     }
 
-                    if (!lessonToSelect && data.data.sections.length > 0) {
-                        lessonToSelect = data.data.sections[0].lessons[0]
+                    if (!lessonToSelect && allSections.length > 0) {
+                        const firstSectionLessons = allSections[0].lessons || []
+                        lessonToSelect = firstSectionLessons[0]
                     }
 
                     setCurrentLesson(lessonToSelect)
@@ -97,7 +127,7 @@ export default function CoursePlayerPage({ params }: { params: Promise<{ courseI
             }
         }
         fetchDetail()
-    }, [courseId])
+    }, [courseId, token, isCollege])
 
     const handleMarkComplete = async () => {
         if (!currentLesson || completing) return

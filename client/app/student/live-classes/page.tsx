@@ -13,13 +13,9 @@ import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Progress } from '../../../components/ui/progress'
 import { toast } from "sonner"
+import { useAuth } from '../../../lib/auth-context'
+import { collegeApi } from '../../../lib/api'
 import { API_URL } from '../../../lib/config'
-
-const getToken = () =>
-  typeof window !== "undefined"
-    ? window.sessionStorage.getItem("instatute_token") ||
-    window.localStorage.getItem("instatute_token")
-    : null
 
 interface LiveClass {
   _id: string
@@ -64,29 +60,43 @@ function timeUntil(dateStr: string, startTime: string) {
 }
 
 export default function StudentLiveClassesPage() {
+  const { user, token } = useAuth()
   const [classes, setClasses] = useState<LiveClass[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "upcoming" | "live" | "completed">("all")
 
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
   const fetchClasses = useCallback(async () => {
+    if (!token) return
     setLoading(true)
     try {
-      const r = await fetch(`${API_URL}/student/live-classes`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-        credentials: "include"
-      })
-      const data = await r.json()
-      if (data.success) {
-        setClasses(data.data?.classes || [])
+      if (isCollege) {
+        const res = await collegeApi.getStudentLiveClasses(token)
+        if (res.success) {
+          const payload: any = res.data || {}
+          setClasses(payload.liveClasses || [])
+        } else {
+          toast.error(res.error || "Failed to load live classes")
+        }
       } else {
-        toast.error(data.message || "Failed to load live classes")
+        const r = await fetch(`${API_URL}/student/live-classes`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include"
+        })
+        const data = await r.json()
+        if (data.success) {
+          setClasses(data.data?.classes || [])
+        } else {
+          toast.error(data.message || "Failed to load live classes")
+        }
       }
     } catch {
       toast.error("Network error loading live classes")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [token, isCollege])
 
   useEffect(() => {
     fetchClasses()
@@ -118,72 +128,58 @@ export default function StudentLiveClassesPage() {
   }
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* ── Header ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-3"
-      >
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <span className="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-md">
-              <Video className="h-5 w-5 text-white" />
-            </span>
-            Live <span className="text-purple-600">Classes</span>
-          </h1>
-          <p className="text-slate-500 mt-1 ml-1">Real-time sessions from your instructors</p>
+          <h1 className="text-2xl font-bold text-slate-900">Live Classes</h1>
+          <p className="text-slate-500 mt-1">Real-time sessions from your instructors</p>
         </div>
         <Button
           onClick={fetchClasses}
           variant="outline"
-          size="sm"
-          className="gap-2 rounded-xl border-slate-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200"
+          className="border-gray-200"
         >
-          <RefreshCw className="h-4 w-4" /> Refresh
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
         </Button>
-      </motion.div>
+      </div>
 
       {/* ── Stats ── */}
       {classes.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.06 }}
-          className="grid grid-cols-3 gap-4"
-        >
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {[
-            { label: "Live Now", value: liveCount, color: "text-green-600 bg-green-50", icon: Radio },
-            { label: "Upcoming", value: upcomingCount, color: "text-purple-600 bg-purple-50", icon: Calendar },
-            { label: "Completed", value: completedCount, color: "text-slate-500 bg-slate-50", icon: CheckCircle2 },
-          ].map(s => (
-            <Card key={s.label} className="border-0 shadow-sm rounded-2xl">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-xl ${s.color.split(" ")[1]} flex items-center justify-center shrink-0`}>
-                  <s.icon className={`h-5 w-5 ${s.color.split(" ")[0]}`} />
-                </div>
+            { label: "Live Now", value: liveCount, bg: "bg-green-50", color: "text-green-600", icon: Radio },
+            { label: "Upcoming", value: upcomingCount, bg: "bg-purple-50", color: "text-purple-600", icon: Calendar },
+            { label: "Completed", value: completedCount, bg: "bg-slate-50", color: "text-slate-600", icon: CheckCircle2 },
+          ].map((s) => (
+            <div key={s.label} className="bg-white border border-gray-200 rounded-md p-6">
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-2xl font-extrabold text-slate-900">{s.value}</p>
-                  <p className="text-xs text-slate-500 font-medium">{s.label}</p>
+                  <p className="text-sm font-medium text-slate-600 mb-1">{s.label}</p>
+                  <p className="text-3xl font-bold text-slate-900">{s.value}</p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className={`p-3 rounded-md ${s.bg}`}>
+                  <s.icon className={`w-6 h-6 stroke-[1.5] ${s.color}`} />
+                </div>
+              </div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       )}
 
       {/* ── Filter tabs ── */}
       <div className="flex gap-2 flex-wrap">
-        {(["all", "live", "upcoming", "completed"] as const).map(f => (
+        {(["all", "live", "upcoming", "completed"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all capitalize ${filter === f
-              ? "bg-purple-600 text-white shadow-md shadow-purple-200"
-              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition-all capitalize ${
+              filter === f
+                ? "bg-purple-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
           >
-            {f === "live" ? "🔴 Live Now" : f.charAt(0).toUpperCase() + f.slice(1)}
+            {f === "live" ? "Live Now" : f.charAt(0).toUpperCase() + f.slice(1)}
             {f === "all" && classes.length > 0 && (
               <span className="ml-2 bg-white/30 rounded-full px-1.5 text-xs">{classes.length}</span>
             )}
@@ -222,9 +218,12 @@ export default function StudentLiveClassesPage() {
           {filtered.map((lc, idx) => {
             const { date, time } = formatDateTime(lc.scheduled_date, lc.start_time)
             const until = timeUntil(lc.scheduled_date, lc.start_time)
-            const capacity = lc.max_participants > 0
-              ? Math.round((lc.current_participants / lc.max_participants) * 100)
+            const maxParticipants = Number(lc.max_participants) || 0
+            const currentParticipants = Number(lc.current_participants) || 0
+            const capacityRaw = maxParticipants > 0
+              ? (currentParticipants / maxParticipants) * 100
               : 0
+            const capacity = Math.max(0, Math.min(100, Math.round(capacityRaw)))
 
             return (
               <motion.div
@@ -310,7 +309,7 @@ export default function StudentLiveClassesPage() {
                           <div className="mt-3 space-y-1">
                             <div className="flex justify-between text-xs text-slate-400">
                               <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" /> {lc.current_participants}/{lc.max_participants} participants
+                                <Users className="h-3 w-3" /> {currentParticipants}/{maxParticipants} participants
                               </span>
                               <span>{capacity}% full</span>
                             </div>

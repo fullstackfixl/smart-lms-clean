@@ -18,7 +18,10 @@ exports.listStaff = async (params) => {
   
   const sortOptions = getSortOptions(sort);
   
-  return paginate(User, query, { page, limit, sort: sortOptions });
+  const result = await paginate(User, query, { page, limit, sort: sortOptions });
+  
+  // Return data directly as array for frontend compatibility
+  return result.data;
 };
 
 exports.createStaff = async (data) => {

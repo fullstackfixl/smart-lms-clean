@@ -16,7 +16,7 @@ interface TimetableEntry {
   programId: { _id: string; name: string; code: string }
   batchId: { _id: string; name: string; code: string }
   subjectId: { _id: string; name: string; code: string }
-  instructorId?: { _id: string; profile: { firstName: string; lastName: string } }
+  instructorId?: { _id: string; email: string; profile: { firstName: string; lastName: string } }
   day: string
   startTime: string
   endTime: string
@@ -41,6 +41,16 @@ interface Subject {
   code: string
 }
 
+interface Instructor {
+  _id: string
+  name: string
+  email: string
+  profile?: {
+    firstName?: string
+    lastName?: string
+  }
+}
+
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 export default function TimetablePage() {
@@ -49,6 +59,7 @@ export default function TimetablePage() {
   const [programs, setPrograms] = useState<Program[]>([])
   const [batches, setBatches] = useState<Batch[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
+  const [instructors, setInstructors] = useState<Instructor[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -59,6 +70,7 @@ export default function TimetablePage() {
     programId: '',
     batchId: '',
     subjectId: '',
+    instructorId: '',
     day: 'Monday',
     startTime: '09:00',
     endTime: '10:00',
@@ -77,18 +89,39 @@ export default function TimetablePage() {
       if (selectedDay !== 'all') params.append('day', selectedDay)
       if (selectedProgram !== 'all') params.append('programId', selectedProgram)
 
-      const [timetableRes, programsRes] = await Promise.all([
+      console.log('[Timetable] Loading data...')
+      const [timetableRes, programsRes, instructorsRes] = await Promise.all([
         collegeApi.listTimetable(token, params.toString()),
-        collegeApi.listPrograms(token)
+        collegeApi.listPrograms(token),
+        collegeApi.listInstructors(token)
       ])
 
+      console.log('[Timetable] listTimetable response:', timetableRes)
       if (timetableRes.success && timetableRes.data) {
-        const data = timetableRes.data as { entries?: TimetableEntry[] }
-        setEntries(data.entries || [])
+        const payload = timetableRes.data as any
+        // Try multiple data formats
+        let entries = []
+        if (payload?.entries && Array.isArray(payload.entries)) {
+          entries = payload.entries
+          console.log('[Timetable] Extracted from payload.entries:', entries.length)
+        } else if (Array.isArray(payload)) {
+          entries = payload
+          console.log('[Timetable] Payload is array:', entries.length)
+        } else if (payload?.data && Array.isArray(payload.data)) {
+          entries = payload.data
+          console.log('[Timetable] Extracted from payload.data:', entries.length)
+        } else {
+          console.log('[Timetable] No valid entries array found, payload:', payload)
+        }
+        setEntries(entries)
       }
       if (programsRes.success && programsRes.data) {
         const data = programsRes.data as { programs?: Program[] }
         setPrograms(data.programs || [])
+      }
+      if (instructorsRes.success && instructorsRes.data) {
+        const data = instructorsRes.data as { instructors?: Instructor[] }
+        setInstructors(data.instructors || [])
       }
     } catch (error) {
       console.error('Error loading timetable:', error)
@@ -118,6 +151,7 @@ export default function TimetablePage() {
     try {
       if (!token) return
       const response = await collegeApi.createTimetableEntry(token, formData)
+      console.log('[Timetable] Create response:', response)
       if (response.success) {
         toast.success("Timetable entry created successfully")
         setShowCreateModal(false)
@@ -125,12 +159,20 @@ export default function TimetablePage() {
           programId: '',
           batchId: '',
           subjectId: '',
+          instructorId: '',
           day: 'Monday',
           startTime: '09:00',
           endTime: '10:00',
           room: ''
         })
-        loadData()
+        // Optimistic update
+        const newEntry = response.data?.entry || response.data
+        if (newEntry) {
+          console.log('[Timetable] Optimistically adding entry:', newEntry)
+          setEntries(prev => [newEntry, ...prev])
+        }
+        // Reload after short delay
+        setTimeout(() => loadData(), 500)
       }
     } catch (error) {
       console.error('Error creating timetable entry:', error)
@@ -268,6 +310,11 @@ export default function TimetablePage() {
                       <p className="text-xs font-semibold text-slate-900 line-clamp-1">{entry.subjectId?.name}</p>
                       <p className="text-[10px] text-slate-600 mt-1">{entry.startTime} - {entry.endTime}</p>
                       <p className="text-[10px] text-slate-500">Room: {entry.room}</p>
+                      <p className="text-[10px] text-blue-600 mt-1">
+                        👤 {entry.instructorId?.profile?.firstName && entry.instructorId?.profile?.lastName 
+                          ? `${entry.instructorId.profile.firstName} ${entry.instructorId.profile.lastName}`
+                          : entry.instructorId?.email || 'No Instructor'}
+                      </p>
                     </div>
                   ))
                 )}
@@ -337,6 +384,25 @@ export default function TimetablePage() {
                   <option value="">Select Subject</option>
                   {subjects.map(s => (
                     <option key={s._id} value={s._id}>{s.name} ({s.code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Instructor</label>
+                <select
+                  value={formData.instructorId}
+                  onChange={(e) => setFormData({ ...formData, instructorId: e.target.value })}
+                  required
+                  className="w-full h-10 px-4 bg-white border border-gray-200 rounded-md text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                >
+                  <option value="">Select Instructor</option>
+                  {instructors.map(inst => (
+                    <option key={inst._id} value={inst._id}>
+                      {inst.profile?.firstName && inst.profile?.lastName 
+                        ? `${inst.profile.firstName} ${inst.profile.lastName}`
+                        : inst.name || inst.email}
+                    </option>
                   ))}
                 </select>
               </div>

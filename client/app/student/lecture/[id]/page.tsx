@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, use } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { API_URL } from '../../../../lib/config'
 import { motion } from "framer-motion"
+import { useAuth } from '../../../../lib/auth-context'
+import { collegeApi } from '../../../../lib/api'
 
 import {
   Play,
@@ -69,6 +71,7 @@ interface Lecture {
 export default function StudentLecturePage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params)
   const router = useRouter()
+  const { user, token } = useAuth()
   const lectureId = unwrappedParams.id
 
   const [lecture, setLecture] = useState<Lecture | null>(null)
@@ -82,6 +85,8 @@ export default function StudentLecturePage({ params }: { params: Promise<{ id: s
   const [selectedAnswers, setSelectedAnswers] = useState<number[]>([])
   const [quizSubmitting, setQuizSubmitting] = useState(false)
   const [quizResult, setQuizResult] = useState<any>(null)
+
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)

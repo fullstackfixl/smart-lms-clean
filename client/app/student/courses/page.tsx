@@ -1,273 +1,227 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { Search, Filter, Clock, Star, BookOpen, Loader2 } from "lucide-react"
-import { Input } from '../../../components/ui/input'
-import { Button } from '../../../components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select'
-import { Card, CardContent, CardFooter, CardHeader } from '../../../components/ui/card'
-import { Badge } from '../../../components/ui/badge'
+import { BookOpen, Search, Filter, MoreVertical, PlayCircle, Clock, Award, ChevronRight } from "lucide-react"
+import { useAuth } from "../../../lib/auth-context"
+import { collegeApi, studentApi } from "../../../lib/api"
+import { API_URL } from "../../../lib/config"
+import { Button } from "../../../components/ui/button"
+import Link from "next/link"
 import { toast } from "sonner"
-import { API_URL } from '../../../lib/config'
-
-interface Course {
-  _id: string
-  title: string
-  description: string
-  thumbnail?: string
-  instructor_id: {
-    name: string
-  }
-  duration?: number
-  rating?: {
-    average: number
-    count: number
-  }
-  category?: string
-  level?: string
-  isEnrolled: boolean
-  progress?: number
-}
 
 export default function StudentCoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([])
+  const { user, token } = useAuth()
+  const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState("")
-  const [category, setCategory] = useState("all")
-  const [level, setLevel] = useState("all")
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filter, setFilter] = useState("all") // all, in-progress, completed
+
+  const getProgressPercentage = (p: any): number => {
+    if (typeof p === 'number') return p
+    if (!p || typeof p !== 'object') return 0
+    const v =
+      p.completionPercentage ??
+      p.completion_percentage ??
+      p.completion ??
+      p.percentage
+    return typeof v === 'number' ? v : 0
+  }
 
   useEffect(() => {
-    fetchCourses()
-  }, [page, category, level])
+    loadCourses()
+  }, [token])
 
-  const fetchCourses = async () => {
-    setLoading(true)
+  async function loadCourses() {
+    if (!token) return
     try {
-      const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
-      if (!token) {
-        toast.error('Please login first')
-        return
-      }
-
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '12'
-      })
-
-      if (search) params.append('search', search)
-      if (category !== 'all') params.append('category', category)
-      if (level !== 'all') params.append('level', level)
-
-      const response = await fetch(
-        `${API_URL}/student/courses?${params}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
+      setLoading(true)
+      const isCollegeStudent = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+      if (isCollegeStudent) {
+        const res = await collegeApi.getStudentCourses(token)
+        if (res.success) {
+          const payload: any = res.data || {}
+          setCourses(payload.courses || [])
         }
-      )
-
-      const data = await response.json()
-
-      if (data.success) {
-        setCourses(data.data.courses)
-        setTotalPages(data.data.pagination.pages)
       } else {
-        toast.error(data.message || 'Failed to load courses')
+        const r = await fetch(`${API_URL}/api/courses/my-courses`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include'
+        })
+        const data = await r.json()
+        if (data.success) {
+          setCourses(data.data?.courses || data.data || [])
+        }
       }
     } catch (error) {
-      toast.error('Failed to load courses')
+      toast.error("Failed to load courses")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    setPage(1)
-    fetchCourses()
-  }
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = course.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         course.code?.toLowerCase().includes(searchQuery.toLowerCase())
 
-  const handleCourseClick = (courseId: string) => {
-    router.push(`/student/courses/${courseId}`)
-  }
+    const pct = getProgressPercentage(course.progress)
+    
+    if (filter === "all") return matchesSearch
+    if (filter === "in-progress") return matchesSearch && pct > 0 && pct < 100
+    if (filter === "completed") return matchesSearch && pct === 100
+    
+    return matchesSearch
+  })
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Discover Courses</h1>
-          <p className="text-muted-foreground">Browse and enroll in courses from your organization</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">My Courses</h1>
+          <p className="text-slate-500 mt-1">Continue learning from where you left off</p>
         </div>
-
-        {/* Search and Filters */}
-        <div className="mb-6 space-y-4">
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search courses..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button type="submit">Search</Button>
-          </form>
-
-          <div className="flex gap-4 flex-wrap">
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="programming">Programming</SelectItem>
-                <SelectItem value="design">Design</SelectItem>
-                <SelectItem value="business">Business</SelectItem>
-                <SelectItem value="marketing">Marketing</SelectItem>
-                <SelectItem value="data-science">Data Science</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={level} onValueChange={setLevel}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="beginner">Beginner</SelectItem>
-                <SelectItem value="intermediate">Intermediate</SelectItem>
-                <SelectItem value="advanced">Advanced</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="border-gray-200">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </Button>
         </div>
-
-        {/* Courses Grid */}
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : courses.length === 0 ? (
-          <div className="text-center py-20">
-            <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No courses found</h3>
-            <p className="text-muted-foreground">Try adjusting your search or filters</p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course, index) => (
-                <motion.div
-                  key={course._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Card
-                    className="h-full hover:shadow-lg transition-shadow cursor-pointer"
-                    onClick={() => handleCourseClick(course._id)}
-                  >
-                    <CardHeader className="p-0">
-                      <div className="relative h-48 bg-muted rounded-t-lg overflow-hidden">
-                        {course.thumbnail ? (
-                          <img
-                            src={course.thumbnail}
-                            alt={course.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <BookOpen className="h-16 w-16 text-muted-foreground" />
-                          </div>
-                        )}
-                        {course.isEnrolled && (
-                          <Badge className="absolute top-2 right-2 bg-green-500">
-                            Enrolled
-                          </Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-lg mb-2 line-clamp-2">{course.title}</h3>
-                      <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                        {course.description}
-                      </p>
-
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                        <span className="font-medium">{course.instructor_id?.name || 'Unknown'}</span>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-sm">
-                        {course.duration && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{course.duration} min</span>
-                          </div>
-                        )}
-                        {course.rating && course.rating.average > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span>{course.rating.average.toFixed(1)}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {course.level && (
-                        <Badge variant="outline" className="mt-3 capitalize">
-                          {course.level}
-                        </Badge>
-                      )}
-                    </CardContent>
-
-                    <CardFooter className="p-4 pt-0">
-                      <Button
-                        className="w-full"
-                        variant={course.isEnrolled ? "outline" : "default"}
-                      >
-                        {course.isEnrolled ? 'Resume Course' : 'View Details'}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-8">
-                <Button
-                  variant="outline"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Previous
-                </Button>
-                <span className="flex items-center px-4">
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
-          </>
-        )}
       </div>
+
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search courses..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-10 w-full rounded-md border border-gray-200 bg-white pl-10 pr-4 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+          />
+        </div>
+        <div className="flex gap-2">
+          {["all", "in-progress", "completed"].map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                filter === f
+                  ? "bg-green-100 text-green-700 border border-green-200"
+                  : "bg-white text-slate-600 border border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1).replace("-", " ")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Course Grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-64 bg-gray-100 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      ) : filteredCourses.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+          <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500">No courses found</p>
+          <Link href="/student/available-courses">
+            <Button className="mt-4 bg-green-600 hover:bg-green-700">
+              Browse Available Courses
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCourses.map((course, index) => (
+            (() => {
+              const pct = getProgressPercentage(course.progress)
+              return (
+            <motion.div
+              key={course._id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow group"
+            >
+              {/* Course Thumbnail */}
+              <div className="h-40 bg-gradient-to-br from-green-500 to-emerald-600 relative">
+                {course.thumbnail ? (
+                  <img
+                    src={course.thumbnail}
+                    alt={course.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <BookOpen className="w-16 h-16 text-white/50" />
+                  </div>
+                )}
+                <div className="absolute top-3 right-3">
+                  <button className="p-2 bg-white/20 backdrop-blur-sm rounded-lg text-white hover:bg-white/30 transition-colors">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="absolute bottom-3 left-3 right-3">
+                  <div className="flex items-center justify-between text-white text-sm">
+                    <span className="flex items-center gap-1">
+                      <PlayCircle className="w-4 h-4" />
+                      {course.totalLessons || 12} lessons
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {course.duration || "4h 30m"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Course Info */}
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-slate-900 line-clamp-1">{course.title}</h3>
+                  {course.certificate && (
+                    <Award className="w-5 h-5 text-yellow-500" />
+                  )}
+                </div>
+                <p className="text-sm text-slate-500 line-clamp-2 mb-4">
+                  {course.description || "Learn the fundamentals and advanced concepts in this comprehensive course."}
+                </p>
+
+                {/* Progress */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="text-slate-600">{pct}% complete</span>
+                    <span className="text-green-600 font-medium">
+                      {pct === 100 ? "Completed" : "In Progress"}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Action */}
+                <Link href={`/student/course/${course._id}`}>
+                  <Button className="w-full bg-green-600 hover:bg-green-700 group-hover:shadow-md transition-all">
+                    {pct === 0 ? "Start Course" : pct === 100 ? "Review Course" : "Continue Learning"}
+                    <ChevronRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+              )
+            })()
+          ))}
+        </div>
+      )}
     </div>
   )
 }

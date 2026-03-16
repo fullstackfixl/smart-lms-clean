@@ -8,6 +8,8 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { useAuth } from '../../../lib/auth-context'
+import { collegeApi } from '../../../lib/api'
 import { API_URL } from '../../../lib/config'
 
 interface Quiz {
@@ -31,20 +33,32 @@ export default function QuizzesPage() {
   const [filter, setFilter] = useState("all")
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null)
   const router = useRouter()
+  const { user, token } = useAuth()
 
-  useEffect(() => { loadQuizzes() }, [])
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
+  useEffect(() => { loadQuizzes() }, [token])
 
   const loadQuizzes = async () => {
+    if (!token) { router.push('/login'); return }
     setLoading(true)
     try {
-      const token = getToken()
-      if (!token) { router.push('/login'); return }
-      const res = await fetch(`${API_URL}/api/quizzes/student`, {
-        headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include'
-      })
-      const data = await res.json()
-      if (data.success) setQuizzes(data.data || [])
-      else toast.error(data.message || "Failed to load quizzes")
+      if (isCollege) {
+        const res = await collegeApi.getStudentQuizzes(token)
+        if (res.success) {
+          const payload: any = res.data || {}
+          setQuizzes(payload.quizzes || [])
+        } else {
+          toast.error(res.error || "Failed to load quizzes")
+        }
+      } else {
+        const res = await fetch(`${API_URL}/api/quizzes/student`, {
+          headers: { 'Authorization': `Bearer ${token}` }, credentials: 'include'
+        })
+        const data = await res.json()
+        if (data.success) setQuizzes(data.data || [])
+        else toast.error(data.message || "Failed to load quizzes")
+      }
     } catch { toast.error("Connection error") }
     finally { setLoading(false) }
   }
@@ -80,8 +94,8 @@ export default function QuizzesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">
-            My <span className="text-emerald-400">Quizzes</span>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            My <span className="text-emerald-600">Quizzes</span>
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">Test your knowledge and track your progress</p>
         </div>
@@ -92,7 +106,7 @@ export default function QuizzesPage() {
             placeholder="Search quizzes..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full sm:w-64 pl-9 pr-4 h-10 rounded-xl bg-white/4 border border-white/8 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/30"
+            className="w-full sm:w-64 pl-9 pr-4 h-10 rounded-xl bg-white border border-gray-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500"
           />
         </div>
       </div>
@@ -101,16 +115,16 @@ export default function QuizzesPage() {
       {quizzes.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Total", value: stats.total, color: "from-violet-500/12 to-purple-500/6", fg: "text-violet-300", icon: FileQuestion },
-            { label: "Passed", value: stats.passed, color: "from-emerald-500/15 to-teal-500/8", fg: "text-emerald-300", icon: CheckCircle2 },
-            { label: "Pending", value: stats.pending, color: "from-orange-500/12 to-amber-500/6", fg: "text-orange-300", icon: Clock },
+            { label: "Total", value: stats.total, color: "from-violet-500/12 to-purple-500/6", fg: "text-violet-700", icon: FileQuestion },
+            { label: "Passed", value: stats.passed, color: "from-emerald-500/15 to-teal-500/8", fg: "text-emerald-700", icon: CheckCircle2 },
+            { label: "Pending", value: stats.pending, color: "from-orange-500/12 to-amber-500/6", fg: "text-orange-700", icon: Clock },
           ].map((s, i) => (
             <motion.div key={i}
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
-              className={`rounded-2xl p-4 bg-gradient-to-br ${s.color} border border-white/6`}>
+              className={`rounded-2xl p-4 bg-gradient-to-br ${s.color} border border-gray-200`}>
               <s.icon className={`h-4 w-4 ${s.fg} mb-2`} />
               <p className={`text-2xl font-black ${s.fg}`}>{s.value}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">{s.label}</p>
+              <p className="text-[11px] text-slate-600 mt-0.5">{s.label}</p>
             </motion.div>
           ))}
         </div>

@@ -9,6 +9,8 @@ const { localUpload } = require('../middleware/upload');
 // Create event
 router.post('/', auth, localUpload.array('attachments', 5), async (req, res) => {
   try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
     // Only org_admin and instructors can create events
     if (!['org_admin', 'instructor'].includes(req.user.role)) {
       return res.status(403).json({
@@ -63,7 +65,7 @@ router.post('/', auth, localUpload.array('attachments', 5), async (req, res) => 
     if (course_specific) {
       const course = await Course.findOne({
         _id: course_specific,
-        organization_id: req.user.organization_id
+        organization_id: orgId
       });
 
       if (!course) {
@@ -92,7 +94,7 @@ router.post('/', auth, localUpload.array('attachments', 5), async (req, res) => 
 
     // Create event
     const event = new Event({
-      organization_id: req.user.organization_id,
+      organization_id: orgId,
       title,
       description,
       event_type: event_type || 'academic',
@@ -131,6 +133,73 @@ router.post('/', auth, localUpload.array('attachments', 5), async (req, res) => 
       success: true,
       data: event,
       message: 'Event created successfully'
+    });
+
+    // Best-effort: broadcast to college batch students if event is course-specific and mapped to a Subject
+    setImmediate(async () => {
+      try {
+        if (!course_specific) return;
+
+        const Subject = require('../models/Subject');
+        const Notification = require('../models/Notification');
+
+        let socketService = null;
+        try { socketService = require('../services/socketService'); } catch (_) { }
+
+        const orgId = req.user.organization_id?._id || req.user.organization_id;
+        const subject = await Subject.findOne({ organizationId: orgId, contentCourseId: course_specific, isActive: true })
+          .select('batchId name code')
+          .lean();
+
+        if (!subject?.batchId) return;
+
+        const students = await User.find({
+          organization_id: orgId,
+          role: 'student',
+          isActive: true,
+          'profile.batch': subject.batchId
+        }).select('_id').lean();
+
+        if (!students.length) return;
+
+        const titleSafe = title || 'New Event';
+
+        await Notification.insertMany(
+          students.map(s => ({
+            organization_id: orgId,
+            recipient_id: s._id,
+            sender_id: req.user._id,
+            type: 'general',
+            title: 'New Event',
+            message: `${req.user.name || 'Instructor'} posted an event: ${titleSafe}`,
+            data: {
+              entityType: 'event',
+              eventId: event._id,
+              subjectId: subject._id,
+              subjectName: subject.name,
+              subjectCode: subject.code
+            },
+            priority: 'medium',
+            action_url: '/student/events',
+            action_text: 'View Event'
+          })),
+          { ordered: false }
+        );
+
+        if (socketService?.io) {
+          socketService.sendNotificationToUsers(
+            students.map(s => String(s._id)),
+            {
+              type: 'general',
+              title: 'New Event',
+              message: `${req.user.name || 'Instructor'} posted an event: ${titleSafe}`,
+              data: { eventId: event._id }
+            }
+          );
+        }
+      } catch (_) {
+        // ignore broadcast failures
+      }
     });
 
   } catch (error) {

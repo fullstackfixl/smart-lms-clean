@@ -16,10 +16,13 @@ exports.listLogs = async (params) => {
   
   const sortOptions = getSortOptions(sort);
   
-  return paginate(PlatformAuditLog, query, { 
+  const result = await paginate(PlatformAuditLog, query, { 
     page, 
     limit, 
     sort: sortOptions,
     populate: { path: 'actorId', select: 'name email role' }
   });
+  
+  // Return data directly as array for frontend compatibility
+  return result.data;
 };

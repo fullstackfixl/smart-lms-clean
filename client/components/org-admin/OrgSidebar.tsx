@@ -45,6 +45,7 @@ const navItems: NavItem[] = [
   { section: 'academics', label: 'Programs', href: '/org-admin/programs', icon: Layers, description: 'Academic programs' },
   { section: 'academics', label: 'Subjects', href: '/org-admin/subjects', icon: BookMarked, description: 'Program subjects' },
   { section: 'academics', label: 'Batches', href: '/org-admin/batches', icon: School, description: 'Student batches' },
+  { section: 'academics', label: 'Learners', href: '/org-admin/learners', icon: Users, description: 'Manage students' },
   { section: 'academics', label: 'Timetable', href: '/org-admin/timetable', icon: Clock, description: 'Class schedules' },
   { section: 'academics', label: 'Attendance', href: '/org-admin/attendance', icon: CheckCircle, description: 'View attendance' },
 

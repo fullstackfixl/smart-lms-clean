@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Search, Plus, Edit, Trash2, Users, Clock, DollarSign, Eye, Loader2, AlertCircle, X, Send } from "lucide-react"
 import { publishCourse, assignInstructor, programApi, departmentApi } from '../../../lib/services/orgAdminApi'
+import { collegeApi } from '../../../lib/api'
 import { useAuth } from '../../../lib/auth-context'
 import { Button } from "../../../components/ui/button"
 import { toast } from "sonner"
@@ -26,12 +27,13 @@ interface Course {
 }
 
 export default function CoursesPage() {
-  const { token } = useAuth()
+  const { token, organization } = useAuth()
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [departments, setDepartments] = useState<any[]>([])
   const [formData, setFormData] = useState({
@@ -44,6 +46,9 @@ export default function CoursesPage() {
     status: "ACTIVE"
   })
 
+  const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+  const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
+
   useEffect(() => {
     if (!token) return
     loadCourses()
@@ -53,12 +58,20 @@ export default function CoursesPage() {
   async function loadDepartments() {
     try {
       if (!token) return
-      const response = await departmentApi.list(token)
+      let response
+      if (isCollege) {
+        response = await collegeApi.listDepartments(token)
+      } else {
+        response = await departmentApi.list(token)
+      }
       if (response.success) {
-        setDepartments(response.data || [])
+        const payload = response.data as any
+        const deptData = payload?.departments || payload || []
+        setDepartments(Array.isArray(deptData) ? deptData : [])
       }
     } catch (error) {
       console.error('Error loading departments:', error)
+      toast.error('Failed to load departments')
     }
   }
 
@@ -66,13 +79,19 @@ export default function CoursesPage() {
     setLoading(true)
     try {
       if (!token) return
-      const params: any = {}
-      if (statusFilter !== "all") params.status = statusFilter
-      if (searchTerm) params.search = searchTerm
-
-      const response = await programApi.list(token, params)
+      let response
+      if (isCollege) {
+        response = await collegeApi.listPrograms(token)
+      } else {
+        const params: any = {}
+        if (statusFilter !== "all") params.status = statusFilter
+        if (searchTerm) params.search = searchTerm
+        response = await programApi.list(token, params)
+      }
       if (response.success && response.data) {
-        setCourses(Array.isArray(response.data) ? response.data : (response.data.courses || []))
+        const payload = response.data as any
+        const programs = payload?.programs || payload || []
+        setCourses(Array.isArray(programs) ? programs : [])
       }
     } catch (error) {
       console.error('Error loading courses:', error)
@@ -102,24 +121,112 @@ export default function CoursesPage() {
     return matchesSearch
   })
 
+  async function handleEditCourse(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingCourse) return
+    setIsSubmitting(true)
+    try {
+      if (!token) throw new Error('No authentication token')
+      let response
+      if (isCollege) {
+        response = await collegeApi.updateProgram(token, editingCourse._id, {
+          name: formData.name,
+          code: formData.code,
+          departmentId: formData.department_id,
+          duration: formData.duration_years,
+          durationUnit: 'years',
+          description: formData.description
+        })
+      } else {
+        response = await programApi.update(token, editingCourse._id, formData)
+      }
+      if (response.success) {
+        toast.success("Academic Program updated successfully")
+        setShowCreateModal(false)
+        setEditingCourse(null)
+        resetForm()
+        loadCourses()
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update course")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleDeleteCourse(courseId: string) {
+    if (!confirm("Are you sure you want to delete this program?")) return
+    try {
+      if (!token) throw new Error('No authentication token')
+      let response
+      if (isCollege) {
+        response = await collegeApi.deleteProgram(token, courseId)
+      } else {
+        response = await programApi.delete(token, courseId)
+      }
+      if (response.success) {
+        toast.success("Program deleted successfully")
+        loadCourses()
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete program")
+    }
+  }
+
+  function resetForm() {
+    setFormData({
+      name: "",
+      code: "",
+      department_id: "",
+      duration_years: 3,
+      total_semesters: 6,
+      description: "",
+      status: "ACTIVE"
+    })
+  }
+
+  function openEditModal(course: Course) {
+    setEditingCourse(course)
+    setFormData({
+      name: course.name,
+      code: course.code,
+      department_id: course.department_id?._id || '',
+      duration_years: course.duration_years,
+      total_semesters: course.total_semesters,
+      description: course.description,
+      status: course.status
+    })
+    setShowCreateModal(true)
+  }
+
+  function closeModal() {
+    setShowCreateModal(false)
+    setEditingCourse(null)
+    resetForm()
+  }
+
   async function handleCreateCourse(e: React.FormEvent) {
     e.preventDefault()
     setIsSubmitting(true)
     try {
       if (!token) throw new Error('No authentication token')
-      const response = await programApi.create(token, formData)
+      let response
+      if (isCollege) {
+        response = await collegeApi.createProgram(token, {
+          name: formData.name,
+          code: formData.code,
+          departmentId: formData.department_id,
+          duration: formData.duration_years,
+          durationUnit: 'years',
+          description: formData.description
+        })
+      } else {
+        response = await programApi.create(token, formData)
+      }
       if (response.success) {
         toast.success("Academic Program created successfully")
         setShowCreateModal(false)
-        setFormData({
-          name: "",
-          code: "",
-          department_id: "",
-          duration_years: 3,
-          total_semesters: 6,
-          description: "",
-          status: "ACTIVE"
-        })
+        resetForm()
         loadCourses()
       }
     } catch (error: any) {
@@ -153,7 +260,11 @@ export default function CoursesPage() {
         </div>
         <Button
           className="bg-orange-500 hover:bg-orange-600 text-white"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setEditingCourse(null)
+            resetForm()
+            setShowCreateModal(true)
+          }}
         >
           <Plus className="mr-2 h-4 w-4 stroke-[1.5]" />
           Create Program
@@ -266,12 +377,12 @@ export default function CoursesPage() {
                       Manage Subjects
                     </Button>
                     <div className="flex gap-2">
-                      <Button variant="outline" className="flex-1 border-gray-200" onClick={() => {}}
+                      <Button variant="outline" className="flex-1 border-gray-200" onClick={() => openEditModal(course)}
                       >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </Button>
-                      <button className="flex-1 py-2 bg-slate-800 hover:bg-red-500/10 text-slate-300 hover:text-red-400 rounded-lg text-xs font-medium border border-slate-700 hover:border-red-500/20 transition-colors flex items-center justify-center gap-2">
+                      <button onClick={() => handleDeleteCourse(course._id)} className="flex-1 py-2 bg-slate-800 hover:bg-red-500/10 text-slate-300 hover:text-red-400 rounded-lg text-xs font-medium border border-slate-700 hover:border-red-500/20 transition-colors flex items-center justify-center gap-2">
                         <Trash2 className="w-3.5 h-3.5" />
                         Delete
                       </button>
@@ -304,11 +415,11 @@ export default function CoursesPage() {
               <div className="p-7 border-b border-slate-100 bg-gradient-to-b from-orange-50/60 to-white">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-[22px] font-black text-slate-900 tracking-tight mb-1">Create Academic Program</h2>
-                    <p className="text-slate-500 text-[13px] font-medium">Add a new academic program to your organization</p>
+                    <h2 className="text-[22px] font-black text-slate-900 tracking-tight mb-1">{editingCourse ? 'Edit Academic Program' : 'Create Academic Program'}</h2>
+                    <p className="text-slate-500 text-[13px] font-medium">{editingCourse ? 'Update the academic program details' : 'Add a new academic program to your organization'}</p>
                   </div>
                   <button
-                    onClick={() => setShowCreateModal(false)}
+                    onClick={closeModal}
                     className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-900 transition-colors"
                   >
                     <X className="w-6 h-6" />
@@ -316,7 +427,7 @@ export default function CoursesPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleCreateCourse} className="p-7 space-y-5">
+              <form onSubmit={editingCourse ? handleEditCourse : handleCreateCourse} className="p-7 space-y-5">
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[12px] font-black text-slate-600 uppercase tracking-widest ml-1">Course Name</label>
@@ -396,7 +507,7 @@ export default function CoursesPage() {
                 <div className="flex items-center gap-4 pt-4">
                   <button
                     type="button"
-                    onClick={() => setShowCreateModal(false)}
+                    onClick={closeModal}
                     className="flex-1 h-12 bg-white hover:bg-slate-50 text-slate-700 font-black rounded-2xl transition-all border border-slate-200 uppercase tracking-widest text-[12px]"
                   >
                     Cancel
@@ -407,7 +518,7 @@ export default function CoursesPage() {
                     className="flex-[2] h-12 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl shadow-lg shadow-orange-500/20 transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-[12px] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-                    Create Program
+                    {editingCourse ? 'Update Program' : 'Create Program'}
                   </button>
                 </div>
               </form>

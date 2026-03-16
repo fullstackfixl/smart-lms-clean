@@ -14,6 +14,7 @@ import {
     programApi,
     listInstructors
 } from '../../../../../lib/services/orgAdminApi'
+import { collegeApi } from '../../../../../lib/api'
 import { useAuth } from '../../../../../lib/auth-context'
 import { toast } from "sonner"
 
@@ -23,10 +24,16 @@ interface Subject {
     code: string
     semester: number
     description: string
-    instructor_id?: {
+    instructorId?: {
         _id: string
-        profile: { fullName: string }
+        name?: string
         email: string
+        profile?: {
+            firstName?: string
+            lastName?: string
+            fullName?: string
+            pic_url?: string
+        }
     }
     contentCourseId?: {
         _id: string
@@ -38,14 +45,19 @@ interface Program {
     _id: string
     name: string
     code: string
-    total_semesters: number
+    total_semesters?: number
+    duration?: number
+    durationUnit?: string
 }
 
 export default function SubjectManagementPage() {
     const params = useParams()
     const router = useRouter()
     const courseId = params.courseId as string
-    const { token } = useAuth()
+    const { token, organization } = useAuth()
+
+    const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+    const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
 
     const [program, setProgram] = useState<Program | null>(null)
     const [subjects, setSubjects] = useState<Subject[]>([])
@@ -74,18 +86,25 @@ export default function SubjectManagementPage() {
         setLoading(true)
         try {
             if (!token) return
-            const [progRes, subRes, instRes] = await Promise.all([
-                programApi.get(token, courseId),
-                subjectApi.list(token, courseId),
-                listInstructors(token)
-            ])
+            
+            // Use college API for college tenants, generic API for others
+            let progRes, subRes
+            if (isCollege) {
+                progRes = await collegeApi.getProgram(token, courseId)
+                subRes = await collegeApi.getProgramSubjects(token, courseId)
+            } else {
+                progRes = await programApi.get(token, courseId)
+                subRes = await subjectApi.list(token, courseId)
+            }
+            const instRes = await listInstructors(token)
 
             if (progRes.success) {
-                setProgram(progRes.data)
-                setFormData(prev => ({ ...prev, department_id: progRes.data.department_id._id || progRes.data.department_id }))
+                setProgram(progRes.data?.program || progRes.data)
+                const deptId = progRes.data?.program?.departmentId || progRes.data?.departmentId || progRes.data?.department_id
+                setFormData(prev => ({ ...prev, department_id: deptId?._id || deptId || '' }))
             }
             if (subRes.success) {
-                setSubjects(subRes.data)
+                setSubjects(subRes.data?.subjects || subRes.data || [])
             }
             if (instRes.success) {
                 setInstructors(instRes.data)
@@ -103,15 +122,30 @@ export default function SubjectManagementPage() {
         setIsSubmitting(true)
         try {
             if (!token) throw new Error('No authentication token')
-            const response = await subjectApi.create(token, {
-                name: formData.name,
-                code: formData.code,
-                description: formData.description,
-                semester: Number(formData.semester),
-                program_id: formData.program_id,
-                department_id: formData.department_id,
-                instructor_id: formData.instructor_id || undefined
-            })
+            
+            let response
+            if (isCollege) {
+                response = await collegeApi.createSubject(token, {
+                    name: formData.name,
+                    code: formData.code,
+                    description: formData.description,
+                    semester: Number(formData.semester),
+                    programId: formData.program_id,
+                    departmentId: formData.department_id,
+                    instructorId: formData.instructor_id || undefined
+                })
+            } else {
+                response = await subjectApi.create(token, {
+                    name: formData.name,
+                    code: formData.code,
+                    description: formData.description,
+                    semester: Number(formData.semester),
+                    program_id: formData.program_id,
+                    department_id: formData.department_id,
+                    instructor_id: formData.instructor_id || undefined
+                })
+            }
+            
             if (response.success) {
                 toast.success("Subject added successfully")
                 setShowCreateModal(false)
@@ -131,6 +165,17 @@ export default function SubjectManagementPage() {
             setIsSubmitting(false)
         }
     }
+
+    // Calculate total semesters from duration for college programs
+    const getTotalSemesters = () => {
+        if (program?.total_semesters) return program.total_semesters
+        if (program?.duration && program?.durationUnit === 'years') {
+            return program.duration * 2  // 2 semesters per year
+        }
+        return program?.duration || 0
+    }
+
+    const totalSemesters = getTotalSemesters()
 
     if (loading) {
         return (
@@ -153,7 +198,7 @@ export default function SubjectManagementPage() {
                 <div>
                     <h1 className="text-3xl font-bold text-white">Manage Subjects</h1>
                     <p className="text-slate-400">
-                        {program?.name} ({program?.code}) • {program?.total_semesters} Semesters
+                        {program?.name} ({program?.code}) • {totalSemesters} Semesters
                     </p>
                 </div>
                 <button
@@ -166,7 +211,7 @@ export default function SubjectManagementPage() {
             </div>
 
             {/* Subjects Grid by Semester */}
-            {Array.from({ length: program?.total_semesters || 0 }).map((_, i) => {
+            {Array.from({ length: totalSemesters }).map((_, i) => {
                 const semester = i + 1
                 const semesterSubjects = subjects.filter(s => s.semester === semester)
 
@@ -209,7 +254,12 @@ export default function SubjectManagementPage() {
                                                 <div>
                                                     <p className="text-[10px] text-slate-500 uppercase font-bold">Instructor</p>
                                                     <p className="text-xs text-slate-300 font-medium">
-                                                        {subject.instructor_id?.profile?.fullName || 'Not Assigned'}
+                                                        {subject.instructorId?.name || 
+                                                         (subject.instructorId?.profile?.firstName && subject.instructorId?.profile?.lastName 
+                                                            ? `${subject.instructorId.profile.firstName} ${subject.instructorId.profile.lastName}`
+                                                            : subject.instructorId?.profile?.fullName || 
+                                                              subject.instructorId?.email || 
+                                                              'Not Assigned')}
                                                     </p>
                                                 </div>
                                             </div>
@@ -278,7 +328,7 @@ export default function SubjectManagementPage() {
                                             onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
                                             className="w-full h-11 px-4 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-sm"
                                         >
-                                            {Array.from({ length: program?.total_semesters || 0 }).map((_, i) => (
+                                            {Array.from({ length: totalSemesters }).map((_, i) => (
                                                 <option key={i} value={i + 1}>Semester {i + 1}</option>
                                             ))}
                                         </select>

@@ -6,6 +6,8 @@ import { BookOpen, CheckCircle, Clock } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs'
 import CourseCard from '../../../components/student/CourseCard'
 import { toast } from "sonner"
+import { useAuth } from '../../../lib/auth-context'
+import { collegeApi } from '../../../lib/api'
 
 import { API_URL } from '../../../lib/config'
 const getToken = () =>
@@ -14,36 +16,52 @@ const getToken = () =>
         : null
 
 export default function MyCourses() {
+    const { user, token } = useAuth()
     const [enrolled, setEnrolled] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
+    const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
     const fetchMyCourses = useCallback(async () => {
+        if (!token) return
         setLoading(true)
         try {
-            const r = await fetch(`${API_URL}/student/my-courses`, {
-                headers: { Authorization: `Bearer ${getToken()}` },
-                credentials: "include"
-            })
-            const data = await r.json()
-            if (data.success) {
-                // /student/my-courses returns: { courses: [{ enrollmentId, course, progress, status, enrolledAt }] }
-                const rawList = data.data?.courses || data.data || []
-                // Normalize to shape the CourseCard expects: { course: {...}, progress: number }
-                const normalized = rawList.map((item: any) => {
-                    if (item.course) return item  // already nested
-                    // Flat format fallback
-                    return { course: item, progress: item.progress || 0 }
-                })
-                setEnrolled(normalized)
+            if (isCollege) {
+                const res = await collegeApi.getStudentCourses(token)
+                if (res.success) {
+                    const payload: any = res.data || {}
+                    const courses = payload.courses || []
+                    const normalized = courses.map((item: any) => {
+                        if (item.course) return item
+                        return { course: item, progress: item.progress || 0 }
+                    })
+                    setEnrolled(normalized)
+                } else {
+                    toast.error(res.error || "Failed to load your courses")
+                }
             } else {
-                toast.error(data.message || "Failed to load your courses")
+                const r = await fetch(`${API_URL}/student/my-courses`, {
+                    headers: { Authorization: `Bearer ${getToken()}` },
+                    credentials: "include"
+                })
+                const data = await r.json()
+                if (data.success) {
+                    const rawList = data.data?.courses || data.data || []
+                    const normalized = rawList.map((item: any) => {
+                        if (item.course) return item
+                        return { course: item, progress: item.progress || 0 }
+                    })
+                    setEnrolled(normalized)
+                } else {
+                    toast.error(data.message || "Failed to load your courses")
+                }
             }
         } catch (e) {
             toast.error("Failed to load your courses")
         } finally {
             setLoading(false)
         }
-    }, [])
+    }, [token, isCollege])
 
     useEffect(() => {
         fetchMyCourses()

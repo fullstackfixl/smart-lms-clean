@@ -103,6 +103,8 @@ const checkInstructorPermission = async (req, res, next) => {
 // POST /api/live-classes - Create new live class
 router.post('/', auth, checkInstructorPermission, validateLiveClassCreation, async (req, res) => {
   try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -128,7 +130,7 @@ router.post('/', auth, checkInstructorPermission, validateLiveClassCreation, asy
     // Verify course exists and belongs to user's organization
     const course = await Course.findOne({
       _id: course_id,
-      organization_id: req.user.organization_id
+      organization_id: orgId
     });
 
     if (!course) {
@@ -150,7 +152,7 @@ router.post('/', auth, checkInstructorPermission, validateLiveClassCreation, asy
 
     // Create live class
     const liveClass = new LiveClass({
-      organization_id: req.user.organization_id,
+      organization_id: orgId,
       course_id,
       instructor_id: req.user._id,
       title,
@@ -176,6 +178,72 @@ router.post('/', auth, checkInstructorPermission, validateLiveClassCreation, asy
       success: true,
       data: liveClass,
       message: 'Live class created successfully'
+    });
+
+    // Best-effort: broadcast to college batch students if this course is mapped to a Subject
+    setImmediate(async () => {
+      try {
+        const Subject = require('../models/Subject');
+        const User = require('../models/User');
+        const Notification = require('../models/Notification');
+
+        let socketService = null;
+        try { socketService = require('../services/socketService'); } catch (_) { }
+
+        const orgId = req.user.organization_id?._id || req.user.organization_id;
+        const subject = await Subject.findOne({ organizationId: orgId, contentCourseId: course_id, isActive: true })
+          .select('batchId name code')
+          .lean();
+
+        if (!subject?.batchId) return;
+
+        const students = await User.find({
+          organization_id: orgId,
+          role: 'student',
+          isActive: true,
+          'profile.batch': subject.batchId
+        }).select('_id').lean();
+
+        if (!students.length) return;
+
+        await Notification.insertMany(
+          students.map(s => ({
+            organization_id: orgId,
+            recipient_id: s._id,
+            sender_id: req.user._id,
+            type: 'live_class_reminder',
+            title: 'Live Class Scheduled',
+            message: `${req.user.name || 'Instructor'} scheduled a live class: ${title}`,
+            data: {
+              entityType: 'live_class',
+              liveClassId: liveClass._id,
+              courseId: course_id,
+              subjectId: subject._id,
+              subjectName: subject.name,
+              subjectCode: subject.code,
+              meeting_url: liveClass.meeting_url
+            },
+            priority: 'high',
+            action_url: `/student/live-classes/${liveClass._id}`,
+            action_text: 'Join Live Class'
+          })),
+          { ordered: false }
+        );
+
+        if (socketService?.io) {
+          socketService.sendNotificationToUsers(
+            students.map(s => String(s._id)),
+            {
+              type: 'live_class_reminder',
+              title: 'Live Class Scheduled',
+              message: `${req.user.name || 'Instructor'} scheduled a live class: ${title}`,
+              data: { liveClassId: liveClass._id, meeting_url: liveClass.meeting_url }
+            }
+          );
+        }
+      } catch (_) {
+        // ignore broadcast failures
+      }
     });
 
     // --- Background: notify enrolled students --- //

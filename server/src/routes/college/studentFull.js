@@ -24,14 +24,18 @@ router.get('/dashboard', async (req, res) => {
       const batch = await Batch.findById(batchId).populate('programId').lean();
       if (batch?.programId) {
         academicSubjects = await Subject.find({
-          programId: batch.programId._id || batch.programId,
-          semester: batch.semester,
           organizationId: orgId,
-          isActive: true
+          isActive: true,
+          $or: [
+            { batchId },
+            { batchId: { $exists: false }, programId: batch.programId._id || batch.programId, semester: batch.semester },
+            { batchId: null, programId: batch.programId._id || batch.programId, semester: batch.semester }
+          ]
         })
-          .populate('instructorId', 'profile.firstName profile.lastName email')
+          .populate('instructorId', 'name email profile.pic_url')
           .populate('departmentId', 'name code')
           .populate('programId', 'name code')
+          .populate('batchId', 'name code year semester')
           .lean();
       }
 
@@ -472,16 +476,22 @@ router.get('/subjects', async (req, res) => {
       return res.success({ subjects: [] }, 'Batch not found');
     }
 
-    // Get subjects for student's program and current semester
+    // Subject visibility rule:
+    // - Prefer strict batch match
+    // - Fallback to legacy subjects without batchId using program+semester
     const subjects = await Subject.find({
-      programId: batch.programId,
-      semester: batch.semester,
       organizationId: orgId,
-      isActive: true
+      isActive: true,
+      $or: [
+        { batchId },
+        { batchId: { $exists: false }, programId: batch.programId, semester: batch.semester },
+        { batchId: null, programId: batch.programId, semester: batch.semester }
+      ]
     })
       .populate('programId', 'name code')
       .populate('departmentId', 'name code')
-      .populate('instructorId', 'profile.firstName profile.lastName email')
+      .populate('batchId', 'name code year semester')
+      .populate('instructorId', 'name email profile.pic_url')
       .sort({ name: 1 });
 
     res.success({ subjects, batch }, 'Subjects retrieved');
@@ -646,6 +656,164 @@ router.get('/attendance', async (req, res) => {
     }, 'Attendance records retrieved');
   } catch (error) {
     res.error(error.message, 'Failed to load attendance', 500);
+  }
+});
+
+// ===== MY GRADES =====
+// GET /api/college/student/grades
+router.get('/grades', async (req, res) => {
+  try {
+    const { Grade, Subject, Enrollment } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    // Get student's enrollments
+    const enrollments = await Enrollment.find({
+      student_id: userId,
+      organization_id: orgId,
+      status: 'active'
+    }).populate('course_id', 'title');
+
+    const courseIds = enrollments.map(e => e.course_id?._id || e.course_id);
+
+    // Get grades for enrolled courses
+    const grades = await Grade.find({
+      student_id: userId,
+      organization_id: orgId
+    })
+      .populate('course_id', 'title')
+      .populate('subjectId', 'name code')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Calculate GPA
+    const totalCredits = grades.reduce((acc, g) => acc + (g.credits || 0), 0);
+    const weightedSum = grades.reduce((acc, g) => acc + ((g.marks || 0) * (g.credits || 0)), 0);
+    const gpa = totalCredits > 0 ? (weightedSum / totalCredits).toFixed(2) : '0.00';
+
+    res.success({
+      grades,
+      gpa,
+      summary: {
+        totalGrades: grades.length,
+        totalCredits,
+        highestMarks: grades.length > 0 ? Math.max(...grades.map(g => g.marks || 0)) : 0,
+        lowestMarks: grades.length > 0 ? Math.min(...grades.map(g => g.marks || 0)) : 0,
+        averageMarks: grades.length > 0 ? Math.round(grades.reduce((acc, g) => acc + (g.marks || 0), 0) / grades.length) : 0
+      }
+    }, 'Grades retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load grades', 500);
+  }
+});
+
+// ===== ANNOUNCEMENTS =====
+// GET /api/college/student/announcements
+router.get('/announcements', async (req, res) => {
+  try {
+    const { Announcement } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const courseIds = await Enrollment.find({ student_id: userId })
+      .distinct('course_id');
+
+    if (!courseIds.length) {
+      return res.success({ announcements: [] }, 'Announcements retrieved');
+    }
+
+    const announcements = await Announcement.find({
+      organization_id: orgId,
+      course_id: { $in: courseIds },
+      is_active: true
+    })
+      .populate('course_id', 'title')
+      .populate('instructor_id', 'name email profile.firstName profile.lastName')
+      .sort({ is_pinned: -1, createdAt: -1 })
+      .lean();
+
+    res.success({ announcements }, 'Announcements retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load announcements', 500);
+  }
+});
+
+// ===== RESULTS =====
+// GET /api/college/student/results
+router.get('/results', async (req, res) => {
+  try {
+    const { QuizResult } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const [attempts, quizResults] = await Promise.all([
+      QuizAttempt.find({ student_id: userId, is_active: true })
+        .populate('quiz_id', 'title course_id')
+        .sort({ submitted_at: -1 })
+        .limit(200)
+        .lean()
+        .catch(() => []),
+      QuizResult.find({ user_id: userId, organization_id: orgId })
+        .populate('course_id', 'title')
+        .populate('lecture_id', 'title')
+        .sort({ submitted_at: -1 })
+        .limit(200)
+        .lean()
+        .catch(() => [])
+    ]);
+
+    res.success({
+      quizAttempts: attempts,
+      lectureQuizResults: quizResults
+    }, 'Results retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load results', 500);
+  }
+});
+
+// ===== EXAMS =====
+// GET /api/college/student/exams
+router.get('/exams', async (req, res) => {
+  try {
+    res.success({ exams: [] }, 'Exams retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load exams', 500);
+  }
+});
+
+// ===== ASSIGNMENTS =====
+// GET /api/college/student/assignments
+router.get('/assignments', async (req, res) => {
+  try {
+    const { Assignment } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const courseIds = await Enrollment.find({ student_id: userId })
+      .distinct('course_id');
+
+    if (!courseIds.length) {
+      return res.success({ assignments: [] }, 'Assignments retrieved');
+    }
+
+    const assignments = await Assignment.find({
+      organization_id: orgId,
+      course_id: { $in: courseIds },
+      is_active: true,
+      $or: [
+        { due_date: { $gte: new Date() } },
+        { due_date: { $exists: false } },
+        { due_date: null }
+      ]
+    })
+      .populate('course_id', 'title')
+      .populate('created_by', 'name email profile.firstName profile.lastName')
+      .sort({ due_date: 1, createdAt: -1 })
+      .lean();
+
+    res.success({ assignments }, 'Assignments retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load assignments', 500);
   }
 });
 

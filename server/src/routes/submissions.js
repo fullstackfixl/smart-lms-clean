@@ -1,0 +1,333 @@
+const express = require('express');
+const { body, validationResult, query } = require('express-validator');
+const { authMiddleware: auth } = require('../middleware/auth');
+const moduleGuard = require('../middleware/moduleGuard');
+
+const router = express.Router();
+
+router.use(auth, moduleGuard('SUBJECTS'));
+
+router.get('/', [
+  auth,
+  query('assignment_id').optional().isMongoId(),
+  query('course_id').optional().isMongoId(),
+  query('student_id').optional().isMongoId(),
+  query('active').optional().isIn(['true', 'false'])
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, error: 'Validation failed', message: 'Please check your query parameters', details: errors.array() });
+    }
+
+    const { Submission, Assignment, Course } = require('../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { role, _id: userId } = req.user;
+    const { assignment_id, course_id, student_id, active } = req.query;
+
+    const filters = {
+      organization_id: orgId
+    };
+    if (assignment_id) filters.assignment_id = assignment_id;
+    if (course_id) filters.course_id = course_id;
+    if (active === 'true') filters.is_active = true;
+    if (active === 'false') filters.is_active = false;
+
+    if (role === 'student') {
+      filters.student_id = userId;
+    } else if (student_id) {
+      filters.student_id = student_id;
+    }
+
+    if (role === 'instructor' && course_id) {
+      const course = await Course.findOne({
+        _id: course_id,
+        organization_id: orgId,
+        $or: [{ is_active: true }, { isActive: true }]
+      });
+      if (!course || String(course.instructor_id) !== String(userId)) {
+        return res.status(403).json({ success: false, error: 'Access denied', message: 'You can only view submissions for your assigned courses' });
+      }
+    }
+
+    if (role === 'instructor' && assignment_id) {
+      const a = await Assignment.findOne({ _id: assignment_id, organization_id: orgId, is_active: true });
+      if (a) {
+        const course = await Course.findOne({
+          _id: a.course_id,
+          organization_id: orgId,
+          $or: [{ is_active: true }, { isActive: true }]
+        });
+        if (!course || String(course.instructor_id) !== String(userId)) {
+          return res.status(403).json({ success: false, error: 'Access denied', message: 'You can only view submissions for your assignments' });
+        }
+      }
+    }
+
+    const submissions = await Submission.find(filters)
+      .populate('assignment_id', 'title max_score due_date')
+      .populate('course_id', 'title')
+      .populate('student_id', 'name email profile')
+      .populate('graded_by', 'name email')
+      .sort({ submitted_at: -1, createdAt: -1 })
+      .lean();
+
+    return res.json({ success: true, data: { submissions }, message: 'Submissions retrieved successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message, message: 'Failed to retrieve submissions' });
+  }
+});
+
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const { Submission, Course } = require('../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { role, _id: userId } = req.user;
+
+    const submission = await Submission.findOne({ _id: req.params.id, organization_id: orgId })
+      .populate('assignment_id', 'title max_score due_date')
+      .populate('course_id', 'title instructor_id')
+      .populate('student_id', 'name email profile')
+      .populate('graded_by', 'name email')
+      .lean();
+
+    if (!submission) {
+      return res.status(404).json({ success: false, error: 'Submission not found', message: 'Submission not found' });
+    }
+
+    if (role === 'student' && String(submission.student_id?._id || submission.student_id) !== String(userId)) {
+      return res.status(403).json({ success: false, error: 'Access denied', message: 'You do not have access to this submission' });
+    }
+
+    if (role === 'instructor') {
+      const course = await Course.findOne({
+        _id: submission.course_id?._id || submission.course_id,
+        organization_id: orgId,
+        $or: [{ is_active: true }, { isActive: true }]
+      });
+      if (!course || String(course.instructor_id) !== String(userId)) {
+        return res.status(403).json({ success: false, error: 'Access denied', message: 'You do not have access to this submission' });
+      }
+    }
+
+    return res.json({ success: true, data: { submission }, message: 'Submission retrieved successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message, message: 'Failed to retrieve submission' });
+  }
+});
+
+router.post('/', [
+  auth,
+  body('assignment_id').isMongoId(),
+  body('content').optional().trim().isLength({ max: 5000 }),
+  body('attachments').optional().isArray()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, error: 'Validation failed', message: 'Please check your input', details: errors.array() });
+    }
+
+    const { Submission, Assignment, Course } = require('../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { role, _id: userId } = req.user;
+
+    if (role !== 'student') {
+      return res.status(403).json({ success: false, error: 'Insufficient permissions', message: 'Only students can submit assignments' });
+    }
+
+    const { assignment_id, content, attachments = [] } = req.body;
+
+    const assignment = await Assignment.findOne({ _id: assignment_id, organization_id: orgId, is_active: true });
+    if (!assignment) {
+      return res.status(404).json({ success: false, error: 'Assignment not found', message: 'Assignment not found' });
+    }
+
+    const course = await Course.findOne({
+      _id: assignment.course_id,
+      organization_id: orgId,
+      $or: [{ is_active: true }, { isActive: true }]
+    });
+    if (!course) {
+      return res.status(404).json({ success: false, error: 'Course not found', message: 'Course not found in your organization' });
+    }
+
+    const submission = await Submission.findOneAndUpdate(
+      { organization_id: orgId, assignment_id, student_id: userId, is_active: true },
+      {
+        $set: {
+          course_id: assignment.course_id,
+          content,
+          attachments,
+          status: 'submitted',
+          submitted_at: new Date(),
+          graded_by: null,
+          graded_at: null,
+          earned_score: null,
+          comments: null
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    )
+      .populate('assignment_id', 'title max_score due_date')
+      .populate('course_id', 'title')
+      .populate('student_id', 'name email profile')
+      .lean();
+
+    return res.json({ success: true, data: { submission }, message: 'Submission saved successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message, message: 'Failed to save submission' });
+  }
+});
+
+router.patch('/:id/grade', [
+  auth,
+  body('earned_score').isFloat({ min: 0 }),
+  body('comments').optional().trim().isLength({ max: 2000 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, error: 'Validation failed', message: 'Please check your input', details: errors.array() });
+    }
+
+    const { Submission, Assignment, Course, Grade, Notification } = require('../models');
+    const socketService = require('../services/socketService');
+
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { role, _id: userId } = req.user;
+
+    if (!['instructor', 'org_admin'].includes(role)) {
+      return res.status(403).json({ success: false, error: 'Insufficient permissions', message: 'Only instructors and administrators can grade submissions' });
+    }
+
+    const submission = await Submission.findOne({ _id: req.params.id, organization_id: orgId, is_active: true });
+    if (!submission) {
+      return res.status(404).json({ success: false, error: 'Submission not found', message: 'Submission not found' });
+    }
+
+    const assignment = await Assignment.findOne({ _id: submission.assignment_id, organization_id: orgId });
+    if (!assignment) {
+      return res.status(404).json({ success: false, error: 'Assignment not found', message: 'Assignment not found' });
+    }
+
+    const course = await Course.findOne({
+      _id: submission.course_id,
+      organization_id: orgId,
+      $or: [{ is_active: true }, { isActive: true }]
+    });
+    if (!course) {
+      return res.status(404).json({ success: false, error: 'Course not found', message: 'Course not found in your organization' });
+    }
+
+    if (role === 'instructor' && String(course.instructor_id) !== String(userId)) {
+      return res.status(403).json({ success: false, error: 'Access denied', message: 'You can only grade submissions for your assigned courses' });
+    }
+
+    const { earned_score, comments } = req.body;
+
+    submission.earned_score = earned_score;
+    submission.comments = comments;
+    submission.status = 'graded';
+    submission.graded_by = userId;
+    submission.graded_at = new Date();
+
+    await submission.save();
+
+    await Grade.findOneAndUpdate(
+      {
+        organization_id: orgId,
+        course_id: submission.course_id,
+        student_id: submission.student_id,
+        assignment_type: 'assignment',
+        assignment_title: assignment.title,
+        is_active: true
+      },
+      {
+        $set: {
+          assignment_description: assignment.description,
+          max_score: assignment.max_score,
+          earned_score: earned_score,
+          percentage: assignment.max_score > 0 ? (earned_score / assignment.max_score) * 100 : 0,
+          weight: 100,
+          due_date: assignment.due_date,
+          submitted_date: submission.submitted_at,
+          graded_date: new Date(),
+          graded_by: userId,
+          comments: comments
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    setImmediate(async () => {
+      try {
+        const notif = await Notification.create({
+          organization_id: orgId,
+          recipient_id: submission.student_id,
+          sender_id: userId,
+          type: 'general',
+          title: 'Assignment Graded',
+          message: `${assignment.title}`,
+          data: { submission_id: submission._id, assignment_id: assignment._id, course_id: submission.course_id },
+          priority: 'medium',
+          action_url: '/student/grades',
+          action_text: 'View'
+        });
+        socketService.sendNotification(notif.recipient_id, notif);
+      } catch (e) {
+        return;
+      }
+    });
+
+    const populated = await Submission.findById(submission._id)
+      .populate('assignment_id', 'title max_score due_date')
+      .populate('course_id', 'title')
+      .populate('student_id', 'name email profile')
+      .populate('graded_by', 'name email')
+      .lean();
+
+    return res.json({ success: true, data: { submission: populated }, message: 'Submission graded successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message, message: 'Failed to grade submission' });
+  }
+});
+
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const { Submission, Course } = require('../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { role, _id: userId } = req.user;
+
+    const submission = await Submission.findOne({ _id: req.params.id, organization_id: orgId, is_active: true });
+    if (!submission) {
+      return res.status(404).json({ success: false, error: 'Submission not found', message: 'Submission not found' });
+    }
+
+    if (role === 'student') {
+      if (String(submission.student_id) !== String(userId)) {
+        return res.status(403).json({ success: false, error: 'Access denied', message: 'You do not have access to delete this submission' });
+      }
+    } else if (role === 'instructor') {
+      const course = await Course.findOne({
+        _id: submission.course_id,
+        organization_id: orgId,
+        $or: [{ is_active: true }, { isActive: true }]
+      });
+      if (!course || String(course.instructor_id) !== String(userId)) {
+        return res.status(403).json({ success: false, error: 'Access denied', message: 'You do not have access to delete this submission' });
+      }
+    } else if (role !== 'org_admin') {
+      return res.status(403).json({ success: false, error: 'Insufficient permissions', message: 'You do not have access to delete this submission' });
+    }
+
+    submission.is_active = false;
+    await submission.save();
+
+    return res.json({ success: true, data: { submission_id: submission._id }, message: 'Submission deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message, message: 'Failed to delete submission' });
+  }
+});
+
+module.exports = router;

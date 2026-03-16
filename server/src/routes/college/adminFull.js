@@ -150,6 +150,24 @@ router.put('/departments/:id', async (req, res) => {
   }
 });
 
+router.delete('/departments/:id', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const department = await Department.findOne({ _id: req.params.id, organization_id: orgId, isActive: true });
+
+    if (!department) {
+      return res.error('Department not found', null, 404);
+    }
+
+    department.isActive = false;
+    await department.save();
+
+    res.success({ departmentId: department._id }, 'Department deleted successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to delete department', 500);
+  }
+});
+
 // ===== BATCHES =====
 // GET /api/college/admin/batches
 router.get('/batches', async (req, res) => {
@@ -166,10 +184,44 @@ router.get('/batches', async (req, res) => {
       .populate('departmentId', 'name code')
       .populate('programId', 'name code')
       .populate('students', 'profile.firstName profile.lastName email')
-      .populate('instructor_ids', 'profile.firstName profile.lastName email')
       .sort({ year: -1, semester: 1 });
+    
+    // Aggregate instructors from subjects for each batch
+    const { Subject } = require('../../models');
+    const batchesWithInstructors = await Promise.all(
+      batches.map(async (batch) => {
+        const batchObj = batch.toObject();
+        
+        // Find all subjects for this batch and get unique instructors
+        const subjects = await Subject.find({ 
+          batchId: batch._id, 
+          organizationId: orgId,
+          isActive: true 
+        }).populate('instructorId', 'profile.firstName profile.lastName email');
+        
+        console.log(`[DEBUG] Batch ${batch.name} (${batch._id}): Found ${subjects.length} subjects`);
+        subjects.forEach((s, i) => {
+          console.log(`[DEBUG] Subject ${i}: ${s.name}, instructorId: ${s.instructorId?._id || 'null'}`);
+        });
+        
+        // Extract unique instructors from subjects
+        const instructorsMap = new Map();
+        subjects.forEach(subject => {
+          if (subject.instructorId) {
+            const instId = subject.instructorId._id.toString();
+            if (!instructorsMap.has(instId)) {
+              instructorsMap.set(instId, subject.instructorId);
+            }
+          }
+        });
+        
+        batchObj.instructorIds = Array.from(instructorsMap.values());
+        console.log(`[DEBUG] Batch ${batch.name}: ${batchObj.instructorIds.length} unique instructors`);
+        return batchObj;
+      })
+    );
 
-    res.success({ batches }, 'Batches retrieved');
+    res.success({ batches: batchesWithInstructors }, 'Batches retrieved');
   } catch (error) {
     res.error(error.message, 'Failed to load batches', 500);
   }
@@ -213,7 +265,7 @@ router.get('/batches/:id', async (req, res) => {
       .populate('departmentId', 'name code')
       .populate('programId', 'name code')
       .populate('students', 'profile.firstName profile.lastName email rollNumber')
-      .populate('instructor_ids', 'profile.firstName profile.lastName email');
+      .populate('instructorIds', 'profile.firstName profile.lastName email');
 
     if (!batch) {
       return res.error('Batch not found', null, 404);
@@ -242,11 +294,11 @@ router.get('/batches/:id', async (req, res) => {
 router.put('/batches/:id', async (req, res) => {
   try {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const { name, code, programId, departmentId, year, semester, students, instructor_ids } = req.body;
+    const { name, code, programId, departmentId, year, semester, students, instructorIds } = req.body;
 
     const batch = await Batch.findOneAndUpdate(
       { _id: req.params.id, organizationId: orgId },
-      { name, code, programId, departmentId, year, semester, students, instructor_ids },
+      { name, code, programId, departmentId, year, semester, students, instructorIds },
       { new: true }
     );
 
@@ -259,6 +311,24 @@ router.put('/batches/:id', async (req, res) => {
     res.error(error.message, 'Failed to update batch', 500);
   }
 });
+
+ router.delete('/batches/:id', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const batch = await Batch.findOne({ _id: req.params.id, organizationId: orgId, isActive: true });
+
+    if (!batch) {
+      return res.error('Batch not found', null, 404);
+    }
+
+    batch.isActive = false;
+    await batch.save();
+
+    res.success({ batchId: batch._id }, 'Batch deleted successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to delete batch', 500);
+  }
+ });
 
 // PUT /api/college/admin/batches/:id/assign-students
 router.put('/batches/:id/assign-students', async (req, res) => {
@@ -283,10 +353,64 @@ router.put('/batches/:id/assign-students', async (req, res) => {
       return res.error('Batch not found', 'Batch not found', 404);
     }
 
-    // Also write batchId into student profile if present in schema usage
+    // Also write batch/program/department into student profile
+    const fullBatch = await Batch.findOne({ _id: batch._id, organizationId: orgId })
+      .select('programId departmentId')
+      .lean();
+
     await User.updateMany(
       { _id: { $in: studentIds }, organization_id: orgId, role: 'student' },
-      { $set: { 'profile.batch': batch._id } }
+      {
+        $set: {
+          'profile.batch': batch._id,
+          ...(fullBatch?.programId ? { 'profile.program_id': fullBatch.programId, 'profile.programId': fullBatch.programId } : {}),
+          ...(fullBatch?.departmentId ? { 'profile.department': fullBatch.departmentId, 'profile.departmentId': fullBatch.departmentId } : {})
+        }
+      }
+    );
+
+    res.success({ batch }, 'Students assigned to batch successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to assign students to batch', 500);
+  }
+});
+
+// POST /api/college/admin/batches/assign-students (spec)
+router.post('/batches/assign-students', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { batchId, studentIds } = req.body;
+
+    if (!batchId || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.error('Missing required fields', 'batchId and studentIds[] are required', 400);
+    }
+
+    const batch = await Batch.findOneAndUpdate(
+      { _id: batchId, organizationId: orgId, isActive: true },
+      { $addToSet: { students: { $each: studentIds } } },
+      { new: true }
+    )
+      .populate('departmentId', 'name code')
+      .populate('programId', 'name code')
+      .populate('students', 'profile.firstName profile.lastName email');
+
+    if (!batch) {
+      return res.error('Batch not found', 'Batch not found', 404);
+    }
+
+    const fullBatch = await Batch.findOne({ _id: batch._id, organizationId: orgId })
+      .select('programId departmentId')
+      .lean();
+
+    await User.updateMany(
+      { _id: { $in: studentIds }, organization_id: orgId, role: 'student' },
+      {
+        $set: {
+          'profile.batch': batch._id,
+          ...(fullBatch?.programId ? { 'profile.program_id': fullBatch.programId, 'profile.programId': fullBatch.programId } : {}),
+          ...(fullBatch?.departmentId ? { 'profile.department': fullBatch.departmentId, 'profile.departmentId': fullBatch.departmentId } : {})
+        }
+      }
     );
 
     res.success({ batch }, 'Students assigned to batch successfully');
@@ -317,10 +441,28 @@ router.get('/students', async (req, res) => {
 
     const students = await User.find(query)
       .populate('profile.department', 'name code')
-      .populate('profile.batch', 'name code')
+      .populate('profile.batch', 'name code year semester')
+      .populate('profile.program_id', 'name code')
       .sort({ 'profile.firstName': 1 });
 
-    res.success({ students }, 'Students retrieved');
+    // Transform data to match frontend expectations
+    const transformedStudents = students.map(s => ({
+      _id: s._id,
+      firstName: s.profile?.firstName || s.firstName,
+      lastName: s.profile?.lastName || s.lastName,
+      email: s.email,
+      rollNumber: s.profile?.rollNumber,
+      semester: s.profile?.current_semester,
+      status: s.status,
+      createdAt: s.createdAt,
+      departmentId: s.profile?.department,
+      programId: s.profile?.program_id,
+      batchId: s.profile?.batch,
+      enrolledSubjects: s.profile?.enrolledSubjects || [],
+      enrolledCourses: s.profile?.enrolledCourses || []
+    }));
+
+    res.success({ students: transformedStudents }, 'Students retrieved');
   } catch (error) {
     res.error(error.message, 'Failed to load students', 500);
   }
@@ -403,6 +545,128 @@ router.get('/students/:id', async (req, res) => {
     }, 'Student details retrieved');
   } catch (error) {
     res.error(error.message, 'Failed to load student', 500);
+  }
+});
+
+// PATCH /api/college/admin/learners/:id/assign-batch
+router.patch('/learners/:id/assign-batch', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { programId, departmentId, batchId, semester, rollNumber } = req.body;
+
+    if (!batchId) {
+      return res.error('Batch ID is required', 'batchId is required', 400);
+    }
+
+    // Get current student to check if they were in a batch
+    const currentStudent = await User.findOne({ _id: req.params.id, organization_id: orgId, role: 'student' });
+    
+    // Build update object with correct field names from User model
+    const updateData = {
+      'profile.program_id': programId,
+      'profile.department': departmentId,
+      'profile.batch': batchId,
+      'profile.current_semester': semester,
+      status: 'active'
+    };
+    
+    // Add rollNumber if provided
+    if (rollNumber) {
+      updateData['profile.rollNumber'] = rollNumber;
+    }
+    
+    // Update student with batch assignment
+    const student = await User.findOneAndUpdate(
+      { _id: req.params.id, organization_id: orgId, role: 'student' },
+      { $set: updateData },
+      { new: true }
+    )
+    .populate('profile.department', 'name code')
+    .populate('profile.batch', 'name code year semester')
+    .populate('profile.program_id', 'name code');
+
+    if (!student) {
+      return res.error('Student not found', 'Student not found', 404);
+    }
+
+    // Remove from old batch if exists
+    if (currentStudent?.profile?.batch) {
+      await Batch.findByIdAndUpdate(currentStudent.profile.batch, { 
+        $pull: { students: student._id } 
+      });
+    }
+
+    // Add to new batch
+    await Batch.findByIdAndUpdate(batchId, { 
+      $addToSet: { students: student._id } 
+    });
+
+    // Transform for frontend
+    const transformedStudent = {
+      _id: student._id,
+      firstName: student.profile?.firstName || student.firstName,
+      lastName: student.profile?.lastName || student.lastName,
+      email: student.email,
+      rollNumber: student.profile?.rollNumber,
+      semester: student.profile?.current_semester,
+      status: student.status,
+      departmentId: student.profile?.department,
+      programId: student.profile?.program_id,
+      batchId: student.profile?.batch,
+    };
+
+    res.success({ student: transformedStudent }, 'Batch assigned successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to assign batch', 500);
+  }
+});
+
+// POST /api/college/admin/learners/:id/enroll-subjects
+router.post('/learners/:id/enroll-subjects', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { subjectIds } = req.body;
+
+    if (!Array.isArray(subjectIds)) {
+      return res.error('subjectIds must be an array', 'Invalid input', 400);
+    }
+
+    // Update student's enrolled subjects
+    const student = await User.findOneAndUpdate(
+      { _id: req.params.id, organization_id: orgId, role: 'student' },
+      { $set: { 'profile.enrolledSubjects': subjectIds } },
+      { new: true }
+    );
+
+    if (!student) {
+      return res.error('Student not found', 'Student not found', 404);
+    }
+
+    res.success({ student, enrolledCount: subjectIds.length }, 'Subjects enrolled successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to enroll subjects', 500);
+  }
+});
+
+// PATCH /api/college/admin/learners/:id/status
+router.patch('/learners/:id/status', async (req, res) => {
+  try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { status } = req.body;
+
+    const student = await User.findOneAndUpdate(
+      { _id: req.params.id, organization_id: orgId, role: 'student' },
+      { $set: { status } },
+      { new: true }
+    );
+
+    if (!student) {
+      return res.error('Student not found', 'Student not found', 404);
+    }
+
+    res.success({ student }, 'Status updated successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to update status', 500);
   }
 });
 
@@ -858,16 +1122,46 @@ router.post('/programs', async (req, res) => {
 router.get('/programs/:id', async (req, res) => {
   try {
     const { AcademicProgram, Subject, Batch } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
     const program = await AcademicProgram.findById(req.params.id)
       .populate('departmentId', 'name code');
     if (!program) return res.error('Program not found', 'Not found', 404);
 
-    const subjects = await Subject.find({ programId: req.params.id, isActive: true });
-    const batches = await Batch.find({ programId: req.params.id, isActive: true });
+    const subjects = await Subject.find({ programId: req.params.id, organizationId: orgId, isActive: true })
+      .populate('instructorId', 'name email profile.pic_url')
+      .sort({ semester: 1, name: 1 });
+    const batches = await Batch.find({ programId: req.params.id, organizationId: orgId, isActive: true });
 
     res.success({ program, subjects, batches }, 'Program retrieved');
   } catch (error) {
     res.error(error.message, 'Failed to load program', 500);
+  }
+});
+
+// GET /api/college/admin/programs/:programId/subjects
+router.get('/programs/:programId/subjects', async (req, res) => {
+  try {
+    const { Subject } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { semester } = req.query;
+
+    const query = {
+      programId: req.params.programId,
+      organizationId: orgId,
+      isActive: true
+    };
+    if (semester) query.semester = parseInt(semester);
+
+    const subjects = await Subject.find(query)
+      .populate('programId', 'name code')
+      .populate('departmentId', 'name code')
+      .populate('batchId', 'name code year semester')
+      .populate('instructorId', 'name email profile.pic_url')
+      .sort({ semester: 1, name: 1 });
+
+    res.success({ subjects }, 'Program subjects retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load program subjects', 500);
   }
 });
 
@@ -926,14 +1220,17 @@ router.post('/subjects', async (req, res) => {
   try {
     const { Subject } = require('../../models');
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const { name, code, programId, departmentId, semester, credits, description } = req.body;
+    const { name, code, programId, departmentId, batchId, semester, credits, description, instructorId, contentCourseId } = req.body;
 
     const subject = new Subject({
       name,
       code: code.toUpperCase(),
       programId,
       departmentId,
+      batchId,
       semester,
+      instructorId,
+      contentCourseId,
       credits: credits || 3,
       description,
       organizationId: orgId,
@@ -941,9 +1238,70 @@ router.post('/subjects', async (req, res) => {
     });
     await subject.save();
 
-    res.success({ subject }, 'Subject created successfully');
+    const populated = await Subject.findById(subject._id)
+      .populate('programId', 'name code')
+      .populate('departmentId', 'name code')
+      .populate('batchId', 'name code year semester')
+      .populate('instructorId', 'name email profile.pic_url');
+
+    res.success({ subject: populated }, 'Subject created successfully');
   } catch (error) {
     res.error(error.message, 'Failed to create subject', 500);
+  }
+});
+
+// PUT /api/college/admin/subjects/:id
+router.put('/subjects/:id', async (req, res) => {
+  try {
+    const { Subject } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { name, code, programId, departmentId, batchId, semester, credits, instructorId, contentCourseId } = req.body;
+
+    const update = {
+      ...(name !== undefined ? { name } : {}),
+      ...(code !== undefined ? { code: String(code).toUpperCase() } : {}),
+      ...(programId !== undefined ? { programId } : {}),
+      ...(departmentId !== undefined ? { departmentId } : {}),
+      ...(batchId !== undefined ? { batchId } : {}),
+      ...(semester !== undefined ? { semester } : {}),
+      ...(credits !== undefined ? { credits } : {}),
+      ...(instructorId !== undefined ? { instructorId } : {}),
+      ...(contentCourseId !== undefined ? { contentCourseId } : {})
+    };
+
+    const subject = await Subject.findOneAndUpdate(
+      { _id: req.params.id, organizationId: orgId, isActive: true },
+      update,
+      { new: true }
+    )
+      .populate('programId', 'name code')
+      .populate('departmentId', 'name code')
+      .populate('batchId', 'name code year semester')
+      .populate('instructorId', 'name email profile.pic_url');
+
+    if (!subject) return res.error('Subject not found', 'Not found', 404);
+    res.success({ subject }, 'Subject updated successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to update subject', 500);
+  }
+});
+
+// DELETE /api/college/admin/subjects/:id
+router.delete('/subjects/:id', async (req, res) => {
+  try {
+    const { Subject } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const subject = await Subject.findOneAndUpdate(
+      { _id: req.params.id, organizationId: orgId, isActive: true },
+      { isActive: false },
+      { new: true }
+    );
+
+    if (!subject) return res.error('Subject not found', 'Not found', 404);
+    res.success({}, 'Subject deleted successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to delete subject', 500);
   }
 });
 
@@ -1023,6 +1381,8 @@ router.post('/timetable', async (req, res) => {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
     const { programId, batchId, subjectId, instructorId, day, startTime, endTime, room } = req.body;
 
+    const meetingLink = `https://meet.jit.si/${orgId}-${subjectId}-${batchId}`;
+
     const entry = new Timetable({
       programId,
       batchId,
@@ -1032,16 +1392,64 @@ router.post('/timetable', async (req, res) => {
       startTime,
       endTime,
       room,
+      meetingLink,
       organizationId: orgId,
       organizationType: req.user.organization_type || 'college'
     });
     await entry.save();
 
-    res.success({ entry }, 'Timetable entry created successfully');
+    const populated = await Timetable.findById(entry._id)
+      .populate('programId', 'name code')
+      .populate('batchId', 'name code year semester')
+      .populate('subjectId', 'name code')
+      .populate('instructorId', 'name email profile.pic_url');
+
+    res.success({ entry: populated }, 'Timetable entry created successfully');
   } catch (error) {
     res.error(error.message, 'Failed to create timetable entry', 500);
   }
 });
+
+ router.put('/timetable/:id', async (req, res) => {
+  try {
+    const { Timetable } = require('../../models');
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { programId, batchId, subjectId, instructorId, day, startTime, endTime, room, isActive } = req.body;
+
+    const entry = await Timetable.findOne({ _id: req.params.id, organizationId: orgId, isActive: true });
+    if (!entry) {
+      return res.error('Timetable entry not found', 'Not found', 404);
+    }
+
+    if (programId !== undefined) entry.programId = programId;
+    if (batchId !== undefined) entry.batchId = batchId;
+    if (subjectId !== undefined) entry.subjectId = subjectId;
+    if (instructorId !== undefined) entry.instructorId = instructorId;
+    if (day !== undefined) entry.day = day;
+    if (startTime !== undefined) entry.startTime = startTime;
+    if (endTime !== undefined) entry.endTime = endTime;
+    if (room !== undefined) entry.room = room;
+    if (isActive !== undefined) entry.isActive = isActive;
+
+    if (subjectId !== undefined || batchId !== undefined) {
+      const resolvedSubjectId = subjectId !== undefined ? subjectId : entry.subjectId;
+      const resolvedBatchId = batchId !== undefined ? batchId : entry.batchId;
+      entry.meetingLink = `https://meet.jit.si/${orgId}-${resolvedSubjectId}-${resolvedBatchId}`;
+    }
+
+    await entry.save();
+
+    const populated = await Timetable.findById(entry._id)
+      .populate('programId', 'name code')
+      .populate('batchId', 'name code year semester')
+      .populate('subjectId', 'name code')
+      .populate('instructorId', 'name email profile.pic_url');
+
+    res.success({ entry: populated }, 'Timetable entry updated successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to update timetable entry', 500);
+  }
+ });
 
 // DELETE /api/college/admin/timetable/:id
 router.delete('/timetable/:id', async (req, res) => {

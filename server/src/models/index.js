@@ -49,6 +49,8 @@ const PlatformAuditLog = require('./PlatformAuditLog');
 const OrgAuditLog = require('./OrgAuditLog');
 const Homework = require('./Homework');
 const TrainingAssignment = require('./TrainingAssignment');
+const Assignment = require('./Assignment');
+const Submission = require('./Submission');
 const Skill = require('./Skill');
 const ActivityLog = require('./ActivityLog');
 const CollegeInstructor = require('./CollegeInstructor');
@@ -108,6 +110,8 @@ module.exports = {
   OrgAuditLog,
   Homework,
   TrainingAssignment,
+  Assignment,
+  Submission,
   Skill,
   ActivityLog,
   CollegeInstructor,

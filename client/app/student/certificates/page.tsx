@@ -8,7 +8,8 @@ import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { toast } from "sonner"
 import Link from "next/link"
-
+import { useAuth } from '../../../lib/auth-context'
+import { collegeApi } from '../../../lib/api'
 import { API_URL as API } from '../../../lib/config'
 const getToken = () =>
   typeof window !== "undefined"
@@ -16,27 +17,41 @@ const getToken = () =>
     : null
 
 export default function CertificatesPage() {
+  const { user, token } = useAuth()
   const [completedCourses, setCompletedCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
   const fetchCompleted = useCallback(async () => {
+    if (!token) return
     try {
-      const r = await fetch(`${API}/student/my-courses`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-        credentials: "include"
-      })
-      const data = await r.json()
-      if (data.success) {
-        const rawList = data.data?.courses || data.data || []
-        // Filter only completed courses
-        setCompletedCourses(rawList.filter((c: any) => (c.progress || 0) === 100))
+      if (isCollege) {
+        const res = await collegeApi.getStudentCertificates(token)
+        if (res.success) {
+          const payload: any = res.data || {}
+          setCompletedCourses(payload.certificates || [])
+        } else {
+          toast.error(res.error || "Failed to load certificates")
+        }
+      } else {
+        const r = await fetch(`${API}/student/my-courses`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+          credentials: "include"
+        })
+        const data = await r.json()
+        if (data.success) {
+          const rawList = data.data?.courses || data.data || []
+          // Filter only completed courses
+          setCompletedCourses(rawList.filter((c: any) => (c.progress || 0) === 100))
+        }
       }
     } catch (e) {
       toast.error("Failed to load certificates")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [token, isCollege])
 
   useEffect(() => {
     fetchCompleted()

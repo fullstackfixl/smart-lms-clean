@@ -8,6 +8,8 @@ import {
     CheckCircle2, XCircle, Trophy, ArrowLeft, Loader2, Zap
 } from "lucide-react"
 import { toast } from "sonner"
+import { useAuth } from '../../../../lib/auth-context'
+import { collegeApi } from '../../../../lib/api'
 import { API_URL } from '../../../../lib/config'
 
 interface Question { question: string; options: string[] }
@@ -25,6 +27,7 @@ const getToken = () => typeof window !== "undefined"
 
 export default function QuizAttemptPage({ params }: { params: Promise<{ id: string }> }) {
     const { id: quizId } = use(params)
+    const { user, token } = useAuth()
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [quiz, setQuiz] = useState<QuizData | null>(null)
@@ -33,6 +36,8 @@ export default function QuizAttemptPage({ params }: { params: Promise<{ id: stri
     const [timeLeft, setTimeLeft] = useState(0)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [result, setResult] = useState<ResultData | null>(null)
+
+    const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
 
     useEffect(() => { fetchQuiz() }, [quizId])
 

@@ -20,7 +20,7 @@ import { Button } from '../../../components/ui/button'
 import { toast } from "sonner"
 import { cn } from "../../../lib/utils"
 import { useAuth } from '../../../lib/auth-context'
-import { liveClassApi } from '../../../lib/api'
+import { liveClassApi, collegeApi } from '../../../lib/api'
 
 interface LiveClass {
   _id: string
@@ -65,7 +65,7 @@ function MetricCard({ label, value, icon: Icon, color = "blue" }: { label: strin
 }
 
 export default function InstructorLiveClassesPage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const router = useRouter()
   const [classes, setClasses] = useState<LiveClass[]>([])
   const [loading, setLoading] = useState(true)
@@ -80,13 +80,17 @@ export default function InstructorLiveClassesPage() {
     duration: "60"
   })
 
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
   const fetchClasses = useCallback(async () => {
     if (!token) return
     setLoading(true)
     try {
-      const res = await liveClassApi.listInstructor(token)
+      const res = isCollege 
+        ? await collegeApi.getInstructorLiveClasses(token)
+        : await liveClassApi.listInstructor(token)
       if (res.success) {
-        setClasses((res.data as any)?.classes || [])
+        setClasses((res.data as any)?.classes || (res.data as any)?.liveClasses || [])
       } else {
         toast.error("Failed to load live classes")
       }
@@ -95,7 +99,7 @@ export default function InstructorLiveClassesPage() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, isCollege])
 
   useEffect(() => {
     fetchClasses()

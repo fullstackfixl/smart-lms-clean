@@ -16,7 +16,7 @@ exports.listCourses = async (params) => {
   
   const sortOptions = getSortOptions(sort);
   
-  return paginate(Course, query, { 
+  const result = await paginate(Course, query, { 
     page, 
     limit, 
     sort: sortOptions,
@@ -25,6 +25,20 @@ exports.listCourses = async (params) => {
       { path: 'instructor_id', select: 'name email' }
     ]
   });
+
+  // Calculate stats
+  const totalCount = await Course.countDocuments(query);
+  const publishedCount = await Course.countDocuments({ ...query, status: 'published' });
+  
+  return {
+    courses: result.data,
+    stats: {
+      total: totalCount,
+      published: publishedCount,
+      enrollments: 0 // Would need Enrollment model to calculate
+    },
+    pagination: result.pagination
+  };
 };
 
 exports.suspendCourse = async (courseId) => {

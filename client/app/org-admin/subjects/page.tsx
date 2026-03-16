@@ -12,6 +12,7 @@ import {
     departmentApi,
     semesterApi
 } from "../../../lib/services/orgAdminApi"
+import { collegeApi } from "../../../lib/api"
 import { useAuth } from "../../../lib/auth-context"
 import { toast } from "sonner"
 
@@ -19,23 +20,31 @@ interface Subject {
     _id: string
     name: string
     code: string
-    department_id: any
-    semester_id: any
+    department_id?: any
+    departmentId?: any  // College API uses camelCase
+    semester_id?: any
+    semesterId?: any   // College API uses camelCase
+    semester?: number  // College subjects use semester number directly
     credits: number
     description: string
     isActive: boolean
+    instructorId?: any  // Assigned instructor
 }
 
 export default function SubjectsPage() {
-    const { token } = useAuth()
+    const { token, organization } = useAuth()
     const [subjects, setSubjects] = useState<Subject[]>([])
     const [departments, setDepartments] = useState<any[]>([])
+    const [instructors, setInstructors] = useState<any[]>([])
     const [semesters, setSemesters] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
     const [submitting, setSubmitting] = useState(false)
+
+    const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
+    const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
 
     // Form state
     const [formData, setFormData] = useState({
@@ -45,7 +54,8 @@ export default function SubjectsPage() {
         semester_id: "",
         credits: 3,
         description: "",
-        isActive: true
+        isActive: true,
+        instructor_id: ""
     })
 
     useEffect(() => {
@@ -56,15 +66,36 @@ export default function SubjectsPage() {
         setLoading(true)
         try {
             if (!token) return
-            const [subs, deps, sems] = await Promise.all([
-                subjectApi.list(token),
-                departmentApi.list(token),
-                semesterApi.list(token)
-            ])
+            
+            // Use college API for college tenants
+            let subs, deps, sems, insts
+            if (isCollege) {
+                const [subsRes, depsRes, instsRes] = await Promise.all([
+                    collegeApi.listSubjects(token),
+                    collegeApi.listDepartments(token),
+                    collegeApi.listInstructors(token)
+                ])
+                subs = subsRes
+                deps = depsRes
+                insts = instsRes
+                // College subjects don't use semester collection, they use semester number directly
+                sems = { success: true, data: [] }
+                setInstructors(insts.data?.instructors || insts.data || [])
+            } else {
+                const [subsRes, depsRes, semsRes] = await Promise.all([
+                    subjectApi.list(token),
+                    departmentApi.list(token),
+                    semesterApi.list(token)
+                ])
+                subs = subsRes
+                deps = depsRes
+                sems = semsRes
+            }
+            
             // Handle the different response formats (sometimes data is nested)
             setSubjects(subs.data?.subjects || subs.data || [])
             setDepartments(deps.data?.departments || deps.data || [])
-            setSemesters(sems.data?.semesters || sems.data || [])
+            setSemesters( sems.data?.semesters || sems.data || [])
         } catch (err) {
             toast.error("Failed to load data")
         }
@@ -77,11 +108,28 @@ export default function SubjectsPage() {
         try {
             if (!token) throw new Error('No authentication token')
             if (editingSubject) {
-                await subjectApi.update(token, editingSubject._id, formData)
-                toast.success("Subject updated successfully")
+                if (isCollege) {
+                    await collegeApi.updateSubject(token, editingSubject._id, formData)
+                } else {
+                    await subjectApi.update(token, editingSubject._id, formData)
+                }
+                // Assign instructor if selected
+                if (formData.instructor_id && isCollege) {
+                    await collegeApi.assignInstructorToSubject(token, editingSubject._id, formData.instructor_id)
+                }
             } else {
-                await subjectApi.create(token, formData)
+                let result
+                if (isCollege) {
+                    result = await collegeApi.createSubject(token, formData)
+                } else {
+                    result = await subjectApi.create(token, formData)
+                }
                 toast.success("Subject created successfully")
+                // Assign instructor if selected
+                const newSubjectId = result?.data?._id || result?._id
+                if (formData.instructor_id && isCollege && newSubjectId) {
+                    await collegeApi.assignInstructorToSubject(token, newSubjectId, formData.instructor_id)
+                }
             }
             setIsModalOpen(false)
             setEditingSubject(null)
@@ -97,7 +145,11 @@ export default function SubjectsPage() {
         if (!confirm("Are you sure you want to delete this subject?")) return
         try {
             if (!token) throw new Error('No authentication token')
-            await subjectApi.delete(token, id)
+            if (isCollege) {
+                await collegeApi.deleteSubject(token, id)
+            } else {
+                await subjectApi.delete(token, id)
+            }
             toast.success("Subject deleted")
             loadData()
         } catch (err) {
@@ -107,14 +159,21 @@ export default function SubjectsPage() {
 
     const openEditModal = (subject: Subject) => {
         setEditingSubject(subject)
+        // Handle both college (camelCase) and generic (snake_case) field names
+        const deptId = subject.department_id || subject.departmentId
+        const semId = subject.semester_id || subject.semesterId
+        
+        const instId = subject.instructorId
+        
         setFormData({
             name: subject.name,
             code: subject.code,
-            department_id: typeof subject.department_id === 'object' ? subject.department_id?._id : subject.department_id,
-            semester_id: typeof subject.semester_id === 'object' ? subject.semester_id?._id : subject.semester_id,
+            department_id: typeof deptId === 'object' ? deptId?._id : deptId || '',
+            semester_id: typeof semId === 'object' ? semId?._id : semId || '',
             credits: subject.credits,
             description: subject.description,
-            isActive: subject.isActive
+            isActive: subject.isActive,
+            instructor_id: typeof instId === 'object' ? instId?._id : instId || ''
         })
         setIsModalOpen(true)
     }
@@ -227,15 +286,51 @@ export default function SubjectsPage() {
                                 <div className="flex items-center gap-2 text-sm text-slate-600">
                                     <Building2 className="h-4 w-4" />
                                     <span className="truncate">
-                                        {typeof subject.department_id === 'object' ? subject.department_id?.name : 'No Department'}
+                                        {(() => {
+                                            const dept = subject.department_id || subject.departmentId
+                                            if (typeof dept === 'object' && dept?.name) return dept.name
+                                            if (typeof dept === 'string') {
+                                                const found = departments.find(d => d._id === dept)
+                                                return found?.name || 'No Department'
+                                            }
+                                            return 'No Department'
+                                        })()}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-slate-600">
                                     <Layers className="h-4 w-4" />
                                     <span>
-                                        {typeof subject.semester_id === 'object' ? `Semester ${subject.semester_id?.number || '?'}` : 'No Semester'}
+                                        {(() => {
+                                            // College subjects use semester (number), generic uses semester_id
+                                            const sem = subject.semester
+                                            if (typeof sem === 'number') return `Semester ${sem}`
+                                            
+                                            const semId = subject.semester_id || subject.semesterId
+                                            if (typeof semId === 'object') {
+                                                return `Semester ${semId?.number || semId?.name || '?'}`
+                                            }
+                                            if (typeof semId === 'string') {
+                                                const found = semesters.find(s => s._id === semId)
+                                                return found ? `Semester ${found.number || found.name}` : `Semester ${semId}`
+                                            }
+                                            return 'No Semester'
+                                        })()}
                                     </span>
                                 </div>
+                                {isCollege && subject.instructorId && (
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <GraduationCap className="h-4 w-4" />
+                                        <span className="truncate">
+                                            {(() => {
+                                                const inst = subject.instructorId
+                                                if (typeof inst === 'object') {
+                                                    return inst.name || `${inst.profile?.firstName || ''} ${inst.profile?.lastName || ''}`.trim() || inst.email || 'Instructor'
+                                                }
+                                                return 'Instructor assigned'
+                                            })()}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="mt-6 flex items-center justify-between">
@@ -350,6 +445,20 @@ export default function SubjectsPage() {
                                             </select>
                                         </div>
                                     </div>
+
+                                    {isCollege && (
+                                        <div className="space-y-2">
+                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Instructor</label>
+                                            <select
+                                                value={formData.instructor_id}
+                                                onChange={e => setFormData({ ...formData, instructor_id: e.target.value })}
+                                                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/50 appearance-none"
+                                            >
+                                                <option value="">No Instructor</option>
+                                                {instructors.map(i => <option key={i._id} value={i._id}>{i.name || `${i.profile?.firstName || ''} ${i.profile?.lastName || ''}`.trim() || i.email}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     <div className="space-y-2">
                                         <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Description</label>

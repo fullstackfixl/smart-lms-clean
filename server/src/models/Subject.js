@@ -21,6 +21,10 @@ const subjectSchema = new mongoose.Schema({
         ref: 'AcademicProgram',
         required: true
     },
+    batchId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Batch'
+    },
     name: {
         type: String,
         required: true,

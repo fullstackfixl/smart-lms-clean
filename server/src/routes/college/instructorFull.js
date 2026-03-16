@@ -528,22 +528,205 @@ router.get('/analytics', async (req, res) => {
 // GET /api/college/instructor/subjects
 router.get('/subjects', async (req, res) => {
   try {
-    const { Subject, AcademicProgram, Batch } = require('../../models');
+    const { Subject, AcademicProgram, Batch, Timetable } = require('../../models');
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
 
-    const subjects = await Subject.find({ 
+    // Get subjects where instructor is directly assigned
+    const directSubjects = await Subject.find({ 
       instructorId: userId, 
       organizationId: orgId,
       isActive: true 
     })
       .populate('programId', 'name code')
       .populate('departmentId', 'name code')
-      .sort({ semester: 1, name: 1 });
+      .populate('batchId', 'name code year semester')
+      .sort({ semester: 1, name: 1 })
+      .lean();
 
-    res.success({ subjects }, 'Subjects retrieved');
+    // Get subjects from timetable assignments
+    const timetableEntries = await Timetable.find({
+      instructorId: userId,
+      organizationId: orgId,
+      isActive: true
+    })
+      .populate('subjectId', 'name code programId departmentId batchId semester credits')
+      .populate('programId', 'name code')
+      .populate('departmentId', 'name code')
+      .populate('batchId', 'name code year semester')
+      .lean();
+
+    // Extract unique subjects from timetable
+    const timetableSubjectMap = new Map();
+    timetableEntries.forEach(entry => {
+      if (entry.subjectId && entry.subjectId._id) {
+        const sid = String(entry.subjectId._id);
+        if (!timetableSubjectMap.has(sid)) {
+          timetableSubjectMap.set(sid, {
+            ...entry.subjectId,
+            programId: entry.programId || entry.subjectId.programId,
+            departmentId: entry.departmentId || entry.subjectId.departmentId,
+            batchId: entry.batchId || entry.subjectId.batchId
+          });
+        }
+      }
+    });
+
+    // Combine direct and timetable subjects (avoid duplicates)
+    const subjectMap = new Map();
+    [...directSubjects, ...timetableSubjectMap.values()].forEach(s => {
+      subjectMap.set(String(s._id), s);
+    });
+    const subjects = Array.from(subjectMap.values());
+
+    const subjectIds = subjects.map(s => s._id);
+
+    const timetable = subjectIds.length
+      ? await Timetable.find({
+          organizationId: orgId,
+          instructorId: userId,
+          subjectId: { $in: subjectIds },
+          isActive: true
+        })
+          .populate('batchId', 'name code year semester')
+          .sort({ day: 1, startTime: 1 })
+          .lean()
+      : [];
+
+    const batchesBySubject = new Map();
+    const upcomingBySubject = new Map();
+    timetable.forEach(t => {
+      const sid = String(t.subjectId);
+      const arr = batchesBySubject.get(sid) || [];
+      if (t.batchId && !arr.some(b => String(b._id) === String(t.batchId._id))) arr.push(t.batchId);
+      batchesBySubject.set(sid, arr);
+
+      const up = upcomingBySubject.get(sid) || [];
+      up.push({
+        _id: t._id,
+        day: t.day,
+        startTime: t.startTime,
+        endTime: t.endTime,
+        room: t.room,
+        meetingLink: t.meetingLink,
+        batch: t.batchId
+      });
+      upcomingBySubject.set(sid, up);
+    });
+
+    const batchIds = [...new Set(timetable.map(t => String(t.batchId?._id || t.batchId)).filter(Boolean))];
+    const studentsByBatch = batchIds.length
+      ? await User.aggregate([
+          { $match: { organization_id: orgId, role: 'student', isActive: true, 'profile.batch': { $in: batchIds.map(id => new (require('mongoose').Types.ObjectId)(id)) } } },
+          { $group: { _id: '$profile.batch', count: { $sum: 1 } } }
+        ])
+      : [];
+    const studentCountMap = new Map(studentsByBatch.map(x => [String(x._id), x.count]));
+
+    const cards = subjects.map(s => {
+      const sid = String(s._id);
+      const batches = batchesBySubject.get(sid) || (s.batchId ? [s.batchId] : []);
+      const studentsCount = batches.reduce((acc, b) => acc + (studentCountMap.get(String(b._id)) || 0), 0);
+      const upcomingClasses = upcomingBySubject.get(sid) || [];
+      return {
+        ...s,
+        batches,
+        studentsCount,
+        upcomingClasses
+      };
+    });
+
+    res.success({ subjects: cards }, 'My subjects retrieved');
   } catch (error) {
-    res.error(error.message, 'Failed to load subjects', 500);
+    res.error(error.message, 'Failed to load my subjects', 500);
+  }
+});
+
+// GET /api/college/instructor/my-subjects
+router.get('/my-subjects', async (req, res) => {
+  try {
+    const { Subject, Timetable, User } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const subjects = await Subject.find({
+      instructorId: userId,
+      organizationId: orgId,
+      isActive: true
+    })
+      .populate('programId', 'name code')
+      .populate('departmentId', 'name code')
+      .populate('batchId', 'name code year semester')
+      .sort({ semester: 1, name: 1 })
+      .lean();
+
+    const subjectIds = subjects.map(s => s._id);
+    const timetable = subjectIds.length
+      ? await Timetable.find({
+          organizationId: orgId,
+          instructorId: userId,
+          subjectId: { $in: subjectIds },
+          isActive: true
+        })
+          .populate('batchId', 'name code year semester')
+          .sort({ day: 1, startTime: 1 })
+          .lean()
+      : [];
+
+    const batchesBySubject = new Map();
+    const upcomingBySubject = new Map();
+    timetable.forEach(t => {
+      const sid = String(t.subjectId);
+      const arr = batchesBySubject.get(sid) || [];
+      if (t.batchId && !arr.some(b => String(b._id) === String(t.batchId._id))) arr.push(t.batchId);
+      batchesBySubject.set(sid, arr);
+
+      const up = upcomingBySubject.get(sid) || [];
+      up.push({
+        _id: t._id,
+        day: t.day,
+        startTime: t.startTime,
+        endTime: t.endTime,
+        room: t.room,
+        meetingLink: t.meetingLink,
+        batch: t.batchId
+      });
+      upcomingBySubject.set(sid, up);
+    });
+
+    const mongoose = require('mongoose');
+    const batchIds = [...new Set(timetable.map(t => String(t.batchId?._id || t.batchId)).filter(Boolean))];
+    const studentsByBatch = batchIds.length
+      ? await User.aggregate([
+          {
+            $match: {
+              organization_id: orgId,
+              role: 'student',
+              isActive: true,
+              'profile.batch': { $in: batchIds.map(id => new mongoose.Types.ObjectId(id)) }
+            }
+          },
+          { $group: { _id: '$profile.batch', count: { $sum: 1 } } }
+        ])
+      : [];
+    const studentCountMap = new Map(studentsByBatch.map(x => [String(x._id), x.count]));
+
+    const cards = subjects.map(s => {
+      const sid = String(s._id);
+      const batches = batchesBySubject.get(sid) || (s.batchId ? [s.batchId] : []);
+      const studentsCount = batches.reduce((acc, b) => acc + (studentCountMap.get(String(b._id)) || 0), 0);
+      const upcomingClasses = upcomingBySubject.get(sid) || [];
+      return {
+        ...s,
+        batches,
+        studentsCount,
+        upcomingClasses
+      };
+    });
+
+    res.success({ subjects: cards }, 'My subjects retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load my subjects', 500);
   }
 });
 
@@ -674,6 +857,54 @@ router.post('/attendance', async (req, res) => {
   }
 });
 
+ // GET /api/college/instructor/attendance
+ router.get('/attendance', async (req, res) => {
+  try {
+    const { Attendance, Subject } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { subjectId, batchId, startDate, endDate } = req.query;
+
+    const match = {
+      organization_id: orgId,
+      is_active: true,
+      instructor_id: userId
+    };
+
+    if (subjectId) match.subjectId = subjectId;
+    if (batchId) match.batchId = batchId;
+
+    if (startDate || endDate) {
+      match.session_date = {};
+      if (startDate) match.session_date.$gte = new Date(startDate);
+      if (endDate) match.session_date.$lte = new Date(endDate);
+    }
+
+    const sessions = await Attendance.find(match)
+      .populate('subjectId', 'name code')
+      .sort({ session_date: -1, start_time: -1 })
+      .limit(200)
+      .lean();
+
+    const subjectIds = [...new Set(sessions.map(s => String(s.subjectId?._id || s.subjectId)).filter(Boolean))];
+    const subjects = subjectIds.length
+      ? await Subject.find({ _id: { $in: subjectIds }, organizationId: orgId, isActive: true })
+          .select('_id batchId')
+          .lean()
+      : [];
+    const batchMap = new Map(subjects.map(s => [String(s._id), s.batchId]));
+
+    const normalized = sessions.map(s => ({
+      ...s,
+      batchId: s.batchId || batchMap.get(String(s.subjectId?._id || s.subjectId)) || null
+    }));
+
+    res.success({ sessions: normalized }, 'Attendance sessions retrieved');
+  } catch (error) {
+    res.error(error.message, 'Failed to load attendance sessions', 500);
+  }
+ });
+
 // GET /api/college/instructor/attendance/batch/:batchId/subject/:subjectId
 router.get('/attendance/batch/:batchId/subject/:subjectId', async (req, res) => {
   try {
@@ -691,6 +922,82 @@ router.get('/attendance/batch/:batchId/subject/:subjectId', async (req, res) => 
     res.success({ records }, 'Attendance records retrieved');
   } catch (error) {
     res.error(error.message, 'Failed to load attendance', 500);
+  }
+});
+
+// GET /api/college/instructor/students
+// Returns students in batches that match subjects taught by instructor
+router.get('/students', async (req, res) => {
+  try {
+    const { Subject, User } = require('../../models');
+    const userId = req.user._id;
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    const { subjectId, batchId } = req.query;
+
+    // Get subjects taught by this instructor
+    let subjectQuery = { 
+      instructorId: userId, 
+      organizationId: orgId, 
+      isActive: true 
+    };
+    if (subjectId) subjectQuery._id = subjectId;
+    
+    const instructorSubjects = await Subject.find(subjectQuery)
+      .populate('batchId', 'name code')
+      .populate('programId', 'name code')
+      .lean();
+
+    // Get batch IDs from these subjects
+    const batchIds = [...new Set(instructorSubjects.map(s => String(s.batchId?._id || s.batchId)).filter(Boolean))];
+    
+    if (batchIds.length === 0) {
+      return res.success({ students: [], count: 0 }, 'No batches assigned to instructor');
+    }
+
+    // Find students in these batches
+    let studentQuery = { 
+      organization_id: orgId, 
+      role: 'student', 
+      'profile.batch': { $in: batchIds }
+    };
+    if (batchId) {
+      // If specific batch requested, filter to that batch
+      studentQuery['profile.batch'] = batchId;
+    }
+
+    const students = await User.find(studentQuery)
+      .select('firstName lastName email profile rollNumber status')
+      .lean();
+
+    // Enrich student data with batch and subject info
+    const enrichedStudents = students.map(student => {
+      const studentBatchId = String(student.profile?.batch);
+      const matchingSubjects = instructorSubjects.filter(s => 
+        String(s.batchId?._id || s.batchId) === studentBatchId
+      );
+      
+      return {
+        _id: student._id,
+        firstName: student.firstName || student.profile?.firstName,
+        lastName: student.lastName || student.profile?.lastName,
+        email: student.email,
+        rollNumber: student.rollNumber || student.profile?.rollNumber,
+        batch: matchingSubjects[0]?.batchId,
+        program: matchingSubjects[0]?.programId,
+        subjects: matchingSubjects.map(s => ({ _id: s._id, name: s.name, code: s.code })),
+        status: student.status,
+        enrolledSubjects: student.profile?.enrolledSubjects || []
+      };
+    });
+
+    res.success({ 
+      students: enrichedStudents, 
+      count: enrichedStudents.length,
+      batches: batchIds.length 
+    }, 'Students retrieved successfully');
+  } catch (error) {
+    console.error('Instructor students error:', error);
+    res.error(error.message, 'Failed to load students', 500);
   }
 });
 

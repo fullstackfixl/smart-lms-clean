@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { BarChart3, Users, BookOpen, TrendingUp, Award, Download, Target, RefreshCw } from "lucide-react"
 import { Button } from '../../../components/ui/button'
 import { useAuth } from '../../../lib/auth-context'
-import { instructorApi } from '../../../lib/api'
+import { instructorApi, collegeApi } from '../../../lib/api'
 import { toast } from "sonner"
 
 interface CourseStat {
@@ -50,17 +50,20 @@ function MetricCard({ label, value, subtext, icon: Icon, color = "blue" }: { lab
 }
 
 export default function InstructorAnalyticsPage() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState("6m")
+
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
 
   const fetchAnalytics = async () => {
     if (!token) return
     setLoading(true)
     try {
-      // Fetch instructor dashboard data which includes analytics
-      const res = await instructorApi.dashboardOverview(token)
+      const res = isCollege
+        ? await collegeApi.getInstructorAnalytics(token)
+        : await instructorApi.dashboardOverview(token)
       if (res.success && res.data) {
         const dashboardData: any = res.data
         setData({

@@ -120,6 +120,8 @@ const checkInstructorPermission = async (req, res, next) => {
 // POST /api/quizzes - Create new quiz
 router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (req, res) => {
   try {
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -144,7 +146,7 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
     // Verify course exists and belongs to user's organization
     const course = await Course.findOne({
       _id: course_id,
-      organization_id: req.user.organization_id
+      organization_id: orgId
     });
 
     if (!course) {
@@ -169,7 +171,7 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
 
     // Create quiz
     const quiz = new Quiz({
-      organization_id: req.user.organization_id,
+      organization_id: orgId,
       course_id,
       lesson_id: lesson_id || undefined,
       instructor_id: req.user._id,
@@ -196,6 +198,70 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
       success: true,
       data: quiz,
       message: 'Quiz created successfully'
+    });
+
+    // Best-effort: broadcast to college batch students if this course is mapped to a Subject
+    setImmediate(async () => {
+      try {
+        const Subject = require('../models/Subject');
+        const User = require('../models/User');
+        const Notification = require('../models/Notification');
+
+        let socketService = null;
+        try { socketService = require('../services/socketService'); } catch (_) { }
+
+        const orgId = req.user.organization_id?._id || req.user.organization_id;
+        const subject = await Subject.findOne({ organizationId: orgId, contentCourseId: course_id, isActive: true })
+          .select('batchId name code')
+          .lean();
+
+        if (!subject?.batchId) return;
+
+        const students = await User.find({
+          organization_id: orgId,
+          role: 'student',
+          isActive: true,
+          'profile.batch': subject.batchId
+        }).select('_id').lean();
+
+        if (!students.length) return;
+
+        const notificationDocs = students.map(s => ({
+          organization_id: orgId,
+          recipient_id: s._id,
+          sender_id: req.user._id,
+          type: 'general',
+          title: 'New Quiz',
+          message: `${req.user.name || 'Instructor'} posted a new quiz: ${title}`,
+          data: {
+            entityType: 'quiz',
+            quizId: quiz._id,
+            courseId: course_id,
+            subjectId: subject._id,
+            subjectName: subject.name,
+            subjectCode: subject.code
+          },
+          priority: 'medium',
+          action_url: '/student/quizzes',
+          action_text: 'View Quiz'
+        }));
+
+        await Notification.insertMany(notificationDocs, { ordered: false });
+
+        if (socketService?.io) {
+          socketService.sendNotificationToUsers(
+            students.map(s => String(s._id)),
+            {
+              type: 'general',
+              title: 'New Quiz',
+              message: `${req.user.name || 'Instructor'} posted a new quiz: ${title}`,
+              data: { quizId: quiz._id, courseId: course_id }
+            }
+          );
+        }
+      } catch (_) {
+        // ignore broadcast failures
+      }
     });
 
   } catch (error) {

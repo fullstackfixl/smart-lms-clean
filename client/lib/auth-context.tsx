@@ -14,10 +14,28 @@ interface User {
   organization_id?: string
   modulesEnabled?: string[]
   organizationType?: string
+  batchId?: { _id: string; name: string; code: string }
+  programId?: { _id: string; name: string; code: string }
+  semester?: number
+  year?: number
   profile?: {
     avatar?: string
     phone?: string
     bio?: string
+    firstName?: string
+    lastName?: string
+    batchId?: { _id: string; name: string; code: string }
+    programId?: { _id: string; name: string; code: string }
+    semester?: number
+    // Backend field names
+    batch?: string
+    program?: string
+    program_id?: string | { _id: string; name: string; code: string }
+    current_semester?: number
+    department?: string | { _id: string; name: string; code: string }
+    rollNumber?: string
+    enrolledSubjects?: string[]
+    enrolledCourses?: string[]
   }
 }
 
@@ -25,6 +43,7 @@ interface Organization {
   _id: string
   name: string
   type: string
+  organizationType?: string
   modulesEnabled: string[]
   logo_url?: string
   branding?: {

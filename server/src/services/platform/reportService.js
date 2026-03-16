@@ -102,7 +102,7 @@ exports.listReports = async (params = {}) => {
   const total = await PlatformReport.countDocuments(query);
   
   return {
-    data: reports,
+    reports,
     pagination: {
       page: parseInt(page),
       limit: parseInt(limit),

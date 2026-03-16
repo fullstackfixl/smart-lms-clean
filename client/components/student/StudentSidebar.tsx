@@ -1,165 +1,167 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
-  BookOpen,
-  FileQuestion,
-  Award,
-  Trophy,
-  Calendar,
-  CalendarDays,
-  GraduationCap,
-  User,
+  Video,
+  Settings,
   LogOut,
+  GraduationCap,
+  BookOpen,
   Menu,
   X,
-  Video,
-  Users,
-  Zap,
+  FileText,
+  Bell,
+  Calendar,
+  ClipboardList,
+  Target,
+  Award,
+  MessageSquare,
+  Clock,
+  ScrollText,
+  TrendingUp,
+  User,
   ChevronRight,
   Book,
-  ClipboardCheck,
-  FileSpreadsheet
-} from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import { cn } from '../../lib/utils'
+  Layers,
+} from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
+import { cn } from '../../lib/utils'
 
-const navGroups = [
-  {
-    label: "Learning",
-    items: [
-      { label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
-      { label: 'My Subjects', href: '/student/subjects', icon: Book, collegeOnly: true },
-      { label: 'Browse Courses', href: '/student/available-courses', icon: GraduationCap, module: 'COURSES' },
-      { label: 'My Courses', href: '/student/my-courses', icon: BookOpen, module: 'COURSES' },
-      { label: 'Live Classes', href: '/student/live-classes', icon: Video },
-      { label: 'Quizzes', href: '/student/quizzes', icon: FileQuestion },
-    ]
-  },
-  {
-    label: "Progress",
-    items: [
-      { label: 'Certificates', href: '/student/certificates', icon: Award, module: 'CERTIFICATES' },
-      { label: 'Leaderboard', href: '/student/leaderboard', icon: Trophy, module: 'LEADERBOARDS' },
-      { label: 'Attendance', href: '/student/attendance', icon: Users },
-      { label: 'Exams', href: '/student/exams', icon: ClipboardCheck, collegeOnly: true },
-      { label: 'Results', href: '/student/results', icon: FileSpreadsheet, collegeOnly: true },
-      { label: 'Transcript', href: '/student/transcript', icon: GraduationCap, collegeOnly: true },
-    ]
-  },
-  {
-    label: "Schedule",
-    items: [
-      { label: 'Timetable', href: '/student/timetable', icon: Calendar, module: 'TIMETABLE' },
-      { label: 'Events', href: '/student/events', icon: CalendarDays, module: 'EVENTS' },
-    ]
-  },
+interface NavItem {
+  label: string
+  href: string
+  icon: any
+  collegeOnly?: boolean
+  description?: string
+  section?: 'learning' | 'academics' | 'engagement' | 'records'
+}
+
+const navItems: NavItem[] = [
+  { section: 'learning', label: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard, description: 'Overview' },
+  { section: 'learning', label: 'My Courses', href: '/student/courses', icon: BookOpen, description: 'Enrolled courses' },
+  { section: 'learning', label: 'Live Classes', href: '/student/live-classes', icon: Video, description: 'Join sessions' },
+  { section: 'learning', label: 'Timetable', href: '/student/timetable', icon: Calendar, collegeOnly: true, description: 'Class schedule' },
+
+  { section: 'academics', label: 'My Subjects', href: '/student/my-subjects', icon: ScrollText, collegeOnly: true, description: 'Subject materials' },
+  { section: 'academics', label: 'Assignments', href: '/student/assignments', icon: FileText, description: 'Submit work' },
+  { section: 'academics', label: 'Quizzes & Tests', href: '/student/quizzes', icon: ClipboardList, description: 'Assessments' },
+  { section: 'academics', label: 'Attendance', href: '/student/attendance', icon: Clock, collegeOnly: true, description: 'Track attendance' },
+
+  { section: 'engagement', label: 'Grades', href: '/student/grades', icon: TrendingUp, description: 'View marks' },
+  { section: 'engagement', label: 'Exams', href: '/student/exams', icon: Target, collegeOnly: true, description: 'Exam schedule' },
+  { section: 'engagement', label: 'Results', href: '/student/results', icon: Award, collegeOnly: true, description: 'Exam results' },
+  { section: 'engagement', label: 'Messages', href: '/student/messages', icon: MessageSquare, description: 'Communicate' },
+  { section: 'engagement', label: 'Notifications', href: '/student/notifications', icon: Bell, description: 'Updates' },
+
+  { section: 'records', label: 'Transcript', href: '/student/transcript', icon: ScrollText, collegeOnly: true, description: 'Academic record' },
+  { section: 'records', label: 'Certificates', href: '/student/certificates', icon: Award, description: 'Achievements' },
+  { section: 'records', label: 'Events', href: '/student/events', icon: Calendar, description: 'College events' },
 ]
 
 export function StudentSidebar() {
+  const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
   const { user, logout, organization } = useAuth()
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
 
-  const isItemVisible = (item: any) => {
-    if (item.module && !user?.modulesEnabled?.includes(item.module)) return false
-    if (item.collegeOnly && String(user?.organizationType || '').toUpperCase() !== 'COLLEGE') return false
-    return true
-  }
-
-  const initials = user?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'S'
+  // Get student batch info for filtering
+  const studentBatch = user?.batchId || user?.profile?.batchId
+  const studentProgram = user?.programId || user?.profile?.programId
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
 
   const SidebarContent = () => (
-    <div className="flex h-full flex-col" style={{ background: 'linear-gradient(180deg, #0a0f1e 0%, #0d1117 100%)' }}>
-      {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-white/5">
-        {organization?.branding?.logo || (organization as any)?.logo_url ? (
-          <div className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
-              alt="Organization logo"
-              className="h-full w-full object-contain"
-            />
+    <div className="flex h-full flex-col bg-white border-r border-gray-200">
+      {/* Header / Logo */}
+      <div className="flex h-16 items-center border-b border-gray-100 px-6">
+        <Link href="/student/dashboard" className="flex items-center gap-3">
+          {organization?.branding?.logo || (organization as any)?.logo_url ? (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-gray-200 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
+                alt="Organization logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-600 text-white">
+              <GraduationCap className="h-5 w-5" />
+            </div>
+          )}
+          <div className="flex flex-col">
+            <span className="text-xl font-black tracking-tight text-slate-900">
+              {organization?.name || 'SmartLMS'}
+            </span>
+            <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Student Portal</span>
           </div>
-        ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25 shrink-0">
-            <Zap className="h-5 w-5 text-white" fill="white" />
-          </div>
-        )}
-        <div>
-          <span className="text-[15px] font-bold tracking-tight text-white">
-            {organization?.name ? (
-              <>
-                {organization.name}
-              </>
-            ) : (
-              <>
-                Smart<span className="text-emerald-400">LMS</span>
-              </>
-            )}
-          </span>
-          <p className="text-[10px] font-medium text-slate-500 -mt-0.5">Learner Portal</p>
-        </div>
+        </Link>
       </div>
 
-      {/* User Avatar Card */}
-      {user && (
-        <div className="mx-3 mt-4 rounded-xl p-3" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(20,184,166,0.05) 100%)', border: '1px solid rgba(16,185,129,0.12)' }}>
-          <div className="flex items-center gap-3">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-md shrink-0">
-              {initials}
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-400 border-2 border-[#0a0f1e]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold text-slate-100">{user.name}</p>
-              <p className="text-[10px] font-medium text-emerald-400/80">Student</p>
-            </div>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+      {/* Student Info Card */}
+      {isCollege && studentBatch && (
+        <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-lg">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-green-600" />
+            <span className="text-sm font-semibold text-green-800">{user?.profile?.firstName || user?.name}</span>
+          </div>
+          <div className="mt-2 text-xs text-green-700 space-y-0.5">
+            <p>Batch: {studentBatch?.name || studentBatch?.code || 'N/A'}</p>
+            {studentProgram && <p>Program: {studentProgram?.name || studentProgram?.code}</p>}
           </div>
         </div>
       )}
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scroll-thin">
-        {navGroups.map((group) => {
-          const visibleItems = group.items.filter(isItemVisible)
-          if (visibleItems.length === 0) return null
+      {/* Primary Navigation */}
+      <nav className="mt-4 flex-1 space-y-6 px-3 overflow-y-auto custom-scrollbar pb-6">
+        {(['learning', 'academics', 'engagement', 'records'] as const).map((section) => {
+          const items = navItems
+            .filter((i) => i.section === section)
+            .filter((i) => !i.collegeOnly || isCollege)
+          if (!items.length) return null
+
+          const title =
+            section === 'learning' ? 'My Learning' :
+            section === 'academics' ? 'Academics' :
+            section === 'engagement' ? 'Activity' :
+            'Records'
+
           return (
-            <div key={group.label}>
-              <p className="mb-1.5 px-3 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-600">{group.label}</p>
-              <div className="space-y-0.5">
-                {visibleItems.map((item) => {
-                  const isActive = pathname === item.href || (item.href !== '/student/dashboard' && pathname.startsWith(item.href))
-                  const Icon = item.icon
+            <div key={section} className="space-y-2">
+              <div className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                {title}
+              </div>
+              <div className="space-y-1">
+                {items.map((item) => {
+                  const isActive = pathname.startsWith(item.href)
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      onClick={() => setIsMobileOpen(false)}
                       className={cn(
-                        'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200',
+                        "group relative flex items-center rounded-xl px-3 py-2.5 text-sm font-bold transition-all duration-150",
                         isActive
-                          ? 'text-emerald-400'
-                          : 'text-slate-500 hover:text-slate-200 hover:bg-white/4'
+                          ? "bg-green-50 text-green-700"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                       )}
                     >
+                      <item.icon
+                        className={cn(
+                          "mr-3 h-4 w-4 stroke-[2]",
+                          isActive ? "text-green-700" : "text-slate-400 group-hover:text-slate-700"
+                        )}
+                      />
+                      <span className="flex-1">{item.label}</span>
+                      <ChevronRight
+                        className={cn(
+                          "h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-all",
+                          isActive && "opacity-100 text-green-300"
+                        )}
+                      />
                       {isActive && (
-                        <motion.div
-                          layoutId="activeStudent"
-                          className="absolute inset-0 rounded-xl"
-                          style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(20,184,166,0.08) 100%)', border: '1px solid rgba(16,185,129,0.2)' }}
-                          transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
-                        />
-                      )}
-                      <Icon className={cn('relative z-10 h-4 w-4 shrink-0 transition-all', isActive ? 'text-emerald-400 scale-110' : 'group-hover:scale-105')} />
-                      <span className="relative z-10">{item.label}</span>
-                      {isActive && (
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-gradient-to-b from-emerald-400 to-teal-500 rounded-l-full" />
+                        <div className="absolute -left-3 h-6 w-1 rounded-r-full bg-green-600" />
                       )}
                     </Link>
                   )
@@ -171,26 +173,27 @@ export function StudentSidebar() {
       </nav>
 
       {/* Bottom Actions */}
-      <div className="border-t border-white/5 p-3 space-y-0.5">
+      <div className="border-t border-gray-100 p-4 space-y-1">
         <Link
           href="/student/profile"
-          className={cn(
-            'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all',
-            pathname === '/student/profile'
-              ? 'bg-white/6 text-slate-100'
-              : 'text-slate-500 hover:bg-white/4 hover:text-slate-200'
-          )}
-          onClick={() => setIsMobileOpen(false)}
+          className="flex items-center rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-gray-50 hover:text-slate-900"
         >
-          <User className="h-4 w-4" />
-          <span>Profile</span>
+          <User className="mr-3 h-4 w-4 stroke-[1.5]" />
+          Profile
+        </Link>
+        <Link
+          href="/student/settings"
+          className="flex items-center rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-gray-50 hover:text-slate-900"
+        >
+          <Settings className="mr-3 h-4 w-4 stroke-[1.5]" />
+          Settings
         </Link>
         <button
-          onClick={() => logout()}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-slate-500 transition-all hover:bg-red-500/8 hover:text-red-400"
+          onClick={logout}
+          className="flex w-full items-center rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
         >
-          <LogOut className="h-4 w-4" />
-          <span>Logout</span>
+          <LogOut className="mr-3 h-4 w-4 stroke-[1.5]" />
+          Log out
         </button>
       </div>
     </div>
@@ -198,41 +201,54 @@ export function StudentSidebar() {
 
   return (
     <>
-      <button
-        onClick={() => setIsMobileOpen(true)}
-        className="md:hidden fixed top-3 left-3 z-[60] p-2 rounded-lg bg-slate-900 border border-slate-800 shadow-sm"
-      >
-        <Menu className="h-5 w-5 text-slate-400" />
-      </button>
-
-      <aside className="hidden md:block fixed left-0 top-0 h-screen w-[220px] z-50">
+      <aside className="hidden lg:block w-[220px] h-screen shrink-0 sticky top-0">
         <SidebarContent />
       </aside>
 
+      <div className="fixed left-0 right-0 top-0 z-[60] flex items-center justify-between bg-white px-6 py-4 lg:hidden border-b border-gray-200">
+        <Link href="/student/dashboard" className="flex items-center gap-3">
+          {organization?.branding?.logo || (organization as any)?.logo_url ? (
+            <div className="h-10 w-10 rounded-lg bg-white border border-gray-200 overflow-hidden flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
+                alt="Organization logo"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          ) : (
+            <div className="h-10 w-10 rounded-lg bg-green-600 flex items-center justify-center">
+              <GraduationCap className="h-5 w-5 text-white" />
+            </div>
+          )}
+          <span className="text-xl font-bold text-slate-900">{organization?.name || 'SmartLMS'}</span>
+        </Link>
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="rounded-lg p-2 bg-gray-50 text-slate-600 hover:text-slate-900 border border-gray-200"
+        >
+          {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </div>
+
       <AnimatePresence>
-        {isMobileOpen && (
+        {mobileOpen && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsMobileOpen(false)}
-              className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[70]"
+              onClick={() => setMobileOpen(false)}
+              className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm lg:hidden"
             />
             <motion.aside
               initial={{ x: -220 }}
               animate={{ x: 0 }}
               exit={{ x: -220 }}
-              transition={{ type: "spring", damping: 22, stiffness: 160 }}
-              className="md:hidden fixed left-0 top-0 h-screen w-[220px] z-[80]"
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed left-0 top-0 z-[70] h-screen w-[220px] lg:hidden overflow-hidden"
             >
               <SidebarContent />
-              <button
-                onClick={() => setIsMobileOpen(false)}
-                className="absolute top-4 -right-11 p-2 rounded-full bg-slate-800 shadow-lg"
-              >
-                <X className="h-4 w-4 text-white" />
-              </button>
             </motion.aside>
           </>
         )}

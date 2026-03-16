@@ -6,6 +6,8 @@ import { Calendar, AlertCircle, Clock, MapPin, User } from "lucide-react"
 import { EmptySection } from '../../../components/student/EmptySection'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { toast } from "sonner"
+import { useAuth } from '../../../lib/auth-context'
+import { collegeApi } from '../../../lib/api'
 import { getTimetable } from '../../../lib/services/studentApi'
 
 interface TimetableEntry {
@@ -27,22 +29,41 @@ interface TimetableEntry {
 const DAYS_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 export default function TimetablePage() {
+  const { user, token } = useAuth()
   const [timetable, setTimetable] = useState<TimetableEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
   useEffect(() => {
     loadTimetable()
-  }, [])
+  }, [token])
 
   async function loadTimetable() {
+    if (!token) return
     setLoading(true)
     setError(null)
     try {
-      const response = await getTimetable()
+      let response
+      if (isCollege) {
+        response = await collegeApi.getStudentTimetable(token)
+      } else {
+        response = await getTimetable()
+      }
       
       if (response.success && response.data) {
-        setTimetable(response.data)
+        // Handle different response structures
+        const data = response.data
+        if (Array.isArray(data)) {
+          setTimetable(data)
+        } else if (data.entries) {
+          setTimetable(data.entries)
+        } else if (data.timetable) {
+          setTimetable(data.timetable)
+        } else {
+          setTimetable([])
+        }
       } else {
         setError(response.message || "Failed to load timetable")
       }
@@ -110,15 +131,15 @@ export default function TimetablePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <h1 className="text-6xl font-bold text-white mb-3">Timetable</h1>
-          <p className="text-xl text-slate-300">Your class schedule at a glance</p>
+          <h1 className="text-6xl font-bold text-slate-900 mb-3">Timetable</h1>
+          <p className="text-xl text-slate-600">Your class schedule at a glance</p>
         </motion.div>
 
         <div className="flex items-center justify-center min-h-[40vh]">
           <div className="text-center">
             <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Unable to Load Timetable</h2>
-            <p className="text-slate-400 mb-6">{error}</p>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Unable to Load Timetable</h2>
+            <p className="text-slate-600 mb-6">{error}</p>
             <button
               onClick={loadTimetable}
               className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all"
@@ -140,8 +161,8 @@ export default function TimetablePage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        <h1 className="text-6xl font-bold text-white mb-3">Timetable</h1>
-        <p className="text-xl text-slate-300">Your class schedule at a glance</p>
+        <h1 className="text-6xl font-bold text-slate-900 mb-3">Timetable</h1>
+        <p className="text-xl text-slate-600">Your class schedule at a glance</p>
       </motion.div>
 
       {timetable.length === 0 ? (
@@ -163,7 +184,7 @@ export default function TimetablePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: dayIndex * 0.1 }}
               >
-                <h2 className="text-2xl font-bold text-white mb-4">{day}</h2>
+                <h2 className="text-2xl font-bold text-slate-900 mb-4">{day}</h2>
                 <div className="space-y-3">
                   {dayEntries.map((entry, index) => (
                     <div
@@ -177,7 +198,7 @@ export default function TimetablePage() {
                               <Calendar className="h-6 w-6 text-orange-400" />
                             </div>
                             <div>
-                              <h3 className="text-xl font-bold text-white">
+                              <h3 className="text-xl font-bold text-slate-900">
                                 {entry.course_id.title}
                               </h3>
                               <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getTypeColor(entry.type)}`}>
@@ -186,7 +207,7 @@ export default function TimetablePage() {
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-700">
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4" />
                               <span>

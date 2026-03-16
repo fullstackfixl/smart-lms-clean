@@ -11,7 +11,9 @@ app.use(cors({
       'https://smart-lms-clean.vercel.app',
       'https://smart-lms-clean-1.onrender.com',
       'http://localhost:3000',
-      'http://localhost:3000'
+      'http://localhost:3001',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001'
     ];
 
     // Allow any additional origin from CLIENT_URL env (comma-separated)
@@ -31,11 +33,14 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Set-Cookie'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Set-Cookie', 'Authorization'],
   preflightContinue: false,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 200
 }));
+
+// Handle OPTIONS preflight explicitly
+app.options('*', cors());
 
 app.use(express.json({
   verify: (req, res, buf) => {
@@ -180,6 +185,14 @@ try {
   console.log('  - grades');
   const gradesRoutes = require('./routes/grades');
   app.use('/api/grades', gradesRoutes);
+
+  console.log('  - assignments');
+  const assignmentsRoutes = require('./routes/assignments');
+  app.use('/api/assignments', assignmentsRoutes);
+
+  console.log('  - submissions');
+  const submissionsRoutes = require('./routes/submissions');
+  app.use('/api/submissions', submissionsRoutes);
 
   console.log('  - timetable');
   const timetableRoutes = require('./routes/timetable');

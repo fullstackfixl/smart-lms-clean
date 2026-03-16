@@ -2,67 +2,86 @@
 
 import { useAuth } from '../../lib/auth-context'
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu'
-import { ChevronDown, User, LogOut } from "lucide-react"
+import { Bell, Search, User, LogOut } from "lucide-react"
+import { Button } from '../../components/ui/button'
+import { useRouter } from "next/navigation"
 
 export function StudentHeader() {
-    const { user, logout, organization } = useAuth()
+  const { user, logout, organization } = useAuth()
+  const router = useRouter()
 
-    return (
-        <header className="fixed top-0 right-0 left-0 md:left-[240px] h-16 bg-slate-900/40 backdrop-blur-xl border-b border-slate-800/50 z-40 px-8 flex items-center justify-between shadow-2xl">
-            <div className="flex-1 hidden md:block">
-                <h1 className="text-lg font-black text-slate-100 tracking-tight">
-                    Hi, <span className="text-emerald-500">{user?.name || 'Learner'}</span> 👋
-                </h1>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest -mt-1">Let&apos;s excel today</p>
-            </div>
+  return (
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200 bg-white px-8">
+      {/* Search Bar */}
+      <div className="flex w-full max-w-xl items-center">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 stroke-[1.5]" />
+          <input
+            type="text"
+            placeholder="Search courses, subjects, quizzes..."
+            className="h-10 w-full rounded-md border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm transition-all focus:border-green-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
+          />
+        </div>
+      </div>
 
-            <div className="flex items-center gap-6 ml-auto">
-                <div className="relative group cursor-pointer hidden sm:flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">
-                    <User className="h-4 w-4" />
+      {/* Right Side Actions */}
+      <div className="flex items-center space-x-4">
+        {/* Notifications */}
+        <Button variant="ghost" size="icon" className="relative text-slate-500 hover:text-green-600">
+          <Bell className="h-5 w-5 stroke-[1.5]" />
+          <span className="absolute right-2 top-2 flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+          </span>
+        </Button>
+
+        {/* User Profile Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="flex items-center space-x-2 px-2 hover:bg-gray-50">
+              {organization?.branding?.logo || (organization as any)?.logo_url ? (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
+                    alt="Organization logo"
+                    className="h-full w-full object-contain"
+                  />
                 </div>
-
-                <DropdownMenu>
-                    <DropdownMenuTrigger className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition-all outline-none group">
-                        {organization?.branding?.logo || (organization as any)?.logo_url ? (
-                            <div className="h-8 w-8 rounded-lg bg-slate-900/30 border border-slate-700/50 overflow-hidden flex items-center justify-center shadow-lg transition-transform group-hover:scale-105">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
-                                    alt="Organization logo"
-                                    className="h-full w-full object-contain"
-                                />
-                            </div>
-                        ) : (
-                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-500 flex items-center justify-center text-xs font-bold text-white shadow-lg transition-transform group-hover:scale-105">
-                                {user?.name?.charAt(0) || 'S'}
-                            </div>
-                        )}
-                        <div className="text-left hidden sm:block">
-                            <p className="text-xs font-bold text-slate-100 leading-none">{user?.name || 'Learner'}</p>
-                            <p className="text-[10px] font-medium text-slate-500 mt-1">{organization?.name || 'Student'}</p>
-                        </div>
-                        <ChevronDown className="h-3 w-3 text-slate-500 transition-transform group-data-[state=open]:rotate-180" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56 bg-slate-900/90 backdrop-blur-xl border-slate-800 p-2 shadow-2xl">
-                        <DropdownMenuItem className="gap-3 cursor-pointer rounded-lg py-2.5 focus:bg-emerald-500/10 focus:text-emerald-400 text-slate-300 transition-colors">
-                            <User className="h-4 w-4" />
-                            <span className="font-semibold text-sm">My Profile</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                            className="gap-3 cursor-pointer rounded-lg py-2.5 focus:bg-red-500/10 focus:text-red-400 text-slate-300 transition-colors mt-1"
-                            onClick={() => logout()}
-                        >
-                            <LogOut className="h-4 w-4" />
-                            <span className="font-semibold text-sm">Sign Out</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-        </header>
-    )
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-600 font-bold text-xs">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'S'}
+                </div>
+              )}
+              <div className="hidden text-left sm:block">
+                <p className="text-sm font-medium text-slate-900">{user?.name || 'Student'}</p>
+                <p className="text-xs text-slate-500">{organization?.name || 'Student Portal'}</p>
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 rounded-md border-gray-200 shadow-none">
+            <DropdownMenuLabel>Student Account</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-gray-100" />
+            <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/student/profile')}>Profile</DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => router.push('/student/settings')}>Settings</DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-gray-100" />
+            <DropdownMenuItem 
+              className="cursor-pointer text-red-600 focus:text-red-600"
+              onClick={logout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
+  )
 }
