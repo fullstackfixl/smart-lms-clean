@@ -1,4 +1,4 @@
-import { CreatifyLanding } from '../components/landing/CreatifyLanding'
+import { SmartLmsLanding } from '../components/landing/SmartLmsLanding'
 
 export const metadata = {
   title: "Smart LMS – AI-Powered Learning Platform for Institutes & Colleges",
@@ -14,6 +14,6 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <CreatifyLanding />
+    <SmartLmsLanding />
   )
 }

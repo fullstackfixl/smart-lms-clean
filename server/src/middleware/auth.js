@@ -129,6 +129,51 @@ const orgAccessMiddleware = (req, res, next) => {
   next();
 };
 
+/**
+ * Middleware to require organization admin role
+ */
+const requireOrgAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.error('Authentication required', 'Access denied', 401);
+  }
+
+  if (req.user.role !== 'organization_admin' && req.user.role !== 'org_admin') {
+    return res.error('Organization admin access required', 'Access denied', 403);
+  }
+
+  next();
+};
+
+/**
+ * Middleware to require instructor role
+ */
+const requireInstructor = (req, res, next) => {
+  if (!req.user) {
+    return res.error('Authentication required', 'Access denied', 401);
+  }
+
+  if (req.user.role !== 'instructor') {
+    return res.error('Instructor access required', 'Access denied', 403);
+  }
+
+  next();
+};
+
+/**
+ * Middleware to require student role
+ */
+const requireStudent = (req, res, next) => {
+  if (!req.user) {
+    return res.error('Authentication required', 'Access denied', 401);
+  }
+
+  if (req.user.role !== 'student') {
+    return res.error('Student access required', 'Access denied', 403);
+  }
+
+  next();
+};
+
 // Parent access middleware for linked students
 const parentAccessMiddleware = (req, res, next) => {
   if (req.user.role === 'parent') {
@@ -264,6 +309,9 @@ module.exports = {
   requirePermission,
   requirePlatformAdmin,
   requirePlatformStaff,
+  requireOrgAdmin,
+  requireInstructor,
+  requireStudent,
   orgAccessMiddleware,
   parentAccessMiddleware,
   multiTenantMiddleware,

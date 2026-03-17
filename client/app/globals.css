@@ -285,3 +285,59 @@ html {
 .creatify-row-wrapper:hover .creatify-track {
   animation-play-state: paused;
 }
+
+:root {
+  --slms-bg: #0A0F2C;
+  --slms-bg2: #060B1F;
+  --slms-card: #0D1535;
+  --slms-border: rgba(255,255,255,0.07);
+  --slms-accent: #22C55E;
+  --slms-accent-hover: #16A34A;
+  --slms-muted: rgba(255,255,255,0.6);
+}
+
+@keyframes slmsFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slmsMarquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.slms-fade-up {
+  animation: slmsFadeUp 0.8s ease both;
+}
+
+.slms-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 700ms ease, transform 700ms ease;
+}
+
+.slms-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.slms-marquee {
+  overflow: hidden;
+}
+
+.slms-marquee-track {
+  width: max-content;
+  display: flex;
+  animation: slmsMarquee 22s linear infinite;
+  will-change: transform;
+}

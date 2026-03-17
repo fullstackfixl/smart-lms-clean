@@ -103,6 +103,10 @@ export const authApi = {
     apiRequest("/platform/create-super-admin", { method: "POST", body: data }),
   login: (data: { email: string; password: string }) =>
     apiRequest("/auth/login", { method: "POST", body: data }),
+  platformAdminLogin: (data: { email: string; password: string }) =>
+    apiRequest("/auth/platform-admin/login", { method: "POST", body: data }),
+  orgAdminLogin: (data: { email: string; password: string }) =>
+    apiRequest("/auth/org-admin/login", { method: "POST", body: data }),
   logout: (token: string) =>
     apiRequest("/auth/logout", { method: "POST", token }),
   forgotPassword: (email: string) =>
@@ -297,9 +301,9 @@ export const collegeApi = {
 
   // Student actions
   joinLiveClass: (token: string, liveClassId: string) =>
-    apiRequest(`/api/college/student/live-class/${liveClassId}/join`, { method: 'POST', token }),
+    apiRequest(`/api/live-classes/${liveClassId}/join`, { token }),
   submitQuiz: (token: string, quizId: string, data: Record<string, unknown>) =>
-    apiRequest(`/api/college/student/quiz/${quizId}/submit`, { method: 'POST', token, body: data }),
+    apiRequest(`/api/quizzes/${quizId}/submit`, { method: 'POST', token, body: data }),
 
   // Admin - Academic Programs
   listPrograms: (token: string) =>

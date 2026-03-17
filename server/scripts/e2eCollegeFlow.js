@@ -28,6 +28,18 @@ async function login(email, password) {
   return res.data.data.token;
 }
 
+async function loginOrgAdmin(email, password) {
+  const res = await axios.post(
+    `${BASE_URL}/api/auth/org-admin/login`,
+    { email, password },
+    { timeout: 30000, validateStatus: () => true }
+  );
+  if (!res.data?.success) {
+    throw new Error(`ORG_ADMIN_LOGIN_FAILED ${email}: ${res.status} ${JSON.stringify(res.data)}`);
+  }
+  return res.data.data.token;
+}
+
 async function api(token, method, path, body, params) {
   const res = await axios({
     method,
@@ -46,7 +58,7 @@ async function api(token, method, path, body, params) {
 
 async function main() {
   title('LOGIN TOKENS');
-  const orgToken = await login(CREDS.orgAdmin.email, CREDS.orgAdmin.password);
+  const orgToken = await loginOrgAdmin(CREDS.orgAdmin.email, CREDS.orgAdmin.password);
   const instToken = await login(CREDS.instructor.email, CREDS.instructor.password);
   const studentToken = await login(CREDS.student.email, CREDS.student.password);
   console.log('OK: tokens acquired');

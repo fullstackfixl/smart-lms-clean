@@ -13,7 +13,7 @@ import { getDashboardRoute } from "../../lib/role-redirect"
 type RoleLoginFormProps = {
   title?: string
   subtitle?: string
-  expectedRole?: "platform_admin" | "platform_staff" | "org_admin"
+  expectedRole?: "platform_admin" | "platform_staff" | "org_admin" | "organization_admin"
 }
 
 export default function RoleLoginForm({
@@ -39,15 +39,15 @@ export default function RoleLoginForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    const result = await login(email, password)
+    const loginTarget = expectedRole === 'platform_admin'
+      ? 'platform_admin'
+      : expectedRole === 'org_admin' || expectedRole === 'organization_admin'
+        ? 'organization_admin'
+        : 'student_instructor'
+    const result = await login(email, password, loginTarget)
     setLoading(false)
 
     if (result.success) {
-      if (expectedRole && result.role && result.role !== expectedRole) {
-        const target = getDashboardRoute(result.role)
-        router.replace(target)
-        return
-      }
       toast.success("Logged in successfully")
       router.push(returnUrl || result.redirectUrl || "/dashboard")
     } else {

@@ -20,6 +20,8 @@ const completeRegistrationLimiter = rateLimit({
 });
 
 // Unified Login
+router.post('/platform-admin/login', authController.platformAdminLogin);
+router.post('/org-admin/login', authController.orgAdminLogin);
 router.post('/login', authController.login);
 router.get('/google', authController.googleLogin);
 router.get('/google/callback', authController.googleCallback);

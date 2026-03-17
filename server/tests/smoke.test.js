@@ -5,9 +5,10 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../src/app');
 const { Organization, User } = require('../src/models');
 
-async function login(email, password) {
+async function login(email, password, role = 'user') {
+  const endpoint = role === 'org_admin' ? '/api/auth/org-admin/login' : '/api/auth/login';
   const res = await request(app)
-    .post('/api/auth/login')
+    .post(endpoint)
     .send({ email, password });
   return res;
 }
@@ -144,16 +145,16 @@ describe('API smoke tests', () => {
   }, 30000);
 
   test('login works for org_admin and returns token + organization', async () => {
-    const res = await login(emails.orgAdmin, passwords.orgAdmin);
+    const res = await login(emails.orgAdmin, passwords.orgAdmin, 'org_admin');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('success', true);
     expect(res.body?.data?.token).toBeTruthy();
-    expect(res.body?.data?.role).toBe('org_admin');
+    expect(['org_admin', 'organization_admin']).toContain(res.body?.data?.role);
     expect(res.body?.data?.organization).toBeTruthy();
   });
 
   test('college org-admin dashboard endpoint works', async () => {
-    const loginRes = await login(emails.orgAdmin, passwords.orgAdmin);
+    const loginRes = await login(emails.orgAdmin, passwords.orgAdmin, 'org_admin');
     expect(loginRes.body.success).toBe(true);
     const token = loginRes.body.data.token;
 
@@ -192,7 +193,7 @@ describe('API smoke tests', () => {
   });
 
   test('org-features departments list works for org_admin', async () => {
-    const loginRes = await login(emails.orgAdmin, passwords.orgAdmin);
+    const loginRes = await login(emails.orgAdmin, passwords.orgAdmin, 'org_admin');
     expect(loginRes.body.success).toBe(true);
     const token = loginRes.body.data.token;
 
@@ -205,7 +206,7 @@ describe('API smoke tests', () => {
   });
 
   test('org-features academic-years list works for org_admin', async () => {
-    const loginRes = await login(emails.orgAdmin, passwords.orgAdmin);
+    const loginRes = await login(emails.orgAdmin, passwords.orgAdmin, 'org_admin');
     expect(loginRes.body.success).toBe(true);
     const token = loginRes.body.data.token;
 
@@ -218,7 +219,7 @@ describe('API smoke tests', () => {
   });
 
   test('org-features batches list works for org_admin', async () => {
-    const loginRes = await login(emails.orgAdmin, passwords.orgAdmin);
+    const loginRes = await login(emails.orgAdmin, passwords.orgAdmin, 'org_admin');
     expect(loginRes.body.success).toBe(true);
     const token = loginRes.body.data.token;
 

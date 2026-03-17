@@ -24,6 +24,96 @@ class AuthService {
   }
 
   /**
+   * Strict role-separated login
+   * - Enforces allowedRoles (403 on mismatch)
+   * - Optionally requires organization_id
+   * - Optionally normalizes role string in response/JWT
+   */
+  async loginStrict(email, password, mfaCode, options = {}) {
+    const {
+      allowedRoles = [],
+      requireOrganization = false,
+      normalizeRole = null
+    } = options;
+
+    const user = await User.findOne({ email: email.toLowerCase() })
+      .select('+password_hash +mfa_secret')
+      .populate('organization_id');
+
+    if (!user) {
+      throw new AuthenticationError('Invalid email or password');
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      throw new AuthenticationError('Invalid email or password');
+    }
+
+    if (user.status !== 'active') {
+      throw new AuthenticationError(`Account is ${user.status}. Please contact support.`);
+    }
+
+    if (!user.email_verified) {
+      throw new AuthenticationError('Email not verified. Please complete setup.');
+    }
+
+    if (user.mfa_enabled) {
+      if (!mfaCode) {
+        throw new AuthenticationError('MFA code required');
+      }
+    }
+
+    if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
+      if (!allowedRoles.includes(user.role)) {
+        const err = new AuthenticationError('Access denied');
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+
+    if (requireOrganization) {
+      if (!user.organization_id) {
+        const err = new AuthenticationError('Access denied');
+        err.statusCode = 403;
+        throw err;
+      }
+    }
+
+    // Check organization status for org-bound roles
+    if (user.organization_id) {
+      const org = await Organization.findById(user.organization_id);
+      if (!org || org.status !== 'active') {
+        throw new AuthenticationError('Organization is suspended or inactive. Please contact your administrator.');
+      }
+    }
+
+    const normalizedRole = normalizeRole || user.role;
+    const orgId = user.organization_id?._id || user.organization_id || null;
+
+    const token = jwtUtils.generateToken({
+      userId: user._id,
+      user_id: user._id,
+      role: normalizedRole,
+      organizationId: orgId,
+      organization_id: orgId
+    });
+
+    return {
+      token,
+      role: normalizedRole,
+      redirectUrl: this.getRedirectUrl(normalizedRole),
+      user: user.toPublicJSON(),
+      organization: user.organization_id ? {
+        _id: user.organization_id._id || user.organization_id,
+        name: user.organization_id.name,
+        type: user.organization_id.type,
+        email: user.organization_id.email,
+        modulesEnabled: user.organization_id.modulesEnabled || []
+      } : null
+    };
+  }
+
+  /**
    * Unified login
    */
   async login(email, password, mfaCode) {

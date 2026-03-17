@@ -11,7 +11,7 @@ export default function PlatformLayout({
   children: React.ReactNode
 }) {
   return (
-    <ProtectedRoute allowedRoles={["platform_admin"]}>
+    <ProtectedRoute allowedRoles={["platform_admin"]} redirectTo="/platform-admin/login">
       <div className="min-h-screen bg-slate-50 font-sans text-slate-700 antialiased">
         {/* Sidebar - Fixed Left */}
         <PlatformSidebar />

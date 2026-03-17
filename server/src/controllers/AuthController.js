@@ -13,7 +13,9 @@ class AuthController {
             }
 
             const { email, password, mfaCode } = req.body;
-            const result = await authService.login(email, password, mfaCode);
+            const result = await authService.loginStrict(email, password, mfaCode, {
+                allowedRoles: ['student', 'instructor']
+            });
 
             // Set cookie
             const jwtUtils = require('../utils/jwt');
@@ -31,6 +33,74 @@ class AuthController {
             });
         } catch (error) {
             res.status(error.statusCode || 401).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    async platformAdminLogin(req, res) {
+        try {
+            const { error } = authValidation.login.validate(req.body);
+            if (error) {
+                return res.status(400).json({ success: false, message: error.details[0].message });
+            }
+
+            const { email, password, mfaCode } = req.body;
+            const result = await authService.loginStrict(email, password, mfaCode, {
+                allowedRoles: ['platform_admin']
+            });
+
+            const jwtUtils = require('../utils/jwt');
+            jwtUtils.setTokenCookie(res, result.token);
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    token: result.token,
+                    role: result.role,
+                    redirectUrl: '/platform-admin/dashboard',
+                    user: result.user,
+                    organization: result.organization || null
+                }
+            });
+        } catch (error) {
+            return res.status(error.statusCode || 401).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    async orgAdminLogin(req, res) {
+        try {
+            const { error } = authValidation.login.validate(req.body);
+            if (error) {
+                return res.status(400).json({ success: false, message: error.details[0].message });
+            }
+
+            const { email, password, mfaCode } = req.body;
+            const result = await authService.loginStrict(email, password, mfaCode, {
+                allowedRoles: ['organization_admin', 'org_admin'],
+                normalizeRole: 'organization_admin',
+                requireOrganization: true
+            });
+
+            const jwtUtils = require('../utils/jwt');
+            jwtUtils.setTokenCookie(res, result.token);
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    token: result.token,
+                    role: result.role,
+                    redirectUrl: '/org-admin/dashboard',
+                    user: result.user,
+                    organization: result.organization || null
+                }
+            });
+        } catch (error) {
+            return res.status(error.statusCode || 401).json({
                 success: false,
                 message: error.message
             });

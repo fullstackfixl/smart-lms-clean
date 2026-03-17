@@ -13,7 +13,7 @@ export default function OrgAdminLayout({ children }: { children: React.ReactNode
       enableSystem
       disableTransitionOnChange
     >
-      <ProtectedRoute allowedRoles={["org_admin"]}>
+      <ProtectedRoute allowedRoles={["org_admin", "organization_admin"]} redirectTo="/org-admin/login">
         <div className="flex h-screen overflow-hidden bg-slate-50">
           <div className="hidden lg:block w-72 h-screen shrink-0 sticky top-0">
             <OrgSidebar />

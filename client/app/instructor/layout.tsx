@@ -32,7 +32,7 @@ export default function InstructorLayout({
       enableSystem
       disableTransitionOnChange
     >
-      <ProtectedRoute allowedRoles={["instructor"]}>
+      <ProtectedRoute allowedRoles={["instructor"]} redirectTo="/login">
         <div className="flex h-screen overflow-hidden bg-slate-50">
           <InstructorSidebar />
           <div className="flex flex-1 flex-col overflow-hidden relative">

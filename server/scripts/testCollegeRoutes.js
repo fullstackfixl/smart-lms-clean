@@ -37,7 +37,17 @@ async function login(email, password) {
     .post('/api/auth/login')
     .send({ email, password });
   if (!res.body?.success) {
-    throw new Error(`Login failed for ${email}: ${res.body?.error || res.body?.message || res.text}`);
+    throw new Error(`Login failed for ${email}: ${res.body?.message || res.text}`);
+  }
+  return res.body.data.token;
+}
+
+async function loginOrgAdmin(email, password) {
+  const res = await request(app)
+    .post('/api/auth/org-admin/login')
+    .send({ email, password });
+  if (!res.body?.success) {
+    throw new Error(`Org admin login failed for ${email}: ${res.body?.message || res.text}`);
   }
   return res.body.data.token;
 }
@@ -122,7 +132,7 @@ async function main() {
       organizationType: 'college'
     });
 
-    const orgAdminToken = await login(emails.orgAdmin, passwords.orgAdmin);
+    const orgAdminToken = await loginOrgAdmin(emails.orgAdmin, passwords.orgAdmin);
     const instructorToken = await login(emails.instructor, passwords.instructor);
     const studentToken = await login(emails.student, passwords.student);
 

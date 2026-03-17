@@ -2,7 +2,7 @@
 
 import { Suspense } from "react"
 import { Loader2 } from "lucide-react"
-import RoleLoginForm from "../../../../components/auth/RoleLoginForm"
+import RoleLoginForm from "../../../components/auth/RoleLoginForm"
 
 export default function OrgAdminLoginPage() {
   return (

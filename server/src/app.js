@@ -212,7 +212,7 @@ try {
 
   console.log('  - instructor');
   const instructorRoutes = require('./routes/instructor');
-  app.use('/instructor', instructorRoutes);
+  app.use('/instructor', require('./middleware/auth').authMiddleware, require('./middleware/auth').requireInstructor, instructorRoutes);
 
   console.log('  - instructor uploads');
   const instructorUploadRoutes = require('./routes/videoUpload');
@@ -222,54 +222,13 @@ try {
   const instructorLiveClassRoutes = require('./routes/instructorLiveClasses');
   app.use('/instructor/live-classes', instructorLiveClassRoutes);
 
-  console.log('  - admin');
-  const adminRoutes = require('./routes/admin');
-  app.use('/api/admin', adminRoutes);
-
-  console.log('  - forums');
-  const forumRoutes = require('./routes/forums');
-  app.use('/api/forums', forumRoutes);
-
-  console.log('  - messages');
-  const messageRoutes = require('./routes/messages');
-  app.use('/api/messages', messageRoutes);
-
-  console.log('  - question-banks');
-  const questionBankRoutes = require('./routes/questionBank');
-  app.use('/api/question-banks', questionBankRoutes);
-
-  console.log('  - admin-grades');
-  const adminGradesRoutes = require('./routes/adminGrades');
-  app.use('/api/admin/grades', adminGradesRoutes);
-
-  console.log('  - admin-timetable');
-  const adminTimetableRoutes = require('./routes/adminTimetable');
-  app.use('/api/admin/timetable', adminTimetableRoutes);
-
-  console.log('  - admin-fees');
-  const adminFeesRoutes = require('./routes/adminFees');
-  app.use('/api/admin/fees', adminFeesRoutes);
-
-  console.log('  - instructor-video');
-  const videoUploadRoutes = require('./routes/videoUpload');
-  app.use('/api/instructor', videoUploadRoutes);
-
-  console.log('  - org-users');
-  const orgUsersRoutes = require('./routes/orgUsers');
-  app.use('/api/org', orgUsersRoutes);
-
-  console.log('  - org-features');
-  const orgFeaturesRoutes = require('./routes/orgFeatures');
-  app.use('/api/org-features', orgFeaturesRoutes);
-  app.use('/api/org-admin', orgFeaturesRoutes);
-
   console.log('  - org-admin applications');
   const orgAdminRoutes = require('./routes/orgAdmin');
-  app.use('/org-admin', orgAdminRoutes);
+  app.use('/org-admin', require('./middleware/auth').authMiddleware, require('./middleware/auth').requireOrgAdmin, orgAdminRoutes);
 
   console.log('  - student-lectures');
   const studentLectureRoutes = require('./routes/studentLectures');
-  app.use('/student', studentLectureRoutes);
+  app.use('/student', require('./middleware/auth').authMiddleware, require('./middleware/auth').requireStudent, studentLectureRoutes);
 
   console.log('  - student-registration');
   const studentRegistrationRoutes = require('./routes/studentRoutes');
@@ -277,7 +236,7 @@ try {
 
   console.log('  - student');
   const studentRoutes = require('./routes/student');
-  app.use('/student', studentRoutes);
+  app.use('/student', require('./middleware/auth').authMiddleware, require('./middleware/auth').requireStudent, studentRoutes);
 
   console.log('  - college-tenant');
   const collegeTenantRoutes = require('./routes/college/index');

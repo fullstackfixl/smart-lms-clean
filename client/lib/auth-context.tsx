@@ -58,7 +58,7 @@ interface AuthContextType {
   token: string | null
   organization: Organization | null
   loading: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectUrl?: string; role?: User['role'] }>
+  login: (email: string, password: string, loginTarget?: 'platform_admin' | 'organization_admin' | 'student_instructor') => Promise<{ success: boolean; error?: string; redirectUrl?: string; role?: User['role'] }>
   register: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
   registerOrganization: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
   acceptInvite: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
@@ -157,9 +157,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, loginTarget: 'platform_admin' | 'organization_admin' | 'student_instructor' = 'student_instructor') => {
     console.log("🔐 [AuthContext] Login attempt for:", email)
-    const res = await authApi.login({ email, password })
+    const res = loginTarget === 'platform_admin'
+      ? await authApi.platformAdminLogin({ email, password })
+      : loginTarget === 'organization_admin'
+        ? await authApi.orgAdminLogin({ email, password })
+        : await authApi.login({ email, password })
     console.log("🔐 [AuthContext] Login response:", res)
 
     if (res.success && res.data) {
@@ -176,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem("instatute_token", newToken)
         window.localStorage.setItem("instatute_token", newToken)
+        document.cookie = `instatute_token=${newToken}; path=/; samesite=lax`
         console.log("✅ [AuthContext] Token saved to storage")
 
         // Verify it was saved
@@ -314,6 +319,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOrganization(null)
     window.sessionStorage.removeItem("instatute_token")
     window.localStorage.removeItem("instatute_token")
+    document.cookie = 'instatute_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
     console.log("🔐 [AuthContext] Logout complete")
   }, [token])
 

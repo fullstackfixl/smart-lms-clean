@@ -423,15 +423,20 @@ router.get('/quizzes', async (req, res) => {
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
 
-    const quizzes = await Quiz.find({ createdBy: userId })
-      .populate('courseId', 'title')
-      .sort({ createdAt: -1 });
+    const quizzes = await Quiz.find({
+      organization_id: orgId,
+      instructor_id: userId,
+      is_active: true
+    })
+      .populate('course_id', 'title')
+      .sort({ created_at: -1 });
 
     // Get attempt counts
     const quizzesWithStats = await Promise.all(
       quizzes.map(async (quiz) => {
-        const attemptCount = await require('../models').QuizAttempt.countDocuments({ quiz_id: quiz._id });
-        const avgScore = await require('../models').QuizAttempt.aggregate([
+        const { QuizAttempt } = require('../../models');
+        const attemptCount = await QuizAttempt.countDocuments({ quiz_id: quiz._id });
+        const avgScore = await QuizAttempt.aggregate([
           { $match: { quiz_id: quiz._id } },
           { $group: { _id: null, avg: { $avg: '$score' } } }
         ]);

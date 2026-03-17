@@ -54,6 +54,16 @@ async function login(email, password) {
   return res.body.data.token;
 }
 
+async function loginOrgAdmin(email, password) {
+  const res = await request(app)
+    .post('/api/auth/org-admin/login')
+    .send({ email, password });
+  if (!res.body?.success) {
+    throw new Error(`Org admin login failed for ${email}: ${res.body?.message || res.text}`);
+  }
+  return res.body.data.token;
+}
+
 async function api(method, path, token, body) {
   let r = request(app)[method](path).set('Authorization', `Bearer ${token}`);
   if (body) r = r.send(body);
@@ -138,7 +148,7 @@ async function main() {
       organizationType: 'COLLEGE'
     });
 
-    const orgAdminToken = await login(emails.orgAdmin, passwords.orgAdmin);
+    const orgAdminToken = await loginOrgAdmin(emails.orgAdmin, passwords.orgAdmin);
     const instructorToken = await login(emails.instructor, passwords.instructor);
     const studentToken = await login(emails.student, passwords.student);
 
