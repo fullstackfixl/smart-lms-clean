@@ -108,10 +108,26 @@ export default function LearnersPage() {
         collegeApi.listSubjects(token!),
       ])
 
-      if (progRes.success) setPrograms((progRes.data as any)?.programs || (progRes.data as any) || [])
-      if (batchRes.success) setBatches((batchRes.data as any)?.batches || (batchRes.data as any) || [])
-      if (deptRes.success) setDepartments((deptRes.data as any) || [])
-      if (subjRes.success) setSubjects((subjRes.data as any)?.subjects || (subjRes.data as any) || [])
+      if (progRes.success) {
+        const d = progRes.data as any
+        const list = (d?.programs ?? d?.data ?? d)
+        setPrograms(Array.isArray(list) ? list : [])
+      }
+      if (batchRes.success) {
+        const d = batchRes.data as any
+        const list = (d?.batches ?? d?.data ?? d)
+        setBatches(Array.isArray(list) ? list : [])
+      }
+      if (deptRes.success) {
+        const d = deptRes.data as any
+        const list = (d?.departments ?? d?.data ?? d)
+        setDepartments(Array.isArray(list) ? list : [])
+      }
+      if (subjRes.success) {
+        const d = subjRes.data as any
+        const list = (d?.subjects ?? d?.data ?? d)
+        setSubjects(Array.isArray(list) ? list : [])
+      }
     } catch (err) {
       console.error("Error loading filter data:", err)
     }
@@ -525,13 +541,17 @@ function AssignBatchModal({
   onClose: () => void
   onAssign: (learnerId: string, data: any) => void
 }) {
+  const safePrograms = Array.isArray(programs) ? programs : []
+  const safeDepartments = Array.isArray(departments) ? departments : []
+  const safeBatches = Array.isArray(batches) ? batches : []
+
   const [selectedProgram, setSelectedProgram] = useState("")
   const [selectedDepartment, setSelectedDepartment] = useState("")
   const [selectedBatch, setSelectedBatch] = useState("")
   const [semester, setSemester] = useState(1)
   const [rollNumber, setRollNumber] = useState("")
 
-  const filteredBatches = batches.filter((b) => !selectedProgram || b.programId === selectedProgram)
+  const filteredBatches = safeBatches.filter((b) => !selectedProgram || b.programId === selectedProgram)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -551,7 +571,7 @@ function AssignBatchModal({
               className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="">Select Program</option>
-              {programs?.map((p) => (
+              {safePrograms.map((p) => (
                 <option key={p._id} value={p._id}>
                   {p.name}
                 </option>
@@ -566,7 +586,7 @@ function AssignBatchModal({
               className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="">Select Department</option>
-              {departments?.map((d) => (
+              {safeDepartments.map((d) => (
                 <option key={d._id} value={d._id}>
                   {d.name}
                 </option>

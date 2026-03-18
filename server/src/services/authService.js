@@ -186,9 +186,30 @@ class AuthService {
    * Submit Organization Application
    */
   async applyOrganization(data) {
-    const { organizationName, subdomain, adminName, adminEmail, selectedPlan, organizationType } = data;
-    // Generate a route-friendly slug from organizationName if subdomain not provided
-    let routeSlug = (subdomain || organizationName || '')
+    const { 
+      organizationName, 
+      organizationType,
+      contactPersonName,
+      contactEmail,
+      contactPhone,
+      country,
+      state,
+      city,
+      expectedUsers,
+      message
+    } = data;
+
+    // Check if application already exists with same contact email and pending status
+    const existingApp = await OrganizationApplication.findOne({
+      contact_email: contactEmail.toLowerCase(),
+      status: { $in: ['pending', 'contacted'] }
+    });
+    if (existingApp) {
+      throw new Error('An application with this email already exists and is under review');
+    }
+
+    // Generate a route-friendly slug from organizationName
+    let routeSlug = (organizationName || '')
       .toString()
       .trim()
       .toLowerCase()
@@ -196,18 +217,7 @@ class AuthService {
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '') || `org-${Date.now()}`;
 
-    // No subdomain logic: do not block on slug conflicts; rely on admin email uniqueness in pending queue
-
-    // Check if application already exists
-    const existingApp = await OrganizationApplication.findOne({
-      admin_email: adminEmail.toLowerCase(),
-      status: 'pending'
-    });
-    if (existingApp) {
-      return existingApp;
-    }
-
-    // Ensure slug uniqueness against existing applications and organizations
+    // Ensure slug uniqueness
     const slugExists = async (slug) => {
       const existsApp = await OrganizationApplication.findOne({ subdomain: slug });
       const existsOrg = await Organization.findOne({ subdomain: slug });
@@ -227,29 +237,65 @@ class AuthService {
     // Create Application
     const application = new OrganizationApplication({
       organization_name: organizationName,
-      subdomain: routeSlug, // store route-friendly slug for consistency
-      admin_name: adminName,
-      admin_email: adminEmail.toLowerCase(),
-      selected_plan: selectedPlan,
-      organization_type: organizationType
+      organization_type: organizationType,
+      contact_person_name: contactPersonName,
+      contact_email: contactEmail.toLowerCase(),
+      contact_phone: contactPhone,
+      country,
+      state,
+      city,
+      expected_users: expectedUsers,
+      message: message || '',
+      subdomain: routeSlug,
+      status: 'pending'
     });
     await application.save();
 
-    // Notify Platform Admin via email (simple notification)
+    // Send confirmation email to applicant
+    try {
+      const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
+      const subject = 'Your Application Has Been Received - Smart LMS';
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #22c55e;">Application Received!</h2>
+          <p>Dear ${contactPersonName},</p>
+          <p>Thank you for your interest in Smart LMS. Your application for <strong>${organizationName}</strong> has been received and is now under review.</p>
+          <p>Our team will contact you shortly at <strong>${contactPhone}</strong> or <strong>${contactEmail}</strong>.</p>
+          <p style="margin-top: 20px;">Best regards,<br/>Smart LMS Team</p>
+        </div>
+      `;
+      await emailService.sendEmail({
+        to: contactEmail,
+        subject,
+        html
+      });
+    } catch (emailErr) {
+      console.warn('Application confirmation email failed:', emailErr.message);
+    }
+
+    // Notify Platform Staff and Admin via email
     try {
       const adminNotifyEmail = process.env.SUPPORT_EMAIL || process.env.EMAIL_USER;
       if (adminNotifyEmail) {
         const baseUrl = (process.env.CLIENT_URL || 'https://smartlms.com').replace(/\/$/, '');
-        const listLink = `${baseUrl}/platform/applications?status=pending`;
-        const subject = `New Organization Application: ${organizationName}`;
+        const listLink = `${baseUrl}/platform/applications`;
+        const subject = `🔔 New Organization Application: ${organizationName}`;
         const html = `
-          <h2>New Application Received</h2>
-          <p><strong>Organization:</strong> ${organizationName}</p>
-          <p><strong>Admin:</strong> ${adminName} (${adminEmail})</p>
-          <p><strong>Type:</strong> ${organizationType}</p>
-          <p><strong>Plan:</strong> ${selectedPlan}</p>
-          <div style="margin-top: 20px;">
-            <a href="${listLink}" style="background: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review Application</a>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>New Application Received</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Organization</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${organizationName}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Type</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${organizationType}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Contact Person</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${contactPersonName}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Email</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${contactEmail}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Phone</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${contactPhone}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Location</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${city}, ${state}, ${country}</td></tr>
+              <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Expected Users</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${expectedUsers}</td></tr>
+              ${message ? `<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Message</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${message}</td></tr>` : ''}
+            </table>
+            <div style="margin-top: 20px;">
+              <a href="${listLink}" style="background: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review Application</a>
+            </div>
           </div>
         `;
         await emailService.sendEmail({
@@ -258,8 +304,8 @@ class AuthService {
           html
         });
       }
-    } catch (notifyErr) {
-      console.error('⚠️ Notify platform admin failed:', notifyErr.message);
+    } catch (emailErr) {
+      console.warn('Admin notification email failed:', emailErr.message);
     }
 
     return application;
@@ -269,7 +315,11 @@ class AuthService {
    * Complete Organization Registration (Set Password)
    */
   async completeOrganizationRegistration(data) {
-    const { token, password } = data;
+    const { token, name, password } = data;
+
+    if (!name) {
+      throw new ValidationError('Name is required');
+    }
 
     // Find and validate token
     const approvalToken = await OrganizationApprovalToken.findOne({
@@ -302,27 +352,27 @@ class AuthService {
     const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    const orgType = (application.organization_type || 'SCHOOL').toUpperCase();
-    const adminEmail = application.admin_email.toLowerCase();
+    const orgType = (application.organization_type || 'school').toUpperCase();
+    const contactEmail = application.contact_email.toLowerCase();
 
     // 1. Create Organization with modules from application
     const organization = new Organization({
       name: application.organization_name,
-      email: adminEmail,
+      email: contactEmail,
       subdomain: application.subdomain,
-      plan: application.selected_plan,
+      plan: application.selected_plan || 'basic',
       type: orgType,
       modulesEnabled: application.modulesEnabled || [],
       templateVersion: `v1_${orgType.toLowerCase()}`,
       status: 'active'
     });
     await organization.save();
-    console.log(`📋 [Registration] Created org "${organization.name}" type="${orgType}" adminEmail="${adminEmail}" modules=[${organization.modulesEnabled.join(', ')}]`);
+    console.log(`📋 [Registration] Created org "${organization.name}" type="${orgType}" adminEmail="${contactEmail}" modules=[${organization.modulesEnabled.join(', ')}]`);
 
     // 2. Create Org Admin User
     const admin = new User({
-      name: application.admin_name,
-      email: application.admin_email,
+      name: name,
+      email: contactEmail,
       password_hash: passwordHash,
       role: 'org_admin',
       organization_id: organization._id,
@@ -339,6 +389,10 @@ class AuthService {
     // 4. Mark token as used
     approvalToken.used = true;
     await approvalToken.save();
+
+    // 5. Update application status
+    application.status = 'account_created';
+    await application.save();
 
     // Notify Platform Admin that organization has been created
     try {

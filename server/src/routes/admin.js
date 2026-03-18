@@ -190,7 +190,12 @@ router.get('/users', async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Build query
-    const query = { organization_id: orgId };
+    const query = {
+      $or: [
+        { organization_id: orgId },
+        ...(req.user.organization_code ? [{ organization_code: req.user.organization_code }] : [])
+      ]
+    };
 
     if (role) {
       query.role = role;
@@ -201,10 +206,16 @@ router.get('/users', async (req, res) => {
     }
 
     if (search) {
-      query.$or = [
-        { email: { $regex: search, $options: 'i' } },
-        { name: { $regex: search, $options: 'i' } }  // User model stores `name` directly
+      query.$and = [
+        { $or: query.$or },
+        {
+          $or: [
+            { email: { $regex: search, $options: 'i' } },
+            { name: { $regex: search, $options: 'i' } }  // User model stores `name` directly
+          ]
+        }
       ];
+      delete query.$or;
     }
 
     // Get users

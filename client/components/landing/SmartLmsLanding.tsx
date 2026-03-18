@@ -504,7 +504,7 @@ function HeroSection() {
 
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <div className="slms-fade-up" style={{ animationDelay: '220ms' }}>
-              <PrimaryButton href="#contact">Get a Demo</PrimaryButton>
+              <PrimaryButton href="/apply">Get Started</PrimaryButton>
             </div>
             <div className="slms-fade-up" style={{ animationDelay: '300ms' }}>
               <SecondaryButton href="#templates">See Templates</SecondaryButton>

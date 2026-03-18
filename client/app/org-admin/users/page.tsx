@@ -21,7 +21,8 @@ interface OrgUser {
   email: string
   role: string
   status: string
-  createdAt: string
+  createdAt?: string
+  created_at?: string
   profile?: { fullName?: string; phone?: string }
   progress?: number
 }
@@ -80,7 +81,16 @@ export default function UsersPage() {
       const usersJson = await usersRes.json()
       const invitesJson = await invitesRes.json()
 
-      if (usersJson.success) setUsers(usersJson.data?.users || usersJson.data || [])
+      if (usersJson.success) {
+        const rawUsers = usersJson.data?.users || usersJson.data || []
+        const list = Array.isArray(rawUsers) ? rawUsers : []
+        setUsers(
+          list.map((u: any) => ({
+            ...u,
+            createdAt: u.createdAt || u.created_at,
+          }))
+        )
+      }
       if (invitesJson.success) setInvites(invitesJson.data?.invites || [])
     } catch {
       toast.error("Network error — could not load data")
@@ -262,7 +272,7 @@ export default function UsersPage() {
                       </span>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="text-[13px] font-bold text-slate-600">{new Date(u.createdAt).toLocaleDateString()}</p>
+                      <p className="text-[13px] font-bold text-slate-600">{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "-"}</p>
                     </td>
                     <td className="px-6 py-5 text-right">
                       <div className="flex items-center justify-end gap-2">

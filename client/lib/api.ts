@@ -89,7 +89,7 @@ export const authApi = {
     apiRequest("/auth/register", { method: "POST", body: data }),
   applyOrganization: (data: any) =>
     apiRequest("/auth/apply-organization", { method: "POST", body: data }),
-  completeOrganizationRegistration: (data: { token: string; password: string }) =>
+  completeOrganizationRegistration: (data: { token: string; name: string; password: string }) =>
     apiRequest("/auth/complete-organization-registration", { method: "POST", body: data }),
   acceptInvite: (data: any) =>
     apiRequest("/auth/accept-invite", { method: "POST", body: data }),

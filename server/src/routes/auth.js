@@ -30,6 +30,44 @@ router.post('/firebase-login', authController.firebaseLogin);
 // Organization Onboarding
 router.post('/apply-organization', applyOrgLimiter, authController.applyOrganization);
 router.post('/complete-organization-registration', completeRegistrationLimiter, authController.completeOrganizationRegistration);
+router.get('/validate-setup-token', async (req, res) => {
+    try {
+        const { token } = req.query;
+        if (!token) {
+            return res.status(400).json({ success: false, message: 'Token is required' });
+        }
+
+        const { OrganizationApprovalToken, OrganizationApplication } = require('../models');
+        
+        const approvalToken = await OrganizationApprovalToken.findOne({
+            token,
+            used: false,
+            expires_at: { $gt: new Date() }
+        });
+
+        if (!approvalToken) {
+            const existingToken = await OrganizationApprovalToken.findOne({ token });
+            if (existingToken && existingToken.expires_at <= new Date()) {
+                return res.status(410).json({ success: false, message: 'Setup link has expired' });
+            }
+            return res.status(404).json({ success: false, message: 'Invalid setup link' });
+        }
+
+        const application = await OrganizationApplication.findById(approvalToken.application_id);
+        if (!application) {
+            return res.status(404).json({ success: false, message: 'Application not found' });
+        }
+
+        return res.status(200).json({ 
+            success: true, 
+            organizationName: application.organization_name,
+            contactEmail: application.contact_email
+        });
+    } catch (error) {
+        console.error('Validate token error:', error);
+        return res.status(500).json({ success: false, message: 'Failed to validate token' });
+    }
+});
 
 // Student/Parent Signup via Subdomain
 router.post('/register', authController.registerUser);

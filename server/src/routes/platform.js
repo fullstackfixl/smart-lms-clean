@@ -34,10 +34,12 @@ router.get('/organizations', platformOrganizationController.listOrganizations.bi
 router.get('/organizations/stats', platformOrganizationController.getOrganizationStats.bind(platformOrganizationController));
 router.get('/organizations/:id', platformOrganizationController.getOrganizationDetails.bind(platformOrganizationController));
 
-// --- Organization Applications (staff can approve/reject) ---
+// --- Organization Applications (staff can view, claim, contact; admin can approve/reject) ---
 router.get('/applications', platformApplicationController.getApplications);
-router.put('/applications/:id/approve', platformApplicationController.approveApplication);
-router.put('/applications/:id/reject', platformApplicationController.rejectApplication);
+router.post('/applications/:id/claim', platformApplicationController.claimApplication);
+router.patch('/applications/:id/contact', platformApplicationController.contactApplication);
+router.patch('/applications/:id/approve', requirePlatformAdmin, platformApplicationController.approveApplication);
+router.patch('/applications/:id/reject', requirePlatformAdmin, platformApplicationController.rejectApplication);
 
 // --- Courses (read & review for staff) ---
 router.get('/courses', platformCourseController.listCourses.bind(platformCourseController));
