@@ -101,14 +101,9 @@ router.post('/', [
       return res.status(404).json({ success: false, error: 'Subject not found', message: 'Subject not found in your organization' });
     }
 
-    const resolvedCourseId = subject.contentCourseId || course_id;
-    if (!resolvedCourseId) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Course mapping missing', 
-        message: 'This subject is not linked to a content course. Please link the subject to a course in the subject settings, or provide a course_id in the request.' 
-      });
-    }
+    const resolvedCourseId = subject.contentCourseId || course_id || null;
+    // Allow creating assignments without course_id for college subjects
+    // The assignment will be linked to subject and batch instead
 
     // Validate instructor is assigned to subject + batch
     if (role === 'instructor') {
@@ -125,14 +120,16 @@ router.post('/', [
       }
     }
 
-    // Ensure resolved course exists
-    const course = await Course.findOne({
-      _id: resolvedCourseId,
-      organization_id: orgId,
-      $or: [{ is_active: true }, { isActive: true }]
-    }).select('_id').lean();
-    if (!course) {
-      return res.status(404).json({ success: false, error: 'Course not found', message: 'Linked content course not found in your organization' });
+    // Only validate course if course_id is provided (optional for college subjects)
+    if (resolvedCourseId) {
+      const course = await Course.findOne({
+        _id: resolvedCourseId,
+        organization_id: orgId,
+        $or: [{ is_active: true }, { isActive: true }]
+      }).select('_id').lean();
+      if (!course) {
+        return res.status(404).json({ success: false, error: 'Course not found', message: 'Linked content course not found in your organization' });
+      }
     }
 
     const assignment = await Assignment.create({

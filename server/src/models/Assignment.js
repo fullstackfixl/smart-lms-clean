@@ -10,7 +10,8 @@ const assignmentSchema = new mongoose.Schema({
   course_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
-    required: true,
+    required: false,  // Made optional for college subjects without linked courses
+    default: null,
     index: true
   },
   subjectId: {
@@ -63,7 +64,7 @@ const assignmentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-assignmentSchema.index({ organization_id: 1, course_id: 1, is_active: 1, createdAt: -1 });
+assignmentSchema.index({ organization_id: 1, course_id: 1, is_active: 1, createdAt: -1 }, { sparse: true });
 assignmentSchema.index({ organization_id: 1, batchId: 1, subjectId: 1, is_active: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Assignment', assignmentSchema);
