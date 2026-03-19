@@ -243,11 +243,19 @@ router.post('/', auth, async (req, res) => {
         }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
-    )
-      .populate('assignment_id', 'title max_score due_date')
-      .populate('course_id', 'title')
-      .populate('student_id', 'name email profile')
-      .lean();
+    );
+
+    // Populate fields after save, with conditional populate for course
+    const populateFields = [
+      { path: 'assignment_id', select: 'title max_score due_date' },
+      { path: 'student_id', select: 'name email profile' }
+    ];
+    if (assignment.course_id) {
+      populateFields.push({ path: 'course_id', select: 'title' });
+    }
+    
+    await submission.populate(populateFields);
+    const leanSubmission = submission.toObject();
 
     return res.json({ success: true, data: { submission }, message: 'Submission saved successfully' });
   } catch (error) {
