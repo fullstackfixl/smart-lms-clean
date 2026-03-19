@@ -16,7 +16,8 @@ const submissionSchema = new mongoose.Schema({
   course_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
-    required: true,
+    required: false,  // Made optional for college subjects without linked courses
+    default: null,
     index: true
   },
   student_id: {
