@@ -942,6 +942,23 @@ class InstructorController extends BaseController {
       filters.course_id = { $in: allCourseIds };
     }
 
+    // Filter by status if provided
+    if (status !== 'all') {
+      filters.status = status;
+    }
+
+    const numericLimit = Math.min(parseInt(limit, 10) || 20, 50);
+    const numericPage = Math.max(parseInt(page, 10) || 1, 1);
+
+    // Get regular submissions filtered by course_id
+    const submissions = await Submission.find(filters)
+      .populate('student_id', 'name email profile')
+      .populate('course_id', 'title')
+      .populate('assignment_id', 'title max_score due_date')
+      .populate('graded_by', 'name')
+      .sort({ submitted_at: -1, createdAt: -1 })
+      .lean();
+
     // For college mode, also get submissions for assignments without course_id
     // by checking if instructor owns the subject/batch via InstructorAssignment
     let collegeSubmissions = [];
@@ -1005,8 +1022,15 @@ class InstructorController extends BaseController {
       index === self.findIndex(s => s._id.toString() === sub._id.toString())
     );
 
+    // Apply pagination after combining and deduplicating
+    const total = uniqueSubmissions.length;
+    const paginatedSubmissions = uniqueSubmissions.slice(
+      (numericPage - 1) * numericLimit,
+      numericPage * numericLimit
+    );
+
     // Format submissions for frontend
-    const formattedSubmissions = uniqueSubmissions.map(sub => ({
+    const formattedSubmissions = paginatedSubmissions.map(sub => ({
       _id: sub._id,
       studentId: sub.student_id?._id || sub.student_id,
       studentName: sub.student_id?.name || 'Unknown Student',
@@ -1035,8 +1059,8 @@ class InstructorController extends BaseController {
       pagination: {
         page: numericPage,
         limit: numericLimit,
-        total: uniqueSubmissions.length,
-        pages: Math.ceil(uniqueSubmissions.length / numericLimit)
+        total,
+        pages: Math.ceil(total / numericLimit)
       }
     }, 'Assignment submissions retrieved successfully');
   });
