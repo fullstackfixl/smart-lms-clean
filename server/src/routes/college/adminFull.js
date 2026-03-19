@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware, requireRole } = require('../../middleware/auth');
-const { Course, Section, Lesson, User, Department, Batch, CollegeEvent, Enrollment, Attendance, Quiz, LiveClass, CollegeStudent } = require('../../models');
+const { Course, Section, Lesson, User, Department, Batch, CollegeEvent, Enrollment, Attendance, Quiz, LiveClass, CollegeStudent, AcademicProgram } = require('../../models');
 const Notification = require('../../models/Notification');
 const socketService = require('../../services/socketService');
 
 // All routes require org_admin role
 router.use(authMiddleware, requireRole(['org_admin']));
+// ... rest of the code remains the same ...
 
 // ===== DASHBOARD =====
 // GET /api/college/admin/dashboard
@@ -186,42 +187,39 @@ router.get('/batches', async (req, res) => {
       .populate('students', 'profile.firstName profile.lastName email')
       .sort({ year: -1, semester: 1 });
     
-    // Aggregate instructors from subjects for each batch
-    const { Subject } = require('../../models');
-    const batchesWithInstructors = await Promise.all(
+    // Aggregate instructors from InstructorAssignment for each batch
+    const { InstructorAssignment, User } = require('../../models');
+    const batchesWithCounts = await Promise.all(
       batches.map(async (batch) => {
         const batchObj = batch.toObject();
         
-        // Find all subjects for this batch and get unique instructors
-        const subjects = await Subject.find({ 
-          batchId: batch._id, 
+        // Get unique instructors from InstructorAssignment collection
+        const instructorAssignments = await InstructorAssignment.find({
           organizationId: orgId,
-          isActive: true 
-        }).populate('instructorId', 'profile.firstName profile.lastName email');
+          batchId: batch._id,
+          isActive: true
+        }).populate('instructorId', 'profile.firstName profile.lastName email').lean();
         
-        console.log(`[DEBUG] Batch ${batch.name} (${batch._id}): Found ${subjects.length} subjects`);
-        subjects.forEach((s, i) => {
-          console.log(`[DEBUG] Subject ${i}: ${s.name}, instructorId: ${s.instructorId?._id || 'null'}`);
-        });
-        
-        // Extract unique instructors from subjects
+        // Extract unique instructors
         const instructorsMap = new Map();
-        subjects.forEach(subject => {
-          if (subject.instructorId) {
-            const instId = subject.instructorId._id.toString();
+        instructorAssignments.forEach(assignment => {
+          if (assignment.instructorId) {
+            const instId = assignment.instructorId._id.toString();
             if (!instructorsMap.has(instId)) {
-              instructorsMap.set(instId, subject.instructorId);
+              instructorsMap.set(instId, assignment.instructorId);
             }
           }
         });
         
         batchObj.instructorIds = Array.from(instructorsMap.values());
-        console.log(`[DEBUG] Batch ${batch.name}: ${batchObj.instructorIds.length} unique instructors`);
+        batchObj.instructorCount = batchObj.instructorIds.length;
+        batchObj.studentCount = batchObj.students?.length || 0;
+        
         return batchObj;
       })
     );
 
-    res.success({ batches: batchesWithInstructors }, 'Batches retrieved');
+    res.success({ batches: batchesWithCounts }, 'Batches retrieved');
   } catch (error) {
     res.error(error.message, 'Failed to load batches', 500);
   }
@@ -384,23 +382,34 @@ router.get('/students', async (req, res) => {
       profileMap[cp.userId.toString()] = cp;
     });
 
-    // Format students with combined data
-    let formattedStudents = students.map(s => {
-      const profile = profileMap[s._id.toString()] || {};
-      return {
-        _id: s._id,
-        firstName: s.profile?.firstName || profile.firstName || '',
-        lastName: s.profile?.lastName || profile.lastName || '',
-        email: s.email,
-        rollNumber: profile.rollNumber || s.profile?.rollNumber || '',
-        departmentId: s.profile?.department || profile.departmentId || null,
-        programId: profile.programId || null,
-        batchId: profile.batchId || null,
-        semester: profile.semester || s.profile?.semester || null,
-        status: s.status || 'active',
-        createdAt: s.createdAt
-      };
-    });
+    // Format students with combined data and populate references
+    let formattedStudents = await Promise.all(
+      students.map(async (s) => {
+        const profile = profileMap[s._id.toString()] || {};
+        
+        // Get program, batch, and department details
+        const [program, batch, department] = await Promise.all([
+          profile.programId ? AcademicProgram.findById(profile.programId).select('name code').lean() : null,
+          profile.batchId ? Batch.findById(profile.batchId).select('name code').lean() : null,
+          profile.departmentId ? Department.findById(profile.departmentId).select('name code').lean() : 
+            (s.profile?.department ? Department.findById(s.profile.department).select('name code').lean() : null)
+        ]);
+        
+        return {
+          _id: s._id,
+          firstName: s.profile?.firstName || profile.firstName || '',
+          lastName: s.profile?.lastName || profile.lastName || '',
+          email: s.email,
+          rollNumber: profile.rollNumber || s.profile?.rollNumber || '',
+          departmentId: department || s.profile?.department || null,
+          programId: program || null,
+          batchId: batch || null,
+          semester: profile.semester || s.profile?.semester || null,
+          status: s.status || 'active',
+          createdAt: s.createdAt
+        };
+      })
+    );
 
     // Apply program/batch filters if specified
     if (programId) {
@@ -901,12 +910,55 @@ router.get('/analytics', async (req, res) => {
 // GET /api/college/admin/programs
 router.get('/programs', async (req, res) => {
   try {
-    const { AcademicProgram, Department } = require('../../models');
+    const { AcademicProgram, Department, Subject, Batch, User } = require('../../models');
     const orgId = req.user.organization_id?._id || req.user.organization_id;
+    
     const programs = await AcademicProgram.find({ organizationId: orgId, isActive: true })
       .populate('departmentId', 'name code')
       .sort({ name: 1 });
-    res.success({ programs }, 'Programs retrieved');
+    
+    // Add counts for each program
+    const programsWithCounts = await Promise.all(
+      programs.map(async (program) => {
+        const programObj = program.toObject();
+        
+        // Count subjects for this program
+        const subjectCount = await Subject.countDocuments({
+          programId: program._id,
+          organizationId: orgId,
+          isActive: true
+        });
+        
+        // Count batches for this program
+        const batchIds = await Batch.find({
+          programId: program._id,
+          organizationId: orgId,
+          isActive: true
+        }).select('_id');
+        
+        // Count students in batches of this program
+        const batchIdList = batchIds.map(b => b._id);
+        let studentCount = 0;
+        
+        if (batchIdList.length > 0) {
+          // Count students whose profile.batch is in the batch list
+          studentCount = await User.countDocuments({
+            'profile.batch': { $in: batchIdList },
+            organization_id: orgId,
+            role: 'student',
+            status: 'active'
+          });
+        }
+        
+        programObj.studentCount = studentCount;
+        programObj.subjectCount = subjectCount;
+        programObj.batchCount = batchIdList.length;
+        
+        return programObj;
+      })
+    );
+    
+    res.success({ programs: programsWithCounts }, 'Programs retrieved');
   } catch (error) {
     res.error(error.message, 'Failed to load programs', 500);
   }

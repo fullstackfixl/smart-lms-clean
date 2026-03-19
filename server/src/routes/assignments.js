@@ -103,7 +103,11 @@ router.post('/', [
 
     const resolvedCourseId = subject.contentCourseId || course_id;
     if (!resolvedCourseId) {
-      return res.status(400).json({ success: false, error: 'Course mapping missing', message: 'This subject is not linked to a content course yet' });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Course mapping missing', 
+        message: 'This subject is not linked to a content course. Please link the subject to a course in the subject settings, or provide a course_id in the request.' 
+      });
     }
 
     // Validate instructor is assigned to subject + batch

@@ -313,14 +313,40 @@ router.get('/quizzes', async (req, res) => {
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
 
-    const { AcademicEnrollment, Subject } = require('../../models');
+    const { AcademicEnrollment, Subject, User, Batch } = require('../../models');
 
+    // First try: Get quizzes from AcademicEnrollment records
     const academicEnrollments = await AcademicEnrollment.find({ organizationId: orgId, studentId: userId })
       .select('subjectId batchId')
       .lean();
 
-    const enrolledSubjectIds = [...new Set(academicEnrollments.map(e => String(e.subjectId)).filter(Boolean))];
-    const enrolledBatchIds = [...new Set(academicEnrollments.map(e => String(e.batchId)).filter(Boolean))];
+    let enrolledSubjectIds = [...new Set(academicEnrollments.map(e => String(e.subjectId)).filter(Boolean))];
+    let enrolledBatchIds = [...new Set(academicEnrollments.map(e => String(e.batchId)).filter(Boolean))];
+
+    // Second try: If no AcademicEnrollments, get subjects from student's batch
+    if (!enrolledSubjectIds.length) {
+      const student = await User.findById(userId).populate('profile.batch');
+      const batchId = student?.profile?.batch;
+      
+      if (batchId) {
+        const batch = await Batch.findById(batchId);
+        if (batch) {
+          // Get all subjects for this batch
+          const batchSubjects = await Subject.find({
+            organizationId: orgId,
+            isActive: true,
+            $or: [
+              { batchId },
+              { batchId: { $exists: false }, programId: batch.programId, semester: batch.semester },
+              { batchId: null, programId: batch.programId, semester: batch.semester }
+            ]
+          }).select('_id');
+          
+          enrolledSubjectIds = batchSubjects.map(s => String(s._id));
+          enrolledBatchIds = [String(batchId)];
+        }
+      }
+    }
 
     if (enrolledSubjectIds.length && enrolledBatchIds.length) {
       const quizzes = await Quiz.find({
