@@ -942,29 +942,71 @@ class InstructorController extends BaseController {
       filters.course_id = { $in: allCourseIds };
     }
 
-    // Filter by status if provided
-    if (status !== 'all') {
-      filters.status = status;
+    // For college mode, also get submissions for assignments without course_id
+    // by checking if instructor owns the subject/batch via InstructorAssignment
+    let collegeSubmissions = [];
+    if (!courseId && !assignmentId) {
+      try {
+        // Get instructor's subject/batch mappings
+        const mappings = await InstructorAssignment.find({
+          organizationId: orgId,
+          instructorId: req.user._id,
+          isActive: true
+        }).select('subjectId batchId').lean();
+
+        if (mappings.length > 0) {
+          // Find all assignments for these subject/batch combinations
+          const subjectBatchPairs = mappings.map(m => ({
+            subjectId: m.subjectId,
+            batchId: m.batchId
+          }));
+
+          // Build query for assignments matching any of these pairs
+          const assignmentQuery = {
+            organization_id: orgId,
+            is_active: true,
+            $or: subjectBatchPairs.map(pair => ({
+              subjectId: pair.subjectId,
+              batchId: pair.batchId
+            }))
+          };
+
+          const accessibleAssignments = await Assignment.find(assignmentQuery)
+            .select('_id')
+            .lean();
+
+          const assignmentIds = accessibleAssignments.map(a => a._id.toString());
+
+          if (assignmentIds.length > 0) {
+            // Get submissions for these assignments (even if course_id is null)
+            collegeSubmissions = await Submission.find({
+              organization_id: orgId,
+              assignment_id: { $in: assignmentIds },
+              is_active: true
+            })
+              .populate('student_id', 'name email profile')
+              .populate('course_id', 'title')
+              .populate('assignment_id', 'title max_score due_date')
+              .populate('graded_by', 'name')
+              .sort({ submitted_at: -1, createdAt: -1 })
+              .lean();
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching college submissions:', err);
+      }
     }
 
-    const numericLimit = Math.min(parseInt(limit, 10) || 20, 50);
-    const numericPage = Math.max(parseInt(page, 10) || 1, 1);
-
-    const [submissions, total] = await Promise.all([
-      Submission.find(filters)
-        .populate('student_id', 'name email profile')
-        .populate('course_id', 'title')
-        .populate('assignment_id', 'title max_score due_date')
-        .populate('graded_by', 'name')
-        .sort({ submitted_at: -1, createdAt: -1 })
-        .skip((numericPage - 1) * numericLimit)
-        .limit(numericLimit)
-        .lean(),
-      Submission.countDocuments(filters)
-    ]);
+    // Combine regular submissions with college submissions
+    const allSubmissions = [...submissions, ...collegeSubmissions];
+    
+    // Remove duplicates based on submission _id
+    const uniqueSubmissions = allSubmissions.filter((sub, index, self) =>
+      index === self.findIndex(s => s._id.toString() === sub._id.toString())
+    );
 
     // Format submissions for frontend
-    const formattedSubmissions = submissions.map(sub => ({
+    const formattedSubmissions = uniqueSubmissions.map(sub => ({
       _id: sub._id,
       studentId: sub.student_id?._id || sub.student_id,
       studentName: sub.student_id?.name || 'Unknown Student',
@@ -993,8 +1035,8 @@ class InstructorController extends BaseController {
       pagination: {
         page: numericPage,
         limit: numericLimit,
-        total,
-        pages: Math.ceil(total / numericLimit)
+        total: uniqueSubmissions.length,
+        pages: Math.ceil(uniqueSubmissions.length / numericLimit)
       }
     }, 'Assignment submissions retrieved successfully');
   });

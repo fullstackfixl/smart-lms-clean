@@ -159,6 +159,14 @@ export default function StudentAssignmentsPage() {
 
       if (res.success) {
         toast.success('Assignment submitted successfully!')
+        // Immediately add submission to state for instant UI feedback
+        const newSubmission: Submission = {
+          _id: res.data?.submission?._id || Date.now().toString(),
+          assignment_id: assignmentId,
+          status: 'submitted',
+          submitted_at: new Date().toISOString()
+        }
+        setSubmissions(prev => ({ ...prev, [assignmentId]: newSubmission }))
         setSelectedAssignment(null)
         setContent('')
         setFile(null)
