@@ -48,7 +48,7 @@ export default function CompleteRegistrationPage() {
     }
     setLoading(true)
     try {
-      const res = await authApi.completeOrganizationRegistration({ token, password })
+      const res = await authApi.completeOrganizationRegistration({ token, name: "Organization Admin", password })
       if (res.success) {
         // Store the returned JWT token so the user is logged in
         const payload: any = res.data

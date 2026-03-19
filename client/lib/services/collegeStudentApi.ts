@@ -70,7 +70,7 @@ export async function getCollegeStudentAttendance(
   const queryParams = new URLSearchParams();
   if (typeof filters === 'string' && filters) {
     queryParams.append('subjectId', filters);
-  } else if (filters?.subjectId) {
+  } else if (typeof filters === 'object' && filters !== null && 'subjectId' in filters && filters.subjectId) {
     queryParams.append('subjectId', filters.subjectId);
   }
   if (typeof filters !== 'string' && filters?.startDate) {
