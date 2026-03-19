@@ -215,13 +215,16 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
-    const course = await Course.findOne({
-      _id: assignment.course_id,
-      organization_id: orgId,
-      $or: [{ is_active: true }, { isActive: true }]
-    });
-    if (!course) {
-      return res.status(404).json({ success: false, error: 'Course not found', message: 'Course not found in your organization' });
+    // Only validate course if assignment has a course_id (optional for college subjects)
+    if (assignment.course_id) {
+      const course = await Course.findOne({
+        _id: assignment.course_id,
+        organization_id: orgId,
+        $or: [{ is_active: true }, { isActive: true }]
+      });
+      if (!course) {
+        return res.status(404).json({ success: false, error: 'Course not found', message: 'Course not found in your organization' });
+      }
     }
 
     const submission = await Submission.findOneAndUpdate(
