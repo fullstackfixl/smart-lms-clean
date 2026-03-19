@@ -117,6 +117,7 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 router.post('/', auth, async (req, res) => {
+  const startTime = Date.now();
   try {
     console.log('[Submission POST] ===== START =====');
     console.log('[Submission POST] Headers:', JSON.stringify(req.headers));
@@ -130,7 +131,10 @@ router.post('/', auth, async (req, res) => {
       console.log('[Submission POST] WARNING: Body is empty!');
     }
     
+    const t1 = Date.now();
     const { Submission, Assignment, Course, AcademicEnrollment } = require('../models');
+    console.log(`[Submission POST] Models loaded in ${Date.now() - t1}ms`);
+    
     const orgId = req.user.organization_id?._id || req.user.organization_id;
     const { role, _id: userId } = req.user;
 
@@ -163,10 +167,11 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid assignment_id format', message: 'assignment_id must be a valid MongoDB ID' });
     }
 
+    const t2 = Date.now();
     console.log('[Submission POST] Querying assignment with:', { _id: assignment_id, organization_id: orgId });
     
     const assignment = await Assignment.findOne({ _id: assignment_id, organization_id: orgId });
-    console.log('[Submission POST] Assignment query result:', assignment ? 'Found' : 'Not found');
+    console.log(`[Submission POST] Assignment query took ${Date.now() - t2}ms, result:`, assignment ? 'Found' : 'Not found');
     
     if (!assignment) {
       // Try to find without orgId to debug
@@ -180,12 +185,14 @@ router.post('/', auth, async (req, res) => {
     let canSubmit = false;
     
     if (assignment.subjectId && assignment.batchId) {
+      const t3 = Date.now();
       const enrolled = await AcademicEnrollment.findOne({
         organizationId: orgId,
         studentId: userId,
         subjectId: assignment.subjectId,
         batchId: assignment.batchId
       }).select('_id').lean();
+      console.log(`[Submission POST] AcademicEnrollment query took ${Date.now() - t3}ms, enrolled:`, enrolled ? 'Yes' : 'No');
       
       if (enrolled) {
         canSubmit = true;
@@ -196,11 +203,13 @@ router.post('/', auth, async (req, res) => {
     
     // Fallback: check if student is enrolled in the course
     if (!canSubmit && assignment.course_id) {
+      const t4 = Date.now();
       const { Enrollment } = require('../models');
       const courseEnrolled = await Enrollment.findOne({
         student_id: userId,
         course_id: assignment.course_id
       }).select('_id').lean();
+      console.log(`[Submission POST] Course Enrollment query took ${Date.now() - t4}ms, enrolled:`, courseEnrolled ? 'Yes' : 'No');
       
       if (courseEnrolled) {
         canSubmit = true;
@@ -217,16 +226,19 @@ router.post('/', auth, async (req, res) => {
 
     // Only validate course if assignment has a course_id (optional for college subjects)
     if (assignment.course_id) {
+      const t5 = Date.now();
       const course = await Course.findOne({
         _id: assignment.course_id,
         organization_id: orgId,
         $or: [{ is_active: true }, { isActive: true }]
       });
+      console.log(`[Submission POST] Course validation took ${Date.now() - t5}ms, found:`, course ? 'Yes' : 'No');
       if (!course) {
         return res.status(404).json({ success: false, error: 'Course not found', message: 'Course not found in your organization' });
       }
     }
 
+    const t6 = Date.now();
     const submission = await Submission.findOneAndUpdate(
       { organization_id: orgId, assignment_id, student_id: userId, is_active: true },
       {
@@ -244,8 +256,10 @@ router.post('/', auth, async (req, res) => {
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+    console.log(`[Submission POST] Submission save took ${Date.now() - t6}ms`);
 
     // Populate fields after save, with conditional populate for course
+    const t7 = Date.now();
     const populateFields = [
       { path: 'assignment_id', select: 'title max_score due_date' },
       { path: 'student_id', select: 'name email profile' }
@@ -255,10 +269,14 @@ router.post('/', auth, async (req, res) => {
     }
     
     await submission.populate(populateFields);
+    console.log(`[Submission POST] Population took ${Date.now() - t7}ms`);
+    
     const leanSubmission = submission.toObject();
+    console.log(`[Submission POST] ===== SUCCESS - Total time: ${Date.now() - startTime}ms =====`);
 
     return res.json({ success: true, data: { submission }, message: 'Submission saved successfully' });
   } catch (error) {
+    console.error(`[Submission POST] ===== ERROR after ${Date.now() - startTime}ms =====`, error);
     return res.status(500).json({ success: false, error: error.message, message: 'Failed to save submission' });
   }
 });

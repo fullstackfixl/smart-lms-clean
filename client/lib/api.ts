@@ -46,9 +46,9 @@ async function apiRequest<T = unknown>(
     console.log(`📝 [API BODY] ${method} ${endpoint}: NO BODY`)
   }
 
-  // Add timeout signal
+  // Add timeout signal - 30 seconds for submission operations
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
   config.signal = controller.signal
 
   const fullUrl = `${API_BASE}${endpoint}`
