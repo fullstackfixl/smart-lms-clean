@@ -836,70 +836,176 @@ class InstructorController extends BaseController {
     this.sendSuccess(res, lessons, 'Lessons retrieved successfully');
   });
 
-  // SUBMISSIONS REVIEW
+  // SUBMISSIONS REVIEW - Assignment Submissions
   getSubmissions = this.asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, courseId, status = 'all' } = req.query;
-    const { Grade } = require('../models');
+    const { page = 1, limit = 20, courseId, assignmentId, status = 'all' } = req.query;
+    const { Submission, Subject, InstructorAssignment, Assignment, Course } = require('../models');
 
     // Build filters
     const filters = {
-      organization_id: req.user.organization_id,
+      organization_id: req.user.organization_id?._id || req.user.organization_id,
       is_active: true
     };
 
-    // If courseId provided, verify instructor owns it
-    if (courseId) {
-      const course = await this.findInstructorCourse(courseId, req.user);
-      if (!course) {
+    const orgId = filters.organization_id;
+
+    // Get all courses by this instructor (legacy)
+    const instructorCourses = await Course.find({
+      instructor_id: req.user._id,
+      organization_id: orgId,
+      is_deleted: false
+    }).select('_id');
+
+    const directCourseIds = instructorCourses.map(c => c._id);
+
+    // College mode: instructor mapped via InstructorAssignment -> Subject -> contentCourseId
+    let mappedCourseIds = [];
+    try {
+      const mappings = await InstructorAssignment.find({
+        organizationId: orgId,
+        instructorId: req.user._id,
+        isActive: true
+      }).select('subjectId').lean();
+
+      const subjectIds = [...new Set(mappings.map(m => String(m.subjectId)).filter(Boolean))];
+      if (subjectIds.length) {
+        const subjects = await Subject.find({
+          _id: { $in: subjectIds },
+          organizationId: orgId,
+          isActive: true,
+          contentCourseId: { $ne: null }
+        }).select('contentCourseId').lean();
+
+        mappedCourseIds = [...new Set(subjects.map(s => String(s.contentCourseId)).filter(Boolean))];
+      }
+    } catch (_) {
+      mappedCourseIds = [];
+    }
+
+    const allCourseIds = [...new Set([
+      ...directCourseIds.map(id => String(id)),
+      ...mappedCourseIds
+    ])];
+
+    if (assignmentId) {
+      const assignment = await Assignment.findOne({
+        _id: assignmentId,
+        organization_id: orgId,
+        is_active: true
+      }).select('_id course_id subjectId batchId').lean();
+
+      if (!assignment) {
+        return res.error('Assignment not found', 'Assignment does not exist or you do not have access', 404);
+      }
+
+      const assignmentCourseId = String(assignment.course_id);
+      const isInAccessibleCourses = allCourseIds.includes(assignmentCourseId);
+
+      let isMappedOwner = false;
+      if (assignment.subjectId && assignment.batchId) {
+        const mapping = await InstructorAssignment.findOne({
+          organizationId: orgId,
+          instructorId: req.user._id,
+          subjectId: assignment.subjectId,
+          batchId: assignment.batchId,
+          isActive: true
+        }).select('_id').lean();
+        isMappedOwner = Boolean(mapping);
+      }
+
+      // Fallback legacy ownership: course.instructor_id
+      let isLegacyOwner = false;
+      if (!isMappedOwner && isInAccessibleCourses) {
+        const course = await Course.findOne({
+          _id: assignment.course_id,
+          organization_id: orgId,
+          is_deleted: false
+        }).select('instructor_id').lean();
+        isLegacyOwner = Boolean(course && String(course.instructor_id) === String(req.user._id));
+      }
+
+      if (!isMappedOwner && !isLegacyOwner) {
+        return res.error('Access denied', 'You do not have permission to view submissions for this assignment', 403);
+      }
+
+      filters.assignment_id = assignmentId;
+      filters.course_id = assignment.course_id;
+    }
+
+    if (!assignmentId && courseId) {
+      // If courseId provided, verify instructor can access it (direct or mapped)
+      if (!allCourseIds.includes(String(courseId))) {
         return res.error('Course not found', 'Course does not exist or you do not have access', 404);
       }
       filters.course_id = courseId;
-    } else {
-      // Get all courses by this instructor
-      const instructorCourses = await Course.find({
-        instructor_id: req.user._id,
-        organization_id: req.user.organization_id,
-        is_deleted: false
-      }).select('_id');
-
-      filters.course_id = { $in: instructorCourses.map(c => c._id) };
+    } else if (!assignmentId) {
+      filters.course_id = { $in: allCourseIds };
     }
 
-    // Filter by assignment type (only assignments, not quizzes)
-    filters.assignment_type = { $in: ['assignment', 'project', 'lab_work'] };
+    // Filter by status if provided
+    if (status !== 'all') {
+      filters.status = status;
+    }
 
     const numericLimit = Math.min(parseInt(limit, 10) || 20, 50);
     const numericPage = Math.max(parseInt(page, 10) || 1, 1);
 
     const [submissions, total] = await Promise.all([
-      Grade.find(filters)
+      Submission.find(filters)
         .populate('student_id', 'name email profile')
         .populate('course_id', 'title')
+        .populate('assignment_id', 'title max_score due_date')
         .populate('graded_by', 'name')
-        .sort({ submitted_date: -1, created_at: -1 })
+        .sort({ submitted_at: -1, createdAt: -1 })
         .skip((numericPage - 1) * numericLimit)
         .limit(numericLimit)
         .lean(),
-      Grade.countDocuments(filters)
+      Submission.countDocuments(filters)
     ]);
 
+    // Format submissions for frontend
+    const formattedSubmissions = submissions.map(sub => ({
+      _id: sub._id,
+      studentId: sub.student_id?._id || sub.student_id,
+      studentName: sub.student_id?.name || 'Unknown Student',
+      studentEmail: sub.student_id?.email || '',
+      studentAvatar: sub.student_id?.profile?.avatar || null,
+      assignmentId: sub.assignment_id?._id || sub.assignment_id,
+      assignmentTitle: sub.assignment_id?.title || 'Unknown Assignment',
+      maxScore: sub.assignment_id?.max_score || 0,
+      courseId: sub.course_id?._id || sub.course_id,
+      courseTitle: sub.course_id?.title || 'Unknown Course',
+      earnedScore: sub.earned_score,
+      percentage: sub.assignment_id?.max_score > 0 && sub.earned_score !== null 
+        ? Math.round((sub.earned_score / sub.assignment_id.max_score) * 100) 
+        : null,
+      status: sub.status,
+      submittedAt: sub.submitted_at || sub.createdAt,
+      gradedAt: sub.graded_at,
+      gradedBy: sub.graded_by?.name || null,
+      comments: sub.comments,
+      content: sub.content,
+      attachments: sub.attachments || []
+    }));
+
     this.sendSuccess(res, {
-      submissions,
+      submissions: formattedSubmissions,
       pagination: {
         page: numericPage,
         limit: numericLimit,
         total,
         pages: Math.ceil(total / numericLimit)
       }
-    }, 'Submissions retrieved successfully');
+    }, 'Assignment submissions retrieved successfully');
   });
 
   gradeSubmission = this.asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { earned_score, comments, rubric_scores } = req.body;
-    const { Grade } = require('../models');
+    const { earned_score, comments } = req.body;
+    const { Submission, Assignment, Course, InstructorAssignment } = require('../models');
 
-    const submission = await Grade.findOne({
+    // Find the submission
+    const submission = await Submission.findOne({
       _id: id,
       organization_id: req.user.organization_id,
       is_active: true
@@ -909,30 +1015,88 @@ class InstructorController extends BaseController {
       return res.error('Submission not found', 'Submission does not exist or you do not have access', 404);
     }
 
-    // Verify instructor owns the course
-    const course = await this.findInstructorCourse(submission.course_id, req.user);
-    if (!course) {
+    // Get the assignment to check ownership
+    const assignment = await Assignment.findOne({
+      _id: submission.assignment_id,
+      organization_id: req.user.organization_id,
+      is_active: true
+    });
+
+    if (!assignment) {
+      return res.error('Assignment not found', 'Assignment not found', 404);
+    }
+
+    // Check instructor permission - try subject+batch mapping first, then course ownership
+    let hasPermission = false;
+    
+    if (assignment.subjectId && assignment.batchId) {
+      // College mode: check InstructorAssignment mapping
+      const mapping = await InstructorAssignment.findOne({
+        organizationId: req.user.organization_id,
+        instructorId: req.user._id,
+        subjectId: assignment.subjectId,
+        batchId: assignment.batchId,
+        isActive: true
+      });
+      if (mapping) {
+        hasPermission = true;
+      }
+    }
+    
+    // Fallback: check course ownership (legacy or non-college mode)
+    if (!hasPermission && assignment.course_id) {
+      const course = await this.findInstructorCourse(assignment.course_id, req.user);
+      if (course) {
+        hasPermission = true;
+      }
+    }
+    
+    if (!hasPermission) {
       return res.error('Access denied', 'You do not have permission to grade this submission', 403);
     }
 
-    // Update grade
+    // Update submission
     if (earned_score !== undefined) {
       submission.earned_score = earned_score;
-      submission.percentage = (earned_score / submission.max_score) * 100;
     }
 
     if (comments !== undefined) {
       submission.comments = comments;
     }
 
-    if (rubric_scores) {
-      submission.rubric_scores = rubric_scores;
-    }
-
+    submission.status = 'graded';
     submission.graded_by = req.user._id;
-    submission.graded_date = new Date();
+    submission.graded_at = new Date();
 
     await submission.save();
+
+    // Also update/create Grade record for gradebook
+    const { Grade } = require('../models');
+    await Grade.findOneAndUpdate(
+      {
+        organization_id: req.user.organization_id,
+        course_id: assignment.course_id,
+        student_id: submission.student_id,
+        assignment_type: 'assignment',
+        assignment_title: assignment.title,
+        is_active: true
+      },
+      {
+        $set: {
+          assignment_description: assignment.description,
+          max_score: assignment.max_score,
+          earned_score: earned_score,
+          percentage: assignment.max_score > 0 ? (earned_score / assignment.max_score) * 100 : 0,
+          weight: 100,
+          due_date: assignment.due_date,
+          submitted_date: submission.submitted_at,
+          graded_date: new Date(),
+          graded_by: req.user._id,
+          comments: comments
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     this.sendSuccess(res, submission, 'Submission graded successfully');
   });

@@ -49,6 +49,24 @@ interface CourseApplication {
   submittedAt: string
 }
 
+async function orgAdminRequest(
+  path: string,
+  token: string,
+  options: RequestInit = {}
+) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  })
+
+  const data = await response.json().catch(() => ({}))
+  return { success: response.ok && !!data?.success, data }
+}
+
 export default function OrgAdminApplicationsPage() {
   const { token, user, organization } = useAuth()
   const [applications, setApplications] = useState<CourseApplication[]>([])
@@ -83,19 +101,12 @@ export default function OrgAdminApplicationsPage() {
     if (!token) return
     setLoading(true)
     try {
-      let res
-      if (isCollege) {
-        res = await collegeApi.listPendingCourses(token)
-      } else {
-        res = await fetch(`${API_URL}/org-admin/applications`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        const data = await res.json()
-        res = { success: data.success, data: data.data }
-      }
+      const res = await orgAdminRequest('/org-admin/applications', token)
       if (res.success) {
-        const data = res.data as { applications?: CourseApplication[]; courses?: CourseApplication[] }
+        const data = (res.data?.data || res.data) as { applications?: CourseApplication[]; courses?: CourseApplication[] }
         setApplications(data.applications || data.courses || [])
+      } else {
+        toast.error((res.data as any)?.error || "Failed to load applications")
       }
     } catch (error) {
       toast.error("Failed to load applications")
@@ -111,15 +122,10 @@ export default function OrgAdminApplicationsPage() {
       if (isCollege) {
         res = await collegeApi.approveCourse(token, courseId, { status: 'published' })
       } else {
-        const response = await fetch(`${API_URL}/org-admin/applications/${courseId}/approve`, {
+        const response = await orgAdminRequest(`/org-admin/applications/${courseId}/approve`, token, {
           method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
         })
-        const data = await response.json()
-        res = { success: data.success, data }
+        res = { success: response.success, data: response.data }
       }
       if (res.success) {
         toast.success("Course approved and published to students in your organization")
@@ -143,16 +149,11 @@ export default function OrgAdminApplicationsPage() {
       if (isCollege) {
         res = await collegeApi.approveCourse(token, courseId, { status: 'rejected', rejectionReason: reason })
       } else {
-        const response = await fetch(`${API_URL}/org-admin/applications/${courseId}/reject`, {
+        const response = await orgAdminRequest(`/org-admin/applications/${courseId}/reject`, token, {
           method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
           body: JSON.stringify({ reason })
         })
-        const data = await response.json()
-        res = { success: data.success, data }
+        res = { success: response.success, data: response.data }
       }
       if (res.success) {
         toast.success("Course rejected")
@@ -167,12 +168,8 @@ export default function OrgAdminApplicationsPage() {
   async function handleSaveEdits() {
     if (!token || !selectedApp) return
     try {
-      const res = await fetch(`${API_URL}/org-admin/applications/${selectedApp._id}`, {
+      const res = await orgAdminRequest(`/org-admin/applications/${selectedApp._id}`, token, {
         method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           title: editTitle,
           description: editDescription,
@@ -181,14 +178,13 @@ export default function OrgAdminApplicationsPage() {
           price: editPrice
         })
       })
-      const data = await res.json()
-      if (data.success) {
+      if (res.success) {
         toast.success("Course updated successfully")
         setSelectedApp({ ...selectedApp, title: editTitle, description: editDescription, category: editCategory, level: editLevel, price: editPrice })
         setEditing(false)
         loadApplications()
       } else {
-        toast.error(data.error || "Failed to update")
+        toast.error((res.data as any)?.error || "Failed to update")
       }
     } catch (error) {
       toast.error("Error updating course")
@@ -198,16 +194,11 @@ export default function OrgAdminApplicationsPage() {
   async function handleUpdateModule(moduleId: string, newTitle: string) {
     if (!token || !selectedApp) return
     try {
-      const res = await fetch(`${API_URL}/org-admin/modules/${moduleId}`, {
+      const res = await orgAdminRequest(`/org-admin/applications/modules/${moduleId}`, token, {
         method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ title: newTitle })
       })
-      const data = await res.json()
-      if (data.success) {
+      if (res.success) {
         toast.success("Module updated")
         const updatedModules = selectedApp.modules.map(m => m._id === moduleId ? { ...m, title: newTitle } : m)
         setSelectedApp({ ...selectedApp, modules: updatedModules })
@@ -220,12 +211,10 @@ export default function OrgAdminApplicationsPage() {
   async function handleDeleteModule(moduleId: string) {
     if (!token || !confirm("Delete this module and all its lessons?")) return
     try {
-      const res = await fetch(`${API_URL}/org-admin/modules/${moduleId}`, {
+      const res = await orgAdminRequest(`/org-admin/applications/modules/${moduleId}`, token, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
       })
-      const data = await res.json()
-      if (data.success) {
+      if (res.success) {
         toast.success("Module deleted")
         if (selectedApp) {
           setSelectedApp({ ...selectedApp, modules: selectedApp.modules.filter(m => m._id !== moduleId) })
@@ -239,12 +228,10 @@ export default function OrgAdminApplicationsPage() {
   async function handleDeleteLesson(lessonId: string) {
     if (!token || !confirm("Delete this lesson?")) return
     try {
-      const res = await fetch(`${API_URL}/org-admin/lessons/${lessonId}`, {
+      const res = await orgAdminRequest(`/org-admin/applications/lessons/${lessonId}`, token, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
       })
-      const data = await res.json()
-      if (data.success) {
+      if (res.success) {
         toast.success("Lesson deleted")
         if (selectedApp) {
           const updatedModules = selectedApp.modules.map(m => ({
@@ -262,19 +249,14 @@ export default function OrgAdminApplicationsPage() {
   async function handleUpdateLesson(lessonId: string, moduleId: string, newTitle: string, newVideoUrl?: string) {
     if (!token || !selectedApp) return
     try {
-      const res = await fetch(`${API_URL}/org-admin/lessons/${lessonId}`, {
+      const res = await orgAdminRequest(`/org-admin/lessons/${lessonId}`, token, {
         method: 'PUT',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ 
           title: newTitle,
           content: newVideoUrl ? { videoUrl: newVideoUrl } : undefined
         })
       })
-      const data = await res.json()
-      if (data.success) {
+      if (res.success) {
         toast.success("Lesson updated")
         const updatedModules = selectedApp.modules.map(m => {
           if (m._id !== moduleId) return m
@@ -712,7 +694,7 @@ export default function OrgAdminApplicationsPage() {
                 <tr key={app._id} className="hover:bg-slate-50">
                   <td className="px-4 py-4">
                     <div className="font-medium text-slate-900">{app.title}</div>
-                    <div className="text-sm text-slate-500">{app.category} • {app.modules.length} modules</div>
+                    <div className="text-sm text-slate-500">{app.category} • {(app.modules || []).length} modules</div>
                   </td>
                   <td className="px-4 py-4 text-sm text-slate-700">{app.instructor_id?.name}</td>
                   <td className="px-4 py-4">

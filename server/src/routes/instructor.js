@@ -4,6 +4,7 @@ const requireOrganization = require('../middleware/orgProtection');
 const { enforceOrgIsolation } = require('../middleware/orgIsolation');
 const InstructorController = require('../controllers/InstructorController');
 const SubjectController = require('../controllers/SubjectController');
+const { Timetable } = require('../models');
 
 const router = express.Router();
 
@@ -19,6 +20,28 @@ router.get('/dashboard/overview', ...requireInstructor, (req, res, next) => Inst
 
 // Subjects
 router.get('/subjects', ...requireInstructor, (req, res) => SubjectController.getInstructorSubjects(req, res));
+
+// Timetable (batch-based)
+router.get('/timetable', ...requireInstructor, async (req, res) => {
+  try {
+    const organizationId = req.user.organization_id?._id || req.user.organization_id;
+    const { day } = req.query;
+
+    const query = { organizationId, instructorId: req.user._id, isActive: true };
+    if (day) query.day = day;
+
+    const entries = await Timetable.find(query)
+      .populate('subjectId', 'name code')
+      .populate('batchId', 'name code year semester')
+      .populate('programId', 'name code')
+      .sort({ day: 1, startTime: 1 })
+      .lean();
+
+    return res.success({ entries }, 'Timetable retrieved');
+  } catch (error) {
+    return res.error(error.message, 'Failed to load timetable', 500);
+  }
+});
 
 // Courses
 router.post('/courses', ...requireInstructor, (req, res, next) => InstructorController.createCourse(req, res, next));

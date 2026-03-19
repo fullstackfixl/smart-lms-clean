@@ -20,7 +20,7 @@ router.get('/', [
       return res.status(400).json({ success: false, error: 'Validation failed', message: 'Please check your query parameters', details: errors.array() });
     }
 
-    const { Submission, Assignment, Course } = require('../models');
+    const { Submission, Assignment, Course, AcademicEnrollment } = require('../models');
     const orgId = req.user.organization_id?._id || req.user.organization_id;
     const { role, _id: userId } = req.user;
     const { assignment_id, course_id, student_id, active } = req.query;
@@ -116,19 +116,21 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-router.post('/', [
-  auth,
-  body('assignment_id').isMongoId(),
-  body('content').optional().trim().isLength({ max: 5000 }),
-  body('attachments').optional().isArray()
-], async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, error: 'Validation failed', message: 'Please check your input', details: errors.array() });
+    console.log('[Submission POST] ===== START =====');
+    console.log('[Submission POST] Headers:', JSON.stringify(req.headers));
+    console.log('[Submission POST] Raw body:', req.body);
+    console.log('[Submission POST] Body type:', typeof req.body);
+    console.log('[Submission POST] Body keys:', req.body ? Object.keys(req.body) : 'null');
+    console.log('[Submission POST] Content-Type:', req.headers['content-type']);
+    
+    // Force parse if body is empty but we have data
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log('[Submission POST] WARNING: Body is empty!');
     }
-
-    const { Submission, Assignment, Course } = require('../models');
+    
+    const { Submission, Assignment, Course, AcademicEnrollment } = require('../models');
     const orgId = req.user.organization_id?._id || req.user.organization_id;
     const { role, _id: userId } = req.user;
 
@@ -136,11 +138,81 @@ router.post('/', [
       return res.status(403).json({ success: false, error: 'Insufficient permissions', message: 'Only students can submit assignments' });
     }
 
-    const { assignment_id, content, attachments = [] } = req.body;
+    // Try to get data from body directly
+    let { assignment_id, content, attachments } = req.body || {};
+    
+    // Also check if data is nested under a 'data' or 'body' key
+    if (!assignment_id && req.body?.data) {
+      assignment_id = req.body.data.assignment_id;
+      content = req.body.data.content;
+      attachments = req.body.data.attachments;
+      console.log('[Submission POST] Found nested data in req.body.data');
+    }
+    
+    console.log('[Submission POST] Extracted values:', { assignment_id, content: content?.substring?.(0, 50), attachments_count: attachments?.length });
+    
+    // Validate assignment_id exists and is valid format
+    if (!assignment_id) {
+      console.log('[Submission POST] ERROR: assignment_id is missing/undefined');
+      return res.status(400).json({ success: false, error: 'assignment_id required', message: 'Please provide assignment_id' });
+    }
+    
+    // Check if it's a valid MongoDB ID format (24 hex chars)
+    if (!/^[0-9a-fA-F]{24}$/.test(assignment_id)) {
+      console.log('[Submission POST] ERROR: Invalid assignment_id format:', assignment_id);
+      return res.status(400).json({ success: false, error: 'Invalid assignment_id format', message: 'assignment_id must be a valid MongoDB ID' });
+    }
 
-    const assignment = await Assignment.findOne({ _id: assignment_id, organization_id: orgId, is_active: true });
+    console.log('[Submission POST] Querying assignment with:', { _id: assignment_id, organization_id: orgId });
+    
+    const assignment = await Assignment.findOne({ _id: assignment_id, organization_id: orgId });
+    console.log('[Submission POST] Assignment query result:', assignment ? 'Found' : 'Not found');
+    
     if (!assignment) {
+      // Try to find without orgId to debug
+      const assignmentAnyOrg = await Assignment.findOne({ _id: assignment_id });
+      console.log('[Submission POST] Assignment without org filter:', assignmentAnyOrg ? `Found in org ${assignmentAnyOrg.organization_id}` : 'Not found anywhere');
+      
       return res.status(404).json({ success: false, error: 'Assignment not found', message: 'Assignment not found' });
+    }
+
+    // Check if assignment has subject+batch, if not, just use course-based check
+    let canSubmit = false;
+    
+    if (assignment.subjectId && assignment.batchId) {
+      const enrolled = await AcademicEnrollment.findOne({
+        organizationId: orgId,
+        studentId: userId,
+        subjectId: assignment.subjectId,
+        batchId: assignment.batchId
+      }).select('_id').lean();
+      
+      if (enrolled) {
+        canSubmit = true;
+      } else {
+        console.log('[Submission POST] Student not enrolled in subject+batch:', { userId, subjectId: assignment.subjectId, batchId: assignment.batchId });
+      }
+    }
+    
+    // Fallback: check if student is enrolled in the course
+    if (!canSubmit && assignment.course_id) {
+      const { Enrollment } = require('../models');
+      const courseEnrolled = await Enrollment.findOne({
+        student_id: userId,
+        course_id: assignment.course_id
+      }).select('_id').lean();
+      
+      if (courseEnrolled) {
+        canSubmit = true;
+      }
+    }
+    
+    if (!canSubmit) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied',
+        message: 'You are not enrolled in this course/assignment'
+      });
     }
 
     const course = await Course.findOne({

@@ -27,7 +27,8 @@ import {
   CheckCircle2
 } from "lucide-react"
 import { useAuth } from '../../../lib/auth-context'
-import { getLiveClasses, getCourses, deleteLiveClass, createLiveClass } from '../../../lib/services/orgAdminApi'
+import { getLiveClasses, deleteLiveClass, createLiveClass } from '../../../lib/services/orgAdminApi'
+import { collegeApi } from "../../../lib/api"
 import { toast } from "sonner"
 
 interface LiveClass {
@@ -102,8 +103,11 @@ export default function LiveClassesPage() {
   useEffect(() => {
     if (showCreate) {
       if (!token) return
-      getCourses(token).then(res => {
-        if (res.success) setCourses(res.data.courses || res.data || [])
+      collegeApi.listCollegeCourses(token).then(res => {
+        if (res.success) {
+          const payload = res.data as any
+          setCourses(payload?.courses || payload || [])
+        }
       })
     }
   }, [showCreate, token])

@@ -244,7 +244,7 @@ router.get('/students/:id', async (req, res) => {
       .sort({ date: -1 });
 
     // Get quiz attempts
-    const quizAttempts = await require('../models').QuizAttempt.find({ student_id: req.params.id })
+    const quizAttempts = await require('../../models').QuizAttempt.find({ student_id: req.params.id })
       .populate('quiz_id', 'title')
       .sort({ createdAt: -1 });
 
@@ -499,7 +499,7 @@ router.get('/analytics', async (req, res) => {
     const quizzes = await Quiz.find({ createdBy: userId });
     const quizIds = quizzes.map(q => q._id);
 
-    const quizPerformance = await require('../models').QuizAttempt.aggregate([
+    const quizPerformance = await require('../../models').QuizAttempt.aggregate([
       { $match: { quiz_id: { $in: quizIds } } },
       { $group: { 
         _id: '$quiz_id', 

@@ -70,7 +70,7 @@ export async function getCollegeInstructorStudent(token: string, id: string) {
 // ==================== ATTENDANCE ====================
 
 export async function markCollegeAttendance(token: string, data: { courseId: string; studentId: string; date: Date; status: 'present' | 'absent' | 'late'; notes?: string }) {
-  return apiRequest('/api/college/instructor/attendance', { method: 'POST', body: data, token });
+  return apiRequest('/api/college/instructor/course-attendance', { method: 'POST', body: data, token });
 }
 
 export async function getCollegeInstructorAttendance(token: string, filters?: { courseId?: string; date?: string; batchId?: string }) {
@@ -78,12 +78,12 @@ export async function getCollegeInstructorAttendance(token: string, filters?: { 
   if (filters?.courseId) query.append('courseId', filters.courseId);
   if (filters?.date) query.append('date', filters.date);
   if (filters?.batchId) query.append('batchId', filters.batchId);
-  return apiRequest(`/api/college/instructor/attendance${query.toString() ? `?${query}` : ''}`, { token });
+  return apiRequest(`/api/college/instructor/course-attendance${query.toString() ? `?${query}` : ''}`, { token });
 }
 
 export async function getCollegeCourseAttendance(token: string, courseId: string, date?: string) {
   const query = date ? `?date=${date}` : '';
-  return apiRequest(`/api/college/instructor/attendance/course/${courseId}${query}`, { token });
+  return apiRequest(`/api/college/instructor/course-attendance/course/${courseId}${query}`, { token });
 }
 
 // ==================== LIVE CLASSES ====================

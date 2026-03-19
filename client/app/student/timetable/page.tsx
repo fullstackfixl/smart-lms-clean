@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Calendar, AlertCircle, Clock, MapPin, User } from "lucide-react"
+import { Calendar, AlertCircle, Clock, MapPin, User, Video } from "lucide-react"
 import { EmptySection } from '../../../components/student/EmptySection'
 import { Skeleton } from '../../../components/ui/skeleton'
 import { toast } from "sonner"
@@ -24,6 +24,7 @@ interface TimetableEntry {
   end_time: string
   room?: string
   type: string
+  meetingLink?: string
 }
 
 type CollegeTimetableEntry = {
@@ -34,6 +35,7 @@ type CollegeTimetableEntry = {
   startTime: string
   endTime: string
   room?: string
+  meetingLink?: string
 }
 
 const DAYS_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -57,7 +59,7 @@ export default function TimetablePage() {
     try {
       let response
       if (isCollege) {
-        response = await collegeApi.getStudentTimetable(token)
+        response = await collegeApi.getStudentBatchTimetable(token)
       } else {
         response = await getTimetable()
       }
@@ -89,6 +91,7 @@ export default function TimetablePage() {
               start_time: e.startTime,
               end_time: e.endTime,
               room: e.room,
+              meetingLink: e.meetingLink,
               type: 'lecture'
             } as TimetableEntry
           })
@@ -258,6 +261,18 @@ export default function TimetablePage() {
                             )}
                           </div>
                         </div>
+
+                        {entry.meetingLink ? (
+                          <a
+                            href={entry.meetingLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600 text-white font-semibold hover:bg-orange-700 transition-colors"
+                          >
+                            <Video className="h-4 w-4" />
+                            Join
+                          </a>
+                        ) : null}
                       </div>
                     </div>
                   ))}

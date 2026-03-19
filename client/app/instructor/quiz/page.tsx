@@ -22,7 +22,7 @@ import { Button } from '../../../components/ui/button'
 import { toast } from "sonner"
 import { cn } from "../../../lib/utils"
 import { useAuth } from '../../../lib/auth-context'
-import { instructorApi } from '../../../lib/api'
+import { instructorApi, courseApi, collegeApi } from '../../../lib/api'
 import {
   Select,
   SelectContent,
@@ -49,6 +49,15 @@ interface Course {
   title: string
 }
 
+interface InstructorSubject {
+  _id: string
+  name: string
+  code: string
+  batchId?: string | null
+  batch?: { _id: string; name: string; code: string; year?: number; semester?: number } | null
+  contentCourseId?: string | null
+}
+
 function MetricCard({ label, value, icon: Icon, color = "blue" }: { label: string; value: string | number; icon: any; color?: "blue" | "green" | "orange" | "indigo" }) {
   const colors = {
     blue: { bg: "bg-blue-50", icon: "text-blue-500" },
@@ -73,23 +82,36 @@ function MetricCard({ label, value, icon: Icon, color = "blue" }: { label: strin
 }
 
 function QuizContent() {
-  const { token } = useAuth()
+  const { token, user } = useAuth()
   const router = useRouter()
   const [courses, setCourses] = useState<Course[]>([])
+  const [subjects, setSubjects] = useState<InstructorSubject[]>([])
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [showGenerator, setShowGenerator] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
 
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+
   // Generator Form
   const [courseId, setCourseId] = useState("")
+  const [subjectKey, setSubjectKey] = useState("")
   const [prompt, setPrompt] = useState("")
   const [difficulty, setDifficulty] = useState("medium")
   const [numQuestions, setNumQuestions] = useState(5)
 
   // Generated Preview
   const [generatedQuiz, setGeneratedQuiz] = useState<any | null>(null)
+
+  const [draftMode, setDraftMode] = useState<'ai' | 'manual'>('ai')
+  const [draftForm, setDraftForm] = useState({
+    title: '',
+    description: '',
+    questions: [] as any[],
+    pass_percentage: 60,
+    max_attempts: 3
+  })
 
   // Edit state
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null)
@@ -108,12 +130,27 @@ function QuizContent() {
   async function loadInitialData() {
     setLoading(true)
     try {
-      const coursesRes = await instructorApi.listCourses(token!, "limit=100")
-      if (coursesRes.success) {
-        const list = (coursesRes.data as any).courses || []
-        setCourses(list)
-        if (list.length > 0 && !courseId) {
-          setCourseId(list[0]._id)
+      if (isCollege) {
+        const subjectsRes = await instructorApi.listSubjects(token!)
+        if (subjectsRes.success) {
+          const list = (subjectsRes.data as any) || []
+          setSubjects(Array.isArray(list) ? list : [])
+          if (!subjectKey && Array.isArray(list) && list.length > 0) {
+            const first = list[0]
+            const firstBatchId = (first.batchId || first?.batch?._id || '')
+            const key = `${first._id}:${firstBatchId || ''}`
+            setSubjectKey(key)
+            if (first.contentCourseId) setCourseId(String(first.contentCourseId))
+          }
+        }
+      } else {
+        const coursesRes = await instructorApi.listCourses(token!, "limit=100")
+        if (coursesRes.success) {
+          const list = (coursesRes.data as any).courses || []
+          setCourses(list)
+          if (list.length > 0 && !courseId) {
+            setCourseId(list[0]._id)
+          }
         }
       }
 
@@ -150,8 +187,13 @@ function QuizContent() {
   }, [token])
 
   async function handleGenerate() {
-    if (!courseId || !prompt) {
-      toast.error("Please provide a course and topic for generation.")
+    if ((!courseId && !isCollege) || !prompt) {
+      toast.error("Please provide a subject/course and topic for generation.")
+      return
+    }
+
+    if (isCollege && !subjectKey) {
+      toast.error('Please select a subject')
       return
     }
 
@@ -159,15 +201,41 @@ function QuizContent() {
     setGeneratedQuiz(null)
 
     try {
-      const res = await instructorApi.generateAIQuiz(token!, {
+      const [subjectId, batchId] = isCollege ? subjectKey.split(':') : [null, null]
+      
+      // Build API payload - only include subject/batch if they exist
+      const apiPayload: any = {
         course_id: courseId,
         topic: prompt,
         difficulty,
         num_questions: numQuestions
-      })
+      }
+      
+      if (isCollege && subjectId && batchId) {
+        apiPayload.subjectId = subjectId
+        apiPayload.batchId = batchId
+      }
+      
+      const res = await instructorApi.generateAIQuiz(token!, apiPayload)
 
       if (res.success) {
-        setGeneratedQuiz((res.data as any).quiz)
+        const payload: any = res.data
+        const questions = payload?.questions || payload?.data?.questions || []
+        const quizDraft = {
+          title: `Quiz: ${prompt.slice(0, 40)}`,
+          questions,
+          course_id: courseId,
+          _id: null
+        }
+        setGeneratedQuiz(quizDraft)
+        setDraftMode('ai')
+        setDraftForm({
+          title: quizDraft?.title || `Quiz: ${prompt.slice(0, 40)}`,
+          description: `AI-Generated quiz for: ${prompt}`,
+          questions: quizDraft?.questions || [],
+          pass_percentage: 60,
+          max_attempts: 3
+        })
         toast.success("AI Quiz generated successfully.")
       } else {
         toast.error(res.error || "Failed to generate quiz")
@@ -180,37 +248,133 @@ function QuizContent() {
   }
 
   async function handlePublish() {
-    if (!courseId || !generatedQuiz) return
+    if (isCollege && !subjectKey) {
+      toast.error('Please select a subject from the dropdown')
+      return
+    }
+    
+    if (!draftForm.questions || draftForm.questions.length === 0) {
+      toast.error('Please add at least one question to the quiz')
+      return
+    }
 
     setGenerating(true)
     try {
-      const create = await instructorApi.createQuiz(token!, courseId, {
-        title: generatedQuiz.title || `Quiz: ${prompt.slice(0, 30)}`,
-        description: `AI-Generated quiz for: ${prompt}`,
-        questions: generatedQuiz.questions,
-        pass_percentage: 60,
-        max_attempts: 3,
-      })
+      const [subjectId, batchId] = isCollege ? subjectKey.split(':') : [null, null]
+      
+      // Build payload - backend will auto-resolve course from subject
+      const payload: any = {
+        title: draftForm.title || generatedQuiz?.title || `Quiz: ${prompt.slice(0, 30)}`,
+        description: draftForm.description || `AI-Generated quiz for: ${prompt}`,
+        questions: draftForm.questions || generatedQuiz?.questions || [],
+        pass_percentage: draftForm.pass_percentage,
+        max_attempts: draftForm.max_attempts
+      }
+      
+      // Add subject+batch for college flow (backend auto-resolves course)
+      if (isCollege && subjectId && batchId) {
+        payload.subjectId = subjectId
+        payload.batchId = batchId
+      } else if (courseId) {
+        // Legacy flow with course_id
+        payload.course_id = courseId
+      }
+
+      console.log('Creating quiz with payload:', payload)
+      const create = await instructorApi.createAcademicQuiz(token!, payload)
 
       if (!create.success) {
+        console.error('Create quiz failed:', create)
         toast.error(create.error || 'Failed to create quiz')
         return
       }
 
       const createdId = (create.data as any)?._id || (create.data as any)?.quiz?._id || (create.data as any)?.id
+      console.log('Quiz created with ID:', createdId)
+      
       if (createdId) {
-        await instructorApi.publishQuiz(token!, createdId)
+        const pubRes = await instructorApi.publishQuiz(token!, createdId)
+        if (!pubRes.success) {
+          console.error('Publish failed:', pubRes)
+          toast.error(pubRes.error || 'Failed to publish quiz')
+          return
+        }
       }
 
-      toast.success("Quiz published and added to course.")
+      toast.success("Quiz published successfully!")
       loadInitialData()
       setGeneratedQuiz(null)
+      setDraftForm({ title: '', description: '', questions: [], pass_percentage: 60, max_attempts: 3 })
       setShowGenerator(false)
-    } catch {
-      toast.error("Failed to publish quiz")
+    } catch (err: any) {
+      console.error('Publish error:', err)
+      toast.error(err?.message || "Failed to publish quiz")
     } finally {
       setGenerating(false)
     }
+  }
+
+  async function ensureCourseForSubject(subject: InstructorSubject) {
+    if (subject.contentCourseId) return subject.contentCourseId
+    
+    toast.info('Creating content course for this subject...')
+    
+    // Create a course for this subject
+    const courseRes = await courseApi.create(token!, {
+      title: `${subject.name} - Content`,
+      description: `Auto-created content course for ${subject.name} (${subject.code})`,
+      category: 'Academic'
+    })
+    
+    if (!courseRes.success) {
+      toast.error('Failed to create content course. Please contact admin.')
+      return null
+    }
+    
+    const newCourseId = (courseRes.data as any)?._id || (courseRes.data as any)?.id
+    if (!newCourseId) {
+      toast.error('Course created but ID not returned')
+      return null
+    }
+    
+    // Update subject with contentCourseId
+    const updateRes = await collegeApi.updateSubject(token!, subject._id, {
+      contentCourseId: newCourseId
+    })
+    
+    if (!updateRes.success) {
+      toast.error('Failed to link course to subject')
+      return null
+    }
+    
+    toast.success('Content course linked successfully')
+    return newCourseId
+  }
+
+  function addDraftQuestion() {
+    setDraftForm(prev => ({
+      ...prev,
+      questions: [...prev.questions, { question: '', options: ['', '', '', ''], correct_answer: 0, explanation: '' }]
+    }))
+  }
+
+  function updateDraftQuestion(index: number, field: string, value: any) {
+    const updated = [...draftForm.questions]
+    updated[index] = { ...updated[index], [field]: value }
+    setDraftForm(prev => ({ ...prev, questions: updated }))
+  }
+
+  function updateDraftOption(qIndex: number, optIndex: number, value: string) {
+    const updated = [...draftForm.questions]
+    updated[qIndex].options[optIndex] = value
+    setDraftForm(prev => ({ ...prev, questions: updated }))
+  }
+
+  function removeDraftQuestion(index: number) {
+    setDraftForm(prev => ({
+      ...prev,
+      questions: prev.questions.filter((_, i) => i !== index)
+    }))
   }
 
   async function handleDeleteQuiz(id: string) {
@@ -337,15 +501,58 @@ function QuizContent() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Course</label>
-                  <Select value={courseId} onValueChange={setCourseId}>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{isCollege ? 'Subject (Batch)' : 'Course'}</label>
+                  {isCollege ? (
+                    <Select
+                      value={subjectKey}
+                      onValueChange={(val) => {
+                        setSubjectKey(val)
+                        const [sid] = val.split(':')
+                        const selected = subjects.find(s => String(s._id) === String(sid))
+                        if (selected?.contentCourseId) setCourseId(String(selected.contentCourseId))
+                      }}
+                    >
+                      <SelectTrigger className="h-10 border-gray-200">
+                        <SelectValue placeholder="Select subject..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map(sub => {
+                          const bid = (sub.batchId || sub?.batch?._id || '') as string
+                          const key = `${sub._id}:${bid || ''}`
+                          const batchLabel = sub?.batch?.name || sub?.batch?.code || ''
+                          const extra = batchLabel ? ` • ${batchLabel}` : ''
+                          return (
+                            <SelectItem key={key} value={key}>{`${sub.name} (${sub.code})${extra}`}</SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Select value={courseId} onValueChange={setCourseId}>
+                      <SelectTrigger className="h-10 border-gray-200">
+                        <SelectValue placeholder="Select course..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courses.map(course => (
+                          <SelectItem key={course._id} value={course._id}>{course.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Mode</label>
+                  <Select value={draftMode} onValueChange={(v: any) => {
+                    setDraftMode(v)
+                    setGeneratedQuiz(null)
+                    setDraftForm({ title: '', description: '', questions: [], pass_percentage: 60, max_attempts: 3 })
+                  }}>
                     <SelectTrigger className="h-10 border-gray-200">
-                      <SelectValue placeholder="Select course..." />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {courses.map(course => (
-                        <SelectItem key={course._id} value={course._id}>{course.title}</SelectItem>
-                      ))}
+                      <SelectItem value="ai">AI Generated</SelectItem>
+                      <SelectItem value="manual">Manual</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -390,42 +597,202 @@ function QuizContent() {
                   />
                 </div>
                 <Button 
-                  onClick={handleGenerate}
+                  onClick={draftMode === 'ai' ? handleGenerate : () => {
+                    if (isCollege && !subjectKey) {
+                      toast.error('Please select a subject')
+                      return
+                    }
+                    if (!courseId) {
+                      toast.error('Please select a course/subject')
+                      return
+                    }
+                    if (!draftForm.title || !draftForm.questions.length) {
+                      toast.error('Please add title and at least one question')
+                      return
+                    }
+                    handlePublish()
+                  }}
                   disabled={generating}
                   className="w-full bg-blue-600 hover:bg-blue-700"
                 >
-                  {generating ? "Generating..." : <><Sparkles className="w-4 h-4 mr-2" /> Generate AI Quiz</>}
+                  {draftMode === 'ai'
+                    ? (generating ? "Generating..." : <><Sparkles className="w-4 h-4 mr-2" /> Generate AI Quiz</>)
+                    : (generating ? "Publishing..." : <><CheckCircle2 className="w-4 h-4 mr-2" /> Publish Manual Quiz</>)}
                 </Button>
               </div>
             </div>
           </div>
 
-          {generatedQuiz && (
+          {(draftMode === 'ai' && generatedQuiz) && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">Preview: {generatedQuiz.title}</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Edit & Publish</h3>
                 <Button onClick={handlePublish} disabled={generating} className="bg-green-600 hover:bg-green-700">
                   <CheckCircle2 className="w-4 h-4 mr-2" />
                   Publish Quiz
                 </Button>
               </div>
-              <div className="space-y-4">
-                {generatedQuiz.questions.map((q: any, i: number) => (
-                  <div key={i} className="bg-white border border-gray-200 rounded-md p-4">
-                    <p className="font-medium text-slate-900 mb-2">{i + 1}. {q.question}</p>
-                    <div className="grid grid-cols-1 gap-2">
+              <div className="bg-white border border-gray-200 rounded-md p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Quiz Title</label>
+                  <input
+                    type="text"
+                    value={draftForm.title}
+                    onChange={(e) => setDraftForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                  <textarea
+                    value={draftForm.description}
+                    onChange={(e) => setDraftForm(prev => ({ ...prev, description: e.target.value }))}
+                    className="w-full h-20 px-3 py-2 border border-gray-200 rounded-md text-sm resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Pass %</label>
+                    <input
+                      type="number"
+                      value={draftForm.pass_percentage}
+                      onChange={(e) => setDraftForm(prev => ({ ...prev, pass_percentage: parseInt(e.target.value) }))}
+                      className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Max Attempts</label>
+                    <input
+                      type="number"
+                      value={draftForm.max_attempts}
+                      onChange={(e) => setDraftForm(prev => ({ ...prev, max_attempts: parseInt(e.target.value) }))}
+                      className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-medium">Questions ({draftForm.questions.length})</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addDraftQuestion}><Plus className="w-4 h-4 mr-1" /> Add Question</Button>
+                  </div>
+
+                  {draftForm.questions.map((q: any, qIdx: number) => (
+                    <div key={qIdx} className="border rounded-md p-4 mb-4 bg-slate-50">
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="text-sm font-medium">Q{qIdx + 1}</span>
+                        <Button variant="ghost" size="sm" className="text-red-600 h-6 w-6 p-0" onClick={() => removeDraftQuestion(qIdx)}><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Question text"
+                        value={q.question}
+                        onChange={(e) => updateDraftQuestion(qIdx, 'question', e.target.value)}
+                        className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm mb-3"
+                      />
+                      <div className="space-y-2">
+                        {q.options.map((opt: string, optIdx: number) => (
+                          <div key={optIdx} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`draft-correct-${qIdx}`}
+                              checked={q.correct_answer === optIdx}
+                              onChange={() => updateDraftQuestion(qIdx, 'correct_answer', optIdx)}
+                            />
+                            <input
+                              type="text"
+                              placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                              value={opt}
+                              onChange={(e) => updateDraftOption(qIdx, optIdx, e.target.value)}
+                              className="flex-1 h-8 px-2 border border-gray-200 rounded text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(draftMode === 'manual') && (
+            <div className="bg-white border border-gray-200 rounded-md p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Quiz Title</label>
+                <input
+                  type="text"
+                  value={draftForm.title}
+                  onChange={(e) => setDraftForm(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                <textarea
+                  value={draftForm.description}
+                  onChange={(e) => setDraftForm(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full h-20 px-3 py-2 border border-gray-200 rounded-md text-sm resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Pass %</label>
+                  <input
+                    type="number"
+                    value={draftForm.pass_percentage}
+                    onChange={(e) => setDraftForm(prev => ({ ...prev, pass_percentage: parseInt(e.target.value) }))}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Max Attempts</label>
+                  <input
+                    type="number"
+                    value={draftForm.max_attempts}
+                    onChange={(e) => setDraftForm(prev => ({ ...prev, max_attempts: parseInt(e.target.value) }))}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium">Questions ({draftForm.questions.length})</h3>
+                  <Button type="button" variant="outline" size="sm" onClick={addDraftQuestion}><Plus className="w-4 h-4 mr-1" /> Add Question</Button>
+                </div>
+
+                {draftForm.questions.map((q: any, qIdx: number) => (
+                  <div key={qIdx} className="border rounded-md p-4 mb-4 bg-slate-50">
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-sm font-medium">Q{qIdx + 1}</span>
+                      <Button variant="ghost" size="sm" className="text-red-600 h-6 w-6 p-0" onClick={() => removeDraftQuestion(qIdx)}><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Question text"
+                      value={q.question}
+                      onChange={(e) => updateDraftQuestion(qIdx, 'question', e.target.value)}
+                      className="w-full h-10 px-3 border border-gray-200 rounded-md text-sm mb-3"
+                    />
+                    <div className="space-y-2">
                       {q.options.map((opt: string, optIdx: number) => (
-                        <div 
-                          key={optIdx} 
-                          className={cn(
-                            "p-2 rounded border text-sm",
-                            optIdx === q.correct_answer 
-                              ? "bg-green-50 border-green-200 text-green-800" 
-                              : "bg-slate-50 border-slate-200 text-slate-600"
-                          )}
-                        >
-                          {String.fromCharCode(65 + optIdx)}. {opt}
-                          {optIdx === q.correct_answer && <span className="ml-2 text-green-600 font-medium">(Correct)</span>}
+                        <div key={optIdx} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name={`manual-correct-${qIdx}`}
+                            checked={q.correct_answer === optIdx}
+                            onChange={() => updateDraftQuestion(qIdx, 'correct_answer', optIdx)}
+                          />
+                          <input
+                            type="text"
+                            placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                            value={opt}
+                            onChange={(e) => updateDraftOption(qIdx, optIdx, e.target.value)}
+                            className="flex-1 h-8 px-2 border border-gray-200 rounded text-sm"
+                          />
                         </div>
                       ))}
                     </div>

@@ -50,6 +50,14 @@ interface Program {
     durationUnit?: string
 }
 
+interface Batch {
+    _id: string
+    name: string
+    code?: string
+    year?: number
+    semester?: number
+}
+
 export default function SubjectManagementPage() {
     const params = useParams()
     const router = useRouter()
@@ -61,10 +69,16 @@ export default function SubjectManagementPage() {
 
     const [program, setProgram] = useState<Program | null>(null)
     const [subjects, setSubjects] = useState<Subject[]>([])
+    const [batches, setBatches] = useState<Batch[]>([])
     const [instructors, setInstructors] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const [showAssignModal, setShowAssignModal] = useState(false)
+    const [assignSubject, setAssignSubject] = useState<Subject | null>(null)
+    const [assignBatchId, setAssignBatchId] = useState('')
+    const [assignInstructorId, setAssignInstructorId] = useState('')
 
     const [formData, setFormData] = useState({
         name: "",
@@ -99,9 +113,13 @@ export default function SubjectManagementPage() {
             const instRes = await listInstructors(token)
 
             if (progRes.success) {
-                setProgram(progRes.data?.program || progRes.data)
+                const programPayload = progRes.data?.program || progRes.data
+                setProgram(programPayload)
                 const deptId = progRes.data?.program?.departmentId || progRes.data?.departmentId || progRes.data?.department_id
                 setFormData(prev => ({ ...prev, department_id: deptId?._id || deptId || '' }))
+
+                const batchList = progRes.data?.batches || progRes.data?.program?.batches || []
+                setBatches(Array.isArray(batchList) ? batchList : [])
             }
             if (subRes.success) {
                 setSubjects(subRes.data?.subjects || subRes.data || [])
@@ -114,6 +132,34 @@ export default function SubjectManagementPage() {
             toast.error("Failed to load subject data")
         } finally {
             setLoading(false)
+        }
+    }
+
+    async function handleAssignInstructorToBatch() {
+        setIsSubmitting(true)
+        try {
+            if (!token) throw new Error('No authentication token')
+            if (!assignSubject?._id) throw new Error('No subject selected')
+            if (!assignBatchId) throw new Error('Please select a batch')
+            if (!assignInstructorId) throw new Error('Please select an instructor')
+
+            const res = await collegeApi.assignInstructorToBatchSubject(token, {
+                subjectId: assignSubject._id,
+                batchId: assignBatchId,
+                instructorId: assignInstructorId
+            })
+
+            if (!res.success) throw new Error((res as any)?.error || 'Failed to assign instructor')
+
+            toast.success('Instructor assigned successfully')
+            setShowAssignModal(false)
+            setAssignSubject(null)
+            setAssignBatchId('')
+            setAssignInstructorId('')
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to assign instructor')
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
@@ -263,6 +309,19 @@ export default function SubjectManagementPage() {
                                                     </p>
                                                 </div>
                                             </div>
+
+                                            <button
+                                                onClick={() => {
+                                                    setAssignSubject(subject)
+                                                    setAssignBatchId('')
+                                                    setAssignInstructorId('')
+                                                    setShowAssignModal(true)
+                                                }}
+                                                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors"
+                                            >
+                                                <Send className="w-4 h-4" />
+                                                Assign Instructor (Batch)
+                                            </button>
                                         </div>
                                     </motion.div>
                                 ))
@@ -271,6 +330,89 @@ export default function SubjectManagementPage() {
                     </section>
                 )
             })}
+
+            <AnimatePresence>
+                {showAssignModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                        onClick={() => {
+                            setShowAssignModal(false)
+                            setAssignSubject(null)
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <h3 className="text-lg font-bold text-white">Assign Instructor</h3>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        {assignSubject?.name} ({assignSubject?.code})
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowAssignModal(false)
+                                        setAssignSubject(null)
+                                    }}
+                                    className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="mt-6 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-2">Batch</label>
+                                    <select
+                                        value={assignBatchId}
+                                        onChange={(e) => setAssignBatchId(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                                    >
+                                        <option value="">Select batch</option>
+                                        {batches.map((b) => (
+                                            <option key={b._id} value={b._id}>
+                                                {b.name}{b.year ? ` • ${b.year}` : ''}{b.semester ? ` • Sem ${b.semester}` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-2">Instructor</label>
+                                    <select
+                                        value={assignInstructorId}
+                                        onChange={(e) => setAssignInstructorId(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-indigo-500"
+                                    >
+                                        <option value="">Select instructor</option>
+                                        {instructors.map((inst) => (
+                                            <option key={inst._id} value={inst._id}>
+                                                {inst?.profile?.fullName || inst?.name || inst?.email}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <button
+                                    onClick={handleAssignInstructorToBatch}
+                                    disabled={isSubmitting}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 text-white font-bold"
+                                >
+                                    Assign
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Create Modal */}
             <AnimatePresence>

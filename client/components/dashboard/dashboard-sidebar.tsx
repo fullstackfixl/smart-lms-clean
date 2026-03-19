@@ -44,6 +44,7 @@ const navItems: NavItem[] = [
   { label: "Attendance", href: "/instructor/attendance", icon: UserCheck, roles: ["instructor"], module: "ATTENDANCE" },
   { label: "Grade Entry", href: "/instructor/grades", icon: BarChart3, roles: ["instructor"], module: "GRADES_SECTIONS" },
   { label: "Live Classes", href: "/instructor/live-classes", icon: Video, roles: ["instructor"], module: "LIVE_CLASSES" },
+  { label: "Timetable", href: "/instructor/timetable", icon: Clock, roles: ["instructor"], module: "TIMETABLE" },
   { label: "Analytics", href: "/instructor/analytics", icon: TrendingUp, roles: ["instructor"], module: "REPORTS" },
   { label: "Messages", href: "/instructor/messages", icon: MessageSquare, roles: ["instructor"] },
 

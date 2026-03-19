@@ -41,6 +41,8 @@ export default function RoleLoginForm({
     setLoading(true)
     const loginTarget = expectedRole === 'platform_admin'
       ? 'platform_admin'
+      : expectedRole === 'platform_staff'
+        ? 'platform_staff'
       : expectedRole === 'org_admin' || expectedRole === 'organization_admin'
         ? 'organization_admin'
         : 'student_instructor'

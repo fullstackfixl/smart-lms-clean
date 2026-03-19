@@ -72,6 +72,39 @@ class AuthController {
         }
     }
 
+    async platformStaffLogin(req, res) {
+        try {
+            const { error } = authValidation.login.validate(req.body);
+            if (error) {
+                return res.status(400).json({ success: false, message: error.details[0].message });
+            }
+
+            const { email, password, mfaCode } = req.body;
+            const result = await authService.loginStrict(email, password, mfaCode, {
+                allowedRoles: ['platform_staff']
+            });
+
+            const jwtUtils = require('../utils/jwt');
+            jwtUtils.setTokenCookie(res, result.token);
+
+            return res.status(200).json({
+                success: true,
+                data: {
+                    token: result.token,
+                    role: result.role,
+                    redirectUrl: '/platform-staff/dashboard',
+                    user: result.user,
+                    organization: result.organization || null
+                }
+            });
+        } catch (error) {
+            return res.status(error.statusCode || 401).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
     async orgAdminLogin(req, res) {
         try {
             const { error } = authValidation.login.validate(req.body);

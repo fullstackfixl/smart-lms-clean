@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Building2,
   FileText,
+  GraduationCap,
   Users,
   BarChart3,
   ClipboardList,
@@ -17,6 +18,7 @@ import {
 
 const navItems = [
   { name: 'Dashboard', href: '/platform-staff/dashboard', icon: LayoutDashboard },
+  { name: 'Applications', href: '/platform-staff/applications', icon: GraduationCap },
   { name: 'Organizations', href: '/platform-staff/organizations', icon: Building2 },
   { name: 'Courses', href: '/platform-staff/courses', icon: FileText },
   { name: 'Users', href: '/platform-staff/users', icon: Users },

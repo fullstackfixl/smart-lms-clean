@@ -108,104 +108,36 @@ router.get('/subjects', async (req, res) => {
 
 // Assign Instructor to Subject
 router.post('/assign-instructor', requireRole(['org_admin']), async (req, res) => {
-    try {
-        const { subjectId, instructorId, contentCourseId } = req.body;
-
-        const subject = await Subject.findOneAndUpdate(
-            { _id: subjectId, organization_id: req.user.organization_id },
-            { instructorId, contentCourseId },
-            { new: true }
-        );
-
-        if (!subject) return res.error('Subject not found', 'Invalid subject ID', 404);
-
-        res.success({ subject }, 'Instructor assigned to subject successfully');
-    } catch (error) {
-        res.error(error.message, 'Failed to assign instructor', 500);
-    }
+    return res.status(410).json({
+        success: false,
+        message: 'Manual instructor assignment is disabled. Use the Program+Batch enrollment engine (subjects should carry instructorId, and enrollments are auto-generated).'
+    });
 });
 
 // Enroll Student in Program
 router.post('/enroll-student', requireRole(['org_admin']), async (req, res) => {
-    try {
-        const { studentId, courseId, departmentId } = req.body;
-
-        // Check for existing enrollment
-        const existing = await StudentCourseEnrollment.findOne({
-            studentId,
-            courseId,
-            organizationId: req.user.organization_id
-        });
-        if (existing) return res.error('Conflict', 'Student already enrolled in this program', 409);
-
-        // Create Course Enrollment
-        const enrollment = await StudentCourseEnrollment.create({
-            organizationId: req.user.organization_id,
-            studentId,
-            courseId,
-            departmentId,
-            enrolledAt: new Date()
-        });
-
-        // Auto-assign subjects from this program
-        const subjects = await Subject.find({
-            program_id: courseId,
-            organization_id: req.user.organization_id,
-            isActive: true
-        });
-
-        const subjectEnrollments = subjects.map(subject => ({
-            organizationId: req.user.organization_id,
-            studentId,
-            subjectId: subject._id,
-            courseId,
-            departmentId,
-            enrolledAt: new Date()
-        }));
-
-        if (subjectEnrollments.length > 0) {
-            await StudentSubjectEnrollment.insertMany(subjectEnrollments);
-        }
-
-        res.success({ enrollment, subjectCount: subjects.length }, 'Student enrolled in program and assigned subjects successfully');
-    } catch (error) {
-        res.error(error.message, 'Failed to enroll student', 500);
-    }
+    return res.status(410).json({
+        success: false,
+        message: 'Manual enrollment is disabled. Use POST /api/admin/learners/assign with studentId + programId + batchId.'
+    });
 });
 
 // --- Instructor Endpoints ---
 
 // Get Instructor Subjects
 router.get('/instructor/subjects', requireRole(['instructor']), async (req, res) => {
-    try {
-        const subjects = await Subject.find({
-            instructor_id: req.user._id,
-            organization_id: req.user.organization_id,
-            isActive: true
-        }).populate('program_id', 'name code');
-
-        res.success({ subjects }, 'Instructor subjects retrieved');
-    } catch (error) {
-        res.error(error.message, 'Failed to get subjects', 500);
-    }
+    return res.status(410).json({
+        success: false,
+        message: 'Legacy instructor subjects endpoint is disabled. Use /instructor/subjects (non-legacy) which reads from AcademicEnrollment.'
+    });
 });
 
 // Get Students in Subject
 router.get('/subject/students', requireRole(['instructor', 'org_admin']), async (req, res) => {
-    try {
-        const { subjectId } = req.query;
-        if (!subjectId) return res.error('Missing field', 'subjectId is required', 400);
-
-        const enrollments = await StudentSubjectEnrollment.find({
-            subjectId,
-            organizationId: req.user.organization_id
-        }).populate('studentId', 'name email profile');
-
-        const students = enrollments.map(e => e.studentId);
-        res.success({ students }, 'Subject students retrieved');
-    } catch (error) {
-        res.error(error.message, 'Failed to get subject students', 500);
-    }
+    return res.status(410).json({
+        success: false,
+        message: 'Legacy subject->students endpoint is disabled. Use AcademicEnrollment as the source of truth.'
+    });
 });
 
 // Post Attendance
@@ -243,23 +175,10 @@ router.post('/attendance', requireRole(['instructor']), async (req, res) => {
 
 // Get Student Subjects
 router.get('/student/subjects', requireRole(['student']), async (req, res) => {
-    try {
-        const enrollments = await StudentSubjectEnrollment.find({
-            studentId: req.user._id,
-            organizationId: req.user.organization_id
-        }).populate({
-            path: 'subjectId',
-            populate: [
-                { path: 'instructorId', select: 'name profile pic_url' },
-                { path: 'contentCourseId', select: 'title description thumbnail' }
-            ]
-        });
-
-        const subjects = enrollments.map(e => e.subjectId).filter(s => s !== null);
-        res.success({ subjects }, 'Student subjects retrieved');
-    } catch (error) {
-        res.error(error.message, 'Failed to get subjects', 500);
-    }
+    return res.status(410).json({
+        success: false,
+        message: 'Legacy student subjects endpoint is disabled. Use /student/subjects (non-legacy) which reads from AcademicEnrollment.'
+    });
 });
 
 // Get Student Attendance

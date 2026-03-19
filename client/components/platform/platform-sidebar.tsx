@@ -22,6 +22,7 @@ import {
 const navItems = [
   { name: 'Dashboard', href: '/platform/dashboard', icon: LayoutDashboard },
   { name: 'Organizations', href: '/platform/organizations', icon: Building2 },
+  { name: 'Applications', href: '/platform/applications', icon: GraduationCap },
   { name: 'Courses', href: '/platform/courses', icon: FileText },
   { name: 'Users & Roles', href: '/platform/users', icon: Users },
   { name: 'Staff Management', href: '/platform/staff', icon: ShieldCheck },

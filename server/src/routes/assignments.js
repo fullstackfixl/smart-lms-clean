@@ -64,7 +64,9 @@ router.get('/:id', auth, async (req, res) => {
 
 router.post('/', [
   auth,
-  body('course_id').isMongoId(),
+  body('course_id').optional().isMongoId(),
+  body('subjectId').isMongoId(),
+  body('batchId').isMongoId(),
   body('title').trim().isLength({ min: 1, max: 200 }),
   body('description').optional().trim().isLength({ max: 2000 }),
   body('due_date').optional().isISO8601(),
@@ -76,7 +78,7 @@ router.post('/', [
       return res.status(400).json({ success: false, error: 'Validation failed', message: 'Please check your input', details: errors.array() });
     }
 
-    const { Assignment, Course, Subject, Batch, User, Notification } = require('../models');
+    const { Assignment, Course, Subject, AcademicEnrollment, InstructorAssignment, User, Notification } = require('../models');
     const socketService = require('../services/socketService');
 
     const orgId = req.user.organization_id?._id || req.user.organization_id;
@@ -86,24 +88,55 @@ router.post('/', [
       return res.status(403).json({ success: false, error: 'Insufficient permissions', message: 'Only instructors and administrators can create assignments' });
     }
 
-    const { course_id, title, description, due_date, max_score } = req.body;
+    const { course_id, title, description, due_date, max_score, subjectId, batchId } = req.body;
 
-    const course = await Course.findOne({
-      _id: course_id,
-      organization_id: orgId,
-      $or: [{ is_active: true }, { isActive: true }]
-    });
-    if (!course) {
-      return res.status(404).json({ success: false, error: 'Course not found', message: 'Course not found in your organization' });
+    // Resolve course from subject mapping (subjectId -> contentCourseId)
+    const subject = await Subject.findOne({
+      _id: subjectId,
+      organizationId: orgId,
+      isActive: true
+    }).select('_id contentCourseId programId').lean();
+
+    if (!subject) {
+      return res.status(404).json({ success: false, error: 'Subject not found', message: 'Subject not found in your organization' });
     }
 
-    if (role === 'instructor' && String(course.instructor_id) !== String(userId)) {
-      return res.status(403).json({ success: false, error: 'Access denied', message: 'You can only create assignments for your assigned courses' });
+    const resolvedCourseId = subject.contentCourseId || course_id;
+    if (!resolvedCourseId) {
+      return res.status(400).json({ success: false, error: 'Course mapping missing', message: 'This subject is not linked to a content course yet' });
+    }
+
+    // Validate instructor is assigned to subject + batch
+    if (role === 'instructor') {
+      const mapping = await InstructorAssignment.findOne({
+        organizationId: orgId,
+        instructorId: userId,
+        subjectId,
+        batchId,
+        isActive: true
+      }).select('_id').lean();
+
+      if (!mapping) {
+        return res.status(403).json({ success: false, error: 'Access denied', message: 'You are not assigned to this subject and batch' });
+      }
+    }
+
+    // Ensure resolved course exists
+    const course = await Course.findOne({
+      _id: resolvedCourseId,
+      organization_id: orgId,
+      $or: [{ is_active: true }, { isActive: true }]
+    }).select('_id').lean();
+    if (!course) {
+      return res.status(404).json({ success: false, error: 'Course not found', message: 'Linked content course not found in your organization' });
     }
 
     const assignment = await Assignment.create({
       organization_id: orgId,
-      course_id,
+      course_id: resolvedCourseId,
+      subjectId,
+      batchId,
+      instructor_id: role === 'instructor' ? userId : null,
       title,
       description,
       due_date: due_date ? new Date(due_date) : undefined,
@@ -114,12 +147,13 @@ router.post('/', [
 
     setImmediate(async () => {
       try {
-        const subject = await Subject.findOne({ organizationId: orgId, isActive: true, contentCourseId: course_id }).select('batchId programId').lean();
-        const batchId = subject?.batchId;
-        if (!batchId) return;
+        const academicEnrollments = await AcademicEnrollment.find({
+          organizationId: orgId,
+          subjectId,
+          batchId
+        }).select('studentId').lean();
 
-        const batch = await Batch.findOne({ _id: batchId, organizationId: orgId, isActive: true }).select('students').lean();
-        const studentIds = Array.isArray(batch?.students) ? batch.students : [];
+        const studentIds = [...new Set(academicEnrollments.map(e => String(e.studentId)).filter(Boolean))];
         if (!studentIds.length) return;
 
         const users = await User.find({ _id: { $in: studentIds }, organization_id: orgId, role: 'student' }).select('_id').lean();
@@ -133,7 +167,7 @@ router.post('/', [
           type: 'general',
           title: 'New Assignment',
           message: `${title}`,
-          data: { assignment_id: assignment._id, course_id },
+          data: { assignment_id: assignment._id, course_id: resolvedCourseId, subjectId, batchId },
           priority: 'medium',
           action_url: '/student/assignments',
           action_text: 'View'

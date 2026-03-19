@@ -256,6 +256,14 @@ export const getLiveClasses = async (): Promise<ApiResponse> => {
   return response.data
 }
 
+// ============================================
+// TIMETABLE
+// ============================================
+export const getTimetable = async (params?: { day?: string }): Promise<ApiResponse> => {
+  const response = await apiClient.get('/instructor/timetable', { params })
+  return response.data
+}
+
 export const updateLiveClass = async (classId: string, data: any): Promise<ApiResponse> => {
   const response = await apiClient.patch(`/instructor/live-classes/${classId}`, data)
   return response.data

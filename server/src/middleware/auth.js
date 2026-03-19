@@ -25,7 +25,7 @@ const authMiddleware = async (req, res, next) => {
 
     // Fall back to cookie if no Authorization header or query token
     if (!token) {
-      token = req.cookies.token;
+      token = req.cookies.token || req.cookies.instatute_token;
       console.log('🔐 [Auth] Token from cookie:', token ? token.substring(0, 20) + '...' : 'MISSING');
     }
 
@@ -35,8 +35,13 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.userId || decoded.user_id;
+    const userId = decoded.userId || decoded.user_id || decoded.id || decoded._id || decoded.sub;
     console.log('🔐 [Auth] Token decoded, userId:', userId);
+
+    if (!userId) {
+      console.log('❌ [Auth] Token missing user id fields');
+      return res.error('Invalid token payload', 'Authentication failed', 401);
+    }
 
     const user = await User.findById(userId).select('-password').populate('organization_id');
 
@@ -246,12 +251,12 @@ const optionalAuth = async (req, res, next) => {
 
     // Fall back to cookie if no Authorization header
     if (!token) {
-      token = req.cookies.token;
+      token = req.cookies.token || req.cookies.instatute_token;
     }
 
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const userId = decoded.userId || decoded.user_id;
+      const userId = decoded.userId || decoded.user_id || decoded.id || decoded._id || decoded.sub;
       const user = await User.findById(userId).select('-password').populate('organization_id');
 
       if (user && user.isActive) {

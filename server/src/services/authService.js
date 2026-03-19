@@ -12,7 +12,7 @@ class AuthService {
   getRedirectUrl(role) {
     const redirects = {
       'platform_admin': '/platform/dashboard',
-      'platform_staff': '/platform/dashboard',
+      'platform_staff': '/platform-staff/dashboard',
       'org_admin': '/org-admin/dashboard',
       'instructor': '/instructor/dashboard',
       'student': '/student/dashboard',

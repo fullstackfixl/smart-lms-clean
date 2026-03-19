@@ -25,6 +25,8 @@ const emailService = require('../services/email.service');
 const { generateInvitationTemplate } = emailService;
 const { recordOrgEvent, EVENT_TYPES } = require('../utils/orgEvents');
 const dashboardController = require('../controllers/organization/dashboardController');
+const academicEnrollmentEngine = require('../services/academicEnrollmentEngine');
+const { AcademicEnrollment, InstructorAssignment, Subject: AcademicSubject, Batch: AcademicBatch } = require('../models');
 
 
 // All routes require org_admin role and organization
@@ -52,6 +54,77 @@ router.get('/modules', async (req, res) => {
   } catch (error) {
     console.error('Get modules error:', error);
     res.error(error.message, 'Failed to fetch modules', 500);
+  }
+});
+
+// ==================== INSTRUCTOR ASSIGNMENTS (BATCH + SUBJECT) ====================
+// POST /api/admin/instructor-assignments
+// Body: { subjectId, batchId, instructorId }
+router.post('/instructor-assignments', async (req, res) => {
+  try {
+    const organizationId = req.user.organization_id?._id || req.user.organization_id;
+    const { subjectId, batchId, instructorId } = req.body || {};
+
+    if (!subjectId || !batchId || !instructorId) {
+      return res.error('subjectId, batchId and instructorId are required', 'Validation failed', 400);
+    }
+
+    const [subject, batch, instructor] = await Promise.all([
+      AcademicSubject.findOne({ _id: subjectId, organizationId, isActive: true }).select('_id programId').lean(),
+      AcademicBatch.findOne({ _id: batchId, organizationId, isActive: true }).select('_id programId').lean(),
+      User.findOne({ _id: instructorId, organization_id: organizationId, role: 'instructor', isActive: true }).select('_id').lean()
+    ]);
+
+    if (!subject) return res.error('Subject not found', 'Not found', 404);
+    if (!batch) return res.error('Batch not found', 'Not found', 404);
+    if (!instructor) return res.error('Instructor not found', 'Not found', 404);
+    if (String(subject.programId) !== String(batch.programId)) {
+      return res.error('Subject program does not match batch program', 'Validation failed', 400);
+    }
+
+    const mapping = await InstructorAssignment.findOneAndUpdate(
+      { organizationId, subjectId, batchId },
+      { $set: { organizationId, subjectId, batchId, programId: subject.programId, instructorId, isActive: true } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    ).lean();
+
+    const syncResult = await AcademicEnrollment.updateMany(
+      { organizationId, subjectId, batchId },
+      { $set: { instructorId } }
+    );
+
+    return res.success(
+      {
+        instructorAssignment: mapping,
+        enrollmentsUpdated: syncResult.modifiedCount || syncResult.nModified || 0
+      },
+      'Instructor assignment updated successfully'
+    );
+  } catch (error) {
+    return res.error(error.message, 'Failed to assign instructor', 500);
+  }
+});
+
+// ==================== LEARNERS (ENROLLMENT ENGINE) ====================
+// POST /api/admin/learners/assign
+router.post('/learners/assign', async (req, res) => {
+  try {
+    const { studentId, programId, batchId } = req.body || {};
+
+    if (!studentId || !programId || !batchId) {
+      return res.error('studentId, programId and batchId are required', 'Validation failed', 400);
+    }
+
+    const result = await academicEnrollmentEngine.assignStudentToProgramBatch({
+      actorUser: req.user,
+      studentId,
+      programId,
+      batchId
+    });
+
+    res.success({ assignment: result }, 'Student assigned successfully');
+  } catch (error) {
+    res.error(error.message, 'Failed to assign student', error.statusCode || 500);
   }
 });
 

@@ -9,7 +9,7 @@ class PlatformApplicationController extends BaseController {
      */
     async getApplications(req, res) {
         try {
-            const { status, page = 1, limit = 10 } = req.query;
+            const { status, page = 1, limit = 10, assigned = 'all', search = '' } = req.query;
             const query = {};
             
             // Filter by status if provided
@@ -17,7 +17,25 @@ class PlatformApplicationController extends BaseController {
                 query.status = status;
             }
 
+            if (assigned === 'mine') {
+                query.assigned_to = req.user._id;
+            } else if (assigned === 'unassigned') {
+                query.assigned_to = null;
+            }
+
+            if (search) {
+                query.$or = [
+                    { organization_name: { $regex: search, $options: 'i' } },
+                    { contact_person_name: { $regex: search, $options: 'i' } },
+                    { contact_email: { $regex: search, $options: 'i' } },
+                    { city: { $regex: search, $options: 'i' } },
+                    { state: { $regex: search, $options: 'i' } }
+                ];
+            }
+
             const applications = await OrganizationApplication.find(query)
+                .populate('assigned_to', 'name email role')
+                .populate('approved_by', 'name email role')
                 .sort({ created_at: -1 })
                 .limit(parseInt(limit))
                 .skip((parseInt(page) - 1) * parseInt(limit))
@@ -126,17 +144,19 @@ class PlatformApplicationController extends BaseController {
                 return res.error(`Cannot approve application with status: ${application.status}`, 'Validation Error', 400);
             }
 
-            const orgType = (application.organization_type || 'school').toUpperCase();
+            const applicationOrgType = (application.organization_type || 'school').toLowerCase();
+            const templateOrgType = applicationOrgType.toUpperCase();
 
             // Lookup template for the requested type
             const OrgTemplate = require('../models/OrgTemplate');
-            const template = await OrgTemplate.findOne({ type: orgType });
+            const template = await OrgTemplate.findOne({ type: templateOrgType });
 
             const modulesEnabled = template ? template.modulesEnabled : [];
 
             // Save assigned modules
             application.modulesEnabled = modulesEnabled;
-            application.organization_type = orgType;
+            // Keep stored value aligned with OrganizationApplication enum (lowercase)
+            application.organization_type = applicationOrgType;
 
             // Generate secure token for account setup
             const token = crypto.randomBytes(32).toString('hex');
@@ -174,14 +194,19 @@ class PlatformApplicationController extends BaseController {
                 </div>
             `;
 
-            const emailSent = await emailService.sendEmail({
-                to: application.contact_email,
-                subject: `Your Organization "${application.organization_name}" Has Been Approved - Create Account`,
-                html
-            });
+            let emailSent = false;
+            try {
+                emailSent = await emailService.sendEmail({
+                    to: application.contact_email,
+                    subject: `Your Organization "${application.organization_name}" Has Been Approved - Create Account`,
+                    html
+                });
 
-            if (!emailSent) {
-                console.warn('⚠️ [PlatformApplication] Approval email failed to send.');
+                if (!emailSent) {
+                    console.warn('⚠️ [PlatformApplication] Approval email failed to send.');
+                }
+            } catch (mailErr) {
+                console.warn('⚠️ [PlatformApplication] Approval email threw error:', mailErr.message);
             }
 
             return res.success({

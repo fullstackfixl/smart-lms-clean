@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
     BookOpen, Plus, Search, MoreVertical, Edit2, Trash2,
     CheckCircle2, XCircle, Loader2, Filter, ChevronRight,
-    GraduationCap, Building2, Layers
+    GraduationCap, Building2, Layers, Send, X
 } from "lucide-react"
 import {
     subjectApi,
@@ -31,17 +31,31 @@ interface Subject {
     instructorId?: any  // Assigned instructor
 }
 
+interface Batch {
+    _id: string
+    name: string
+    code?: string
+    year?: number
+    semester?: number
+}
+
 export default function SubjectsPage() {
     const { token, organization } = useAuth()
     const [subjects, setSubjects] = useState<Subject[]>([])
     const [departments, setDepartments] = useState<any[]>([])
     const [instructors, setInstructors] = useState<any[]>([])
+    const [batches, setBatches] = useState<Batch[]>([])
     const [semesters, setSemesters] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
     const [submitting, setSubmitting] = useState(false)
+
+    const [showAssignModal, setShowAssignModal] = useState(false)
+    const [assignSubject, setAssignSubject] = useState<Subject | null>(null)
+    const [assignBatchId, setAssignBatchId] = useState('')
+    const [assignInstructorId, setAssignInstructorId] = useState('')
 
     const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
     const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
@@ -68,19 +82,22 @@ export default function SubjectsPage() {
             if (!token) return
             
             // Use college API for college tenants
-            let subs, deps, sems, insts
+            let subs, deps, sems, insts, batchRes
             if (isCollege) {
-                const [subsRes, depsRes, instsRes] = await Promise.all([
+                const [subsRes, depsRes, instsRes, batchesRes] = await Promise.all([
                     collegeApi.listSubjects(token),
                     collegeApi.listDepartments(token),
-                    collegeApi.listInstructors(token)
+                    collegeApi.listInstructors(token),
+                    collegeApi.listBatches(token)
                 ])
                 subs = subsRes
                 deps = depsRes
                 insts = instsRes
+                batchRes = batchesRes
                 // College subjects don't use semester collection, they use semester number directly
                 sems = { success: true, data: [] }
                 setInstructors((insts.data as any)?.instructors || (insts.data as any) || [])
+                setBatches((batchRes.data as any)?.batches || (batchRes.data as any) || [])
             } else {
                 const [subsRes, depsRes, semsRes] = await Promise.all([
                     subjectApi.list(token),
@@ -113,10 +130,6 @@ export default function SubjectsPage() {
                 } else {
                     await subjectApi.update(token, editingSubject._id, formData)
                 }
-                // Assign instructor if selected
-                if (formData.instructor_id && isCollege) {
-                    await collegeApi.assignInstructorToSubject(token, editingSubject._id, formData.instructor_id)
-                }
             } else {
                 let result
                 if (isCollege) {
@@ -125,11 +138,6 @@ export default function SubjectsPage() {
                     result = await subjectApi.create(token, formData)
                 }
                 toast.success("Subject created successfully")
-                // Assign instructor if selected
-                const newSubjectId = result?.data?._id || result?._id
-                if (formData.instructor_id && isCollege && newSubjectId) {
-                    await collegeApi.assignInstructorToSubject(token, newSubjectId, formData.instructor_id)
-                }
             }
             setIsModalOpen(false)
             setEditingSubject(null)
@@ -137,6 +145,33 @@ export default function SubjectsPage() {
             loadData()
         } catch (err: any) {
             toast.error(err.message || "Operation failed")
+        }
+        setSubmitting(false)
+    }
+
+    const handleAssignInstructor = async () => {
+        setSubmitting(true)
+        try {
+            if (!token) throw new Error('No authentication token')
+            if (!assignSubject?._id) throw new Error('No subject selected')
+            if (!assignBatchId) throw new Error('Please select a batch')
+            if (!assignInstructorId) throw new Error('Please select an instructor')
+
+            const res = await collegeApi.assignInstructorToBatchSubject(token, {
+                subjectId: assignSubject._id,
+                batchId: assignBatchId,
+                instructorId: assignInstructorId
+            })
+
+            if (!res.success) throw new Error((res as any)?.error || 'Failed to assign instructor')
+
+            toast.success('Instructor assigned successfully')
+            setShowAssignModal(false)
+            setAssignSubject(null)
+            setAssignBatchId('')
+            setAssignInstructorId('')
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to assign instructor')
         }
         setSubmitting(false)
     }
@@ -250,6 +285,22 @@ export default function SubjectsPage() {
                             transition={{ delay: idx * 0.05 }}
                             className="group bg-white border border-gray-200 hover:border-gray-300 rounded-md p-6 transition-colors relative overflow-hidden"
                         >
+                            {isCollege && (
+                                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => {
+                                            setAssignSubject(subject)
+                                            setAssignBatchId('')
+                                            setAssignInstructorId('')
+                                            setShowAssignModal(true)
+                                        }}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+                                    >
+                                        <Send className="h-4 w-4" />
+                                        Assign (Batch)
+                                    </button>
+                                </div>
+                            )}
                             <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <div className="flex gap-2">
                                     <button onClick={() => openEditModal(subject)} className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-500 hover:text-blue-700 transition-colors border border-gray-200">
@@ -502,6 +553,89 @@ export default function SubjectsPage() {
                             </div>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showAssignModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+                        onClick={() => {
+                            setShowAssignModal(false)
+                            setAssignSubject(null)
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="w-full max-w-lg bg-white border border-gray-200 rounded-md p-6"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">Assign Instructor (Batch)</h3>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        {assignSubject?.name} ({assignSubject?.code})
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowAssignModal(false)
+                                        setAssignSubject(null)
+                                    }}
+                                    className="p-2 rounded-md hover:bg-slate-50 text-slate-500"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className="mt-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Batch</label>
+                                    <select
+                                        value={assignBatchId}
+                                        onChange={(e) => setAssignBatchId(e.target.value)}
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md text-sm"
+                                    >
+                                        <option value="">Select batch</option>
+                                        {batches.map((b) => (
+                                            <option key={b._id} value={b._id}>
+                                                {b.name}{b.year ? ` • ${b.year}` : ''}{b.semester ? ` • Sem ${b.semester}` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Instructor</label>
+                                    <select
+                                        value={assignInstructorId}
+                                        onChange={(e) => setAssignInstructorId(e.target.value)}
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-md text-sm"
+                                    >
+                                        <option value="">Select instructor</option>
+                                        {instructors.map((inst) => (
+                                            <option key={inst._id} value={inst._id}>
+                                                {inst?.profile?.fullName || inst?.name || inst?.email}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <button
+                                    onClick={handleAssignInstructor}
+                                    disabled={submitting}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-md bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold"
+                                >
+                                    Assign
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
                 )}
             </AnimatePresence>
         </div>

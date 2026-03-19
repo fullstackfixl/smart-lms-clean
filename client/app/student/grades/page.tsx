@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { GraduationCap, TrendingUp, Award, RefreshCw, BookOpen } from "lucide-react"
+import { GraduationCap, TrendingUp, Award, RefreshCw, BookOpen, FileText } from "lucide-react"
 import { useAuth } from '../../../lib/auth-context'
-import { collegeApi } from '../../../lib/api'
+import { collegeApi, submissionApi } from '../../../lib/api'
 import { Button } from '../../../components/ui/button'
 import { toast } from "sonner"
 
@@ -17,6 +17,20 @@ interface Grade {
   semester?: number
   exam_type?: string
   createdAt: string
+}
+
+interface AssignmentGrade {
+  _id: string
+  assignment_id?: { _id: string; title: string; max_score: number }
+  course_id?: { _id: string; title: string }
+  earned_score: number
+  max_score: number
+  percentage: number
+  status: 'submitted' | 'graded'
+  comments?: string
+  submitted_at: string
+  graded_at?: string
+  type: 'assignment'
 }
 
  interface GradesPayload {
@@ -34,6 +48,7 @@ interface Grade {
 export default function GradesPage() {
   const { user, token } = useAuth()
   const [grades, setGrades] = useState<Grade[]>([])
+  const [assignmentGrades, setAssignmentGrades] = useState<AssignmentGrade[]>([])
   const [gpa, setGpa] = useState('0.00')
   const [summary, setSummary] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -46,12 +61,40 @@ export default function GradesPage() {
     if (!token) return
     setLoading(true)
     try {
-      const res = await collegeApi.getStudentGrades(token)
-      if (res.success) {
-        const payload = (res.data || {}) as GradesPayload
+      // Load academic grades
+      const [gradesRes, submissionsRes] = await Promise.all([
+        collegeApi.getStudentGrades(token),
+        submissionApi.list(token, 'limit=100')
+      ])
+      
+      if (gradesRes.success) {
+        const payload = (gradesRes.data || {}) as GradesPayload
         setGrades(payload.grades || [])
         setGpa(payload.gpa || '0.00')
         setSummary(payload.summary || null)
+      }
+      
+      // Load graded assignment submissions
+      if (submissionsRes.success) {
+        const submissions = (submissionsRes.data as any)?.submissions || []
+        const gradedAssignments = submissions
+          .filter((s: any) => s.status === 'graded')
+          .map((s: any) => ({
+            _id: s._id,
+            assignment_id: s.assignment_id,
+            course_id: s.course_id,
+            earned_score: s.earned_score || 0,
+            max_score: s.assignment_id?.max_score || 100,
+            percentage: s.earned_score && s.assignment_id?.max_score 
+              ? (s.earned_score / s.assignment_id.max_score) * 100 
+              : 0,
+            status: s.status,
+            comments: s.comments,
+            submitted_at: s.submitted_at,
+            graded_at: s.graded_at,
+            type: 'assignment' as const
+          }))
+        setAssignmentGrades(gradedAssignments)
       }
     } catch (error) {
       toast.error("Failed to load grades")
@@ -134,6 +177,69 @@ export default function GradesPage() {
           </div>
         </div>
       </div>
+
+      {/* Assignment Grades Section */}
+      {assignmentGrades.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-md">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">Assignment Grades</h3>
+              <p className="text-sm text-slate-500">Grades from your submitted assignments</p>
+            </div>
+          </div>
+          
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr className="border-b border-gray-200">
+                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Assignment</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Course</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Score</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Percentage</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Comments</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Graded Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {assignmentGrades.map((grade) => (
+                <tr key={grade._id} className="hover:bg-blue-50/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-blue-500" />
+                      <p className="font-medium text-slate-900">
+                        {grade.assignment_id?.title || 'Assignment'}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-slate-600">
+                    {grade.course_id?.title || '-'}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="font-medium text-slate-900">
+                      {grade.earned_score} / {grade.max_score}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`font-medium ${
+                      grade.percentage >= 90 ? 'text-green-600' :
+                      grade.percentage >= 80 ? 'text-blue-600' :
+                      grade.percentage >= 70 ? 'text-orange-600' :
+                      'text-slate-600'
+                    }`}>
+                      {grade.percentage.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-slate-600 text-sm max-w-xs">
+                    {grade.comments || '-'}
+                  </td>
+                  <td className="px-6 py-4 text-slate-500 text-sm">
+                    {grade.graded_at ? new Date(grade.graded_at).toLocaleDateString() : '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Grades Table */}
       <div className="bg-white border border-gray-200 rounded-md">

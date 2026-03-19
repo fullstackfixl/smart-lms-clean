@@ -21,6 +21,7 @@ const completeRegistrationLimiter = rateLimit({
 
 // Unified Login
 router.post('/platform-admin/login', authController.platformAdminLogin);
+router.post('/platform-staff/login', authController.platformStaffLogin);
 router.post('/org-admin/login', authController.orgAdminLogin);
 router.post('/login', authController.login);
 router.get('/google', authController.googleLogin);

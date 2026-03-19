@@ -4,8 +4,25 @@ import { ProtectedRoute } from '../../components/auth/ProtectedRoute'
 import { OrgSidebar } from '../../components/org-admin/OrgSidebar'
 import { OrgNavbar } from '../../components/org-admin/OrgNavbar'
 import { ThemeProvider } from '../../components/theme-provider'
+import { usePathname } from 'next/navigation'
  
 export default function OrgAdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const isSetupRoute = pathname?.startsWith('/org-admin/setup')
+
+  if (isSetupRoute) {
+    return (
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="light"
+        enableSystem
+        disableTransitionOnChange
+      >
+        {children}
+      </ThemeProvider>
+    )
+  }
+
   return (
     <ThemeProvider
       attribute="class"
@@ -13,7 +30,7 @@ export default function OrgAdminLayout({ children }: { children: React.ReactNode
       enableSystem
       disableTransitionOnChange
     >
-      <ProtectedRoute allowedRoles={["org_admin", "organization_admin"]} redirectTo="/org-admin/login">
+      <ProtectedRoute allowedRoles={["org_admin", "organization_admin"]} redirectTo="/login/org-admin">
         <div className="flex h-screen overflow-hidden bg-slate-50">
           <div className="hidden lg:block w-72 h-screen shrink-0 sticky top-0">
             <OrgSidebar />

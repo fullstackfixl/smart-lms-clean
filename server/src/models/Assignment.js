@@ -13,6 +13,24 @@ const assignmentSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
+    index: true,
+    default: null
+  },
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+    index: true,
+    default: null
+  },
+  instructor_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true,
+    default: null
+  },
   title: {
     type: String,
     required: true,
@@ -46,5 +64,6 @@ const assignmentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 assignmentSchema.index({ organization_id: 1, course_id: 1, is_active: 1, createdAt: -1 });
+assignmentSchema.index({ organization_id: 1, batchId: 1, subjectId: 1, is_active: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Assignment', assignmentSchema);

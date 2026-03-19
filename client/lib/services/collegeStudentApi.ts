@@ -63,8 +63,23 @@ export async function enrollCollegeCourse(token: string, courseId: string) {
 
 // ==================== ATTENDANCE ====================
 
-export async function getCollegeStudentAttendance(token: string, course?: string) {
-  const query = course ? `?course=${course}` : '';
+export async function getCollegeStudentAttendance(
+  token: string,
+  filters?: string | { subjectId?: string; startDate?: string; endDate?: string }
+) {
+  const queryParams = new URLSearchParams();
+  if (typeof filters === 'string' && filters) {
+    queryParams.append('subjectId', filters);
+  } else if (filters?.subjectId) {
+    queryParams.append('subjectId', filters.subjectId);
+  }
+  if (typeof filters !== 'string' && filters?.startDate) {
+    queryParams.append('startDate', filters.startDate);
+  }
+  if (typeof filters !== 'string' && filters?.endDate) {
+    queryParams.append('endDate', filters.endDate);
+  }
+  const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
   return apiRequest(`/api/college/student/attendance${query}`, { token });
 }
 

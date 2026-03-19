@@ -1,22 +1,22 @@
 "use client"
 
-import { useState, useEffect, useCallback, Suspense } from "react"
-import { useRouter } from "next/navigation"
+import React, { useState, useEffect, useCallback, Suspense } from "react"
 import {
   Trophy,
   Search,
   CheckCircle2,
   XCircle,
   Clock,
-  ChevronDown,
-  ChevronUp,
   Hash,
   Database,
   RefreshCw,
   Filter,
-  Star,
-  ChevronRight,
-  Eye
+  Eye,
+  FileText,
+  FileQuestion,
+  Download,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { Button } from '../../../components/ui/button'
 import {
@@ -64,7 +64,33 @@ interface QuizSubmission {
   answersCount: number
   correctCount: number
   questionReview: QuestionReview[]
+  type: 'quiz'
 }
+
+interface AssignmentSubmission {
+  _id: string
+  studentId: string
+  studentName: string
+  studentEmail: string
+  studentAvatar: string | null
+  assignmentId: string
+  assignmentTitle: string
+  maxScore: number
+  courseId: string
+  courseTitle: string
+  earnedScore: number | null
+  percentage: number | null
+  status: 'submitted' | 'graded'
+  submittedAt: string
+  gradedAt: string | null
+  gradedBy: string | null
+  comments: string | null
+  content: string
+  attachments: string[]
+  type: 'assignment'
+}
+
+type SubmissionItem = QuizSubmission | AssignmentSubmission
 
 function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -107,49 +133,113 @@ function MetricCard({ label, value, icon: Icon, color = "blue" }: { label: strin
 
 function SubmissionsContent() {
   const { token } = useAuth()
-  const [submissions, setSubmissions] = useState<QuizSubmission[]>([])
+  const [activeTab, setActiveTab] = useState<'all' | 'quiz' | 'assignment'>('all')
+  const [items, setItems] = useState<SubmissionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [filterPass, setFilterPass] = useState<string>('all')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
-  const loadSubmissions = useCallback(async () => {
+  const loadAll = useCallback(async () => {
     if (!token) return
     setLoading(true)
     try {
-      const res = await instructorApi.listQuizSubmissions(token, 'limit=100')
-      if (res.success) {
-        const payload: any = res.data
-        const list = payload?.submissions || payload?.quizSubmissions || payload || []
-        setSubmissions(Array.isArray(list) ? list : [])
-      } else {
-        toast.error(res.error || "Failed to load submissions")
+      const [quizRes, assignmentRes] = await Promise.all([
+        instructorApi.listQuizSubmissions(token, 'limit=100'),
+        instructorApi.listSubmissions(token, 'limit=100')
+      ])
+
+      const quizItems: QuizSubmission[] = quizRes.success
+        ? (() => {
+            const payload: any = quizRes.data
+            const list = payload?.submissions || payload?.quizSubmissions || payload || []
+            return (Array.isArray(list) ? list : []).map((s: any) => ({ ...s, type: 'quiz' as const }))
+          })()
+        : []
+
+      if (!quizRes.success) {
+        toast.error(quizRes.error || 'Failed to load quiz submissions')
       }
+
+      const assignmentItems: AssignmentSubmission[] = assignmentRes.success
+        ? (() => {
+            const payload: any = assignmentRes.data
+            const list = payload?.submissions || payload || []
+            return (Array.isArray(list) ? list : []).map((s: any) => ({
+              _id: s._id,
+              studentId: s.studentId,
+              studentName: s.studentName,
+              studentEmail: s.studentEmail,
+              studentAvatar: s.studentAvatar,
+              assignmentId: s.assignmentId,
+              assignmentTitle: s.assignmentTitle,
+              maxScore: s.maxScore,
+              courseId: s.courseId,
+              courseTitle: s.courseTitle,
+              earnedScore: s.earnedScore,
+              percentage: s.percentage,
+              status: s.status,
+              submittedAt: s.submittedAt,
+              gradedAt: s.gradedAt,
+              gradedBy: s.gradedBy,
+              comments: s.comments,
+              content: s.content,
+              attachments: s.attachments || [],
+              type: 'assignment' as const
+            }))
+          })()
+        : []
+
+      if (!assignmentRes.success) {
+        toast.error(assignmentRes.error || 'Failed to load assignment submissions')
+      }
+
+      const combined: SubmissionItem[] = [...quizItems, ...assignmentItems]
+      combined.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+      setItems(combined)
     } catch {
-      toast.error("Network error: Could not reach submission server")
+      toast.error('Network error: Could not load submissions')
     } finally {
       setLoading(false)
     }
   }, [token])
 
   useEffect(() => {
-    loadSubmissions()
-  }, [loadSubmissions])
+    loadAll()
+  }, [loadAll])
 
-  const filtered = submissions.filter(s => {
+  const tabbed = items.filter(i => activeTab === 'all' ? true : i.type === activeTab)
+
+  const filtered = tabbed.filter(s => {
+    const title = s.type === 'quiz' ? s.quizTitle : s.assignmentTitle
     const matchSearch = s.studentName.toLowerCase().includes(search.toLowerCase()) ||
       s.studentEmail.toLowerCase().includes(search.toLowerCase()) ||
-      s.quizTitle.toLowerCase().includes(search.toLowerCase()) ||
+      title.toLowerCase().includes(search.toLowerCase()) ||
       s.courseTitle.toLowerCase().includes(search.toLowerCase())
-    const matchPass = filterPass === 'all' ? true : filterPass === 'passed' ? s.passed : !s.passed
-    return matchSearch && matchPass
+
+    if (filterStatus === 'all') return matchSearch
+    if (filterStatus === 'passed') return matchSearch && s.type === 'quiz' && s.passed
+    if (filterStatus === 'failed') return matchSearch && s.type === 'quiz' && !s.passed
+    if (filterStatus === 'graded') return matchSearch && s.type === 'assignment' && s.status === 'graded'
+    if (filterStatus === 'pending') return matchSearch && s.type === 'assignment' && s.status === 'submitted'
+    return matchSearch
   })
 
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const pageItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
+  const quizOnly = items.filter(i => i.type === 'quiz') as QuizSubmission[]
+  const assignmentOnly = items.filter(i => i.type === 'assignment') as AssignmentSubmission[]
+
   const stats = {
-    total: submissions.length,
-    passed: submissions.filter(s => s.passed).length,
-    failed: submissions.filter(s => !s.passed).length,
-    avgScore: submissions.length ? Math.round(submissions.reduce((a, s) => a + s.percentage, 0) / submissions.length) : 0
+    total: items.length,
+    quizzes: quizOnly.length,
+    assignments: assignmentOnly.length,
+    passed: quizOnly.filter(s => s.passed).length,
+    failed: quizOnly.filter(s => !s.passed).length,
+    pending: assignmentOnly.filter(s => s.status === 'submitted').length
   }
 
   return (
@@ -160,10 +250,10 @@ function SubmissionsContent() {
             <Trophy className="w-3.5 h-3.5" />
             Performance Insights
           </span>
-          <h1 className="text-2xl font-bold text-slate-900">Quiz Submissions</h1>
-          <p className="text-slate-500 mt-1">Review learner achievement, quiz results, and detailed performance metrics.</p>
+          <h1 className="text-2xl font-bold text-slate-900">Student Submissions</h1>
+          <p className="text-slate-500 mt-1">Review quiz attempts and assignment submissions.</p>
         </div>
-        <Button variant="outline" onClick={loadSubmissions} className="border-gray-200">
+        <Button variant="outline" onClick={loadAll} className="border-gray-200">
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh Data
         </Button>
@@ -171,32 +261,66 @@ function SubmissionsContent() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard label="Total Submissions" value={stats.total} icon={Hash} color="blue" />
-        <MetricCard label="Avg. Score" value={`${stats.avgScore}%`} icon={Trophy} color="orange" />
-        <MetricCard label="Passed" value={stats.passed} icon={CheckCircle2} color="green" />
-        <MetricCard label="Failed" value={stats.failed} icon={XCircle} color="red" />
+        <MetricCard label="Quiz Attempts" value={stats.quizzes} icon={FileQuestion} color="orange" />
+        <MetricCard label="Assignments" value={stats.assignments} icon={FileText} color="green" />
+        <MetricCard label="Pending Grading" value={stats.pending} icon={Clock} color="red" />
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-md p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="bg-white border border-gray-200 rounded-md p-4 flex flex-col gap-4">
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => { setActiveTab('all'); setCurrentPage(1) }}
+            className={cn(
+              'px-4 py-2 rounded-full text-xs font-bold transition-all',
+              activeTab === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
+            )}
+          >
+            All
+          </button>
+          <button
+            onClick={() => { setActiveTab('quiz'); setCurrentPage(1) }}
+            className={cn(
+              'px-4 py-2 rounded-full text-xs font-bold transition-all',
+              activeTab === 'quiz' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700'
+            )}
+          >
+            Quizzes
+          </button>
+          <button
+            onClick={() => { setActiveTab('assignment'); setCurrentPage(1) }}
+            className={cn(
+              'px-4 py-2 rounded-full text-xs font-bold transition-all',
+              activeTab === 'assignment' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-700'
+            )}
+          >
+            Assignments
+          </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="relative max-w-md w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 stroke-[1.5]" />
           <input
             type="text"
             placeholder="Search by learner, quiz, or course..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
             className="h-10 w-full pl-10 pr-4 bg-white border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
           />
         </div>
-        <Select value={filterPass} onValueChange={setFilterPass}>
-          <SelectTrigger className="w-[160px] h-10 border-gray-200">
-            <SelectValue placeholder="All Results" />
+        <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setCurrentPage(1) }}>
+          <SelectTrigger className="w-[180px] h-10 border-gray-200">
+            <SelectValue placeholder="Filter" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Attempts</SelectItem>
-            <SelectItem value="passed">Passed Only</SelectItem>
-            <SelectItem value="failed">Failed Only</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+            {activeTab !== 'assignment' && <SelectItem value="passed">Quiz: Passed</SelectItem>}
+            {activeTab !== 'assignment' && <SelectItem value="failed">Quiz: Failed</SelectItem>}
+            {activeTab !== 'quiz' && <SelectItem value="pending">Assignment: Pending</SelectItem>}
+            {activeTab !== 'quiz' && <SelectItem value="graded">Assignment: Graded</SelectItem>}
           </SelectContent>
         </Select>
+        </div>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
@@ -204,9 +328,9 @@ function SubmissionsContent() {
           <thead className="bg-gray-50">
             <tr className="border-b border-gray-200">
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Learner</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Quiz</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Score</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Type</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Title</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Score / Status</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Date</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Actions</th>
             </tr>
@@ -219,7 +343,7 @@ function SubmissionsContent() {
                   Loading submissions...
                 </td>
               </tr>
-            ) : filtered.length === 0 ? (
+            ) : pageItems.length === 0 ? (
               <tr>
                 <td colSpan={6} className="h-48 text-center text-slate-400">
                   <Database className="w-12 h-12 mx-auto mb-4 opacity-20" />
@@ -227,14 +351,16 @@ function SubmissionsContent() {
                 </td>
               </tr>
             ) : (
-              filtered.map((sub) => (
-                <>
-                  <tr key={sub._id} className="hover:bg-blue-50/50 transition-colors">
+              pageItems.map((sub) => (
+                <React.Fragment key={`${sub.type}:${sub._id}`}>
+                  <tr className="hover:bg-blue-50/50 transition-colors">
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm",
-                          sub.passed ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                          sub.type === 'quiz'
+                            ? sub.passed ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                            : sub.status === 'graded' ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-700"
                         )}>
                           {getInitials(sub.studentName)}
                         </div>
@@ -245,24 +371,46 @@ function SubmissionsContent() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <p className="font-medium text-slate-900">{sub.quizTitle}</p>
+                      <div className="flex items-center gap-2">
+                        {sub.type === 'quiz'
+                          ? <FileQuestion className="w-4 h-4 text-purple-600" />
+                          : <FileText className="w-4 h-4 text-emerald-600" />
+                        }
+                        <span className="text-sm font-medium text-slate-900">{sub.type === 'quiz' ? 'Quiz' : 'Assignment'}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="font-medium text-slate-900">
+                        {sub.type === 'quiz' ? sub.quizTitle : sub.assignmentTitle}
+                      </p>
                       <p className="text-sm text-slate-500">{sub.courseTitle}</p>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-2 w-20 bg-slate-100 rounded-full overflow-hidden">
-                          <div className={cn("h-full rounded-full", sub.passed ? "bg-green-500" : "bg-red-500")} style={{ width: `${sub.percentage}%` }} />
+                      {sub.type === 'quiz' ? (
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <div className="h-2 w-20 bg-slate-100 rounded-full overflow-hidden">
+                              <div className={cn("h-full rounded-full", sub.passed ? "bg-green-500" : "bg-red-500")} style={{ width: `${sub.percentage}%` }} />
+                            </div>
+                            <span className="text-sm font-medium text-slate-900">{sub.percentage}%</span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">{sub.correctCount}/{sub.totalQuestions} • attempt {sub.attemptNumber}</p>
                         </div>
-                        <span className="text-sm font-medium text-slate-900">{sub.percentage}%</span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1">{sub.correctCount}/{sub.totalQuestions}</p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className={cn("px-2 py-1 text-xs font-medium rounded border",
-                        sub.passed ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'
-                      )}>
-                        {sub.passed ? 'PASSED' : 'FAILED'}
-                      </span>
+                      ) : (
+                        <div>
+                          <span className={cn(
+                            "px-2 py-1 text-xs font-medium rounded border",
+                            sub.status === 'graded'
+                              ? 'bg-green-100 text-green-700 border-green-200'
+                              : 'bg-orange-100 text-orange-700 border-orange-200'
+                          )}>
+                            {sub.status === 'graded' ? 'GRADED' : 'PENDING'}
+                          </span>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {sub.earnedScore !== null ? `${sub.earnedScore}/${sub.maxScore}` : `—/${sub.maxScore}`}
+                          </p>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-sm text-slate-700">
                       {formatDate(sub.submittedAt)}
@@ -271,14 +419,16 @@ function SubmissionsContent() {
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => setExpandedId(expandedId === sub._id ? null : sub._id)}
+                        onClick={() => setExpandedKey(expandedKey === `${sub.type}:${sub._id}` ? null : `${sub.type}:${sub._id}`)}
                         className="border-gray-200"
                       >
-                        {expandedId === sub._id ? 'Close' : 'Review'}
+                        <Eye className="w-4 h-4 mr-2" />
+                        {expandedKey === `${sub.type}:${sub._id}` ? 'Close' : 'Review'}
                       </Button>
                     </td>
                   </tr>
-                  {expandedId === sub._id && sub.questionReview && (
+
+                  {expandedKey === `${sub.type}:${sub._id}` && sub.type === 'quiz' && sub.questionReview && (
                     <tr>
                       <td colSpan={6} className="px-4 py-4 bg-slate-50">
                         <div className="space-y-4">
@@ -323,11 +473,178 @@ function SubmissionsContent() {
                       </td>
                     </tr>
                   )}
-                </>
+                  {expandedKey === `${sub.type}:${sub._id}` && sub.type === 'assignment' && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-4 bg-slate-50">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-slate-900">Assignment Submission</h4>
+                            <span className="text-sm text-slate-500">{sub.status === 'graded' ? 'Graded' : 'Not graded yet'}</span>
+                          </div>
+
+                          {sub.content && (
+                            <div className="bg-white border border-gray-200 rounded-md p-4">
+                              <p className="text-sm font-medium text-slate-700 mb-2">Student Answer:</p>
+                              <p className="text-sm text-slate-700 whitespace-pre-wrap">{sub.content}</p>
+                            </div>
+                          )}
+
+                          {sub.attachments?.length > 0 && (
+                            <div className="bg-white border border-gray-200 rounded-md p-4">
+                              <p className="text-sm font-medium text-slate-700 mb-3">Attachments:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {sub.attachments.map((url, i) => {
+                                  // Handle base64 data URLs
+                                  const isBase64 = url.startsWith('data:')
+                                  const handleDownload = (e: React.MouseEvent) => {
+                                    e.preventDefault()
+                                    if (isBase64) {
+                                      // Extract mime type and data
+                                      const match = url.match(/^data:([^;]+);base64,(.+)$/)
+                                      if (match) {
+                                        const mimeType = match[1]
+                                        const base64Data = match[2]
+                                        const byteCharacters = atob(base64Data)
+                                        const byteNumbers = new Array(byteCharacters.length)
+                                        for (let i = 0; i < byteCharacters.length; i++) {
+                                          byteNumbers[i] = byteCharacters.charCodeAt(i)
+                                        }
+                                        const byteArray = new Uint8Array(byteNumbers)
+                                        const blob = new Blob([byteArray], { type: mimeType })
+                                        const blobUrl = URL.createObjectURL(blob)
+                                        
+                                        const link = document.createElement('a')
+                                        link.href = blobUrl
+                                        link.download = `attachment-${i + 1}.${mimeType.split('/')[1] || 'bin'}`
+                                        document.body.appendChild(link)
+                                        link.click()
+                                        document.body.removeChild(link)
+                                        URL.revokeObjectURL(blobUrl)
+                                      }
+                                    } else {
+                                      window.open(url, '_blank')
+                                    }
+                                  }
+                                  
+                                  return (
+                                    <button
+                                      key={i}
+                                      onClick={handleDownload}
+                                      className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200 text-sm text-slate-700 hover:bg-gray-50 transition-colors"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                      Attachment {i + 1}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Grading Form */}
+                          <div className="bg-white border border-gray-200 rounded-md p-4">
+                            <p className="text-sm font-medium text-slate-700 mb-4">Grade Assignment:</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <label className="block text-sm text-slate-600 mb-1">Score (out of {sub.maxScore})</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={sub.maxScore}
+                                  defaultValue={sub.earnedScore || ''}
+                                  id={`score-${sub._id}`}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                  placeholder="Enter score"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm text-slate-600 mb-1">Comments / Feedback</label>
+                                <textarea
+                                  id={`comments-${sub._id}`}
+                                  defaultValue={sub.comments || ''}
+                                  rows={1}
+                                  className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                  placeholder="Add feedback..."
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={async () => {
+                                  const scoreInput = document.getElementById(`score-${sub._id}`) as HTMLInputElement
+                                  const commentsInput = document.getElementById(`comments-${sub._id}`) as HTMLTextAreaElement
+                                  const score = parseFloat(scoreInput.value)
+                                  const comments = commentsInput.value
+                                  
+                                  if (isNaN(score) || score < 0 || score > sub.maxScore) {
+                                    toast.error(`Please enter a valid score between 0 and ${sub.maxScore}`)
+                                    return
+                                  }
+                                  
+                                  if (!token) {
+                                    toast.error('Not authenticated')
+                                    return
+                                  }
+                                  
+                                  try {
+                                    const res = await instructorApi.gradeSubmission(token, sub._id, {
+                                      earned_score: score,
+                                      comments: comments
+                                    })
+                                    
+                                    if (res.success) {
+                                      toast.success('Grade saved successfully!')
+                                      await loadAll()
+                                    } else {
+                                      toast.error(res.error || 'Failed to save grade')
+                                    }
+                                  } catch (err) {
+                                    toast.error('Error saving grade')
+                                  }
+                                }}
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                Save Grade
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))
             )}
           </tbody>
         </table>
+
+        {!loading && filtered.length > itemsPerPage && (
+          <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+            <p className="text-sm text-slate-500">
+              Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm font-medium text-slate-700">{currentPage}/{totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

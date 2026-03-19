@@ -1,19 +1,33 @@
+import { Manrope, Space_Grotesk } from 'next/font/google'
+
 import { SmartLmsLanding } from '../components/landing/SmartLmsLanding'
 
+const bodyFont = Manrope({
+  subsets: ['latin'],
+  variable: '--font-body',
+})
+
+const headingFont = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-heading',
+})
+
 export const metadata = {
-  title: "Smart LMS – AI-Powered Learning Platform for Institutes & Colleges",
+  title: 'Smart LMS | Education Operating System for Colleges and Institutes',
   description:
-    "Build scalable, AI-powered education platforms for institutes and coaching centers. Live classes, gamification, certifications, and smart analytics – all in one place.",
+    'Smart LMS helps colleges, institutes, and academies manage academic operations, publish courses, run live learning, and deliver a polished student experience.',
   openGraph: {
-    title: "Smart LMS – The Future of Learning is Here",
+    title: 'Smart LMS | Education Operating System',
     description:
-      "AI-powered LMS for institutes, colleges, and schools. Start your free trial today.",
-    type: "website",
+      'Run departments, batches, courses, live classes, quizzes, and student delivery from one modern LMS platform.',
+    type: 'website',
   },
 }
 
 export default function Page() {
   return (
-    <SmartLmsLanding />
+    <div className={`${bodyFont.variable} ${headingFont.variable} font-sans`}>
+      <SmartLmsLanding />
+    </div>
   )
 }

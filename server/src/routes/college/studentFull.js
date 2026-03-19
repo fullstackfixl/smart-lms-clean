@@ -168,7 +168,7 @@ router.get('/courses/:id', async (req, res) => {
         
         // Get progress for each lesson
         const lessonIds = lessons.map(l => l._id.toString());
-        const progress = await require('../models').LectureProgress.find({
+        const progress = await require('../../models').LectureProgress.find({
           studentId: userId,
           lessonId: { $in: lessonIds }
         });
@@ -312,6 +312,76 @@ router.get('/quizzes', async (req, res) => {
   try {
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    const { AcademicEnrollment, Subject } = require('../../models');
+
+    const academicEnrollments = await AcademicEnrollment.find({ organizationId: orgId, studentId: userId })
+      .select('subjectId batchId')
+      .lean();
+
+    const enrolledSubjectIds = [...new Set(academicEnrollments.map(e => String(e.subjectId)).filter(Boolean))];
+    const enrolledBatchIds = [...new Set(academicEnrollments.map(e => String(e.batchId)).filter(Boolean))];
+
+    if (enrolledSubjectIds.length && enrolledBatchIds.length) {
+      const quizzes = await Quiz.find({
+        organization_id: orgId,
+        subjectId: { $in: enrolledSubjectIds },
+        batchId: { $in: enrolledBatchIds },
+        status: 'PUBLISHED',
+        is_active: true
+      })
+        .populate('course_id', 'title thumbnail')
+        .populate('instructor_id', 'name profile.firstName profile.lastName')
+        .populate('subjectId', 'name code')
+        .sort({ created_at: -1 });
+
+      const attempts = await QuizAttempt.find({
+        student_id: userId,
+        quiz_id: { $in: quizzes.map(q => q._id) }
+      });
+
+      const quizzesWithAttempts = quizzes.map(q => {
+        const qAttempts = attempts.filter(a => a.quiz_id.toString() === q._id.toString());
+        const bestAttempt = qAttempts.sort((a, b) => (b.percentage || 0) - (a.percentage || 0))[0];
+        const bestPercentage = bestAttempt?.percentage ?? null;
+        const hasPassed = qAttempts.some(a => a.passed);
+
+        return {
+          _id: q._id,
+          title: q.title,
+          description: q.description,
+          total_marks: q.total_marks,
+          max_attempts: q.max_attempts,
+          timer_minutes: q.timer_minutes,
+          pass_percentage: q.pass_percentage,
+          questions_count: Array.isArray(q.questions) ? q.questions.length : 0,
+          questions: (q.questions || []).map(qq => ({ question: qq.question, options: qq.options })),
+          created_at: q.created_at,
+          attemptsCount: qAttempts.length,
+          attemptsLeft: Math.max(0, (q.max_attempts || 0) - qAttempts.length),
+          bestScore: bestAttempt?.score ?? null,
+          bestPercentage,
+          hasPassed,
+          course: q.course_id
+            ? { _id: q.course_id._id, title: q.course_id.title, thumbnail: q.course_id.thumbnail }
+            : null,
+          instructor: q.instructor_id
+            ? {
+                _id: q.instructor_id._id,
+                name:
+                  q.instructor_id.name ||
+                  `${q.instructor_id.profile?.firstName || ''} ${q.instructor_id.profile?.lastName || ''}`.trim()
+              }
+            : null,
+          subject: q.subjectId
+            ? { _id: q.subjectId._id, name: q.subjectId.name, code: q.subjectId.code }
+            : null,
+          batchId: q.batchId || null
+        };
+      });
+
+      return res.success({ quizzes: quizzesWithAttempts }, 'Quizzes retrieved');
+    }
 
     // Get enrolled course IDs
     const enrollments = await Enrollment.find({
@@ -462,7 +532,7 @@ router.get('/progress', async (req, res) => {
         const totalLessons = await Lesson.countDocuments({ section_id: { $in: moduleIds } });
         
         // Get completed lessons
-        const completedLessons = await require('../models').LectureProgress.countDocuments({
+        const completedLessons = await require('../../models').LectureProgress.countDocuments({
           studentId: userId,
           courseId: courseId,
           completed: true
@@ -828,6 +898,48 @@ router.get('/assignments', async (req, res) => {
     const { Assignment } = require('../../models');
     const userId = req.user._id;
     const orgId = req.user.organization_id?._id || req.user.organization_id;
+
+    console.log('[StudentAssignments] Loading for user:', userId, 'org:', orgId);
+
+    const { AcademicEnrollment } = require('../../models');
+    const academicEnrollments = await AcademicEnrollment.find({ organizationId: orgId, studentId: userId })
+      .select('subjectId batchId')
+      .lean();
+
+    console.log('[StudentAssignments] Academic enrollments:', academicEnrollments.length, academicEnrollments);
+
+    const enrolledPairs = academicEnrollments.map(e => ({ 
+      subjectId: String(e.subjectId), 
+      batchId: String(e.batchId) 
+    })).filter(p => p.subjectId && p.batchId);
+
+    console.log('[StudentAssignments] Enrolled pairs:', enrolledPairs);
+
+    if (enrolledPairs.length) {
+      // Build $or query to match exact subject+batch pairs
+      const pairQueries = enrolledPairs.map(p => ({
+        subjectId: p.subjectId,
+        batchId: p.batchId
+      }));
+
+      console.log('[StudentAssignments] Query:', { organization_id: orgId, $or: pairQueries, is_active: true });
+
+      const assignments = await Assignment.find({
+        organization_id: orgId,
+        $or: pairQueries,
+        is_active: true
+        // Note: Removed due_date filter temporarily to show all assignments
+      })
+        .populate('course_id', 'title')
+        .populate('created_by', 'name email profile.firstName profile.lastName')
+        .populate('subjectId', 'name code')
+        .sort({ due_date: 1, createdAt: -1 })
+        .lean();
+
+      console.log('[StudentAssignments] Found assignments:', assignments.length, assignments.map(a => ({ _id: a._id, title: a.title, subjectId: a.subjectId, batchId: a.batchId })));
+
+      return res.success({ assignments }, 'Assignments retrieved');
+    }
 
     const courseIds = await Enrollment.find({ student_id: userId })
       .distinct('course_id');

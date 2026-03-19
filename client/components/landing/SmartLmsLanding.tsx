@@ -1,1269 +1,471 @@
 'use client'
 
 import Link from 'next/link'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
-function useOnScrollThreshold(threshold = 12) {
+function useScrolled() {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > threshold)
+    const onScroll = () => setScrolled(window.scrollY > 20)
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [threshold])
+  }, [])
 
   return scrolled
 }
 
-function TemplateThumb({ accent }: { accent: string }) {
-  return (
-    <div
-      className="relative aspect-[16/10] overflow-hidden rounded-2xl"
-      style={{ background: '#1a1f35', border: '1px solid rgba(255,255,255,0.10)' }}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-transparent to-black/40 z-10" />
-      <div className="absolute inset-0 flex items-center justify-center z-20">
-        <div className="flex items-center gap-3 rounded-full px-5 py-2.5" style={{ background: `${accent}22`, border: `1px solid ${accent}55` }}>
-          <div className="h-2.5 w-2.5 rounded-full animate-pulse" style={{ background: accent }} />
-          <span className="text-xs font-semibold text-white">Live Preview</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TemplateImage({ src, accent }: { src: string; accent: string }) {
-  return (
-    <div
-      className="relative aspect-[16/10] overflow-hidden rounded-2xl"
-      style={{ background: '#1a1f35', border: '1px solid rgba(255,255,255,0.10)' }}
-    >
-      <img
-        src={src}
-        alt="Template preview"
-        className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${accent}`, boxShadow: `0 4px 20px ${accent}55` }}>
-              <svg className="h-4 w-4 text-black" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
-              </svg>
-            </div>
-            <div>
-              <div className="h-2 w-16 rounded" style={{ background: 'rgba(255,255,255,0.6)' }} />
-              <div className="mt-1 h-1.5 w-12 rounded" style={{ background: 'rgba(255,255,255,0.3)' }} />
-            </div>
-          </div>
-          <div className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ background: `${accent}33`, color: accent, border: `1px solid ${accent}55` }}>
-            PRO
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TemplatesSection() {
-  const templates = useMemo(
-    () => [
-      {
-        name: 'Modern CBSE School',
-        category: 'School',
-        desc: 'Clean, parent-friendly portal with announcements, homework and attendance. Perfect for K-12.',
-        accent: '#22C55E',
-        tags: ['Mobile-first', 'Parents', 'Homework'],
-        image: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&q=80&auto=format&fit=crop',
-      },
-      {
-        name: 'Engineering College Pro',
-        category: 'College',
-        desc: 'Departments, semester-wise courses, labs, internal assessments, and placement-ready analytics.',
-        accent: '#60A5FA',
-        tags: ['Departments', 'Semesters', 'Analytics'],
-        image: 'https://images.unsplash.com/photo-1562774053-701939374585?w=800&q=80&auto=format&fit=crop',
-      },
-      {
-        name: 'Coaching Academy Boost',
-        category: 'Coaching',
-        desc: 'Built for high frequency tests, live batches, doubt solving, and leaderboards for engagement.',
-        accent: '#F59E0B',
-        tags: ['Batches', 'Tests', 'Leaderboards'],
-        image: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&q=80&auto=format&fit=crop',
-      },
-      {
-        name: 'International School Premium',
-        category: 'School',
-        desc: 'Polished, premium look with multi-campus support, events calendar, and role-based dashboards.',
-        accent: '#A78BFA',
-        tags: ['Multi-campus', 'Events', 'Branding'],
-        image: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&q=80&auto=format&fit=crop',
-      },
-      {
-        name: 'Arts & Commerce College',
-        category: 'College',
-        desc: 'Timetable, faculty rooms, assignments, and certificate-ready coursework designed for flexibility.',
-        accent: '#F472B6',
-        tags: ['Timetable', 'Assignments', 'Certificates'],
-        image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80&auto=format&fit=crop',
-      },
-      {
-        name: 'Skill Institute Minimal',
-        category: 'Institute',
-        desc: 'A minimal template for fast launches — courses, payments, certificates, and learner support.',
-        accent: '#34D399',
-        tags: ['Fast launch', 'Payments', 'Support'],
-        image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80&auto=format&fit=crop',
-      },
-    ],
-    []
-  )
-
-  const categories = useMemo(() => ['All', 'School', 'College', 'Coaching', 'Institute'], [])
-  const [active, setActive] = useState('All')
-
-  const filtered = useMemo(() => {
-    if (active === 'All') return templates
-    return templates.filter((t) => t.category === active)
-  }, [active, templates])
-
-  return (
-    <section id="templates" style={{ background: '#0A0F2C' }}>
-      <div className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
-        <div className="mx-auto max-w-3xl text-center">
-          <PillBadge label="🏫 SCHOOL TEMPLATES" />
-          <h2 className="mt-5 font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl" style={{ letterSpacing: '-0.02em' }}>
-            Pick a Template. Launch in Days. Make it Yours.
-          </h2>
-          <p className="mt-5 text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Start from a proven portal layout and fully brand it — colors, sections, content, and navigation.
-          </p>
-        </div>
-
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
-          {categories.map((c) => {
-            const isActive = c === active
-            return (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setActive(c)}
-                className="rounded-full px-4 py-2 text-sm font-semibold transition-transform duration-200 hover:scale-[1.02]"
-                style={{
-                  background: isActive ? 'rgba(34,197,94,0.16)' : 'rgba(255,255,255,0.04)',
-                  border: isActive ? '1px solid rgba(34,197,94,0.35)' : '1px solid rgba(255,255,255,0.10)',
-                  color: isActive ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.78)',
-                }}
-              >
-                {c}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((t, idx) => (
-            <div key={t.name} className="slms-reveal" data-reveal style={{ transitionDelay: `${idx * 60}ms` }}>
-              <div className="rounded-2xl p-6" style={{ background: '#0D1535', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-xs font-semibold tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                      {t.category}
-                    </div>
-                    <div className="mt-2 font-display text-lg font-extrabold text-white">{t.name}</div>
-                  </div>
-                  <div className="rounded-full px-3 py-1 text-[11px] font-semibold" style={{ background: `${t.accent}22`, border: `1px solid ${t.accent}55`, color: 'rgba(255,255,255,0.85)' }}>
-                    Ready
-                  </div>
-                </div>
-
-                <p className="mt-3 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                  {t.desc}
-                </p>
-
-                <div className="mt-5 group">
-                  <TemplateImage src={t.image} accent={t.accent} />
-                </div>
-
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {t.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full px-3 py-1 text-xs font-semibold"
-                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)' }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  <Link
-                    href="#contact"
-                    className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold transition-transform duration-200 hover:scale-[1.01]"
-                    style={{ background: `${t.accent}`, color: '#03120A', boxShadow: '0 14px 44px -18px rgba(0,0,0,0.25)' }}
-                    onMouseEnter={(e) => {
-                      ;(e.currentTarget as HTMLElement).style.filter = 'brightness(0.95)'
-                    }}
-                    onMouseLeave={(e) => {
-                      ;(e.currentTarget as HTMLElement).style.filter = 'brightness(1)'
-                    }}
-                  >
-                    Use Template
-                  </Link>
-                  <Link
-                    href="#contact"
-                    className="inline-flex items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.01]"
-                    style={{ borderColor: 'rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.04)' }}
-                  >
-                    Preview
-                  </Link>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function useRevealOnScroll() {
+function useReveal() {
   useEffect(() => {
-    const els = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'))
-    if (!els.length) return
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'))
+    if (!nodes.length) return
 
-    const obs = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            ;(e.target as HTMLElement).classList.add('is-visible')
-            obs.unobserve(e.target)
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible')
+            observer.unobserve(entry.target)
           }
-        }
+        })
       },
       { threshold: 0.18 }
     )
 
-    for (const el of els) obs.observe(el)
-    return () => obs.disconnect()
+    nodes.forEach((node) => observer.observe(node))
+    return () => observer.disconnect()
   }, [])
 }
 
-function useCountUpOnView(target: number, options?: { durationMs?: number }) {
-  const durationMs = options?.durationMs ?? 900
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [value, setValue] = useState(0)
+const services = [
+  {
+    title: 'Academic Operations',
+    description:
+      'Run departments, programs, batches, subjects, timetables, and college approvals from one operating layer.',
+  },
+  {
+    title: 'Course Publishing',
+    description:
+      'Let instructors build drafts, submit for review, publish cleanly, and keep curriculum quality under control.',
+  },
+  {
+    title: 'Live Learning',
+    description:
+      'Deliver live classes, recorded sessions, attendance, quizzes, assignments, and timely student notifications.',
+  },
+  {
+    title: 'Student Experience',
+    description:
+      'Give learners a clear dashboard for classes, progress, results, certificates, and course communication.',
+  },
+  {
+    title: 'Commerce and Certificates',
+    description:
+      'Support paid courses, enrollments, outcomes, and completion credentials without fragmented tooling.',
+  },
+  {
+    title: 'Reporting and Control',
+    description:
+      'Track engagement, completion, teaching activity, and admin visibility with practical data across the flow.',
+  },
+]
 
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
+const pillars = [
+  'Built for colleges, institutes, academies, and coaching brands',
+  'Supports admin, instructor, and student journeys in one product',
+  'Matches real course approval, delivery, and assessment workflows',
+]
 
-    let raf = 0
-    let started = false
+const workflow = [
+  {
+    step: '01',
+    title: 'Structure the institution',
+    description: 'Create departments, programs, batches, subjects, and the rules that define your academic model.',
+  },
+  {
+    step: '02',
+    title: 'Publish with review',
+    description: 'Instructors create course drafts, org admins review quality, and approved courses go live in the right places.',
+  },
+  {
+    step: '03',
+    title: 'Run learning daily',
+    description: 'Schedule live classes, push attendance, release quizzes, and keep students informed from one dashboard.',
+  },
+  {
+    step: '04',
+    title: 'Measure outcomes',
+    description: 'See engagement and completion signals early, then improve delivery instead of guessing what is broken.',
+  },
+]
 
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting && !started) {
-            started = true
-            const start = performance.now()
-            const from = 0
-            const tick = (now: number) => {
-              const t = Math.min(1, (now - start) / durationMs)
-              const next = Math.round(from + (target - from) * (1 - Math.pow(1 - t, 3)))
-              setValue(next)
-              if (t < 1) raf = requestAnimationFrame(tick)
-            }
-            raf = requestAnimationFrame(tick)
-            obs.disconnect()
+const audiences = [
+  {
+    title: 'For leadership',
+    body: 'A sharper institutional storefront, stronger governance, and one system for academic operations and delivery.',
+  },
+  {
+    title: 'For instructors',
+    body: 'Faster course creation, cleaner content management, easier live teaching, and fewer admin bottlenecks.',
+  },
+  {
+    title: 'For students',
+    body: 'A calmer learning experience with clear schedules, attendance, quizzes, progress, and support.',
+  },
+]
+
+const metrics = [
+  { value: '1 platform', label: 'for admin, faculty, and students' },
+  { value: '6 core layers', label: 'covering operations to delivery' },
+  { value: '100%', label: 'aligned to your actual LMS workflows' },
+]
+
+export function SmartLmsLanding() {
+  const scrolled = useScrolled()
+  useReveal()
+
+  return (
+    <div className="min-h-screen bg-[#f4efe7] text-[#0f172a]">
+      <style jsx global>{`
+        [data-reveal] {
+          opacity: 0;
+          transform: translateY(28px);
+          transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+
+        [data-reveal].is-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          html {
+            scroll-behavior: auto;
+          }
+
+          [data-reveal] {
+            opacity: 1;
+            transform: none;
+            transition: none;
           }
         }
-      },
-      { threshold: 0.55 }
-    )
+      `}</style>
 
-    obs.observe(el)
-    return () => {
-      cancelAnimationFrame(raf)
-      obs.disconnect()
-    }
-  }, [durationMs, target])
-
-  return { ref, value }
-}
-
-function LogoMark() {
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className="h-8 w-8 rounded-full"
-        style={{ background: '#22C55E', boxShadow: '0 0 0 6px rgba(34,197,94,0.12)' }}
-      />
-      <span className="text-lg font-semibold tracking-tight text-white">Smart LMS</span>
-    </div>
-  )
-}
-
-function PrimaryButton({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold text-[#03120A] transition-transform duration-200 hover:scale-[1.02]"
-      style={{ background: '#22C55E', boxShadow: '0 14px 44px -18px rgba(34,197,94,0.8)' }}
-      onMouseEnter={(e) => {
-        ;(e.currentTarget as HTMLElement).style.background = '#16A34A'
-        ;(e.currentTarget as HTMLElement).style.boxShadow = '0 18px 52px -18px rgba(34,197,94,0.9)'
-      }}
-      onMouseLeave={(e) => {
-        ;(e.currentTarget as HTMLElement).style.background = '#22C55E'
-        ;(e.currentTarget as HTMLElement).style.boxShadow = '0 14px 44px -18px rgba(34,197,94,0.8)'
-      }}
-    >
-      {children}
-    </Link>
-  )
-}
-
-function SecondaryButton({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="inline-flex items-center justify-center rounded-xl border px-6 py-3 text-sm font-semibold text-white transition-transform duration-200 hover:scale-[1.02]"
-      style={{ borderColor: 'rgba(255,255,255,0.22)', background: 'transparent' }}
-      onMouseEnter={(e) => {
-        ;(e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'
-      }}
-      onMouseLeave={(e) => {
-        ;(e.currentTarget as HTMLElement).style.background = 'transparent'
-      }}
-    >
-      {children}
-    </Link>
-  )
-}
-
-function LandingNavbar() {
-  const scrolled = useOnScrollThreshold(18)
-  const [open, setOpen] = useState(false)
-  const [solutionsOpen, setSolutionsOpen] = useState(false)
-
-  return (
-    <header
-      className="fixed left-0 right-0 top-0 z-50"
-      style={{
-        background: scrolled ? 'rgba(6,11,31,0.78)' : 'rgba(6,11,31,0.18)',
-        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.07)' : '1px solid transparent',
-        backdropFilter: scrolled ? 'blur(16px)' : 'blur(0px)',
-        transition: 'background 220ms ease, border-color 220ms ease, backdrop-filter 220ms ease',
-      }}
-    >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 lg:px-8">
-        <Link href="/" className="flex items-center gap-2">
-          <LogoMark />
-        </Link>
-
-        <nav className="hidden items-center gap-8 lg:flex">
-          <Link href="#features" className="text-sm" style={{ color: 'rgba(255,255,255,0.78)' }}>
-            Features
+      <header
+        className={`sticky top-0 z-50 border-b transition-all duration-300 ${
+          scrolled
+            ? 'border-[#d8d1c6] bg-[#f4efe7]/90 backdrop-blur-xl'
+            : 'border-transparent bg-transparent'
+        }`}
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-10">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0f172a] text-sm font-bold text-white shadow-[0_20px_40px_rgba(15,23,42,0.18)]">
+              SL
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.32em] text-[#64748b]">Smart LMS</p>
+              <p className="text-sm font-semibold text-[#0f172a]">Education Operating System</p>
+            </div>
           </Link>
 
-          <div
-            className="relative"
-            onMouseEnter={() => setSolutionsOpen(true)}
-            onMouseLeave={() => setSolutionsOpen(false)}
-          >
-            <button
-              type="button"
-              className="flex items-center gap-2 text-sm"
-              style={{ color: 'rgba(255,255,255,0.78)' }}
+          <nav className="hidden items-center gap-8 text-sm font-medium text-[#334155] lg:flex">
+            <a href="#services" className="transition hover:text-[#0f172a]">Services</a>
+            <a href="#workflow" className="transition hover:text-[#0f172a]">Workflow</a>
+            <a href="#experience" className="transition hover:text-[#0f172a]">Experience</a>
+            <a href="#contact" className="transition hover:text-[#0f172a]">Contact</a>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="hidden rounded-full border border-[#c9c1b4] px-5 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:border-[#0f172a] lg:inline-flex"
             >
-              Solutions
-              <span style={{ color: 'rgba(255,255,255,0.55)' }}>▾</span>
-            </button>
-            {solutionsOpen && (
-              <div
-                className="absolute left-0 top-full mt-3 w-[280px] rounded-2xl p-2"
-                style={{
-                  background: '#0D1535',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  boxShadow: '0 24px 70px -40px rgba(0,0,0,0.85)',
-                }}
-              >
-                {[
-                  { t: 'Partner Training', d: 'Enable your channel with consistent learning' },
-                  { t: 'Customer Education', d: 'Onboard users and reduce support load' },
-                  { t: 'Internal L&D', d: 'Build skills across teams and roles' },
-                ].map((x) => (
-                  <Link
-                    key={x.t}
-                    href="#contact"
-                    className="block rounded-xl px-4 py-3 transition-colors"
-                    style={{ color: 'rgba(255,255,255,0.9)' }}
-                    onMouseEnter={(e) => {
-                      ;(e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'
-                    }}
-                    onMouseLeave={(e) => {
-                      ;(e.currentTarget as HTMLElement).style.background = 'transparent'
-                    }}
-                  >
-                    <div className="text-sm font-semibold text-white">{x.t}</div>
-                    <div className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                      {x.d}
-                    </div>
-                  </Link>
+              Sign in
+            </Link>
+            <Link
+              href="/apply"
+              className="inline-flex rounded-full bg-[#0f172a] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1e293b]"
+            >
+              Create your own platform
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section className="relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),_transparent_32%),radial-gradient(circle_at_top_right,_rgba(245,158,11,0.18),_transparent_28%)]" />
+          <div className="mx-auto grid max-w-7xl gap-14 px-6 pb-20 pt-14 lg:grid-cols-[1.15fr_0.85fr] lg:px-10 lg:pb-28 lg:pt-20">
+            <div className="relative z-10" data-reveal>
+              <div className="inline-flex rounded-full border border-[#d8d1c6] bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-[#475569] backdrop-blur">
+                Built around real college and institute workflows
+              </div>
+              <h1 className="mt-8 max-w-4xl text-5xl font-bold leading-[0.96] tracking-[-0.05em] text-[#0f172a] md:text-6xl lg:text-7xl">
+                The landing page your LMS product deserved from day one.
+              </h1>
+              <p className="mt-8 max-w-2xl text-lg leading-8 text-[#475569] md:text-xl">
+                Smart LMS helps colleges, academies, and education brands manage operations, publish courses,
+                run live learning, and deliver a student experience that feels polished instead of patched together.
+              </p>
+
+              <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+                <Link
+                  href="/apply"
+                  className="inline-flex items-center justify-center rounded-full bg-[#0f172a] px-7 py-4 text-sm font-semibold text-white transition hover:bg-[#1e293b]"
+                >
+                  Create your own platform
+                </Link>
+                <a
+                  href="#services"
+                  className="inline-flex items-center justify-center rounded-full border border-[#c9c1b4] bg-white/70 px-7 py-4 text-sm font-semibold text-[#0f172a] transition hover:border-[#0f172a]"
+                >
+                  Explore what it covers
+                </a>
+              </div>
+
+              <div className="mt-12 grid gap-4 sm:grid-cols-3">
+                {metrics.map((metric) => (
+                  <div key={metric.label} className="rounded-[28px] border border-[#ddd5c9] bg-white/70 p-5 backdrop-blur">
+                    <p className="text-3xl font-bold tracking-[-0.05em] text-[#0f172a]">{metric.value}</p>
+                    <p className="mt-2 text-sm leading-6 text-[#64748b]">{metric.label}</p>
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
-
-          <Link href="#contact" className="text-sm" style={{ color: 'rgba(255,255,255,0.78)' }}>
-            Contact Us
-          </Link>
-        </nav>
-
-        <button
-          type="button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border lg:hidden"
-          style={{ borderColor: 'rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.04)' }}
-          onClick={() => setOpen((v) => !v)}
-          aria-label="Toggle menu"
-        >
-          <span className="text-white">{open ? '✕' : '☰'}</span>
-        </button>
-      </div>
-
-      {open && (
-        <div
-          className="border-t lg:hidden"
-          style={{ borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(6,11,31,0.92)', backdropFilter: 'blur(16px)' }}
-        >
-          <div className="mx-auto max-w-7xl px-4 py-4">
-            <div className="flex flex-col gap-3">
-              <Link href="#features" className="rounded-xl px-4 py-3 text-sm text-white" onClick={() => setOpen(false)}>
-                Features
-              </Link>
-              <Link href="#integrations" className="rounded-xl px-4 py-3 text-sm text-white" onClick={() => setOpen(false)}>
-                Solutions
-              </Link>
-              <Link href="#contact" className="rounded-xl px-4 py-3 text-sm text-white" onClick={() => setOpen(false)}>
-                Contact Us
-              </Link>
             </div>
-          </div>
-        </div>
-      )}
-    </header>
-  )
-}
 
-function CompanyLogo({ name }: { name: string }) {
-  return (
-    <div
-      className="flex h-10 items-center justify-center rounded-full px-5 text-sm font-semibold tracking-wide"
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.78)' }}
-    >
-      {name}
-    </div>
-  )
-}
+            <div className="relative z-10" data-reveal>
+              <div className="rounded-[32px] border border-[#122033] bg-[#0f172a] p-5 text-white shadow-[0_30px_100px_rgba(15,23,42,0.28)]">
+                <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,#16233a_0%,#0f172a_100%)] p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.32em] text-[#94a3b8]">Live Product View</p>
+                      <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em]">College workflow in motion</h2>
+                    </div>
+                    <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                      Active
+                    </div>
+                  </div>
 
-function HeroSection() {
-  const logos = useMemo(
-    () => ['NorthPeak', 'Flextor', 'Aster & Co', 'CloudNine', 'Venturely', 'IronWorks', 'BlueFrame'],
-    []
-  )
+                  <div className="mt-8 grid gap-4">
+                    <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">Course draft submitted</p>
+                          <p className="mt-1 text-sm text-[#94a3b8]">BCA Data Structures - pending org-admin review</p>
+                        </div>
+                        <div className="rounded-full bg-amber-300 px-3 py-1 text-xs font-semibold text-[#172033]">
+                          Review
+                        </div>
+                      </div>
+                    </div>
 
-  return (
-    <section className="relative overflow-hidden" style={{ background: '#0A0F2C' }}>
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(900px 400px at 50% 18%, rgba(34,197,94,0.10) 0%, rgba(34,197,94,0) 60%), radial-gradient(700px 300px at 70% 10%, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 60%)',
-        }}
-      />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                        <p className="text-xs uppercase tracking-[0.26em] text-[#94a3b8]">Academic setup</p>
+                        <p className="mt-3 text-2xl font-semibold">12 batches</p>
+                        <p className="mt-2 text-sm text-[#94a3b8]">Departments, subjects, and timetables mapped cleanly.</p>
+                      </div>
+                      <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
+                        <p className="text-xs uppercase tracking-[0.26em] text-[#94a3b8]">Learning delivery</p>
+                        <p className="mt-3 text-2xl font-semibold">28 live sessions</p>
+                        <p className="mt-2 text-sm text-[#94a3b8]">Attendance, quizzes, and notifications kept in sync.</p>
+                      </div>
+                    </div>
 
-      <div className="mx-auto max-w-7xl px-4 pb-16 pt-32 lg:px-8 lg:pb-20 lg:pt-40">
-        <div className="mx-auto max-w-3xl text-center">
-          <h1
-            className="slms-fade-up font-display text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl"
-            style={{ letterSpacing: '-0.02em' }}
-          >
-            Launch a Modern School LMS That Students Love
-          </h1>
-          <p
-            className="mt-6 slms-fade-up text-base leading-relaxed sm:text-lg"
-            style={{ color: 'rgba(255,255,255,0.6)', animationDelay: '120ms' }}
-          >
-            Beautiful portals, live classes, attendance, tests, certificates, and analytics — all in one platform you can brand as your own.
-          </p>
+                    <div className="rounded-[24px] border border-white/10 bg-[#f8fafc] p-5 text-[#0f172a]">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">Student side now feels simple</p>
+                          <p className="mt-1 text-sm text-[#475569]">Classes, progress, quiz access, and updates in one calm flow.</p>
+                        </div>
+                        <div className="h-12 w-12 rounded-2xl bg-[#dbeafe]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <div className="slms-fade-up" style={{ animationDelay: '220ms' }}>
-              <PrimaryButton href="/apply">Get Started</PrimaryButton>
-            </div>
-            <div className="slms-fade-up" style={{ animationDelay: '300ms' }}>
-              <SecondaryButton href="#templates">See Templates</SecondaryButton>
-            </div>
-          </div>
-
-          <p className="mt-8 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Trusted by schools, colleges, and coaching institutes.
-          </p>
-        </div>
-
-        <div className="mt-10 slms-marquee" aria-label="Company logos">
-          <div className="slms-marquee-track gap-4 pr-4">
-            {[...logos, ...logos].map((name, idx) => (
-              <CompanyLogo key={`${name}-${idx}`} name={name} />
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function StatsBar() {
-  const up = useCountUpOnView(999, { durationMs: 900 })
-  const csat = useCountUpOnView(91, { durationMs: 850 })
-  const eng = useCountUpOnView(77, { durationMs: 850 })
-
-  return (
-    <section style={{ background: '#050505' }}>
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 py-14 text-center sm:grid-cols-3 lg:px-8">
-        <div ref={up.ref}>
-          <div className="font-display text-4xl font-extrabold text-white sm:text-5xl">{(up.value / 10).toFixed(1)}%</div>
-          <div className="mt-2 text-xs font-medium tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Platform Uptime
-          </div>
-        </div>
-        <div ref={csat.ref}>
-          <div className="font-display text-4xl font-extrabold text-white sm:text-5xl">{csat.value}%</div>
-          <div className="mt-2 text-xs font-medium tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            CSAT Score
-          </div>
-        </div>
-        <div ref={eng.ref}>
-          <div className="font-display text-4xl font-extrabold text-white sm:text-5xl">{eng.value}%</div>
-          <div className="mt-2 text-xs font-medium tracking-wide" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Increase in Engagement
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function PillBadge({ label }: { label: string }) {
-  return (
-    <div
-      className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold tracking-widest"
-      style={{
-        background: 'rgba(255,255,255,0.08)',
-        border: '1px solid rgba(255,255,255,0.10)',
-        color: 'rgba(255,255,255,0.85)',
-      }}
-    >
-      {label}
-    </div>
-  )
-}
-
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="rounded-2xl p-7"
-      style={{ background: '#0D1535', border: '1px solid rgba(255,255,255,0.07)' }}
-    >
-      {children}
-    </div>
-  )
-}
-
-function FormatChips() {
-  const chips = ['PDF', 'Video', 'Audio', 'SCORM', 'Slides', 'Article']
-  return (
-    <div className="mt-5 flex flex-wrap gap-2">
-      {chips.map((c) => (
-        <span
-          key={c}
-          className="rounded-full px-3 py-1 text-xs font-semibold"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)' }}
-        >
-          {c}
-        </span>
-      ))}
-    </div>
-  )
-}
-
-function MiniBrowserMock() {
-  return (
-    <div className="mt-6 overflow-hidden rounded-2xl" style={{ border: '1px solid rgba(255,255,255,0.10)' }}>
-      <div className="flex items-center gap-2 px-4 py-3" style={{ background: 'rgba(255,255,255,0.06)' }}>
-        <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'rgba(255,255,255,0.24)' }} />
-        <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'rgba(255,255,255,0.18)' }} />
-        <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }} />
-        <div className="ml-auto rounded-full px-3 py-1 text-[11px]" style={{ background: 'rgba(34,197,94,0.14)', color: 'rgba(255,255,255,0.8)' }}>
-          Portal Builder
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-3 p-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-xl p-3" style={{ background: 'rgba(13,21,53,0.9)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="h-10 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            <div className="mt-3 h-2 rounded" style={{ background: 'rgba(255,255,255,0.10)' }} />
-            <div className="mt-2 h-2 w-2/3 rounded" style={{ background: 'rgba(255,255,255,0.07)' }} />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function VideoCallMock() {
-  return (
-    <div className="mt-6 rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)' }}>
-      <div className="grid grid-cols-2 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="relative aspect-video overflow-hidden rounded-xl" style={{ background: 'rgba(255,255,255,0.06)' }}>
-            <div className="absolute left-3 top-3 rounded-full px-2 py-1 text-[11px]" style={{ background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.85)' }}>
-              Live
-            </div>
-            <div className="absolute bottom-3 left-3 h-2 w-20 rounded" style={{ background: 'rgba(255,255,255,0.10)' }} />
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center justify-between">
-        <div className="flex gap-2">
-          {['🎤', '🎥', '🖥️'].map((x) => (
-            <div key={x} className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
-              <span className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                {x}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div className="rounded-full px-3 py-1 text-[11px] font-semibold" style={{ background: 'rgba(34,197,94,0.14)', color: 'rgba(255,255,255,0.8)' }}>
-          Attendance ✓
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function CertificateMock() {
-  return (
-    <div className="mt-6 rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)' }}>
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>
-            Certificate of Completion
-          </div>
-          <div className="mt-1 text-sm font-semibold text-white">Smart LMS Academy</div>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: 'rgba(34,197,94,0.14)' }}>
-          <span className="text-lg">✓</span>
-        </div>
-      </div>
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        {[
-          { k: 'Learner', v: 'Alex Morgan' },
-          { k: 'Score', v: '92%' },
-          { k: 'Issued', v: 'Instantly' },
-          { k: 'Valid', v: 'Verified' },
-        ].map((x) => (
-          <div key={x.k} className="rounded-xl p-3" style={{ background: 'rgba(13,21,53,0.85)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              {x.k}
-            </div>
-            <div className="mt-1 text-sm font-semibold text-white">{x.v}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function FeaturesSection() {
-  return (
-    <section id="features" style={{ background: '#0A0F2C' }}>
-      <div className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
-        <div className="mx-auto max-w-3xl text-center">
-          <PillBadge label="⚙ FEATURES" />
-          <h2
-            className="mt-5 font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
-            style={{ letterSpacing: '-0.02em' }}
-          >
-            Train Confidently, Launch Faster, Scale Smarter
-          </h2>
-          <p className="mt-5 text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Core features that simplify delivery, boost engagement, and keep your training on-brand and on track
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-6 md:grid-cols-2">
-          <div className="slms-reveal" data-reveal>
-            <Card>
-              <h3 className="font-display text-lg font-bold text-white">Diverse Content & Format Support</h3>
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                Upload SCORM, TinCan, videos, PDFs — or deliver learning in the format that best fits your content and
-                audience.
-              </p>
-              <FormatChips />
-            </Card>
-          </div>
-
-          <div className="slms-reveal" data-reveal style={{ transitionDelay: '80ms' }}>
-            <Card>
-              <h3 className="font-display text-lg font-bold text-white">Branded Experiences, Your Way</h3>
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                Design your own portal just how you want. Customise every touchpoint to reflect your brand — no code
-                required.
-              </p>
-              <MiniBrowserMock />
-            </Card>
-          </div>
-
-          <div className="slms-reveal" data-reveal style={{ transitionDelay: '140ms' }}>
-            <Card>
-              <h3 className="font-display text-lg font-bold text-white">Host Live Sessions Without External Tools</h3>
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                Host live sessions and cohorts directly inside your academy with built-in scheduling, reminders, and
-                attendance tracking.
-              </p>
-              <VideoCallMock />
-            </Card>
-          </div>
-
-          <div className="slms-reveal" data-reveal style={{ transitionDelay: '220ms' }}>
-            <Card>
-              <h3 className="font-display text-lg font-bold text-white">Certifications & Skill Validation</h3>
-              <p className="mt-3 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                Automate completion-based certificates to ensure regulatory compliance and track progress with ease.
-              </p>
-              <CertificateMock />
-            </Card>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function AccordionItem({
-  title,
-  desc,
-  open,
-  onToggle,
-}: {
-  title: string
-  desc: string
-  open: boolean
-  onToggle: () => void
-}) {
-  return (
-    <div
-      className="rounded-2xl"
-      style={{ background: open ? 'rgba(255,255,255,0.04)' : 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between gap-6 px-5 py-4 text-left"
-      >
-        <span className="text-sm font-semibold text-white">{title}</span>
-        <span className="text-white" style={{ opacity: 0.7 }}>
-          {open ? '−' : '+'}
-        </span>
-      </button>
-      <div
-        className="grid overflow-hidden px-5"
-        style={{
-          gridTemplateRows: open ? '1fr' : '0fr',
-          transition: 'grid-template-rows 260ms ease',
-        }}
-      >
-        <div className="min-h-0 pb-4 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-          {desc}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function PhoneMock() {
-  return (
-    <div
-      className="mx-auto w-full max-w-sm rounded-[36px] p-4"
-      style={{ background: '#0D1535', border: '1px solid rgba(255,255,255,0.10)' }}
-    >
-      <div
-        className="rounded-[28px] p-4"
-        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
-            Smart LMS
-          </div>
-          <div className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            11:08
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          <div className="rounded-2xl p-3" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
-            <div className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              Announcement
-            </div>
-            <div className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
-              New partner onboarding path is live. Start now.
-            </div>
-          </div>
-
-          {[
-            { t: 'Reminder', d: 'Live cohort session starts in 30 minutes' },
-            { t: 'Message', d: 'HR: Please complete compliance training' },
-            { t: 'Progress', d: 'You earned a new badge: Consistent Learner' },
-          ].map((x) => (
-            <div key={x.t} className="rounded-2xl p-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="flex items-center justify-between">
-                <div className="text-[11px] font-semibold text-white">{x.t}</div>
-                <div className="text-[11px]" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                  now
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  {pillars.map((pillar) => (
+                    <div key={pillar} className="rounded-[22px] border border-white/10 bg-white/5 p-4 text-sm leading-6 text-[#cbd5e1]">
+                      {pillar}
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                {x.d}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 flex items-center justify-between rounded-2xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            Type a message...
-          </span>
-          <span className="text-sm" style={{ color: 'rgba(34,197,94,0.9)' }}>
-            ➤
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function EngagementSection() {
-  const items = useMemo(
-    () => [
-      {
-        t: 'Communicate Smarter with In-App Messaging',
-        d: 'Announce updates, send nudges, and trigger reminders through built-in newsfeeds, alerts, and email.',
-      },
-      { t: 'Train Anywhere with Mobile-First Access', d: 'A fast, responsive learning experience across devices.' },
-      { t: 'Build a Learning Culture with Communities', d: 'Enable discussions, peer learning, and support at scale.' },
-      { t: 'Validate Knowledge with Built-in Assessments', d: 'Quizzes and evaluations that measure real learning.' },
-      { t: 'Prove Training ROI with Actionable Analytics', d: 'Dashboards that show adoption, completion, and impact.' },
-      { t: 'Deliver the Right Content with Learning Paths', d: 'Sequence learning to guide learners from basics to mastery.' },
-    ],
-    []
-  )
-
-  const [active, setActive] = useState(items[0]?.t ?? '')
-
-  return (
-    <section style={{ background: '#060B1F' }}>
-      <div className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2
-            className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
-            style={{ letterSpacing: '-0.02em' }}
-          >
-            Keep Training Relevant, Engaging & Always On
-          </h2>
-          <p className="mt-5 text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Support long-term learning with tools that personalise journeys, boost accountability, and build a connected
-            learning culture
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-10 lg:grid-cols-2 lg:items-start">
-          <div className="space-y-3">
-            {items.map((x) => (
-              <AccordionItem
-                key={x.t}
-                title={x.t}
-                desc={x.d}
-                open={active === x.t}
-                onToggle={() => setActive((p) => (p === x.t ? '' : x.t))}
-              />
-            ))}
-          </div>
-
-          <div className="slms-reveal" data-reveal>
-            <PhoneMock />
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function TwoColCard({
-  title,
-  desc,
-  right,
-}: {
-  title: string
-  desc: string
-  right: React.ReactNode
-}) {
-  return (
-    <div
-      className="grid gap-8 rounded-2xl p-7 lg:grid-cols-2 lg:items-center"
-      style={{ background: '#0D1535', border: '1px solid rgba(255,255,255,0.07)' }}
-    >
-      <div>
-        <h3 className="font-display text-xl font-extrabold text-white">{title}</h3>
-        <p className="mt-3 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-          {desc}
-        </p>
-      </div>
-      <div>{right}</div>
-    </div>
-  )
-}
-
-function MigrationMock() {
-  return (
-    <div className="flex items-center justify-center gap-3 rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)' }}>
-      <div className="rounded-2xl px-4 py-3 text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.85)' }}>
-        Current LMS
-      </div>
-      <div className="text-xl" style={{ color: 'rgba(34,197,94,0.9)' }}>
-        →
-      </div>
-      <div className="flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold" style={{ background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.22)', color: 'rgba(255,255,255,0.88)' }}>
-        <span>⚡</span>
-        Smart LMS
-      </div>
-      <div className="ml-2 rounded-full px-3 py-1 text-[11px] font-semibold" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)' }}>
-        Support included
-      </div>
-    </div>
-  )
-}
-
-function LeaderboardMock() {
-  return (
-    <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.10)' }}>
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-white">Leaderboard</div>
-        <div className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
-          This week
-        </div>
-      </div>
-      <div className="mt-4 space-y-3">
-        {[
-          { n: 'Ayesha', xp: 1240, s: '🔥 7 day streak' },
-          { n: 'Rohan', xp: 980, s: '⭐ Level up' },
-          { n: 'Meera', xp: 860, s: '🏅 Badge earned' },
-        ].map((x, i) => (
-          <div key={x.n} className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ background: 'rgba(13,21,53,0.85)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div>
-              <div className="text-sm font-semibold text-white">
-                {i + 1}. {x.n}
-              </div>
-              <div className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                {x.s}
-              </div>
-            </div>
-            <div className="text-sm font-extrabold" style={{ color: '#22C55E' }}>
-              {x.xp} XP
             </div>
           </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+        </section>
 
-function OnboardingGamificationSection() {
-  return (
-    <section style={{ background: '#0A0F2C' }}>
-      <div className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
-        <div className="grid gap-6">
-          <div className="slms-reveal" data-reveal>
-            <TwoColCard
-              title="Go Live Quick with Onboarding Support"
-              desc="Our team assists with platform setup, data migration, and tailored onboarding so you can go live faster and happier."
-              right={<MigrationMock />}
-            />
+        <section className="border-y border-[#ddd5c9] bg-white/60">
+          <div className="mx-auto grid max-w-7xl gap-5 px-6 py-6 text-sm font-semibold uppercase tracking-[0.24em] text-[#64748b] sm:grid-cols-2 lg:grid-cols-4 lg:px-10">
+            <span>Academic administration</span>
+            <span>Instructor publishing</span>
+            <span>Student engagement</span>
+            <span>Commerce and certification</span>
           </div>
-          <div className="slms-reveal" data-reveal style={{ transitionDelay: '120ms' }}>
-            <TwoColCard
-              title="Gamify Learning to Drive Participation"
-              desc="Boost engagement through badges, challenges, and achievement tracking that make learning rewarding and addictive."
-              right={<LeaderboardMock />}
-            />
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
+        </section>
 
-function IntegrationsSection() {
-  const integrations = [
-    'Dropbox',
-    '2Checkout',
-    'Google Drive',
-    'Calendar',
-    'OneDrive',
-    'Google',
-    'Zapier',
-    'GitHub',
-    'Pabbly',
-    'Google Analytics',
-    'Stripe',
-    'PayPal',
-    'WhatsApp',
-    'YouTube',
-    'Razorpay',
-  ]
-
-  return (
-    <section id="integrations" style={{ background: '#060B1F' }}>
-      <div className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2
-            className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
-            style={{ letterSpacing: '-0.02em' }}
-          >
-            Connect Smart LMS to the Tools You Trust
-          </h2>
-          <p className="mt-5 text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            From HRMS to CRM, video to analytics — plug into 50+ integrations and automate your training workflows across
-            your tech stack.
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {integrations.map((name) => (
-            <div
-              key={name}
-              className="flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)' }}
-            >
-              {name}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function ContactSection() {
-  return (
-    <section id="contact" style={{ background: '#0A0F2C' }}>
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-20 lg:grid-cols-2 lg:items-start lg:px-8">
-        <div>
-          <h2
-            className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
-            style={{ letterSpacing: '-0.02em' }}
-          >
-            Ready to Build Your Corporate LMS? Let's Chat
-          </h2>
-          <p className="mt-5 text-base leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-            Tell us what you're trying to achieve — we'll recommend the right approach, rollout plan, and feature set.
-          </p>
-        </div>
-
-        <form
-          className="rounded-2xl p-7"
-          style={{ background: '#0D1535', border: '1px solid rgba(255,255,255,0.07)' }}
-          onSubmit={(e) => {
-            e.preventDefault()
-          }}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                First Name
-              </label>
-              <input
-                className="mt-2 w-full rounded-xl px-4 py-3 text-sm text-white outline-none"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
-                placeholder="First Name"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                Last Name
-              </label>
-              <input
-                className="mt-2 w-full rounded-xl px-4 py-3 text-sm text-white outline-none"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
-                placeholder="Last Name"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                Business Email
-              </label>
-              <input
-                type="email"
-                className="mt-2 w-full rounded-xl px-4 py-3 text-sm text-white outline-none"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
-                placeholder="Business Email"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
-                Phone Number
-              </label>
-              <div className="mt-2 flex overflow-hidden rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.10)' }}>
-                <div className="flex items-center px-3 text-sm" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.75)' }}>
-                  +91
-                </div>
-                <input
-                  className="w-full bg-transparent px-4 py-3 text-sm text-white outline-none"
-                  style={{ background: 'rgba(255,255,255,0.04)' }}
-                  placeholder="Phone Number"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <label className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
-              Goals
-            </label>
-            <textarea
-              className="mt-2 min-h-[120px] w-full resize-none rounded-xl px-4 py-3 text-sm text-white outline-none"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
-              placeholder="Goals"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="mt-6 inline-flex w-full items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold transition-transform duration-200 hover:scale-[1.01]"
-            style={{ background: '#22C55E', color: '#03120A', boxShadow: '0 14px 44px -18px rgba(34,197,94,0.8)' }}
-            onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLElement).style.background = '#16A34A'
-              ;(e.currentTarget as HTMLElement).style.boxShadow = '0 18px 52px -18px rgba(34,197,94,0.9)'
-            }}
-            onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLElement).style.background = '#22C55E'
-              ;(e.currentTarget as HTMLElement).style.boxShadow = '0 14px 44px -18px rgba(34,197,94,0.8)'
-            }}
-          >
-            Talk to Us
-          </button>
-        </form>
-      </div>
-    </section>
-  )
-}
-
-function FooterSection() {
-  const social = [
-    { t: 'in', label: 'LinkedIn' },
-    { t: 'wa', label: 'WhatsApp' },
-    { t: 'yt', label: 'YouTube' },
-    { t: '𝕏', label: 'Twitter' },
-    { t: 'ig', label: 'Instagram' },
-    { t: 'f', label: 'Facebook' },
-  ]
-
-  return (
-    <footer style={{ background: '#060B1F', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-      <div className="mx-auto max-w-7xl px-4 py-16 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-3">
-          <div>
-            <LogoMark />
-            <p className="mt-4 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              Corporate learning that scales across every audience.
+        <section id="services" className="mx-auto max-w-7xl px-6 py-20 lg:px-10 lg:py-28">
+          <div className="max-w-3xl" data-reveal>
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#b45309]">Services</p>
+            <h2 className="mt-4 text-4xl font-bold tracking-[-0.05em] text-[#0f172a] md:text-5xl">
+              Everything on the homepage now reflects what the platform actually does.
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-[#475569]">
+              This is positioned as a full education operating system, not a vague template site. Every section now
+              speaks to the same college, instructor, and student flows we validated in the product.
             </p>
           </div>
 
-          <div>
-            <div className="text-sm font-semibold text-white">Reach Out</div>
-            <div className="mt-3 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              hello@smartlms.com
-            </div>
-            <div className="mt-2 text-sm" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              Call Us — +91 XXXXX XXXXX
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {social.map((s) => (
-                <div
-                  key={s.label}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl"
-                  title={s.label}
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.8)' }}
-                >
-                  <span className="text-sm font-semibold">{s.t}</span>
+          <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {services.map((service, index) => (
+              <article
+                key={service.title}
+                data-reveal
+                className="group rounded-[30px] border border-[#ddd5c9] bg-white p-7 shadow-[0_20px_60px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_80px_rgba(15,23,42,0.1)]"
+                style={{ transitionDelay: `${index * 60}ms` }}
+              >
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0f172a] text-sm font-bold text-white">
+                  0{index + 1}
                 </div>
+                <h3 className="mt-6 text-2xl font-semibold tracking-[-0.04em] text-[#0f172a]">{service.title}</h3>
+                <p className="mt-4 text-base leading-7 text-[#475569]">{service.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section id="experience" className="bg-[#0f172a] text-white">
+          <div className="mx-auto grid max-w-7xl gap-12 px-6 py-20 lg:grid-cols-[0.95fr_1.05fr] lg:px-10 lg:py-28">
+            <div data-reveal>
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#fbbf24]">Experience</p>
+              <h2 className="mt-4 text-4xl font-bold tracking-[-0.05em] md:text-5xl">
+                Designed for the people who use the platform every day.
+              </h2>
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-[#94a3b8]">
+                The new landing page promises a system that respects each role. Leadership sees governance, faculty
+                sees speed, and students see clarity.
+              </p>
+            </div>
+
+            <div className="grid gap-5">
+              {audiences.map((audience, index) => (
+                <article
+                  key={audience.title}
+                  data-reveal
+                  className="rounded-[28px] border border-white/10 bg-white/5 p-7"
+                  style={{ transitionDelay: `${index * 90}ms` }}
+                >
+                  <h3 className="text-2xl font-semibold tracking-[-0.04em]">{audience.title}</h3>
+                  <p className="mt-3 text-base leading-7 text-[#cbd5e1]">{audience.body}</p>
+                </article>
               ))}
             </div>
           </div>
+        </section>
 
-          <div>
-            <div className="text-sm font-semibold text-white">Location</div>
-            <div className="mt-3 text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-              Smart LMS HQ
-              <br />
-              Corporate Learning Lane
-              <br />
-              Bengaluru, India
+        <section id="workflow" className="mx-auto max-w-7xl px-6 py-20 lg:px-10 lg:py-28">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl" data-reveal>
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#b45309]">Workflow</p>
+              <h2 className="mt-4 text-4xl font-bold tracking-[-0.05em] text-[#0f172a] md:text-5xl">
+                A homepage story that follows the real product journey.
+              </h2>
             </div>
+            <p className="max-w-xl text-base leading-7 text-[#475569]" data-reveal>
+              From academic setup to published courses, from live classes to student outcomes, the page now sells the
+              system through believable steps instead of generic claims.
+            </p>
           </div>
-        </div>
 
-        <div className="mt-12 flex flex-col gap-4 border-t pt-8 md:flex-row md:items-center md:justify-between" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-          <div className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>
-            Copyright © 2025 Smart LMS. All Rights Reserved.
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {['Capterra 4.3★', 'AWS Partner', 'Widevine', 'PlayReady'].map((x) => (
-              <div
-                key={x}
-                className="rounded-full px-3 py-1 text-xs font-semibold"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.75)' }}
+          <div className="mt-14 grid gap-5 lg:grid-cols-4">
+            {workflow.map((item, index) => (
+              <article
+                key={item.step}
+                data-reveal
+                className="rounded-[30px] border border-[#ddd5c9] bg-[#fffdf8] p-7"
+                style={{ transitionDelay: `${index * 70}ms` }}
               >
-                {x}
-              </div>
+                <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#b45309]">{item.step}</p>
+                <h3 className="mt-5 text-2xl font-semibold tracking-[-0.04em] text-[#0f172a]">{item.title}</h3>
+                <p className="mt-4 text-base leading-7 text-[#475569]">{item.description}</p>
+              </article>
             ))}
           </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-6 pb-20 lg:px-10 lg:pb-28">
+          <div className="grid gap-6 rounded-[36px] border border-[#ddd5c9] bg-[linear-gradient(135deg,#ffffff_0%,#f7f1e7_54%,#e0f2fe_100%)] p-8 shadow-[0_25px_80px_rgba(15,23,42,0.08)] lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
+            <div data-reveal>
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#b45309]">Why it lands better</p>
+              <h2 className="mt-4 text-4xl font-bold tracking-[-0.05em] text-[#0f172a] md:text-5xl">
+                Cleaner trust. Better positioning. Stronger product perception.
+              </h2>
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-[#475569]">
+                The visual system is more premium, the message is more specific, and the structure gives buyers a much
+                faster understanding of why Smart LMS matters.
+              </p>
+            </div>
+
+            <div className="grid gap-4" data-reveal>
+              <div className="rounded-[28px] border border-[#d7d0c3] bg-white/80 p-6">
+                <p className="text-sm font-semibold text-[#0f172a]">According to your product content</p>
+                <p className="mt-2 text-sm leading-6 text-[#64748b]">
+                  Messaging now aligns with courses, approvals, batches, live classes, quizzes, analytics, and student delivery.
+                </p>
+              </div>
+              <div className="rounded-[28px] border border-[#d7d0c3] bg-white/80 p-6">
+                <p className="text-sm font-semibold text-[#0f172a]">According to your service buyers</p>
+                <p className="mt-2 text-sm leading-6 text-[#64748b]">
+                  The page speaks to colleges, institutes, coaching centers, and training brands instead of everyone and no one.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="contact" className="bg-[#111827] text-white">
+          <div className="mx-auto grid max-w-7xl gap-10 px-6 py-20 lg:grid-cols-[1.1fr_0.9fr] lg:px-10 lg:py-24">
+            <div data-reveal>
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#fbbf24]">Next step</p>
+              <h2 className="mt-4 text-4xl font-bold tracking-[-0.05em] md:text-5xl">
+                If the product is serious, the first impression should be serious too.
+              </h2>
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-[#cbd5e1]">
+                This landing page is now built to convert interest into confidence, with a design language that feels
+                polished and messaging that matches the system users will actually buy.
+              </p>
+            </div>
+
+            <div data-reveal className="rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur">
+              <p className="text-sm uppercase tracking-[0.28em] text-[#94a3b8]">Start now</p>
+              <div className="mt-8 grid gap-4">
+                <Link
+                  href="/apply"
+                  className="inline-flex items-center justify-center rounded-full bg-white px-6 py-4 text-sm font-semibold text-[#0f172a] transition hover:bg-[#e2e8f0]"
+                >
+                  Create your own platform
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-4 text-sm font-semibold text-white transition hover:border-white/50"
+                >
+                  Sign in to continue
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-[#1f2937] bg-[#111827]">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-6 text-sm text-[#94a3b8] lg:flex-row lg:items-center lg:justify-between lg:px-10">
+          <p>Smart LMS for colleges, institutes, and modern education businesses.</p>
+          <p>Academic operations, course publishing, live learning, and student delivery in one platform.</p>
         </div>
-      </div>
-    </footer>
-  )
-}
-
-export function SmartLmsLanding() {
-  useRevealOnScroll()
-
-  return (
-    <main style={{ background: '#0A0F2C' }}>
-      <LandingNavbar />
-      <HeroSection />
-      <StatsBar />
-      <TemplatesSection />
-      <FeaturesSection />
-      <EngagementSection />
-      <OnboardingGamificationSection />
-      <IntegrationsSection />
-      <ContactSection />
-      <FooterSection />
-    </main>
+      </footer>
+    </div>
   )
 }

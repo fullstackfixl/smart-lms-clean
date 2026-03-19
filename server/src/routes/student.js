@@ -1,5 +1,6 @@
 const express = require('express');
 const { Course, Section, Lesson, Enrollment, User, Organization, Certificate, Quiz, QuizSubmission } = require('../models');
+const { AcademicEnrollment, Timetable } = require('../models');
 const { authMiddleware, requireRole } = require('../middleware/auth');
 const requireOrganization = require('../middleware/orgProtection');
 const { cloudinaryUpload, handleUploadError } = require('../middleware/upload');
@@ -15,6 +16,46 @@ router.use(requireOrganization);
 // GET /student/subjects
 // ─────────────────────────────────────────────────────────────
 router.get('/subjects', authMiddleware, requireRole(['student']), (req, res) => SubjectController.getStudentSubjects(req, res));
+
+// ─────────────────────────────────────────────────────────────
+// GET /student/timetable
+// Batch-based: derived from AcademicEnrollment -> (programId + batchId)
+// ─────────────────────────────────────────────────────────────
+router.get('/timetable', authMiddleware, requireRole(['student']), async (req, res) => {
+  try {
+    const organizationId = req.user.organization_id?._id || req.user.organization_id;
+    const { day } = req.query;
+
+    const enrollment = await AcademicEnrollment.findOne({
+      organizationId,
+      studentId: req.user._id
+    }).select('programId batchId').lean();
+
+    if (!enrollment?.programId || !enrollment?.batchId) {
+      return res.success({ entries: [] }, 'No batch assigned');
+    }
+
+    const query = {
+      organizationId,
+      programId: enrollment.programId,
+      batchId: enrollment.batchId,
+      isActive: true
+    };
+    if (day) query.day = day;
+
+    const entries = await Timetable.find(query)
+      .populate('subjectId', 'name code')
+      .populate('instructorId', 'name email profile.firstName profile.lastName')
+      .populate('batchId', 'name code year semester')
+      .populate('programId', 'name code')
+      .sort({ day: 1, startTime: 1 })
+      .lean();
+
+    return res.success({ entries }, 'Timetable retrieved');
+  } catch (error) {
+    return res.error(error.message, 'Failed to load timetable', 500);
+  }
+});
 
 // ─────────────────────────────────────────────────────────────
 // GET /student/profile  — returns name, email + enrollment stats

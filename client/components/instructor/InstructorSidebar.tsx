@@ -24,6 +24,7 @@ import {
   Target,
   Activity,
   MessageSquare,
+  Clock,
 } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
 import { cn } from '../../lib/utils'
@@ -44,10 +45,12 @@ const navItems: NavItem[] = [
   { section: 'core', label: 'Live Classes', href: '/instructor/live-classes', icon: Video, description: 'Schedule & host' },
 
   { section: 'academics', label: 'My Subjects', href: '/instructor/subjects', icon: Book, collegeOnly: true, description: 'College academics' },
+  { section: 'academics', label: 'Timetable', href: '/instructor/timetable', icon: Clock, collegeOnly: true, description: 'Class schedule' },
   { section: 'academics', label: 'Gradebook', href: '/instructor/gradebook', icon: Target, collegeOnly: true, description: 'Marks & grading' },
   { section: 'academics', label: 'Attendance', href: '/instructor/attendance', icon: Calendar, collegeOnly: true, description: 'Track attendance' },
 
   { section: 'engagement', label: 'Quizzes', href: '/instructor/quiz', icon: ClipboardList, description: 'Assessments' },
+  { section: 'engagement', label: 'Assignments', href: '/instructor/assignments', icon: FileText, collegeOnly: true, description: 'Create & publish' },
   { section: 'engagement', label: 'Submissions', href: '/instructor/submissions', icon: FileText, description: 'Review work' },
   { section: 'engagement', label: 'Messages', href: '/instructor/messages', icon: MessageSquare, description: 'Communicate' },
   { section: 'engagement', label: 'Notifications', href: '/instructor/notifications', icon: Bell, description: 'Updates' },

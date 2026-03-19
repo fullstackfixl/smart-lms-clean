@@ -61,17 +61,13 @@ export default function AvailableCourses() {
     }, [fetchCourses])
 
     const handleEnroll = async (courseId: string) => {
+        if (isCollege) {
+            toast.error("Enrollment is managed by your organization admin")
+            return
+        }
         setEnrollingId(courseId)
         try {
-            if (isCollege) {
-                const res = await collegeApi.enrollInCourse(token!, courseId)
-                if (res.success) {
-                    toast.success("Successfully enrolled!")
-                    router.push(`/student/course/${courseId}`)
-                } else {
-                    toast.error(res.error || "Enrollment failed")
-                }
-            } else {
+            if (!isCollege) {
                 const r = await fetch(`${API_URL}/api/courses/enroll/${courseId}`, {
                     method: "POST",
                     headers: {
@@ -146,7 +142,7 @@ export default function AvailableCourses() {
                             key={course._id}
                             course={course}
                             variant="available"
-                            onEnroll={handleEnroll}
+                            onEnroll={isCollege ? undefined : handleEnroll}
                             enrolling={enrollingId === course._id}
                         />
                     ))}

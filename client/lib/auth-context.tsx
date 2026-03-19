@@ -58,7 +58,7 @@ interface AuthContextType {
   token: string | null
   organization: Organization | null
   loading: boolean
-  login: (email: string, password: string, loginTarget?: 'platform_admin' | 'organization_admin' | 'student_instructor') => Promise<{ success: boolean; error?: string; redirectUrl?: string; role?: User['role'] }>
+  login: (email: string, password: string, loginTarget?: 'platform_admin' | 'platform_staff' | 'organization_admin' | 'student_instructor') => Promise<{ success: boolean; error?: string; redirectUrl?: string; role?: User['role'] }>
   register: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
   registerOrganization: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
   acceptInvite: (data: any) => Promise<{ success: boolean; error?: string; data?: any }>
@@ -157,10 +157,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = useCallback(async (email: string, password: string, loginTarget: 'platform_admin' | 'organization_admin' | 'student_instructor' = 'student_instructor') => {
+  const login = useCallback(async (email: string, password: string, loginTarget: 'platform_admin' | 'platform_staff' | 'organization_admin' | 'student_instructor' = 'student_instructor') => {
     console.log("🔐 [AuthContext] Login attempt for:", email)
     const res = loginTarget === 'platform_admin'
       ? await authApi.platformAdminLogin({ email, password })
+      : loginTarget === 'platform_staff'
+        ? await authApi.platformStaffLogin({ email, password })
       : loginTarget === 'organization_admin'
         ? await authApi.orgAdminLogin({ email, password })
         : await authApi.login({ email, password })

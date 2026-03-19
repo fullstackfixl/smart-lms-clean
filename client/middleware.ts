@@ -14,13 +14,18 @@ function decodeJwt(token: string): any | null {
 }
 
 function loginRouteForRole(role?: string | null) {
-  if (role === 'platform_admin' || role === 'platform_staff') return '/platform-admin/login'
-  if (role === 'organization_admin' || role === 'org_admin') return '/org-admin/login'
+  if (role === 'platform_admin' || role === 'platform_staff') return '/login/platform-admin'
+  if (role === 'organization_admin' || role === 'org_admin') return '/login/org-admin'
   return '/login'
 }
 
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname
+
+  // Public org admin setup link (token-based onboarding)
+  if (path === '/org-admin/setup' || path.startsWith('/org-admin/setup/')) {
+    return NextResponse.next()
+  }
 
   const protectedPrefixes = ['/platform-admin', '/org-admin', '/student', '/instructor', '/platform']
   const isProtected = protectedPrefixes.some((p) => path === p || path.startsWith(p + '/'))
@@ -29,7 +34,7 @@ export function middleware(req: NextRequest) {
   const token = req.cookies.get('instatute_token')?.value
   if (!token) {
     const url = req.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = path.startsWith('/org-admin') ? '/login/org-admin' : '/login'
     url.searchParams.set('returnUrl', path)
     return NextResponse.redirect(url)
   }
@@ -49,7 +54,8 @@ export function middleware(req: NextRequest) {
   if (path.startsWith('/org-admin')) {
     if (role !== 'organization_admin' && role !== 'org_admin') {
       const url = req.nextUrl.clone()
-      url.pathname = '/login'
+      url.pathname = '/login/org-admin'
+      url.searchParams.set('returnUrl', path)
       return NextResponse.redirect(url)
     }
   }

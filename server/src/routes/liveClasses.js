@@ -4,8 +4,30 @@ const { authMiddleware: auth } = require('../middleware/auth');
 const LiveClass = require('../models/LiveClass');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
+const AcademicEnrollment = require('../models/AcademicEnrollment');
+const Subject = require('../models/Subject');
+const Notification = require('../models/Notification');
 const emailService = require('../utils/emailService');
 const router = express.Router();
+
+async function getStudentAccessibleCourseIds({ organizationId, studentId }) {
+  const enrollments = await AcademicEnrollment.find({
+    organizationId,
+    studentId
+  }).select('subjectId').lean();
+
+  const subjectIds = enrollments.map(e => e.subjectId).filter(Boolean);
+  if (!subjectIds.length) return [];
+
+  const subjects = await Subject.find({
+    _id: { $in: subjectIds },
+    organizationId,
+    isActive: true,
+    contentCourseId: { $ne: null }
+  }).select('contentCourseId').lean();
+
+  return [...new Set(subjects.map(s => String(s.contentCourseId)).filter(Boolean))];
+}
 
 // Validation middleware
 const validateLiveClassCreation = [
@@ -183,7 +205,6 @@ router.post('/', auth, checkInstructorPermission, validateLiveClassCreation, asy
     // Best-effort: broadcast to college batch students if this course is mapped to a Subject
     setImmediate(async () => {
       try {
-        const Subject = require('../models/Subject');
         const User = require('../models/User');
         const Notification = require('../models/Notification');
 
@@ -191,79 +212,22 @@ router.post('/', auth, checkInstructorPermission, validateLiveClassCreation, asy
         try { socketService = require('../services/socketService'); } catch (_) { }
 
         const orgId = req.user.organization_id?._id || req.user.organization_id;
-        const subject = await Subject.findOne({ organizationId: orgId, contentCourseId: course_id, isActive: true })
-          .select('batchId name code')
-          .lean();
-
-        if (!subject?.batchId) return;
-
-        const students = await User.find({
-          organization_id: orgId,
-          role: 'student',
-          isActive: true,
-          'profile.batch': subject.batchId
+        const subjects = await Subject.find({
+          organizationId: orgId,
+          contentCourseId: course_id,
+          isActive: true
         }).select('_id').lean();
 
-        if (!students.length) return;
+        const subjectIds = subjects.map(s => s._id);
+        if (!subjectIds.length) return;
 
-        await Notification.insertMany(
-          students.map(s => ({
-            organization_id: orgId,
-            recipient_id: s._id,
-            sender_id: req.user._id,
-            type: 'live_class_reminder',
-            title: 'Live Class Scheduled',
-            message: `${req.user.name || 'Instructor'} scheduled a live class: ${title}`,
-            data: {
-              entityType: 'live_class',
-              liveClassId: liveClass._id,
-              courseId: course_id,
-              subjectId: subject._id,
-              subjectName: subject.name,
-              subjectCode: subject.code,
-              meeting_url: liveClass.meeting_url
-            },
-            priority: 'high',
-            action_url: `/student/live-classes/${liveClass._id}`,
-            action_text: 'Join Live Class'
-          })),
-          { ordered: false }
-        );
+        const academicEnrollments = await AcademicEnrollment.find({
+          organizationId: orgId,
+          subjectId: { $in: subjectIds }
+        }).select('studentId').lean();
 
-        if (socketService?.io) {
-          socketService.sendNotificationToUsers(
-            students.map(s => String(s._id)),
-            {
-              type: 'live_class_reminder',
-              title: 'Live Class Scheduled',
-              message: `${req.user.name || 'Instructor'} scheduled a live class: ${title}`,
-              data: { liveClassId: liveClass._id, meeting_url: liveClass.meeting_url }
-            }
-          );
-        }
-      } catch (_) {
-        // ignore broadcast failures
-      }
-    });
-
-    // --- Background: notify enrolled students --- //
-    setImmediate(async () => {
-      try {
-        const User = require('../models/User');
-
-        // Get all active enrollments for this course in the same org
-        const enrollments = await Enrollment.find({
-          course_id: course_id,
-          organization_id: req.user.organization_id,
-          status: 'active'
-        }).select('student_id').lean();
-
-        if (!enrollments.length) {
-          console.log(`[LiveClass] No enrolled students to notify for course ${course_id}`);
-          return;
-        }
-
-        const studentIds = enrollments.map(e => e.student_id);
+        const studentIds = [...new Set(academicEnrollments.map(e => String(e.studentId)).filter(Boolean))];
+        if (!studentIds.length) return;
 
         // Fetch student email + name
         const students = await User.find({
@@ -391,13 +355,11 @@ router.get('/', auth, async (req, res) => {
 
     // For students, only show live classes from courses they're enrolled in
     if (req.user.role === 'student') {
-      const enrollments = await Enrollment.find({
-        student_id: req.user._id,
-        organization_id: req.user.organization_id,
-        status: 'active'
-      }).select('course_id');
-
-      const enrolledCourseIds = enrollments.map(e => e.course_id);
+      const orgId = req.user.organization_id?._id || req.user.organization_id;
+      const enrolledCourseIds = await getStudentAccessibleCourseIds({
+        organizationId: orgId,
+        studentId: req.user._id
+      });
       query.course_id = { $in: enrolledCourseIds };
     }
 

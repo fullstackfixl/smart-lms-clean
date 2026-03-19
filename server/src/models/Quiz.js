@@ -39,6 +39,18 @@ const quizSchema = new mongoose.Schema({
     ref: 'Course',
     required: true
   },
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
+    index: true,
+    default: null
+  },
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+    index: true,
+    default: null
+  },
   lesson_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lesson',
@@ -126,6 +138,7 @@ quizSchema.index({ organization_id: 1, course_id: 1 });
 quizSchema.index({ organization_id: 1, instructor_id: 1 });
 quizSchema.index({ course_id: 1, is_active: 1 });
 quizSchema.index({ lesson_id: 1, is_active: 1 });
+quizSchema.index({ organization_id: 1, batchId: 1, subjectId: 1, is_active: 1, created_at: -1 });
 
 // Virtual for total questions count
 quizSchema.virtual('total_questions').get(function () {

@@ -34,48 +34,56 @@ async function apiRequest<T = unknown>(
       ...headers,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    credentials: 'include', // IMPORTANT: Include cookies for auth
+    credentials: 'include',
   }
 
   if (body && method !== "GET") {
-    config.body = JSON.stringify(body)
+    const bodyString = JSON.stringify(body)
+    console.log(`📝 [API BODY] ${method} ${endpoint}:`, bodyString.substring(0, 500))
+    console.log(`📝 [API BODY LENGTH] ${bodyString.length} characters`)
+    config.body = bodyString
+  } else {
+    console.log(`📝 [API BODY] ${method} ${endpoint}: NO BODY`)
   }
+
+  // Add timeout signal
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+  config.signal = controller.signal
 
   const fullUrl = `${API_BASE}${endpoint}`
   console.log(`🌐 [API] ${method} ${fullUrl}`)
-  console.log(`🌐 [API] Request body:`, body)
-  console.log(`🌐 [API] Headers:`, config.headers)
 
   try {
     const response = await fetch(fullUrl, config)
+    clearTimeout(timeoutId)
 
-    // Try to parse JSON response
     let data
     try {
       data = await response.json()
     } catch (parseError) {
-      console.error(`❌ [API] Failed to parse JSON response:`, parseError)
       return {
         success: false,
         error: "Invalid response from server",
       }
     }
 
-    console.log(`🌐 [API] Response status: ${response.status}`)
-    console.log(`🌐 [API] Response data:`, data)
-
     if (!response.ok) {
-      console.error(`❌ [API] Request failed: ${data.message || data.error}`)
       return {
         success: false,
         error: data.message || data.error || `Request failed with status ${response.status}`,
       }
     }
 
-    console.log(`✅ [API] Request successful`)
     return { success: true, data: data.data || data, pagination: data.pagination }
   } catch (error) {
-    console.error(`❌ [API] Network error:`, error)
+    clearTimeout(timeoutId)
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        error: "Request timed out. Please check if the server is running.",
+      }
+    }
     return {
       success: false,
       error: error instanceof Error ? error.message : "Network error occurred",
@@ -105,6 +113,8 @@ export const authApi = {
     apiRequest("/auth/login", { method: "POST", body: data }),
   platformAdminLogin: (data: { email: string; password: string }) =>
     apiRequest("/auth/platform-admin/login", { method: "POST", body: data }),
+  platformStaffLogin: (data: { email: string; password: string }) =>
+    apiRequest("/auth/platform-staff/login", { method: "POST", body: data }),
   orgAdminLogin: (data: { email: string; password: string }) =>
     apiRequest("/auth/org-admin/login", { method: "POST", body: data }),
   logout: (token: string) =>
@@ -130,6 +140,21 @@ export const collegeApi = {
     apiRequest('/api/college/instructor/dashboard', { token }),
   studentDashboard: (token: string) =>
     apiRequest('/api/college/student/dashboard', { token }),
+
+  // Org Admin (direct chain routes)
+  assignLearnerToProgramBatch: (token: string, data: { studentId: string; programId: string; batchId: string }) =>
+    apiRequest('/org-admin/learners/assign', { method: 'POST', token, body: data }),
+
+  // Student (direct chain routes)
+  getStudentBatchTimetable: (token: string, params?: string) =>
+    apiRequest(`/student/timetable${params ? `?${params}` : ''}`, { token }),
+
+  // Instructor (direct chain routes)
+  getInstructorTimetable: (token: string, params?: string) =>
+    apiRequest(`/instructor/timetable${params ? `?${params}` : ''}`, { token }),
+
+  assignInstructorToBatchSubject: (token: string, data: { subjectId: string; batchId: string; instructorId: string }) =>
+    apiRequest('/api/admin/instructor-assignments', { method: 'POST', token, body: data }),
 
   // Admin - Departments
   listDepartments: (token: string) =>
@@ -762,10 +787,14 @@ export const platformApi = {
   // Organization Applications
   listApplications: (token: string, status: string = 'pending') =>
     apiRequest(`/api/platform/applications?status=${status}`, { token }),
+  claimApplication: (token: string, id: string) =>
+    apiRequest(`/api/platform/applications/${id}/claim`, { method: "POST", token }),
+  contactApplication: (token: string, id: string, data: { contact_notes?: string; follow_up_date?: string }) =>
+    apiRequest(`/api/platform/applications/${id}/contact`, { method: "PATCH", token, body: data }),
   approveApplication: (token: string, id: string) =>
-    apiRequest(`/api/platform/applications/${id}/approve`, { method: "PUT", token }),
-  rejectApplication: (token: string, id: string) =>
-    apiRequest(`/api/platform/applications/${id}/reject`, { method: "PUT", token }),
+    apiRequest(`/api/platform/applications/${id}/approve`, { method: "PATCH", token }),
+  rejectApplication: (token: string, id: string, data?: { reason?: string }) =>
+    apiRequest(`/api/platform/applications/${id}/reject`, { method: "PATCH", token, body: data || {} }),
 
   // New Organization Invitation Flow
   createOrgV2: async (token: string, data: {
@@ -895,8 +924,10 @@ export const instructorApi = {
       token,
     }),
   // AI-powered quiz generation
-  generateAIQuiz: (token: string, data: { course_id: string; topic: string; num_questions?: number; difficulty?: string }) =>
+  generateAIQuiz: (token: string, data: { course_id?: string; subjectId?: string; batchId?: string; topic: string; num_questions?: number; difficulty?: string }) =>
     apiRequest("/api/quizzes/generate-ai", { method: "POST", token, body: data }),
+  createAcademicQuiz: (token: string, data: Record<string, unknown>) =>
+    apiRequest('/api/quizzes', { method: 'POST', token, body: data }),
   // Publish / Unpublish quiz
   publishQuiz: (token: string, quizId: string) =>
     apiRequest(`/api/quizzes/${quizId}/publish`, { method: "PATCH", token }),
@@ -935,7 +966,7 @@ export const instructorApi = {
   listSubmissions: (token: string, params?: string) =>
     apiRequest(`/instructor/submissions${params ? `?${params}` : ""}`, { token }),
   listQuizSubmissions: (token: string, params?: string) =>
-    apiRequest(`/instructor/quiz-submissions${params ? `?${params}` : ""}`, { token }),
+    apiRequest(`/api/quizzes/submissions${params ? `?${params}` : ""}`, { token }),
   getQuizSubmissionById: (token: string, id: string) =>
     apiRequest(`/instructor/quiz-submissions/${id}`, { token }),
   gradeSubmission: (token: string, id: string, data: Record<string, unknown>) =>

@@ -121,7 +121,17 @@ router.get('/leaderboard', (req, res) => LeaderboardController.getGlobalLeaderbo
 router.get('/leaderboard/badges/:userId', (req, res) => LeaderboardController.getUserBadges(req, res));
 
 // Academic Enrollment Routes
-router.post('/enrollments/program', moduleGuard('DEPARTMENTS'), (req, res) => AcademicEnrollmentController.enrollInProgram(req, res));
-router.get('/enrollments/student/:studentId', moduleGuard('DEPARTMENTS'), (req, res) => AcademicEnrollmentController.getStudentAcademicProfile(req, res));
+router.post('/enrollments/program', moduleGuard('DEPARTMENTS'), (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'Legacy academic enrollment is disabled. Use POST /api/admin/learners/assign (studentId + programId + batchId).'
+  });
+});
+router.get('/enrollments/student/:studentId', moduleGuard('DEPARTMENTS'), (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'Legacy academic profile endpoint is disabled. Use AcademicEnrollment as the source of truth (student subjects via /student/subjects).'
+  });
+});
 
 module.exports = router;

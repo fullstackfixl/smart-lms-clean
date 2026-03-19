@@ -5,14 +5,35 @@ const Quiz = require('../models/Quiz');
 const QuizAttempt = require('../models/QuizAttempt');
 const Course = require('../models/Course');
 const Enrollment = require('../models/Enrollment');
+const AcademicEnrollment = require('../models/AcademicEnrollment');
+const Subject = require('../models/Subject');
+const InstructorAssignment = require('../models/InstructorAssignment');
+const Notification = require('../models/Notification');
 const GamificationPoints = require('../models/GamificationPoints');
 const UserBadge = require('../models/UserBadge');
 const notificationService = require('../utils/notificationService');
 const moduleGuard = require('../middleware/moduleGuard');
 const router = express.Router();
 
-// Apply module guard to all quiz routes
-// Apply module guard to all quiz routes
+async function getStudentAccessibleCourseIds({ organizationId, studentId }) {
+  const enrollments = await AcademicEnrollment.find({
+    organizationId,
+    studentId
+  }).select('subjectId').lean();
+
+  const subjectIds = enrollments.map(e => e.subjectId).filter(Boolean);
+  if (!subjectIds.length) return [];
+
+  const subjects = await Subject.find({
+    _id: { $in: subjectIds },
+    organizationId,
+    isActive: true,
+    contentCourseId: { $ne: null }
+  }).select('contentCourseId').lean();
+
+  return [...new Set(subjects.map(s => String(s.contentCourseId)).filter(Boolean))];
+}
+
 // Apply module guard to all quiz routes
 // Removed moduleGuard because legacy organizations do not always have modules enabled, which was causing 403 Forbidden on the courses dropdown
 router.use(auth);
@@ -20,8 +41,17 @@ router.use(auth);
 // Validation middleware
 const validateQuizCreation = [
   body('course_id')
+    .optional()
     .isMongoId()
     .withMessage('Valid course ID is required'),
+  body('subjectId')
+    .optional()
+    .isMongoId()
+    .withMessage('Valid subject ID is required'),
+  body('batchId')
+    .optional()
+    .isMongoId()
+    .withMessage('Valid batch ID is required'),
   body('lesson_id')
     .optional()
     .isMongoId()
@@ -133,7 +163,9 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
     }
 
     const {
-      course_id,
+      course_id: bodyCourseId,
+      subjectId,
+      batchId,
       lesson_id,
       title,
       description,
@@ -142,6 +174,74 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
       pass_percentage,
       max_attempts
     } = req.body;
+
+    // Validate subject+batch pairing
+    if ((subjectId && !batchId) || (!subjectId && batchId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: 'subjectId and batchId must be provided together'
+      });
+    }
+
+    let course_id = bodyCourseId;
+
+    // For college flow: auto-resolve course from subject
+    if (subjectId && batchId) {
+      const Subject = require('../models/Subject');
+      const subject = await Subject.findOne({
+        _id: subjectId,
+        organizationId: orgId,
+        isActive: true
+      }).select('contentCourseId name code batchId').lean();
+
+      if (!subject) {
+        return res.status(404).json({
+          success: false,
+          error: 'Subject not found',
+          message: 'Subject not found or access denied'
+        });
+      }
+
+      if (!subject.contentCourseId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Subject not configured',
+          message: 'Subject does not have a content course mapped. Please contact your organization admin.'
+        });
+      }
+
+      // Use subject's mapped course
+      course_id = String(subject.contentCourseId);
+
+      // Validate instructor assignment for subject+batch
+      if (req.user.role === 'instructor') {
+        const mapping = await InstructorAssignment.findOne({
+          organizationId: orgId,
+          instructorId: req.user._id,
+          subjectId,
+          batchId,
+          isActive: true
+        }).select('_id').lean();
+
+        if (!mapping) {
+          return res.status(403).json({
+            success: false,
+            error: 'Access denied',
+            message: 'You are not assigned to this subject and batch'
+          });
+        }
+      }
+    }
+
+    // Fallback: require course_id if no subject provided
+    if (!course_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing course',
+        message: 'Either provide subjectId+batchId or course_id'
+      });
+    }
 
     // Verify course exists and belongs to user's organization
     const course = await Course.findOne({
@@ -173,6 +273,8 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
     const quiz = new Quiz({
       organization_id: orgId,
       course_id,
+      subjectId: subjectId || null,
+      batchId: batchId || null,
       lesson_id: lesson_id || undefined,
       instructor_id: req.user._id,
       title,
@@ -206,23 +308,49 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
         const Subject = require('../models/Subject');
         const User = require('../models/User');
         const Notification = require('../models/Notification');
+        const AcademicEnrollment = require('../models/AcademicEnrollment');
 
         let socketService = null;
         try { socketService = require('../services/socketService'); } catch (_) { }
 
         const orgId = req.user.organization_id?._id || req.user.organization_id;
-        const subject = await Subject.findOne({ organizationId: orgId, contentCourseId: course_id, isActive: true })
-          .select('batchId name code')
-          .lean();
+        let subject = null;
+        let students = [];
 
-        if (!subject?.batchId) return;
+        if (subjectId && batchId) {
+          subject = await Subject.findOne({ _id: subjectId, organizationId: orgId, isActive: true })
+            .select('name code')
+            .lean();
 
-        const students = await User.find({
-          organization_id: orgId,
-          role: 'student',
-          isActive: true,
-          'profile.batch': subject.batchId
-        }).select('_id').lean();
+          const academicEnrollments = await AcademicEnrollment.find({
+            organizationId: orgId,
+            subjectId,
+            batchId
+          }).select('studentId').lean();
+
+          const studentIds = [...new Set(academicEnrollments.map(e => String(e.studentId)).filter(Boolean))];
+          if (!studentIds.length) return;
+
+          students = await User.find({
+            _id: { $in: studentIds },
+            organization_id: orgId,
+            role: 'student',
+            isActive: true
+          }).select('_id').lean();
+        } else {
+          subject = await Subject.findOne({ organizationId: orgId, contentCourseId: course_id, isActive: true })
+            .select('batchId name code')
+            .lean();
+
+          if (!subject?.batchId) return;
+
+          students = await User.find({
+            organization_id: orgId,
+            role: 'student',
+            isActive: true,
+            'profile.batch': subject.batchId
+          }).select('_id').lean();
+        }
 
         if (!students.length) return;
 
@@ -237,7 +365,8 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
             entityType: 'quiz',
             quizId: quiz._id,
             courseId: course_id,
-            subjectId: subject._id,
+            subjectId: subjectId || subject?._id || null,
+            batchId: batchId || subject?.batchId || null,
             subjectName: subject.name,
             subjectCode: subject.code
           },
@@ -277,14 +406,51 @@ router.post('/', auth, checkInstructorPermission, validateQuizCreation, async (r
 // POST /api/quizzes/generate-ai - AI-powered quiz generation (Gemini primary → Groq fallback)
 router.post('/generate-ai', auth, checkInstructorPermission, async (req, res) => {
   try {
-    const { course_id, topic, num_questions = 5, difficulty = 'medium' } = req.body;
+    const { course_id: bodyCourseId, subjectId, batchId, topic, num_questions = 5, difficulty = 'medium' } = req.body;
 
-    if (!course_id || !topic) {
-      return res.status(400).json({ success: false, message: 'course_id and topic are required' });
+    if (!topic) {
+      return res.status(400).json({ success: false, message: 'topic is required' });
+    }
+
+    if ((subjectId && !batchId) || (!subjectId && batchId)) {
+      return res.status(400).json({ success: false, message: 'subjectId and batchId must be provided together' });
+    }
+
+    const orgId = req.user.organization_id?._id || req.user.organization_id;
+    let course_id = bodyCourseId;
+
+    if (subjectId && batchId) {
+      if (req.user.role === 'instructor') {
+        const mapping = await InstructorAssignment.findOne({
+          organizationId: orgId,
+          instructorId: req.user._id,
+          subjectId,
+          batchId,
+          isActive: true
+        }).select('_id').lean();
+
+        if (!mapping) {
+          return res.status(403).json({ success: false, message: 'You are not assigned to this subject and batch' });
+        }
+      }
+
+      const subject = await Subject.findOne({ _id: subjectId, organizationId: orgId, isActive: true })
+        .select('contentCourseId name code')
+        .lean();
+
+      if (!subject?.contentCourseId) {
+        return res.status(400).json({ success: false, message: 'Subject does not have a content course mapped (contentCourseId missing)' });
+      }
+
+      course_id = String(subject.contentCourseId);
+    }
+
+    if (!course_id) {
+      return res.status(400).json({ success: false, message: 'course_id is required (or provide subjectId+batchId)' });
     }
 
     // Verify course belongs to this org
-    const course = await Course.findOne({ _id: course_id, organization_id: req.user.organization_id });
+    const course = await Course.findOne({ _id: course_id, organization_id: orgId });
     if (!course) {
       return res.status(404).json({ success: false, message: 'Course not found or access denied' });
     }
@@ -406,9 +572,9 @@ router.patch('/:id/publish', auth, checkInstructorPermission, async (req, res) =
   try {
     const quiz = await Quiz.findOne({
       _id: req.params.id,
-      organization_id: req.user.organization_id
+      organization_id: req.user.organization_id,
+      is_active: true
     });
-
     if (!quiz) {
       return res.status(404).json({ success: false, message: 'Quiz not found' });
     }
@@ -425,30 +591,48 @@ router.patch('/:id/publish', auth, checkInstructorPermission, async (req, res) =
     quiz.status = 'PUBLISHED';
     await quiz.save();
 
-    // === Broadcast to all enrolled students in this org via Socket.io ===
+    // === Broadcast to students enrolled in the matching academic subject(s) ===
     try {
       if (global.io) {
         global.io.to(`organization_${req.user.organization_id}`).emit('quiz_published', {
           quiz_id: quiz._id,
           title: quiz.title,
           course_id: quiz.course_id,
-          instructor: req.user.name
+          instructor_id: quiz.instructor_id
         });
       }
 
-      // Create in-app notifications for enrolled students
-      const Enrollment = require('../models/Enrollment');
-      const Notification = require('../models/Notification');
-      const enrollments = await Enrollment.find({
-        course_id: quiz.course_id,
-        organization_id: req.user.organization_id,
-        status: 'active'
-      }).select('student_id');
+      const orgId = req.user.organization_id?._id || req.user.organization_id;
+      let studentIds = [];
 
-      if (enrollments.length > 0) {
-        const notifications = enrollments.map(e => ({
-          user_id: e.student_id,
-          organization_id: req.user.organization_id,
+      if (quiz.subjectId && quiz.batchId) {
+        const academicEnrollments = await AcademicEnrollment.find({
+          organizationId: orgId,
+          subjectId: quiz.subjectId,
+          batchId: quiz.batchId
+        }).select('studentId').lean();
+        studentIds = [...new Set(academicEnrollments.map(e => String(e.studentId)).filter(Boolean))];
+      } else {
+        const subjects = await Subject.find({
+          organizationId: orgId,
+          isActive: true,
+          contentCourseId: quiz.course_id
+        }).select('_id').lean();
+
+        const subjectIds = subjects.map(s => s._id);
+        if (subjectIds.length) {
+          const academicEnrollments = await AcademicEnrollment.find({
+            organizationId: orgId,
+            subjectId: { $in: subjectIds }
+          }).select('studentId').lean();
+          studentIds = [...new Set(academicEnrollments.map(e => String(e.studentId)).filter(Boolean))];
+        }
+      }
+
+      if (studentIds.length) {
+        const notifications = studentIds.map(studentId => ({
+          user_id: studentId,
+          organization_id: orgId,
           type: 'quiz_available',
           title: 'New Quiz Available',
           message: `A new quiz "${quiz.title}" has been published in your course.`,
@@ -523,14 +707,11 @@ router.get('/', auth, async (req, res) => {
 
     // For students, only show quizzes from courses they're enrolled in
     if (req.user.role === 'student') {
-      const Enrollment = require('../models/Enrollment');
-      const enrollments = await Enrollment.find({
-        student_id: req.user._id,
-        organization_id: req.user.organization_id,
-        status: 'active'
-      }).select('course_id');
-
-      const enrolledCourseIds = enrollments.map(e => e.course_id);
+      const orgId = req.user.organization_id?._id || req.user.organization_id;
+      const enrolledCourseIds = await getStudentAccessibleCourseIds({
+        organizationId: orgId,
+        studentId: req.user._id
+      });
       query.course_id = { $in: enrolledCourseIds };
     }
 

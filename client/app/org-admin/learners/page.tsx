@@ -9,14 +9,15 @@ import {
   Plus,
   Eye,
   Edit2,
-  BookMarked,
   School,
   CheckCircle,
   XCircle,
   BookOpen,
 } from "lucide-react"
+
 import { useAuth } from "../../../lib/auth-context"
 import { collegeApi } from "../../../lib/api"
+import { API_URL } from "../../../lib/config"
 import { Button } from "../../../components/ui/button"
 import { toast } from "sonner"
 import { cn } from "../../../lib/utils"
@@ -61,12 +62,10 @@ export default function LearnersPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [selectedLearner, setSelectedLearner] = useState<Learner | null>(null)
   const [showAssignBatchModal, setShowAssignBatchModal] = useState(false)
-  const [showEnrollSubjectsModal, setShowEnrollSubjectsModal] = useState(false)
 
   const [programs, setPrograms] = useState<any[]>([])
   const [batches, setBatches] = useState<any[]>([])
   const [departments, setDepartments] = useState<any[]>([])
-  const [subjects, setSubjects] = useState<any[]>([])
 
   useEffect(() => {
     if (token) {
@@ -79,6 +78,7 @@ export default function LearnersPage() {
     setLoading(true)
     try {
       const response = await collegeApi.listStudents(token!)
+      console.log("[Learners] API response:", response)
       if (response.success) {
         const data = response.data as any
         let students = []
@@ -89,10 +89,14 @@ export default function LearnersPage() {
         } else if (data?.data && Array.isArray(data.data)) {
           students = data.data
         }
+        console.log("[Learners] Parsed students:", students.length)
         setLearners(students)
+      } else {
+        console.error("[Learners] API error:", response.error)
+        toast.error(response.error || "Failed to load learners")
       }
     } catch (err) {
-      console.error("Error loading learners:", err)
+      console.error("[Learners] Error loading learners:", err)
       toast.error("Failed to load learners")
     } finally {
       setLoading(false)
@@ -101,11 +105,10 @@ export default function LearnersPage() {
 
   async function loadFilterData() {
     try {
-      const [progRes, batchRes, deptRes, subjRes] = await Promise.all([
+      const [progRes, batchRes, deptRes] = await Promise.all([
         collegeApi.listPrograms(token!),
         collegeApi.listBatches(token!),
         collegeApi.listDepartments(token!),
-        collegeApi.listSubjects(token!),
       ])
 
       if (progRes.success) {
@@ -122,11 +125,6 @@ export default function LearnersPage() {
         const d = deptRes.data as any
         const list = (d?.departments ?? d?.data ?? d)
         setDepartments(Array.isArray(list) ? list : [])
-      }
-      if (subjRes.success) {
-        const d = subjRes.data as any
-        const list = (d?.subjects ?? d?.data ?? d)
-        setSubjects(Array.isArray(list) ? list : [])
       }
     } catch (err) {
       console.error("Error loading filter data:", err)
@@ -150,62 +148,30 @@ export default function LearnersPage() {
     return matchesSearch && matchesProgram && matchesBatch && matchesDepartment && matchesSemester && matchesStatus
   })
 
-  async function handleAssignBatch(
-    learnerId: string,
-    data: { programId: string; departmentId: string; batchId: string; semester: number }
-  ) {
+  async function handleAssignBatch(learnerId: string, data: { programId: string; batchId: string }) {
     try {
-      const response = await fetch(`http://localhost:5000/api/college/admin/learners/${learnerId}/assign-batch`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
+      const response = await collegeApi.assignLearnerToProgramBatch(token!, {
+        studentId: learnerId,
+        programId: data.programId,
+        batchId: data.batchId
       })
 
-      if (response.ok) {
-        toast.success("Batch assigned successfully")
+      if (response.success) {
+        toast.success("Student assigned successfully")
         loadLearners()
         setShowAssignBatchModal(false)
       } else {
-        const error = await response.json()
-        toast.error(error.message || "Failed to assign batch")
+        toast.error(response.error || "Failed to assign student")
       }
     } catch (err) {
       console.error("Error assigning batch:", err)
-      toast.error("Failed to assign batch")
-    }
-  }
-
-  async function handleEnrollSubjects(learnerId: string, subjectIds: string[]) {
-    try {
-      const response = await fetch(`http://localhost:5000/api/college/admin/learners/${learnerId}/enroll-subjects`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ subjectIds }),
-      })
-
-      if (response.ok) {
-        toast.success(`Enrolled in ${subjectIds.length} subjects`)
-        loadLearners()
-        setShowEnrollSubjectsModal(false)
-      } else {
-        const error = await response.json()
-        toast.error(error.message || "Failed to enroll subjects")
-      }
-    } catch (err) {
-      console.error("Error enrolling subjects:", err)
-      toast.error("Failed to enroll subjects")
+      toast.error("Failed to assign student")
     }
   }
 
   async function handleStatusChange(learnerId: string, status: string) {
     try {
-      const response = await fetch(`http://localhost:5000/api/college/admin/learners/${learnerId}/status`, {
+      const response = await fetch(`${API_URL}/api/college/admin/learners/${learnerId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -386,12 +352,6 @@ export default function LearnersPage() {
           <p className="text-xs text-slate-500 mb-1">Assigned to Batch</p>
           <p className="text-2xl font-bold text-blue-600">{learners.filter((l) => l.batchId).length}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <p className="text-xs text-slate-500 mb-1">Enrolled Subjects</p>
-          <p className="text-2xl font-bold text-purple-600">
-            {learners.filter((l) => l.enrolledSubjects && l.enrolledSubjects.length > 0).length}
-          </p>
-        </div>
       </div>
 
       {/* Table */}
@@ -456,21 +416,9 @@ export default function LearnersPage() {
                             setSelectedLearner(learner)
                             setShowAssignBatchModal(true)
                           }}
-                          title="Assign Batch"
+                          title="Assign Program & Batch"
                         >
                           <School className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
-                          onClick={() => {
-                            setSelectedLearner(learner)
-                            setShowEnrollSubjectsModal(true)
-                          }}
-                          title="Enroll Subjects"
-                        >
-                          <BookMarked className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -505,20 +453,11 @@ export default function LearnersPage() {
         <AssignBatchModal
           learner={selectedLearner}
           programs={programs}
-          departments={departments}
           batches={batches}
           onClose={() => setShowAssignBatchModal(false)}
           onAssign={handleAssignBatch}
-        />
-      )}
-
-      {/* Enroll Subjects Modal */}
-      {showEnrollSubjectsModal && selectedLearner && (
-        <EnrollSubjectsModal
-          learner={selectedLearner}
-          subjects={subjects}
-          onClose={() => setShowEnrollSubjectsModal(false)}
-          onEnroll={handleEnrollSubjects}
+          initialProgramId={selectedLearner.programId?._id || ''}
+          initialBatchId={selectedLearner.batchId?._id || ''}
         />
       )}
     </div>
@@ -529,35 +468,37 @@ export default function LearnersPage() {
 function AssignBatchModal({
   learner,
   programs = [],
-  departments = [],
   batches = [],
   onClose,
   onAssign,
+  initialProgramId,
+  initialBatchId,
 }: {
   learner: Learner
   programs?: any[]
-  departments?: any[]
   batches?: any[]
   onClose: () => void
   onAssign: (learnerId: string, data: any) => void
+  initialProgramId?: string
+  initialBatchId?: string
 }) {
   const safePrograms = Array.isArray(programs) ? programs : []
-  const safeDepartments = Array.isArray(departments) ? departments : []
   const safeBatches = Array.isArray(batches) ? batches : []
 
-  const [selectedProgram, setSelectedProgram] = useState("")
-  const [selectedDepartment, setSelectedDepartment] = useState("")
-  const [selectedBatch, setSelectedBatch] = useState("")
-  const [semester, setSemester] = useState(1)
-  const [rollNumber, setRollNumber] = useState("")
+  const [selectedProgram, setSelectedProgram] = useState(initialProgramId || "")
+  const [selectedBatch, setSelectedBatch] = useState(initialBatchId || "")
 
-  const filteredBatches = safeBatches.filter((b) => !selectedProgram || b.programId === selectedProgram)
+  const filteredBatches = safeBatches.filter((b) => {
+    const batchProgramId = typeof b.programId === 'string' ? b.programId : b.programId?._id
+    if (!selectedProgram) return true
+    return String(batchProgramId) === String(selectedProgram)
+  })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-slate-900">Assign Batch</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Assign Program & Batch</h3>
           <p className="text-sm text-slate-500">
             Assign {learner.firstName} {learner.lastName} to a batch
           </p>
@@ -579,21 +520,6 @@ function AssignBatchModal({
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Department</label>
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="">Select Department</option>
-              {safeDepartments.map((d) => (
-                <option key={d._id} value={d._id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label className="text-sm font-medium text-slate-700 mb-1.5 block">Batch</label>
             <select
               value={selectedBatch}
@@ -608,30 +534,6 @@ function AssignBatchModal({
               ))}
             </select>
           </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Roll Number</label>
-            <input
-              type="text"
-              value={rollNumber}
-              onChange={(e) => setRollNumber(e.target.value)}
-              placeholder="Enter roll number"
-              className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700 mb-1.5 block">Semester</label>
-            <select
-              value={semester}
-              onChange={(e) => setSemester(parseInt(e.target.value))}
-              className="w-full h-10 px-3 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                <option key={s} value={s}>
-                  Semester {s}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
           <Button variant="outline" onClick={onClose}>
@@ -642,85 +544,12 @@ function AssignBatchModal({
             onClick={() =>
               onAssign(learner._id, {
                 programId: selectedProgram,
-                departmentId: selectedDepartment,
                 batchId: selectedBatch,
-                semester,
-                rollNumber,
               })
             }
-            disabled={!selectedBatch}
+            disabled={!selectedProgram || !selectedBatch}
           >
-            Assign Batch
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Enroll Subjects Modal Component
-function EnrollSubjectsModal({
-  learner,
-  subjects = [],
-  onClose,
-  onEnroll,
-}: {
-  learner: Learner
-  subjects?: any[]
-  onClose: () => void
-  onEnroll: (learnerId: string, subjectIds: string[]) => void
-}) {
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(learner.enrolledSubjects || [])
-
-  const toggleSubject = (subjectId: string) => {
-    setSelectedSubjects((prev) =>
-      prev.includes(subjectId) ? prev.filter((id) => id !== subjectId) : [...prev, subjectId]
-    )
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-slate-900">Enroll Subjects</h3>
-          <p className="text-sm text-slate-500">
-            Select subjects for {learner.firstName} {learner.lastName}
-          </p>
-        </div>
-        <div className="p-6 overflow-y-auto flex-1">
-          <div className="space-y-2">
-            {subjects.length === 0 ? (
-              <p className="text-center text-slate-500 py-4">No subjects available. Create subjects first.</p>
-            ) : (
-              subjects.map((subject) => (
-                <label
-                  key={subject._id}
-                  className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-blue-50/50 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedSubjects.includes(subject._id)}
-                    onChange={() => toggleSubject(subject._id)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900">{subject.name}</p>
-                    <p className="text-xs text-slate-500">{subject.code} • {subject.credits} credits</p>
-                  </div>
-                </label>
-              ))
-            )}
-          </div>
-        </div>
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            className="bg-orange-500 hover:bg-orange-600 text-white"
-            onClick={() => onEnroll(learner._id, selectedSubjects)}
-          >
-            Enroll ({selectedSubjects.length})
+            Assign
           </Button>
         </div>
       </div>

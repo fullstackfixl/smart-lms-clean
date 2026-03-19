@@ -12,6 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../components/ui/tabs'
 import { toast } from "sonner"
 import { API_URL } from '../../../../lib/config'
+import { useAuth } from '../../../../lib/auth-context'
 
 
 interface Lesson {
@@ -79,6 +80,9 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
   const unwrappedParams = use(params)
   const router = useRouter()
   const courseId = unwrappedParams.id
+
+  const { user } = useAuth()
+  const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
 
   const [course, setCourse] = useState<Course | null>(null)
   const [sections, setSections] = useState<Section[]>([])
@@ -164,6 +168,10 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
 
 
   const handleEnroll = async () => {
+    if (isCollege) {
+      toast.error('Enrollment is managed by your organization admin')
+      return
+    }
     setEnrolling(true)
     try {
       const token = window.sessionStorage.getItem('instatute_token') || window.localStorage.getItem('instatute_token')
@@ -296,15 +304,26 @@ export default function CourseDetailsPage({ params }: { params: Promise<{ id: st
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      className="w-full"
-                      size="lg"
-                      onClick={handleEnroll}
-                      disabled={enrolling}
-                    >
-                      {enrolling && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
-                      Enroll Now
-                    </Button>
+                    isCollege ? (
+                      <div className="space-y-3">
+                        <Button className="w-full" size="lg" disabled>
+                          Enrollment by Org Admin Only
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          Your program and batch will be assigned by the Org Admin. After assignment, your subjects and timetable will appear automatically.
+                        </p>
+                      </div>
+                    ) : (
+                      <Button
+                        className="w-full"
+                        size="lg"
+                        onClick={handleEnroll}
+                        disabled={enrolling}
+                      >
+                        {enrolling && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
+                        Enroll Now
+                      </Button>
+                    )
                   )}
 
                   <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">

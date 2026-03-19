@@ -95,7 +95,7 @@ export default function OrgAdminSetupPage() {
                 
                 // Redirect to login after a short delay
                 setTimeout(() => {
-                    router.push("/org-admin/login")
+                    router.push("/login/org-admin")
                 }, 2000)
             } else {
                 setError(response.error || "Failed to create account")

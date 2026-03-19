@@ -43,6 +43,7 @@ app.use(cors({
 app.options('*', cors());
 
 app.use(express.json({
+  limit: '50mb',
   verify: (req, res, buf) => {
     if (req.originalUrl.includes('webhook')) {
       req.rawBody = buf;
@@ -57,8 +58,16 @@ app.use((err, req, res, next) => {
   }
   next();
 });
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
+// DEBUG: Log all incoming request bodies
+app.use((req, res, next) => {
+  if (req.method === 'POST' && req.path.includes('submission')) {
+    console.log('[DEBUG BODY]', req.path, 'Body:', JSON.stringify(req.body, null, 2));
+  }
+  next();
+});
 
 // Log requests — verbose only in development, minimal in production
 const isProduction = process.env.NODE_ENV === 'production';
@@ -103,6 +112,10 @@ try {
   const organizationRoutes = require('./routes/organizations');
   app.use('/api/organizations', organizationRoutes);
 
+  console.log(`[${new Date().toISOString()}]   - org admin (api/admin)`);
+  const adminRoutes = require('./routes/admin');
+  app.use('/api/admin', adminRoutes);
+
   console.log(`[${new Date().toISOString()}]   - platform (overhauled)`);
   const platformAdminRoutes = require('./routes/platform/index');
   app.use('/api/platform', platformAdminRoutes);
@@ -146,9 +159,13 @@ try {
   console.log('  - quizzes');
   const quizRoutes = require('./routes/quizzes');
   const orgEventRoutes = require('./routes/orgEvents');
+  const orgUsersRoutes = require('./routes/orgUsers');
+  const orgFeaturesRoutes = require('./routes/orgFeatures');
 
   app.use('/api/quizzes', quizRoutes);
   app.use('/api/org', orgEventRoutes);
+  app.use('/api/org', orgUsersRoutes);
+  app.use('/api/org-features', orgFeaturesRoutes);
 
   console.log('  - gamification');
   const gamificationRoutes = require('./routes/gamification');

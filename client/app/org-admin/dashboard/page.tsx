@@ -140,7 +140,7 @@ export default function OrgAdminDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Welcome back, {user?.name || "Admin"} 👋
+            Welcome back, {user?.name || "Admin"}
           </h1>
           <p className="text-slate-500 mt-1">Manage your {isCollege ? 'college' : 'organization'} from here.</p>
         </div>
@@ -151,10 +151,10 @@ export default function OrgAdminDashboardPage() {
           </Button>
           <Button 
             className="bg-orange-500 hover:bg-orange-600 text-white"
-            onClick={() => router.push('/org-admin/courses')}
+            onClick={() => router.push('/org-admin/courses/pending')}
           >
             <Plus className="mr-2 h-4 w-4 stroke-[1.5]" /> 
-            Add Course
+            Review Courses
           </Button>
         </div>
       </div>

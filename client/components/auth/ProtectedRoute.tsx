@@ -7,8 +7,9 @@ import { useAuth } from '../../lib/auth-context'
 function getLoginRouteForRole(role: string) {
   switch (role) {
     case 'platform_admin':
-    case 'platform_staff':
       return '/platform-admin/login'
+    case 'platform_staff':
+      return '/platform-staff/login'
     case 'org_admin':
     case 'organization_admin':
       return '/org-admin/login'

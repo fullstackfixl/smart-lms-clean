@@ -11,6 +11,7 @@ const reportRoutes = require('./reportRoutes');
 const settingsRoutes = require('./settingsRoutes');
 const auditLogRoutes = require('./auditLogRoutes');
 const billingRoutes = require('./billingRoutes');
+const applicationsRoutes = require('./applicationsRoutes');
 
 const router = express.Router();
 
@@ -30,5 +31,6 @@ router.use('/reports', reportRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/audit-logs', auditLogRoutes);
 router.use('/billing', billingRoutes);
+router.use('/applications', applicationsRoutes);
 
 module.exports = router;
