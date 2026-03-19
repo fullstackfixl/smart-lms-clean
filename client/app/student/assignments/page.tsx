@@ -161,7 +161,7 @@ export default function StudentAssignmentsPage() {
         toast.success('Assignment submitted successfully!')
         // Immediately add submission to state for instant UI feedback
         const newSubmission: Submission = {
-          _id: res.data?.submission?._id || Date.now().toString(),
+          _id: (res.data as any)?.submission?._id || Date.now().toString(),
           assignment_id: assignmentId,
           status: 'submitted',
           submitted_at: new Date().toISOString()
