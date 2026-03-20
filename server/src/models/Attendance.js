@@ -579,7 +579,8 @@ attendanceSchema.pre('save', async function (next) {
           return next(new Error('Course not found'));
         }
 
-        if (course.organization_id.toString() !== this.organization_id.toString()) {
+        const orgIdStr = typeof this.organization_id === 'object' && this.organization_id._id ? this.organization_id._id.toString() : this.organization_id.toString();
+        if (course.organization_id.toString() !== orgIdStr) {
           return next(new Error('Course must belong to the same organization'));
         }
       }
@@ -593,7 +594,8 @@ attendanceSchema.pre('save', async function (next) {
         }
 
         const subjectOrgId = subject.organizationId || subject.organization_id;
-        if (subjectOrgId && subjectOrgId.toString() !== this.organization_id.toString()) {
+        const orgIdStr = typeof this.organization_id === 'object' && this.organization_id._id ? this.organization_id._id.toString() : this.organization_id.toString();
+        if (subjectOrgId && subjectOrgId.toString() !== orgIdStr) {
           return next(new Error('Subject must belong to the same organization'));
         }
       }
@@ -606,7 +608,8 @@ attendanceSchema.pre('save', async function (next) {
         return next(new Error('Instructor not found'));
       }
 
-      if (instructor.organization_id.toString() !== this.organization_id.toString()) {
+      const orgIdStr = typeof this.organization_id === 'object' && this.organization_id._id ? this.organization_id._id.toString() : this.organization_id.toString();
+      if (instructor.organization_id.toString() !== orgIdStr) {
         return next(new Error('Instructor must belong to the same organization'));
       }
 

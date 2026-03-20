@@ -212,7 +212,13 @@ export const collegeApi = {
 
   // Admin - Attendance
   listAdminAttendance: (token: string, params?: string) =>
-    apiRequest(`/api/college/admin/attendance${params ? `?${params}` : ''}`, { token }),
+    apiRequest(`/api/college/admin/attendance/records${params ? `?${params}` : ''}`, { token }),
+  getAdminAttendanceDashboard: (token: string) =>
+    apiRequest('/api/college/admin/attendance/dashboard', { token }),
+  getAdminStudentReport: (token: string, studentId: string) =>
+    apiRequest(`/api/college/admin/attendance/student-report/${studentId}`, { token }),
+  getAdminBatchSummary: (token: string, batchId: string) =>
+    apiRequest(`/api/college/admin/attendance/batch-summary/${batchId}`, { token }),
 
   // Admin - Events
   listAdminEvents: (token: string, params?: string) =>
@@ -241,12 +247,14 @@ export const collegeApi = {
     apiRequest(`/api/college/instructor/students/${id}`, { token }),
 
   // Instructor - Attendance
+  getAssignedSessions: (token: string) =>
+    apiRequest('/api/college/instructor/attendance/assigned-sessions', { token }),
+  getStudentsForAttendance: (token: string, subjectId: string, batchId: string) =>
+    apiRequest(`/api/college/instructor/attendance/students-for-attendance/${subjectId}/${batchId}`, { token }),
   markAttendance: (token: string, data: Record<string, unknown>) =>
-    apiRequest('/api/college/instructor/attendance', { method: 'POST', token, body: data }),
+    apiRequest('/api/college/instructor/attendance/mark-attendance', { method: 'POST', token, body: data }),
   getInstructorAttendance: (token: string, params?: string) =>
-    apiRequest(`/api/college/instructor/attendance${params ? `?${params}` : ''}`, { token }),
-  getCourseAttendance: (token: string, courseId: string, params?: string) =>
-    apiRequest(`/api/college/instructor/course-attendance/course/${courseId}${params ? `?${params}` : ''}`, { token }),
+    apiRequest(`/api/college/instructor/attendance/attendance-history${params ? `?${params}` : ''}`, { token }),
 
   // Instructor - Live Classes
   getInstructorLiveClasses: (token: string) =>
@@ -274,7 +282,9 @@ export const collegeApi = {
 
   // Student - Attendance
   getStudentAttendance: (token: string, params?: string) =>
-    apiRequest(`/api/college/student/attendance${params ? `?${params}` : ''}`, { token }),
+    apiRequest(`/api/college/student/attendance/my-attendance${params ? `?${params}` : ''}`, { token }),
+  getStudentAttendanceBySubject: (token: string, subjectId: string) =>
+    apiRequest(`/api/college/student/attendance/attendance-by-subject/${subjectId}`, { token }),
 
   // Student - Quizzes
   getStudentQuizzes: (token: string) =>
@@ -364,9 +374,9 @@ export const collegeApi = {
   deleteTimetableEntry: (token: string, id: string) =>
     apiRequest(`/api/college/admin/timetable/${id}`, { method: 'DELETE', token }),
 
-  // Admin - Attendance Summary
+  // Admin - Attendance Summary (alias for dashboard)
   getAttendanceSummary: (token: string, params?: string) =>
-    apiRequest(`/api/college/admin/attendance/summary${params ? `?${params}` : ''}`, { token }),
+    apiRequest(`/api/college/admin/attendance/dashboard${params ? `?${params}` : ''}`, { token }),
 
   // Admin - Course Approval
   listPendingCourses: (token: string) =>

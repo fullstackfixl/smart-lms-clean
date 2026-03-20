@@ -233,7 +233,7 @@ router.post('/mark-attendance', [
 
     // Check if attendance already exists for this session
     const existingAttendance = await Attendance.findOne({
-      organization_id,
+      organization_id: typeof organization_id === 'object' && organization_id._id ? organization_id._id : organization_id,
       subjectId,
       batchId,
       session_date: new Date(session_date),
@@ -266,7 +266,7 @@ router.post('/mark-attendance', [
 
       // Create new attendance record
       attendance = new Attendance({
-        organization_id,
+        organization_id: typeof organization_id === 'object' && organization_id._id ? organization_id._id : organization_id,
         organizationType: 'college',
         subjectId,
         batchId,
@@ -343,7 +343,9 @@ router.post('/mark-attendance', [
     console.error('Mark attendance error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to mark attendance'
+      message: 'Failed to mark attendance',
+      error: error.message,
+      stack: error.stack
     });
   }
 });
