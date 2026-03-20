@@ -1,305 +1,377 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { motion } from "framer-motion"
-import {
-    Calendar, Clock, CheckCircle, XCircle,
-    Loader2, BookOpen, TrendingUp, ChevronRight,
-    Monitor, Info, RefreshCw
+import { useState, useEffect } from "react"
+import { toast } from "sonner"
+import { 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  Calendar, 
+  BookOpen, 
+  GraduationCap,
+  TrendingUp,
+  AlertTriangle,
+  Loader2,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/ui/card"
 import { Button } from "../../../components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Badge } from "../../../components/ui/badge"
 import { Progress } from "../../../components/ui/progress"
-import { toast } from "sonner"
-import { API_URL } from "../../../lib/config"
-import { useAuth } from "../../../lib/auth-context"
-import { collegeApi } from "../../../lib/api"
-import Link from "next/link"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../../components/ui/collapsible"
+import { API_URL } from "../../../lib/api"
+import { getToken } from "../../../lib/auth"
+
+interface AttendanceRecord {
+  _id: string
+  subject: {
+    _id: string
+    name: string
+    code: string
+  }
+  batch: {
+    _id: string
+    name: string
+    code: string
+  }
+  date: string
+  startTime: string
+  endTime: string
+  status: "present" | "absent" | "late" | "excused"
+  lateMinutes: number
+  notes: string
+  markedBy: {
+    full_name: string
+  }
+}
+
+interface SubjectSummary {
+  subject: {
+    _id: string
+    name: string
+    code: string
+  }
+  totalClasses: number
+  present: number
+  absent: number
+  late: number
+  excused: number
+  percentage: number
+}
+
+interface AttendanceData {
+  attendance_records: AttendanceRecord[]
+  subject_summary: SubjectSummary[]
+  overall_summary: {
+    totalSubjects: number
+    totalClasses: number
+    present: number
+    absent: number
+    late: number
+    excused: number
+    overallPercentage: number
+  }
+}
 
 export default function StudentAttendancePage() {
-    const { user, token } = useAuth()
-    const [courses, setCourses] = useState<any[]>([])
-    const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
-    const [attendanceData, setAttendanceData] = useState<any>(null)
-    const [loading, setLoading] = useState(true)
-    const [loadingDetails, setLoadingDetails] = useState(false)
+  const [data, setData] = useState<AttendanceData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [expandedSubject, setExpandedSubject] = useState<string | null>(null)  late: number
+  excused: number
+  overallPercentage: number
+}
 
-    const isCollege = String(user?.organizationType || '').toUpperCase() === 'COLLEGE'
+type TabView = "overview" | "detail"
 
-    const fetchCourses = useCallback(async () => {
-        if (!token) return
-        setLoading(true)
-        try {
-            if (isCollege) {
-                const res = await collegeApi.getStudentCourses(token)
-                if (res.success) {
-                    const payload: any = res.data || {}
-                    const enrolledCourses = payload?.courses || payload || []
-                    setCourses(enrolledCourses)
-                    if (enrolledCourses.length > 0) {
-                        const firstId = enrolledCourses[0].course?._id || enrolledCourses[0]._id
-                        setSelectedCourseId(firstId)
-                        fetchAttendance(firstId)
-                    }
-                }
-            } else {
-                const r = await fetch(`${API_URL}/api/courses/my-courses`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                    credentials: "include"
-                })
-                const data = await r.json()
-                if (data.success) {
-                    const enrolledCourses = data.data?.courses || data.data || []
-                    setCourses(enrolledCourses)
-                    if (enrolledCourses.length > 0) {
-                        const firstId = enrolledCourses[0].course?._id || enrolledCourses[0]._id
-                        setSelectedCourseId(firstId)
-                        fetchAttendance(firstId)
-                    }
-                }
-            }
-        } catch {
-            toast.error("Failed to load courses")
-        } finally {
-            setLoading(false)
-        }
-    }, [token, isCollege])
+function getPercentageColor(pct: number) {
+  if (pct >= 75) return "text-green-600"
+  if (pct >= 60) return "text-amber-600"
+  return "text-red-500"
+}
 
-    const fetchAttendance = async (courseId: string) => {
-        if (!token) return
-        setLoadingDetails(true)
-        try {
-            if (isCollege) {
-                const res = await collegeApi.getStudentAttendance(token)
-                if (res.success) {
-                    setAttendanceData(res.data)
-                }
-            } else {
-                const r = await fetch(`${API_URL}/attendance/student/course/${courseId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                    credentials: "include"
-                })
-                const data = await r.json()
-                if (data.success) {
-                    setAttendanceData(data.data)
-                }
-            }
-        } catch {
-            toast.error("Failed to load attendance summary")
-        } finally {
-            setLoadingDetails(false)
-        }
+function getPercentageBg(pct: number) {
+  if (pct >= 75) return "bg-green-500"
+  if (pct >= 60) return "bg-amber-500"
+  return "bg-red-500"
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    present: { label: "Present", cls: "bg-green-100 text-green-700 border-green-200" },
+    absent:  { label: "Absent",  cls: "bg-red-50 text-red-600 border-red-200" },
+    late:    { label: "Late",    cls: "bg-amber-50 text-amber-600 border-amber-200" },
+    excused: { label: "Excused", cls: "bg-blue-50 text-blue-600 border-blue-200" },
+    unknown: { label: "—",       cls: "bg-slate-50 text-slate-400 border-slate-200" },
+  }
+  const s = map[status] || map.unknown
+  return (
+    <span className={cn("px-2.5 py-1 text-xs font-semibold rounded-full border", s.cls)}>
+      {s.label}
+    </span>
+  )
+}
+
+export default function StudentAttendancePage() {
+  const { token } = useAuth()
+  const [loading, setLoading] = useState(true)
+
+  const [subjectSummaries, setSubjectSummaries] = useState<SubjectSummary[]>([])
+  const [overallSummary, setOverallSummary] = useState<OverallSummary | null>(null)
+  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([])
+
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
+  const [subjectRecords, setSubjectRecords] = useState<AttendanceRecord[]>([])
+  const [subjectLoading, setSubjectLoading] = useState(false)
+
+  const fetchAttendance = useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    try {
+      const res = await collegeApi.getStudentAttendance(token)
+      if (res.success) {
+        const data = (res.data as any) || {}
+        setSubjectSummaries(data.subject_summary || [])
+        setOverallSummary(data.overall_summary || null)
+        setAllRecords(data.attendance_records || [])
+      } else {
+        toast.error("Failed to load attendance")
+      }
+    } catch {
+      toast.error("Failed to load attendance")
+    } finally {
+      setLoading(false)
     }
+  }, [token])
 
-    useEffect(() => {
-        fetchCourses()
-    }, [fetchCourses])
-
-    useEffect(() => {
-        if (selectedCourseId) {
-            fetchAttendance(selectedCourseId)
-        }
-    }, [selectedCourseId])
-
-    if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <Loader2 className="h-10 w-10 animate-spin text-[#4CAF50]" />
-                <p className="text-slate-500 font-medium">Fetching your attendance records...</p>
-            </div>
-        )
+  const fetchSubjectAttendance = useCallback(async (subjectId: string) => {
+    if (!token) return
+    setSubjectLoading(true)
+    try {
+      const res = await collegeApi.getStudentAttendanceBySubject(token, subjectId)
+      if (res.success) {
+        const data = (res.data as any) || {}
+        setSubjectRecords(data.records || [])
+      }
+    } catch {
+      toast.error("Failed to load subject attendance")
+    } finally {
+      setSubjectLoading(false)
     }
+  }, [token])
 
+  useEffect(() => { fetchAttendance() }, [fetchAttendance])
+
+  function selectSubject(subjectId: string) {
+    setSelectedSubjectId(subjectId)
+    fetchSubjectAttendance(subjectId)
+  }
+
+  const selectedSummary = subjectSummaries.find(s => s.subject._id === selectedSubjectId)
+
+  if (loading) {
     return (
-        <div className="max-w-6xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                        My <span className="text-[#4CAF50]">Attendance</span>
-                    </h1>
-                    <p className="text-slate-500 mt-1">Track your participation in live sessions</p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="px-3 py-1 border-blue-100 bg-blue-50 text-blue-700 font-bold gap-2">
-                        <Info className="h-3.5 w-3.5" /> 60% Attendance Required
-                    </Badge>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Course Sidebar */}
-                <div className="lg:col-span-4 space-y-4">
-                    <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest px-2">Select Course</h2>
-                    <div className="space-y-2">
-                        {courses.map((item) => {
-                            const course = item.course || item
-                            const isSelected = selectedCourseId === course._id
-                            return (
-                                <button
-                                    key={course._id}
-                                    onClick={() => setSelectedCourseId(course._id)}
-                                    className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 group ${isSelected
-                                            ? "bg-[#4CAF50] border-[#4CAF50] shadow-lg shadow-green-100 ring-2 ring-green-100"
-                                            : "bg-white border-slate-100 hover:border-green-200 hover:bg-green-50/50"
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${isSelected ? "bg-white/20 text-white" : "bg-green-50 text-[#4CAF50] group-hover:bg-green-100"
-                                            }`}>
-                                            <BookOpen className="h-5 w-5" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className={`font-bold text-sm truncate ${isSelected ? "text-white" : "text-slate-900"}`}>
-                                                {course.title}
-                                            </p>
-                                            <p className={`text-[10px] font-semibold uppercase tracking-wider ${isSelected ? "text-white/80" : "text-slate-400"}`}>
-                                                {course.courseCode || "Live Sessions"}
-                                            </p>
-                                        </div>
-                                        <ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${isSelected ? "text-white translate-x-1" : "text-slate-300"
-                                            }`} />
-                                    </div>
-                                </button>
-                            )
-                        })}
-                    </div>
-                </div>
-
-                {/* Attendance Content */}
-                <div className="lg:col-span-8 space-y-6">
-                    {loadingDetails ? (
-                        <div className="bg-white rounded-3xl p-12 border border-slate-100 flex flex-col items-center justify-center gap-4">
-                            <Loader2 className="h-8 w-8 animate-spin text-[#4CAF50]" />
-                            <p className="text-slate-400 font-medium">Loading session history...</p>
-                        </div>
-                    ) : attendanceData ? (
-                        <>
-                            {/* Summary Stats */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <Card className="border-0 shadow-lg shadow-slate-100 rounded-3xl overflow-hidden bg-gradient-to-br from-white to-slate-50/50">
-                                    <CardContent className="p-6">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="h-10 w-10 bg-green-50 rounded-xl flex items-center justify-center">
-                                                <Monitor className="h-5 w-5 text-[#4CAF50]" />
-                                            </div>
-                                            <Badge className="bg-green-100 text-green-700 border-green-200">
-                                                {attendanceData.summary.presentCount}/{attendanceData.summary.totalClasses}
-                                            </Badge>
-                                        </div>
-                                        <p className="text-3xl font-extrabold text-slate-900">{attendanceData.summary.attendancePercentage}%</p>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Average Attendance</p>
-                                        <Progress value={attendanceData.summary.attendancePercentage} className="h-1.5 mt-4 bg-slate-100" />
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-0 shadow-lg shadow-slate-100 rounded-3xl overflow-hidden bg-gradient-to-br from-white to-slate-50/50">
-                                    <CardContent className="p-6">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                                                <CheckCircle className="h-5 w-5 text-blue-500" />
-                                            </div>
-                                        </div>
-                                        <p className="text-3xl font-extrabold text-slate-900">{attendanceData.summary.presentCount}</p>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Sessions Present</p>
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-0 shadow-lg shadow-slate-100 rounded-3xl overflow-hidden bg-gradient-to-br from-white to-slate-50/50">
-                                    <CardContent className="p-6">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="h-10 w-10 bg-orange-50 rounded-xl flex items-center justify-center">
-                                                <TrendingUp className="h-5 w-5 text-orange-500" />
-                                            </div>
-                                        </div>
-                                        <p className="text-3xl font-extrabold text-slate-900">{attendanceData.summary.totalClasses}</p>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Total Classes</p>
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            {/* History Table */}
-                            <Card className="border-0 shadow-xl shadow-slate-100 rounded-3xl overflow-hidden">
-                                <CardHeader className="bg-slate-50/50 border-b border-slate-100">
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        <Calendar className="h-5 w-5 text-[#4CAF50]" />
-                                        Sessions History
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-0 overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-slate-50/30 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                                            <tr>
-                                                <th className="px-6 py-4">SESSIONS DETAILS</th>
-                                                <th className="px-6 py-4">TIME SPENT</th>
-                                                <th className="px-6 py-4">STATUS</th>
-                                                <th className="px-6 py-4 text-right">JOIN TIME</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {attendanceData.records.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={4} className="px-6 py-20 text-center">
-                                                        <div className="h-16 w-16 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                                                            <Calendar className="h-8 w-8 text-slate-200" />
-                                                        </div>
-                                                        <p className="text-slate-400 font-medium">No sessions attended yet for this course.</p>
-                                                        <Link href="/student/live-classes">
-                                                            <Button variant="link" className="text-[#4CAF50] mt-2">Join a Live Class</Button>
-                                                        </Link>
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                attendanceData.records.map((record: any) => (
-                                                    <tr key={record._id} className="hover:bg-slate-50/50 transition-colors group">
-                                                        <td className="px-6 py-5">
-                                                            <p className="font-bold text-slate-900 text-sm">{record.classId?.title}</p>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <Calendar className="h-3 w-3 text-slate-400" />
-                                                                <span className="text-[11px] text-slate-500">
-                                                                    {new Date(record.classId?.scheduled_date || record.date).toLocaleDateString()}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-5">
-                                                            <div className="flex items-center gap-2">
-                                                                <Clock className="h-3.5 w-3.5 text-slate-400" />
-                                                                <span className="font-bold text-sm text-slate-700">{record.duration} min</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-5">
-                                                            {record.status === 'present' ? (
-                                                                <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                                                                    Present
-                                                                </Badge>
-                                                            ) : (
-                                                                <Badge className="bg-red-50 text-red-600 border-red-100 hover:bg-red-50 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                                                                    Absent
-                                                                </Badge>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-6 py-5 text-right">
-                                                            <p className="text-xs font-bold text-slate-800">
-                                                                {new Date(record.joinTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                            </p>
-                                                            <p className="text-[10px] text-slate-400">Join Time</p>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </CardContent>
-                            </Card>
-                        </>
-                    ) : (
-                        <div className="bg-white rounded-3xl p-12 border border-slate-100 text-center">
-                            <p className="text-slate-400">Select a course to view your attendance history.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
+        <p className="text-slate-500 font-medium">Loading your attendance records…</p>
+      </div>
     )
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            My <span className="text-indigo-600">Attendance</span>
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm">Subject-wise attendance tracking. Minimum 75% required.</p>
+        </div>
+        <Badge
+          variant="outline"
+          className="self-start md:self-auto px-4 py-1.5 border-amber-200 bg-amber-50 text-amber-700 font-semibold text-xs"
+        >
+          ⚠ 75% Attendance Required
+        </Badge>
+      </div>
+
+      {/* Overall Stats */}
+      {overallSummary && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Overall %", value: `${overallSummary.overallPercentage}%`, icon: <BarChart2 className="w-5 h-5" />, color: getPercentageColor(overallSummary.overallPercentage), bg: "bg-indigo-50 text-indigo-500" },
+            { label: "Total Classes", value: overallSummary.totalClasses, icon: <Calendar className="w-5 h-5" />, color: "text-slate-800", bg: "bg-slate-100 text-slate-500" },
+            { label: "Present", value: overallSummary.present, icon: <CheckCircle className="w-5 h-5" />, color: "text-green-700", bg: "bg-green-50 text-green-500" },
+            { label: "Absent", value: overallSummary.absent, icon: <XCircle className="w-5 h-5" />, color: "text-red-600", bg: "bg-red-50 text-red-400" },
+          ].map(card => (
+            <div key={card.label} className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{card.label}</p>
+                <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", card.bg)}>
+                  {card.icon}
+                </div>
+              </div>
+              <p className={cn("text-3xl font-extrabold", card.color)}>{card.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Main content: Subject list + Detail */}
+      {subjectSummaries.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl border border-dashed border-gray-200 text-center p-8">
+          <BookOpen className="w-12 h-12 text-slate-200 mb-4" />
+          <p className="text-slate-500 font-semibold">No attendance records yet</p>
+          <p className="text-slate-400 text-sm mt-1">Attendance will appear here once your instructor starts marking.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Subject Sidebar */}
+          <div className="lg:col-span-4 space-y-2">
+            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Select Subject</h2>
+            {subjectSummaries.map((item) => {
+              const isSelected = selectedSubjectId === item.subject._id
+              const pct = item.percentage
+              return (
+                <button
+                  key={item.subject._id}
+                  onClick={() => selectSubject(item.subject._id)}
+                  className={cn(
+                    "w-full text-left p-4 rounded-xl border transition-all duration-200 group",
+                    isSelected
+                      ? "bg-indigo-600 border-indigo-500 shadow-lg"
+                      : "bg-white border-gray-200 hover:border-indigo-300 hover:shadow-sm"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("font-semibold text-sm truncate", isSelected ? "text-white" : "text-slate-900")}>
+                        {item.subject.name}
+                      </p>
+                      <p className={cn("text-xs mt-0.5 font-medium", isSelected ? "text-indigo-200" : "text-slate-400")}>
+                        {item.subject.code} {item.subject.credits ? `• ${item.subject.credits} cr` : ""}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className={cn("text-lg font-extrabold",
+                        isSelected ? "text-white" : getPercentageColor(pct)
+                      )}>
+                        {pct}%
+                      </p>
+                      <p className={cn("text-[10px] font-medium", isSelected ? "text-indigo-300" : "text-slate-400")}>
+                        {item.present}/{item.totalClasses} classes
+                      </p>
+                    </div>
+                    <ChevronRight className={cn("w-4 h-4 shrink-0", isSelected ? "text-indigo-200" : "text-slate-300")} />
+                  </div>
+                  {/* Progress bar */}
+                  <div className={cn("mt-3 h-1.5 rounded-full", isSelected ? "bg-indigo-500" : "bg-slate-100")}>
+                    <div
+                      className={cn("h-full rounded-full transition-all", isSelected ? "bg-white" : getPercentageBg(pct))}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Detail Panel */}
+          <div className="lg:col-span-8">
+            {!selectedSubjectId ? (
+              <div className="flex flex-col items-center justify-center h-full min-h-[400px] bg-white rounded-xl border border-dashed border-gray-200 text-center p-8">
+                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4">
+                  <BookOpen className="w-7 h-7 text-indigo-400" />
+                </div>
+                <p className="text-slate-600 font-semibold">Select a subject to see details</p>
+                <p className="text-slate-400 text-sm mt-1">Session history will appear here</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                {/* Subject header */}
+                {selectedSummary && (
+                  <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 p-5 text-white">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-bold">{selectedSummary.subject.name}</h3>
+                        <p className="text-indigo-200 text-sm mt-0.5">{selectedSummary.subject.code} • {selectedSummary.batch?.name}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-3xl font-extrabold">{selectedSummary.percentage}%</p>
+                        <p className="text-indigo-200 text-xs">{selectedSummary.present}/{selectedSummary.totalClasses} classes attended</p>
+                      </div>
+                    </div>
+                    <Progress value={selectedSummary.percentage} className="h-2 mt-4 bg-indigo-500 [&>div]:bg-white" />
+                    <div className="grid grid-cols-4 gap-2 mt-4 text-center">
+                      {[
+                        { label: "Present", val: selectedSummary.present, color: "text-green-300" },
+                        { label: "Absent",  val: selectedSummary.absent,  color: "text-red-300" },
+                        { label: "Late",    val: selectedSummary.late,    color: "text-amber-300" },
+                        { label: "Excused", val: selectedSummary.excused, color: "text-blue-300" },
+                      ].map(s => (
+                        <div key={s.label} className="bg-white/10 rounded-lg py-2 px-1">
+                          <p className={cn("text-xl font-extrabold", s.color)}>{s.val}</p>
+                          <p className="text-indigo-200 text-[10px] font-medium uppercase">{s.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Records */}
+                {subjectLoading ? (
+                  <div className="flex items-center justify-center h-48">
+                    <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                  </div>
+                ) : subjectRecords.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-center p-8">
+                    <Calendar className="w-10 h-10 text-slate-200 mb-3" />
+                    <p className="text-slate-400 font-medium">No session records for this subject</p>
+                  </div>
+                ) : (
+                  <div className="overflow-y-auto max-h-[400px]">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 sticky top-0 border-b border-gray-100">
+                        <tr>
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Date</th>
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Time</th>
+                          <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Topic</th>
+                          <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {subjectRecords.map((record) => (
+                          <tr key={record._id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-5 py-4 text-sm font-medium text-slate-800">
+                              {new Date(record.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                            </td>
+                            <td className="px-5 py-4 text-sm text-slate-500">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {record.startTime}–{record.endTime}
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 text-sm text-slate-500 max-w-[140px] truncate">
+                              {record.topicCovered || <span className="text-slate-300">—</span>}
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <StatusBadge status={record.status} />
+                              {record.lateMinutes > 0 && (
+                                <p className="text-[10px] text-amber-500 mt-0.5">{record.lateMinutes} min late</p>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }

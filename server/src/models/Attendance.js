@@ -59,6 +59,11 @@ const attendanceSchema = new mongoose.Schema({
     ref: 'Subject',
     index: true
   },
+  batchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Batch',
+    index: true
+  },
   programId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Program',
@@ -152,7 +157,8 @@ attendanceSchema.index({ organization_id: 1, 'attendance_records.student_id': 1 
 attendanceSchema.index({ course_id: 1, session_date: -1 });
 attendanceSchema.index({ subjectId: 1, session_date: -1 });
 attendanceSchema.index({ instructor_id: 1, session_date: -1 });
-attendanceSchema.index({ organization_id: 1, session_date: -1 });
+attendanceSchema.index({ organization_id: 1, batchId: 1, session_date: -1 });
+attendanceSchema.index({ batchId: 1, session_date: -1 });
 
 // Unique constraint to prevent duplicate sessions
 attendanceSchema.index({
