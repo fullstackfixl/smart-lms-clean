@@ -70,7 +70,7 @@ export default function StaffPage() {
     setIsSubmitting(true)
     try {
       const token = getToken()
-      const res = await fetch(`${API_URL}/api/platform/staff`, {
+      const res = await fetch(`${API_URL}/api/platform/staff/create`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -96,20 +96,21 @@ export default function StaffPage() {
   }
 
   const handleStatusToggle = async (id: string, currentStatus: string) => {
-    const action = currentStatus === 'active' ? 'disable' : 'enable'
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
     try {
       const token = getToken()
-      const res = await fetch(`${API_URL}/api/platform/staff/${id}/${action}`, {
+      const res = await fetch(`${API_URL}/api/platform/staff/${id}/status`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        }
+        },
+        body: JSON.stringify({ status: newStatus })
       })
       const data = await res.json()
       if (data.success) {
-        toast.success(`Staff member ${action}d`)
+        toast.success(`Staff member ${newStatus === 'active' ? 'activated' : 'deactivated'}`)
         mutate()
       } else {
         toast.error(data.message || "Action failed")
@@ -149,14 +150,14 @@ export default function StaffPage() {
         />
         <FlatMetricCard
           title="Active Staff"
-          value={staff.filter((s: any) => s.isActive).length}
+          value={staff.filter((s: any) => s.status === 'active').length}
           icon={CheckCircle2}
           className="border-l-4 border-l-green-500"
           subtitle="Currently operational"
         />
         <FlatMetricCard
           title="Disabled"
-          value={staff.filter((s: any) => !s.isActive).length}
+          value={staff.filter((s: any) => s.status !== 'active').length}
           icon={XCircle}
           className="border-l-4 border-l-red-500"
           subtitle="Access revoked"
@@ -199,9 +200,9 @@ export default function StaffPage() {
               <SimpleTableCell>
                 <Badge className={cn(
                   "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                  member.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  member.status === 'active' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                 )}>
-                  {member.isActive ? 'Active' : 'Disabled'}
+                  {member.status === 'active' ? 'Active' : 'Disabled'}
                 </Badge>
               </SimpleTableCell>
               <SimpleTableCell className="text-right">
@@ -213,14 +214,14 @@ export default function StaffPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 bg-white border-gray-200 shadow-none p-1">
                     <DropdownMenuItem 
-                      onClick={() => handleStatusToggle(member._id, member.isActive ? 'active' : 'inactive')}
+                      onClick={() => handleStatusToggle(member._id, member.status)}
                       className={cn(
                         "cursor-pointer font-medium py-2",
-                        member.isActive ? "text-orange-600 focus:bg-orange-50 focus:text-orange-700" : "text-green-600 focus:bg-green-50 focus:text-green-700"
+                        member.status === 'active' ? "text-orange-600 focus:bg-orange-50 focus:text-orange-700" : "text-green-600 focus:bg-green-50 focus:text-green-700"
                       )}
                     >
-                      {member.isActive ? <Lock className="mr-2 h-4 w-4" /> : <Unlock className="mr-2 h-4 w-4" />}
-                      {member.isActive ? 'Revoke Access' : 'Grant Access'}
+                      {member.status === 'active' ? <Lock className="mr-2 h-4 w-4" /> : <Unlock className="mr-2 h-4 w-4" />}
+                      {member.status === 'active' ? 'Revoke Access' : 'Grant Access'}
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => { if(confirm('Permanently delete?')) handleStatusToggle(member._id, 'delete') }}
