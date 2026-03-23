@@ -3,17 +3,13 @@
 import React from 'react'
 import useSWR from 'swr'
 import { 
-  BarChart3, 
-  Search, 
   Download, 
   Filter, 
   ArrowUpRight, 
   TrendingUp,
   Target,
   Zap,
-  Clock,
-  Globe,
-  MoreHorizontal
+  Clock
 } from 'lucide-react'
 import { FlatMetricCard } from '../../../components/platform/flat-metric-card'
 import { BasicChart } from '../../../components/platform/basic-chart'
@@ -27,7 +23,7 @@ import { PlatformErrorState } from '../../../components/platform/platform-error-
 import { cn } from '../../../lib/utils'
 
 export default function AnalyticsPage() {
-  const { data: response, error, isLoading } = useSWR<any>('/api/platform/analytics/overview', platformJsonFetcher)
+  const { data: response, error, isLoading } = useSWR('/api/platform/analytics/overview', platformJsonFetcher)
   const stats = response?.data || null
 
   if (error) {
@@ -129,7 +125,7 @@ export default function AnalyticsPage() {
           <h3 className="text-lg font-bold text-slate-900 mb-6 font-bold">Regional Distribution</h3>
           <div className="flex-1 space-y-8">
             {regionalDistribution.length > 0 ? (
-              regionalDistribution.map((region: any, idx: number) => {
+              regionalDistribution.map((region: { name?: string; region?: string; percent?: number; value?: number }, idx: number) => {
                 const name = region?.name || region?.region || `Region ${idx + 1}`
                 const percent = typeof region?.percent === 'number' ? region.percent : (typeof region?.value === 'number' ? region.value : 0)
                 const color = idx % 3 === 0 ? 'bg-blue-500' : (idx % 3 === 1 ? 'bg-orange-500' : 'bg-green-500')
@@ -165,7 +161,7 @@ export default function AnalyticsPage() {
         </div>
         
         <SimpleTable headers={['Institution', 'Learners', 'Course Volume', 'Retention', 'Stability']}>
-          {topNodes.map((node: any) => (
+          {topNodes.map((node: { _id: string; name: string; studentsCount?: number; coursesCount?: number; retention?: number }) => (
             <SimpleTableRow key={node._id}>
               <SimpleTableCell className="font-bold text-blue-600">
                 {node.name}

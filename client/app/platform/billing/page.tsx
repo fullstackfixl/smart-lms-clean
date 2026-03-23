@@ -6,13 +6,10 @@ import {
   CreditCard, 
   Plus, 
   ArrowUpRight, 
-  Download,
-  Calendar,
   Wallet,
   Zap,
   TrendingUp,
-  History,
-  MoreHorizontal
+  History
 } from 'lucide-react'
 import { FlatMetricCard } from '../../../components/platform/flat-metric-card'
 import { SimpleTable, SimpleTableRow, SimpleTableCell } from '../../../components/platform/simple-table'
@@ -34,6 +31,13 @@ import { PlatformErrorState } from '../../../components/platform/platform-error-
 export default function BillingPage() {
   const { data: response, error, isLoading } = useSWR('/api/platform/billing', platformJsonFetcher)
   const stats = response?.data || null
+
+  type Transaction = {
+    _id: string
+    memo?: string
+    amount: number
+    date: string | number | Date
+  }
 
   if (error) {
     return <PlatformErrorState />
@@ -144,7 +148,7 @@ export default function BillingPage() {
         </div>
         
         <SimpleTable headers={['Reference', 'Institution', 'Amount', 'Status', 'Date']}>
-          {transactions.map((txn: any) => (
+          {transactions.map((txn: Transaction) => (
             <SimpleTableRow key={txn._id}>
               <SimpleTableCell className="font-mono text-[10px] font-bold text-slate-400 tabular-nums">
                 TXN-{txn._id.slice(-8).toUpperCase()}
