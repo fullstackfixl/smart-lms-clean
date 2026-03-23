@@ -32,14 +32,14 @@ export default function AvailableCourses() {
         setLoading(true)
         try {
             if (isCollege) {
-                const res = await collegeApi.getStudentCourses(token)
-                if (res.success) {
-                    const payload: any = res.data || {}
-                    setCourses(payload.courses || [])
-                } else {
-                    toast.error(res.error || "Failed to fetch courses")
-                }
+            const res = await (collegeApi as any).browseCourses(token)
+            if (res.success) {
+                const payload: any = res.data || {}
+                setCourses(payload.courses || [])
             } else {
+                toast.error(res.error || "Failed to fetch courses")
+            }
+        } else {
                 const r = await fetch(`${API_URL}/api/courses/student`, {
                     headers: { Authorization: `Bearer ${getToken()}` },
                     credentials: "include"
@@ -61,13 +61,17 @@ export default function AvailableCourses() {
     }, [fetchCourses])
 
     const handleEnroll = async (courseId: string) => {
-        if (isCollege) {
-            toast.error("Enrollment is managed by your organization admin")
-            return
-        }
         setEnrollingId(courseId)
         try {
-            if (!isCollege) {
+            if (isCollege) {
+                const res = await (collegeApi as any).enrollInCourse(token, courseId)
+                if (res.success) {
+                    toast.success("Successfully enrolled!")
+                    router.push(`/student/course/${courseId}`)
+                } else {
+                    toast.error(res.error || "Enrollment failed")
+                }
+            } else {
                 const r = await fetch(`${API_URL}/api/courses/enroll/${courseId}`, {
                     method: "POST",
                     headers: {
@@ -142,7 +146,7 @@ export default function AvailableCourses() {
                             key={course._id}
                             course={course}
                             variant="available"
-                            onEnroll={isCollege ? undefined : handleEnroll}
+                            onEnroll={handleEnroll}
                             enrolling={enrollingId === course._id}
                         />
                     ))}

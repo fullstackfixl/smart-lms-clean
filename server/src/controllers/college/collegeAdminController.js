@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const { Organization, User, Course, Enrollment, Attendance, LiveClass, Quiz, QuizAttempt, Certificate, CollegeInstructor, CollegeStudent } = require('../../models');
 const emailService = require('../../services/email.service');
@@ -103,11 +104,10 @@ exports.createInstructor = async (req, res) => {
     }
 
     const password = randomPassword();
-
     const user = await User.create({
       name,
       email: email.toLowerCase(),
-      password_hash: password,
+      password_hash: password, // Hashed by model hook
       role: 'instructor',
       organization_id: organizationId,
       status: 'active',
@@ -297,11 +297,10 @@ exports.createStudent = async (req, res) => {
     }
 
     const password = randomPassword();
-
     const user = await User.create({
       name,
       email: email.toLowerCase(),
-      password_hash: password,
+      password_hash: password, // Hashed by model hook
       role: 'student',
       organization_id: organizationId,
       status: 'active',
@@ -654,7 +653,7 @@ exports.importStudents = async (req, res) => {
       const user = await User.create({
         name,
         email,
-        password_hash: password,
+        password_hash: password, // Hashed by model hook
         role: 'student',
         organization_id: organizationId,
         status: 'active',

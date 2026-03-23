@@ -29,7 +29,9 @@ import {
   Layers,
 } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
+import { useChatUnread } from '../../hooks/useChatUnread'
 import { cn } from '../../lib/utils'
+import { UserAvatar } from '../ui/UserAvatar'
 
 interface NavItem {
   label: string
@@ -66,6 +68,7 @@ export function StudentSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
   const { user, logout, organization } = useAuth()
+  const { unreadCount } = useChatUnread()
 
   // Get student batch info for filtering
   const studentBatch = user?.batchId || user?.profile?.batchId
@@ -104,7 +107,11 @@ export function StudentSidebar() {
       {isCollege && studentBatch && (
         <div className="mx-4 mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-lg">
           <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-green-600" />
+            <UserAvatar 
+              name={user?.profile?.firstName || user?.name} 
+              src={user?.profilePicture} 
+              size="sm" 
+            />
             <span className="text-sm font-semibold text-green-800">{user?.profile?.firstName || user?.name}</span>
           </div>
           <div className="mt-2 text-xs text-green-700 space-y-0.5">
@@ -154,6 +161,11 @@ export function StudentSidebar() {
                         )}
                       />
                       <span className="flex-1">{item.label}</span>
+                      {item.label === 'Messages' && unreadCount > 0 && (
+                        <div className="mr-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </div>
+                      )}
                       <ChevronRight
                         className={cn(
                           "h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-all",
@@ -178,8 +190,13 @@ export function StudentSidebar() {
           href="/student/profile"
           className="flex items-center rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-gray-50 hover:text-slate-900"
         >
-          <User className="mr-3 h-4 w-4 stroke-[1.5]" />
-          Profile
+          <UserAvatar 
+            name={user?.name} 
+            src={user?.profilePicture} 
+            size="xs" 
+            className="mr-3"
+          />
+          My Profile
         </Link>
         <Link
           href="/student/settings"

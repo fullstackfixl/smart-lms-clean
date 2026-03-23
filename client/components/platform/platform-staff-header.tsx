@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
 import { useAuth } from '../../lib/auth-context'
+import { UserAvatar } from '../ui/UserAvatar'
 
 export function PlatformStaffHeader() {
   const router = useRouter()
@@ -43,9 +44,11 @@ export function PlatformStaffHeader() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center space-x-3 rounded-lg px-2 py-1.5 focus:outline-none group hover:bg-slate-50 transition-colors">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 group-hover:bg-orange-50 group-hover:text-orange-700 transition-colors">
-                <User className="h-5 w-5 stroke-[1.75]" />
-              </div>
+              <UserAvatar 
+                name={displayName} 
+                src={user?.profilePicture} 
+                size="sm" 
+              />
               <div className="hidden text-left sm:block">
                 <p className="text-sm font-bold text-slate-900 leading-none">{displayName}</p>
                 <p className="mt-1 text-xs text-slate-500">Platform Staff</p>

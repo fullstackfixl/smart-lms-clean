@@ -136,15 +136,11 @@ class StudentRegistrationService {
       throw err;
     }
 
-    // Hash password
-    const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-
     // Create student
     const user = new User({
       name,
       email: email.toLowerCase(),
-      password_hash: passwordHash,
+      password_hash: password, // Hashed by model hook
       role: 'student',
       organization_id: orgId,
       organization_code: (organization_code || '').toString().toUpperCase(),

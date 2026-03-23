@@ -2,16 +2,20 @@
  
 import { useState, useEffect } from "react"
 import { listInstructors } from '../../../lib/services/orgAdminApi'
-import { collegeApi } from '../../../lib/api'
+import { collegeApi, messagingApi } from '../../../lib/api'
 import { useAuth } from '../../../lib/auth-context'
 import { FlatCard } from "../../../components/org-admin/core/FlatCard"
 import { TextTable, TextRow, TextCell } from "../../../components/org-admin/core/TextTable"
 import { MinimalButton, MinimalInput } from "../../../components/org-admin/core/MinimalForm"
 import { StatusBadge } from "../../../components/org-admin/core/StatusBadge"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { MessageSquare } from "lucide-react"
+import { UserAvatar } from "../../../components/ui/UserAvatar"
  
 export default function InstructorsPage() {
   const { token, organization } = useAuth()
+  const router = useRouter()
   const [instructors, setInstructors] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -47,6 +51,21 @@ export default function InstructorsPage() {
     i.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     i.email?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const handleStartChat = async (instructorId: string) => {
+    if (!token) return
+    try {
+      const res = await messagingApi.startConversation(token, instructorId)
+      if (res.success && res.data) {
+        const conv = res.data as any
+        router.push(`/org-admin/messages?conversation=${conv._id}`)
+      } else {
+        toast.error(res.error || "Failed to start conversation")
+      }
+    } catch (err) {
+      toast.error("Network error")
+    }
+  }
  
   if (loading) {
     return (
@@ -87,13 +106,32 @@ export default function InstructorsPage() {
             <TextTable headers={["Name", "Courses Assigned", "Status", "Actions"]}>
                {filteredInstructors.map((instructor) => (
                   <TextRow key={instructor._id}>
-                     <TextCell bold className="text-[#3B82F6] uppercase italic">{instructor.name}</TextCell>
+                     <TextCell bold>
+                        <div className="flex items-center gap-2">
+                           <UserAvatar name={instructor.name} src={instructor.profilePicture} size="sm" />
+                           <span 
+                             className="text-[#3B82F6] uppercase italic hover:underline cursor-pointer transition-all"
+                             onClick={() => router.push(`/org-admin/instructors/${instructor._id}`)}
+                           >
+                             {instructor.name}
+                           </span>
+                        </div>
+                     </TextCell>
                      <TextCell className="text-slate-500">{instructor.coursesCount || 0} Products</TextCell>
                      <TextCell>
                         <StatusBadge type='success'>Verified</StatusBadge>
                      </TextCell>
                      <TextCell>
-                        <MinimalButton variant="text" className="px-0 h-auto">Edit</MinimalButton>
+                        <div className="flex items-center gap-3">
+                           <MinimalButton variant="text" className="px-0 h-auto text-slate-400 hover:text-slate-600">Edit</MinimalButton>
+                           <button 
+                             onClick={() => handleStartChat(instructor._id)}
+                             className="text-[11px] font-black text-blue-600 flex items-center gap-1.5 hover:bg-blue-50 px-2 py-1 rounded transition-colors uppercase tracking-wider"
+                           >
+                             <MessageSquare className="w-3.5 h-3.5" />
+                             Chat
+                           </button>
+                        </div>
                      </TextCell>
                   </TextRow>
                ))}

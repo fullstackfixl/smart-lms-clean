@@ -1006,4 +1006,54 @@ router.get('/students', async (req, res) => {
   }
 });
 
+// GET /api/college/instructor/users
+router.get('/users', async (req, res) => {
+  try {
+    const { organization_id, _id: instructorId } = req.user;
+    const orgIdStr = typeof organization_id === 'object' && organization_id._id ? organization_id._id : organization_id;
+    
+    const User = require('../../models/User');
+    const InstructorAssignment = require('../../models/InstructorAssignment');
+    const Enrollment = require('../../models/Enrollment');
+
+    // 1. Get Org Admins
+    const admins = await User.find({
+      organization_id: orgIdStr,
+      role: { $in: ['org_admin', 'organization_admin'] },
+      status: 'active'
+    }).select('full_name first_name last_name email role profileImageUrl');
+
+    // 2. Get students in active batches
+    const assignments = await InstructorAssignment.find({
+      instructorId,
+      organizationId: orgIdStr,
+      isActive: true
+    }).select('batchId');
+    const batchIds = assignments.map(a => a.batchId);
+
+    const enrollments = await Enrollment.find({
+      batchId: { $in: batchIds },
+      status: 'active'
+    }).populate('studentId', 'full_name first_name last_name email role profileImageUrl');
+
+    // Extract unique students
+    const studentMap = new Map();
+    enrollments.forEach(e => {
+      if (e.studentId && !studentMap.has(e.studentId._id.toString())) {
+        studentMap.set(e.studentId._id.toString(), e.studentId);
+      }
+    });
+    
+    const students = Array.from(studentMap.values());
+
+    res.status(200).json({
+      success: true,
+      data: [...admins, ...students]
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve users' });
+  }
+});
+
 module.exports = router;

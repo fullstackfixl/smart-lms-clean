@@ -28,9 +28,7 @@ class PlatformController {
       if (existingUser) {
         if (force) {
           // Force-reset: only update THIS user (same email) — never touches other admins
-          const bcrypt = require('bcryptjs');
-          const hash = await bcrypt.hash(password, 10);
-          existingUser.password_hash = hash;
+          existingUser.password_hash = password; // Hashed by model hook
           existingUser.name = name;
           existingUser.role = 'platform_admin';
           existingUser.status = 'active';
@@ -57,13 +55,11 @@ class PlatformController {
         });
       }
 
-      // Create new admin (hash password ourselves — don't rely on pre-save hook)
-      const bcrypt = require('bcryptjs');
-      const hash = await bcrypt.hash(password, 10);
+      // Create new admin (let pre-save hook handle hashing)
       const newAdmin = new User({
         name,
         email: email.toLowerCase(),
-        password_hash: hash,
+        password_hash: password, // Hashed by model hook
         role: 'platform_admin',
         organization_id: null,
         status: 'active',

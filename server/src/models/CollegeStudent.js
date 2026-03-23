@@ -28,6 +28,10 @@ const collegeStudentSchema = new mongoose.Schema({
     default: 'college',
     index: true
   },
+  programId: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicProgram', index: true },
+  batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch', index: true },
+  departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', index: true },
+  semester: { type: Number, index: true },
   courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
   attendance: { type: mongoose.Schema.Types.Mixed, default: null },
   progress: { type: mongoose.Schema.Types.Mixed, default: null },

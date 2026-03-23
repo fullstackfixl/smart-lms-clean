@@ -339,9 +339,9 @@ exports.listOrganizationAttendance = async (orgId, params) => {
   return paginate(Attendance, query, {
     page,
     limit,
-    sort: { date: -1 },
+    sort: { session_date: -1 },
     populate: [
-      { path: 'user_id', select: 'name email' },
+      { path: 'instructor_id', select: 'name email' },
       { path: 'course_id', select: 'title' }
     ]
   });

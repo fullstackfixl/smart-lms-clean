@@ -57,7 +57,7 @@ class PlatformInviteController extends BaseController {
             const user = await User.findOne({
                 inviteToken: token,
                 inviteTokenExpiry: { $gt: new Date() }
-            }).select('+inviteToken +inviteTokenExpiry');
+            }).select('+inviteToken +inviteTokenExpiry +password_hash');
 
             if (!user) {
                 const expiredUser = await User.findOne({ inviteToken: token }).select('+inviteToken +inviteTokenExpiry');
@@ -73,7 +73,7 @@ class PlatformInviteController extends BaseController {
             }
 
             // Update User — activate account
-            user.password_hash = password; // hashed by pre-save hook
+            user.password_hash = password; // Hashed by model hook
             user.status = 'active';
             user.email_verified = true;
             user.inviteToken = undefined;

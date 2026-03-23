@@ -14,6 +14,7 @@ interface User {
   organization_id?: string
   modulesEnabled?: string[]
   organizationType?: string
+  profilePicture?: string | null
   batchId?: { _id: string; name: string; code: string }
   programId?: { _id: string; name: string; code: string }
   semester?: number

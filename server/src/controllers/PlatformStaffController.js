@@ -35,15 +35,11 @@ class PlatformStaffController {
                 });
             }
 
-            // Hash password
-            const salt = await bcrypt.genSalt(12);
-            const password_hash = await bcrypt.hash(password, salt);
-
             // Create staff user
             const staffUser = await User.create({
                 name: name.trim(),
                 email: email.toLowerCase().trim(),
-                password_hash,
+                password_hash: password, // Hashed by model hook
                 role: 'platform_staff',
                 status: 'active',
                 email_verified: true

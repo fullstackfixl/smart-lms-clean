@@ -12,6 +12,7 @@ import {
 import { Bell, Search, User, LogOut } from "lucide-react"
 import { Button } from '../../components/ui/button'
 import { useRouter } from "next/navigation"
+import { UserAvatar } from '../ui/UserAvatar'
 
 export function StudentHeader() {
   const { user, logout, organization } = useAuth()
@@ -45,24 +46,15 @@ export function StudentHeader() {
         {/* User Profile Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center space-x-2 px-2 hover:bg-gray-50">
-              {organization?.branding?.logo || (organization as any)?.logo_url ? (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
-                    alt="Organization logo"
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-600 font-bold text-xs">
-                  {user?.name?.charAt(0)?.toUpperCase() || 'S'}
-                </div>
-              )}
+            <Button variant="ghost" className="flex items-center space-x-2 px-2 hover:bg-gray-50 h-auto py-1.5">
+              <UserAvatar 
+                name={user?.name || "Student"} 
+                src={user?.profilePicture} 
+                size="sm" 
+              />
               <div className="hidden text-left sm:block">
-                <p className="text-sm font-medium text-slate-900">{user?.name || 'Student'}</p>
-                <p className="text-xs text-slate-500">{organization?.name || 'Student Portal'}</p>
+                <p className="text-sm font-semibold text-slate-900 leading-tight">{user?.name || 'Student'}</p>
+                <p className="text-[11px] text-slate-500 leading-tight">{organization?.name || 'Student Portal'}</p>
               </div>
             </Button>
           </DropdownMenuTrigger>

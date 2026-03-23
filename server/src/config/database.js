@@ -4,6 +4,7 @@ let isConnected = false;
 
 // Disable command buffering so requests fail fast if DB is down
 mongoose.set('bufferCommands', false);
+mongoose.set('debug', true);
 
 async function attemptConnect(mongoUri, attempt) {
   console.log(`🔌 [DB] Connecting (attempt ${attempt})...`);

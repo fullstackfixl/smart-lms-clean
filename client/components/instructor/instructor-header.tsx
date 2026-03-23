@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '../../components/ui/dropdown-menu'
 import { useAuth } from "../../lib/auth-context"
+import { UserAvatar } from "../ui/UserAvatar"
  
 interface InstructorHeaderProps {
   userName?: string
@@ -20,7 +21,7 @@ interface InstructorHeaderProps {
  
 export function InstructorHeader({ userName = "Instructor", userEmail = "instructor@example.com" }: InstructorHeaderProps) {
   const router = useRouter()
-  const { logout, organization } = useAuth()
+  const { user, logout, organization } = useAuth()
 
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200 bg-white px-8">
@@ -46,24 +47,15 @@ export function InstructorHeader({ userName = "Instructor", userEmail = "instruc
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center space-x-2 px-2 hover:bg-gray-50">
-              {organization?.branding?.logo || (organization as any)?.logo_url ? (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={(organization?.branding?.logo || (organization as any)?.logo_url) as string}
-                    alt="Organization logo"
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-xs">
-                  {userName.charAt(0).toUpperCase()}
-                </div>
-              )}
+            <Button variant="ghost" className="flex items-center space-x-2 px-2 hover:bg-gray-50 h-auto py-1.5">
+              <UserAvatar 
+                name={user?.name || userName} 
+                src={user?.profilePicture} 
+                size="sm" 
+              />
               <div className="hidden text-left sm:block">
-                <p className="text-sm font-medium text-slate-900">{userName}</p>
-                <p className="text-xs text-slate-500">{organization?.name || 'Instructor'}</p>
+                <p className="text-sm font-semibold text-slate-900 leading-tight">{user?.name || userName}</p>
+                <p className="text-[11px] text-slate-500 leading-tight">{organization?.name || 'Instructor'}</p>
               </div>
             </Button>
           </DropdownMenuTrigger>

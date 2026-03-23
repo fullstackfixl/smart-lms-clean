@@ -53,13 +53,10 @@ class PlatformAdminsController {
         return res.error('User with this email already exists', 'Duplicate email', 400);
       }
 
-      // Hash password
-      const hashedPassword = await bcrypt.hash(password, 10);
-
       // Create platform admin
       const admin = new User({
         email: email.toLowerCase(),
-        password_hash: hashedPassword,
+        password_hash: password, // Hashed by model hook
         name,
         role: 'platform_admin',
         email_verified: true,

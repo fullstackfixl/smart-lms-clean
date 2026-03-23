@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Search, Bell, ChevronDown, Settings, LogOut, User, Menu } from "lucide-react"
 import { useAuth } from '../../lib/auth-context'
 import { cn } from "../../lib/utils"
+import { UserAvatar } from "../ui/UserAvatar"
  
 export function PlatformNavbar() {
   const router = useRouter()
@@ -43,9 +44,11 @@ export function PlatformNavbar() {
             onClick={() => setProfileOpen(!profileOpen)}
             className="flex items-center gap-3 p-1 rounded-md hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100 active:scale-95"
           >
-            <div className="w-9 h-9 rounded-md bg-[#3B82F6] flex items-center justify-center text-[10px] font-bold text-white transition-transform duration-300">
-               {user?.name?.slice(0, 2).toUpperCase() || "PA"}
-            </div>
+            <UserAvatar 
+              name={user?.name || "Admin"} 
+              src={user?.profilePicture} 
+              size="sm" 
+            />
             <div className="hidden sm:flex flex-col items-start pr-2">
               <span className="text-[13.5px] font-bold text-slate-900 leading-none tracking-tight">
                 {user?.name || "Admin"}

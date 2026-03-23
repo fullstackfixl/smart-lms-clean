@@ -1,45 +1,36 @@
 const mongoose = require('mongoose');
 
 const conversationSchema = new mongoose.Schema({
-  participants: [{
-    type: mongoose.Schema.Types.ObjectId,
+  participants: [{ 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'User',
-    required: true
+    required: true,
+    index: true
   }],
-  type: {
-    type: String,
-    enum: ['direct', 'group'],
-    default: 'direct'
-  },
-  name: {
-    type: String,
-    trim: true
-  },
-  organization_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Organization',
+  organizationId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Organization', 
     required: true,
     index: true
   },
-  last_message: {
-    content: String,
-    sender_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    timestamp: Date
+  lastMessage: { 
+    type: String,
+    default: ''
   },
-  unread_count: {
-    type: Map,
+  lastMessageAt: { 
+    type: Date,
+    default: Date.now
+  },
+  unreadCount: { 
+    type: Map, 
     of: Number,
-    default: {}
+    default: {} 
   }
 }, {
   timestamps: true
 });
 
-// Indexes
-conversationSchema.index({ participants: 1, organization_id: 1 });
-conversationSchema.index({ 'last_message.timestamp': -1 });
+// Ensure a conversation contains exactly 2 participants and is unique
+conversationSchema.index({ participants: 1, organizationId: 1 });
 
 module.exports = mongoose.model('Conversation', conversationSchema);

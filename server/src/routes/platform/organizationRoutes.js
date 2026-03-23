@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.get('/', organizationController.getOrganizations);
 router.post('/', requirePlatformAdmin, createOrganizationValidator, organizationController.createOrganization);
+router.post('/invite', organizationController.inviteOrganization);
 router.get('/:orgId', organizationController.getOrganizationDetails);
 router.get('/:orgId/instructors', organizationController.getOrganizationInstructors);
 router.get('/:orgId/students', organizationController.getOrganizationStudents);

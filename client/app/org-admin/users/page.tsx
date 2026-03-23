@@ -8,9 +8,10 @@ import {
   RefreshCw, Clock, CheckCircle2, Plus, Filter, MoreVertical,
   MessageSquare, Edit, ChevronRight
 } from "lucide-react"
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '../../../lib/auth-context'
 import { API_URL } from '../../../lib/config'
+import { messagingApi } from '../../../lib/api'
 import { toast } from "sonner"
 import { Badge } from "../../../components/ui/badge"
 import { Button } from "../../../components/ui/button"
@@ -40,6 +41,7 @@ type Tab = "users" | "invites"
 
 export default function UsersPage() {
   const { token } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const initialRole = searchParams.get('role') as RoleFilter || 'all'
   const initialTab = (searchParams.get('tab') || 'users') as Tab
@@ -132,6 +134,23 @@ export default function UsersPage() {
     const q = searchTerm.toLowerCase()
     return name.includes(q) || u.email.toLowerCase().includes(q)
   })
+
+  const handleStartChat = async (userId: string) => {
+    if (!token) return
+    const toastId = toast.loading("Initializing conversation...")
+    try {
+      const res = await messagingApi.startConversation(token, userId)
+      if (res.success && res.data) {
+        const conv = res.data as any
+        toast.success("Redirecting to chat...", { id: toastId })
+        router.push(`/org-admin/messages?conversation=${conv._id}`)
+      } else {
+        toast.error(res.error || "Failed to start conversation", { id: toastId })
+      }
+    } catch (err) {
+      toast.error("Network error", { id: toastId })
+    }
+  }
 
   if (loading && users.length === 0) {
     return (
@@ -230,7 +249,10 @@ export default function UsersPage() {
                           {(u.profile?.fullName || u.name || "U").substring(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[14px] font-bold text-slate-900 truncate leading-tight">
+                          <p 
+                            className="text-[14px] font-bold text-slate-900 truncate leading-tight hover:text-blue-600 cursor-pointer transition-colors"
+                            onClick={() => router.push(`/org-admin/users/${u._id}`)}
+                          >
                             {u.profile?.fullName || u.name || "User"}
                           </p>
                           <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">{u.email}</p>
@@ -276,7 +298,11 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-5 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-slate-400 transition-colors">
+                        <button 
+                          onClick={() => handleStartChat(u._id)}
+                          className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-slate-400 transition-colors"
+                          title="Send Message"
+                        >
                           <MessageSquare className="w-4 h-4" />
                         </button>
                         <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">

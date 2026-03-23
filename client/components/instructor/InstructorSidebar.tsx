@@ -27,7 +27,9 @@ import {
   Clock,
 } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
+import { useChatUnread } from '../../hooks/useChatUnread'
 import { cn } from '../../lib/utils'
+import { UserAvatar } from '../ui/UserAvatar'
  
 interface NavItem {
   label: string
@@ -63,6 +65,7 @@ export function InstructorSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
   const { user, logout, organization } = useAuth()
+  const { unreadCount } = useChatUnread()
  
   const SidebarContent = () => (
     <div className="flex h-full flex-col bg-white border-r border-gray-200">
@@ -129,6 +132,11 @@ export function InstructorSidebar() {
                         )}
                       />
                       <span className="flex-1">{item.label}</span>
+                      {item.label === 'Messages' && unreadCount > 0 && (
+                        <div className="mr-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </div>
+                      )}
                       <ChevronRight
                         className={cn(
                           "h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-all",
@@ -148,13 +156,25 @@ export function InstructorSidebar() {
       </nav>
 
       {/* Bottom Actions */}
-      <div className="border-t border-gray-100 p-4 space-y-1">
+      {/* User Profile Info */}
+      <div className="border-t border-gray-100 p-4">
+        <div className="flex items-center gap-3 mb-3 px-2">
+          <UserAvatar 
+            name={user?.name} 
+            src={user?.profilePicture} 
+            size="sm" 
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-900 truncate">{user?.name || 'Instructor'}</p>
+            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+          </div>
+        </div>
         <Link
-          href="/instructor/settings"
+          href="/instructor/profile"
           className="flex items-center rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-gray-50 hover:text-slate-900"
         >
           <Settings className="mr-3 h-4 w-4 stroke-[1.5]" />
-          Settings
+          My Profile
         </Link>
         <button
           onClick={logout}

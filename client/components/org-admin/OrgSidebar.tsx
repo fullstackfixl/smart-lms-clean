@@ -25,9 +25,12 @@ import {
   BookMarked,
   CheckCircle,
   ClipboardList,
+  MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../../lib/auth-context'
+import { useChatUnread } from '../../hooks/useChatUnread'
 import { cn } from '../../lib/utils'
+import { UserAvatar } from '../ui/UserAvatar'
 
 interface NavItem {
   label: string
@@ -54,6 +57,7 @@ const navItems: NavItem[] = [
   { section: 'management', label: 'Instructor Courses', href: '/org-admin/courses/pending', icon: BookOpen, description: 'Approve courses' },
   { section: 'management', label: 'Applications', href: '/org-admin/applications', icon: FileText, description: 'Pending apps' },
   { section: 'management', label: 'Analytics', href: '/org-admin/analytics', icon: BarChart3, description: 'Reports' },
+  { section: 'management', label: 'Messages', href: '/org-admin/messages', icon: MessageSquare, description: 'Communicate' },
   { section: 'management', label: 'Notifications', href: '/org-admin/notifications', icon: Bell, description: 'Updates' },
 
   { section: 'settings', label: 'Settings', href: '/org-admin/settings', icon: Settings, description: 'Configuration' },
@@ -63,6 +67,7 @@ export function OrgSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
   const { user, logout, organization } = useAuth()
+  const { unreadCount } = useChatUnread()
 
   const orgType = organization?.type?.toUpperCase() || 'COLLEGE'
   const isCollege = orgType === 'COLLEGE' || orgType === 'UNIVERSITY'
@@ -148,6 +153,11 @@ export function OrgSidebar() {
                           </p>
                         )}
                       </div>
+                      {item.label === 'Messages' && unreadCount > 0 && (
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </div>
+                      )}
                       {isActive && (
                         <ChevronRight className="h-4 w-4 text-blue-600" />
                       )}
@@ -163,9 +173,11 @@ export function OrgSidebar() {
       {/* User Profile & Logout */}
       <div className="border-t border-gray-100 p-4">
         <div className="flex items-center gap-3 mb-3 px-2">
-          <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-            {user?.name?.charAt(0).toUpperCase() || 'A'}
-          </div>
+          <UserAvatar 
+            name={user?.name} 
+            src={user?.profilePicture} 
+            size="sm" 
+          />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">{user?.name || 'Admin'}</p>
             <p className="text-xs text-slate-500 truncate">{user?.email}</p>

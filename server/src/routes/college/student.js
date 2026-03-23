@@ -7,6 +7,7 @@ const { verifyJWT, checkRole, checkOrganization } = require('../../middleware/co
 router.use(verifyJWT, checkOrganization, checkRole(['student']));
 
 router.get('/dashboard', studentController.getDashboard);
+router.get('/courses', studentController.getCourses);
 router.get('/courses/:id', studentController.getCourse);
 router.post('/live-class/:id/join', studentController.joinLiveClass);
 router.post('/quiz/:id/submit', studentController.submitQuiz);

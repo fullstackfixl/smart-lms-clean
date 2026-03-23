@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { 
   Users, 
@@ -35,6 +35,7 @@ import { API_URL, getToken } from '../../../lib/config'
 
 export default function UsersPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const organizationId = searchParams.get('organizationId')
   
   const [activeTab, setActiveTab] = useState('student')
@@ -154,7 +155,10 @@ export default function UsersPage() {
               <SimpleTableRow key={user._id}>
                 <SimpleTableCell>
                   <div>
-                    <div className="font-bold text-blue-600 hover:underline cursor-pointer flex items-center">
+                    <div 
+                      className="font-bold text-blue-600 hover:underline cursor-pointer flex items-center"
+                      onClick={() => router.push(`/platform/users/${user._id}`)}
+                    >
                       {user.name}
                       {user.email_verified && <Badge className="ml-2 bg-blue-50 text-blue-500 border-none rounded-full px-1.5 py-0">✓</Badge>}
                     </div>
@@ -201,7 +205,10 @@ export default function UsersPage() {
                       >
                         <Key className="mr-2 h-4 w-4" /> Reset Password
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2">
+                      <DropdownMenuItem 
+                        onClick={() => router.push(`/platform/users/${user._id}`)}
+                        className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2"
+                      >
                         <ArrowUpRight className="mr-2 h-4 w-4" /> View Full Profile
                       </DropdownMenuItem>
                     </DropdownMenuContent>

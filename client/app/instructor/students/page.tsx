@@ -20,7 +20,9 @@ import {
   MoreVertical,
   ChevronLeft,
   BookOpen,
-  RefreshCw
+  RefreshCw,
+  MessageSquare,
+  Eye,
 } from "lucide-react"
 import { Button } from '../../../components/ui/button'
 import {
@@ -33,7 +35,8 @@ import {
 import { useAuth } from '../../../lib/auth-context'
 import { toast } from "sonner"
 import { cn } from "../../../lib/utils"
-import { instructorApi, collegeApi } from '../../../lib/api'
+import { instructorApi, collegeApi, messagingApi } from '../../../lib/api'
+import { UserAvatar } from "../../../components/ui/UserAvatar"
 
 interface Course {
   _id: string
@@ -139,6 +142,23 @@ function StudentsContent() {
       toast.error("Failed to load students")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleStartChat = async (studentUserId: string) => {
+    if (!token) return
+    const toastId = toast.loading("Opening chat...")
+    try {
+      const res = await messagingApi.startConversation(token, studentUserId)
+      if (res.success && res.data) {
+        const conv = res.data as any
+        toast.success("Redirecting...", { id: toastId })
+        router.push(`/instructor/messages?conversation=${conv._id}`)
+      } else {
+        toast.error(res.error || "Failed to start chat", { id: toastId })
+      }
+    } catch (err) {
+      toast.error("Network error", { id: toastId })
     }
   }
 
@@ -255,11 +275,18 @@ function StudentsContent() {
                 <tr key={s._id} className="hover:bg-blue-50/50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
-                        {s.student.name.charAt(0).toUpperCase()}
-                      </div>
+                      <UserAvatar 
+                        name={s.student.name} 
+                        src={(s.student as any).profilePicture || s.student.profile?.avatar} 
+                        size="md" 
+                      />
                       <div>
-                        <p className="font-medium text-slate-900">{s.student.name}</p>
+                        <p 
+                          className="font-medium text-slate-900 hover:text-blue-600 cursor-pointer transition-colors"
+                          onClick={() => router.push(`/instructor/students/${s.student._id}`)}
+                        >
+                          {s.student.name}
+                        </p>
                         <p className="text-sm text-slate-500">{s.student.email}</p>
                       </div>
                     </div>
@@ -286,9 +313,26 @@ function StudentsContent() {
                     {((s.progress.totalTimeSpent || 0) / 3600).toFixed(1)} hrs
                   </td>
                   <td className="px-4 py-4 text-right">
-                    <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
-                      <Mail className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-slate-400 hover:text-blue-600"
+                        onClick={() => router.push(`/instructor/students/${s.student._id}`)}
+                        title="View Profile"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-blue-600 hover:bg-blue-50"
+                        onClick={() => handleStartChat(s.student._id)}
+                        title="Message Student"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))

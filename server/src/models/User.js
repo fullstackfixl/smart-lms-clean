@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { log } = require('handlebars');
 
 const userSchema = new mongoose.Schema({
   organization_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Organization',
+    index: true,
     required: function () {
       return this.role !== 'platform_admin' && this.role !== 'platform_staff' && this.role !== 'platformAdmin' && this.role !== 'student';
     }
@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
+    unique: true,
     lowercase: true,
     trim: true
   },
@@ -25,6 +26,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false,
     select: false
+  },
+  profilePicture: {
+    type: String, // base64 encoded image string
+    default: null
   },
   name: {
     type: String,
@@ -181,7 +186,8 @@ userSchema.index({ email: 1, organization_id: 1 }, {
   partialFilterExpression: { organization_id: { $ne: null } }
 });
 userSchema.index({ role: 1 });
-userSchema.index({ organization_id: 1 });
+userSchema.index({ organization_id: 1, role: 1, status: 1 });
+userSchema.index({ created_at: -1 });
 userSchema.index({ is_deleted: 1 });
 userSchema.index({ isActive: 1 });
 
@@ -215,24 +221,24 @@ userSchema.methods.restore = function () {
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password_hash')) return next();
+  // Only run if password_hash was explicitly modified
+  if (!this.isModified('password_hash')) {
+    // console.log(`[User Model] password_hash not modified for user: ${this.email}`);
+    return next();
+  }
 
   try {
-    // Check if password is already hashed or if it's empty/null
-    if (!this.password_hash) {
+    const val = this.password_hash;
+    if (bcryptRegex.test(val)) {
       return next();
     }
 
-    if (this.password_hash.match(/^\$2[aby]\$/)) {
-      // Password is already hashed, skip hashing
-      return next();
-    }
-
-    // Hash the password
-    const salt = await bcrypt.genSalt(10);
-    this.password_hash = await bcrypt.hash(this.password_hash, salt);
+    // Plain text password — hash it
+    const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
+    this.password_hash = await bcrypt.hash(val, saltRounds);
     next();
   } catch (error) {
+    console.error(`[User Model] Hashing error for user ${this.email}:`, error);
     next(error);
   }
 });
@@ -252,6 +258,7 @@ userSchema.methods.toPublicJSON = function () {
     email: this.email,
     name: this.name,
     role: this.role,
+    profilePicture: this.profilePicture,
     organization_id: this.organization_id?._id || this.organization_id,
     organization_code: this.organization_code,
     profile: this.profile,

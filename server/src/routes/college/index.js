@@ -17,4 +17,8 @@ router.use('/instructor/attendance', instructorAttendanceRoutes);
 router.use('/student/attendance', studentAttendanceRoutes);
 router.use('/admin/attendance', adminAttendanceRoutes);
 
+// Messaging routes
+const messagesRoutes = require('./messages');
+router.use('/messages', messagesRoutes);
+
 module.exports = router;

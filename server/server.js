@@ -1,5 +1,5 @@
 const http = require('http');
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 console.log('Starting Smart LMS Server...');
 console.log('NODE_ENV:', process.env.NODE_ENV);

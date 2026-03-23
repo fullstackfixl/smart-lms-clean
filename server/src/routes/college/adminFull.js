@@ -174,53 +174,79 @@ router.delete('/departments/:id', async (req, res) => {
 router.get('/batches', async (req, res) => {
   try {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const { departmentId, year, semester } = req.query;
+    const { departmentId, year, semester, page = 1, limit = 50 } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const pageSize = parseInt(limit);
 
     let query = { organizationId: orgId, isActive: true };
     if (departmentId) query.departmentId = departmentId;
     if (year) query.year = parseInt(year);
     if (semester) query.semester = parseInt(semester);
 
+    const total = await Batch.countDocuments(query);
+
     const batches = await Batch.find(query)
       .populate('departmentId', 'name code')
       .populate('programId', 'name code')
       .populate('students', 'profile.firstName profile.lastName email')
-      .sort({ year: -1, semester: 1 });
+      .sort({ year: -1, semester: 1 })
+      .skip(skip)
+      .limit(pageSize);
     
-    // Aggregate instructors from InstructorAssignment for each batch
-    const { InstructorAssignment, User } = require('../../models');
-    const batchesWithCounts = await Promise.all(
-      batches.map(async (batch) => {
-        const batchObj = batch.toObject();
-        
-        // Get unique instructors from InstructorAssignment collection
-        const instructorAssignments = await InstructorAssignment.find({
-          organizationId: orgId,
-          batchId: batch._id,
-          isActive: true
-        }).populate('instructorId', 'profile.firstName profile.lastName email').lean();
-        
-        // Extract unique instructors
-        const instructorsMap = new Map();
-        instructorAssignments.forEach(assignment => {
-          if (assignment.instructorId) {
-            const instId = assignment.instructorId._id.toString();
-            if (!instructorsMap.has(instId)) {
-              instructorsMap.set(instId, assignment.instructorId);
-            }
-          }
-        });
-        
-        batchObj.instructorIds = Array.from(instructorsMap.values());
-        batchObj.instructorCount = batchObj.instructorIds.length;
-        batchObj.studentCount = batchObj.students?.length || 0;
-        
-        return batchObj;
-      })
-    );
+    // Bulk fetch instructor assignments for all Batches in the list
+    const { InstructorAssignment } = require('../../models');
+    const batchIds = batches.map(b => b._id);
+    
+    const allAssignments = await InstructorAssignment.find({
+      organizationId: orgId,
+      batchId: { $in: batchIds },
+      isActive: true
+    }).populate('instructorId', 'profile.firstName profile.lastName email').lean();
+    
+    // Group assignments by batchId
+    const assignmentsByBatch = {};
+    allAssignments.forEach(assignment => {
+      if (assignment.batchId) {
+        const bId = assignment.batchId.toString();
+        if (!assignmentsByBatch[bId]) assignmentsByBatch[bId] = [];
+        assignmentsByBatch[bId].push(assignment);
+      }
+    });
 
-    res.success({ batches: batchesWithCounts }, 'Batches retrieved');
+    const batchesWithCounts = batches.map((batch) => {
+      const batchObj = batch.toObject();
+      const instructorAssignments = assignmentsByBatch[batch._id.toString()] || [];
+      
+      // Extract unique instructors
+      const instructorsMap = new Map();
+      instructorAssignments.forEach(assignment => {
+        if (assignment.instructorId) {
+          const instId = assignment.instructorId._id.toString();
+          if (!instructorsMap.has(instId)) {
+            instructorsMap.set(instId, assignment.instructorId);
+          }
+        }
+      });
+      
+      batchObj.instructorIds = Array.from(instructorsMap.values());
+      batchObj.instructorCount = batchObj.instructorIds.length;
+      batchObj.studentCount = batchObj.students?.length || 0;
+      
+      return batchObj;
+    });
+
+    res.success({ 
+      batches: batchesWithCounts,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: pageSize,
+        pages: Math.ceil(total / pageSize)
+      }
+    }, 'Batches retrieved');
   } catch (error) {
+    console.error('List batches error:', error);
     res.error(error.message, 'Failed to load batches', 500);
   }
 });
@@ -350,25 +376,47 @@ router.post('/batches/assign-students', async (req, res) => {
 router.get('/students', async (req, res) => {
   try {
     const orgId = req.user.organization_id?._id || req.user.organization_id;
-    const { programId, batchId, status, search } = req.query;
+    const { programId, batchId, status, search, page = 1, limit = 50 } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const pageSize = parseInt(limit);
 
     // Build query for students
     let query = { organization_id: orgId, role: 'student', isActive: true };
     
     if (status) query.status = status;
+    
+    // If filtering by program or batch, find affected user IDs first
+    if (programId || batchId) {
+      const filterCriteria = { organizationId: orgId };
+      if (programId) filterCriteria.programId = programId;
+      if (batchId) filterCriteria.batchId = batchId;
+      
+      const collegeStudentMatches = await CollegeStudent.find(filterCriteria).select('userId').lean();
+      const matchedUserIds = collegeStudentMatches.map(m => m.userId);
+      query._id = { $in: matchedUserIds };
+    }
+
     if (search) {
-      query.$or = [
-        { 'profile.firstName': { $regex: search, $options: 'i' } },
-        { 'profile.lastName': { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+      query.$and = [
+        { $or: [
+          { 'profile.firstName': { $regex: search, $options: 'i' } },
+          { 'profile.lastName': { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } }
+        ]}
       ];
     }
 
-    // Get students from User collection
-    let students = await User.find(query)
-      .select('_id email status profile createdAt organization_id')
-      .populate('profile.department', 'name code')
-      .sort({ 'profile.firstName': 1 });
+    // Get total count for pagination
+    const total = await User.countDocuments(query);
+
+    // Get students from User collection with pagination
+    const students = await User.find(query)
+      .select('_id email status profile created_at organization_id')
+      .sort({ 'profile.firstName': 1 })
+      .skip(skip)
+      .limit(pageSize)
+      .lean();
 
     // Enrich with CollegeStudent profile data
     const studentIds = students.map(s => s._id);
@@ -382,48 +430,65 @@ router.get('/students', async (req, res) => {
       profileMap[cp.userId.toString()] = cp;
     });
 
-    // Format students with combined data and populate references
-    let formattedStudents = await Promise.all(
-      students.map(async (s) => {
-        const profile = profileMap[s._id.toString()] || {};
-        
-        // Get program, batch, and department details
-        const [program, batch, department] = await Promise.all([
-          profile.programId ? AcademicProgram.findById(profile.programId).select('name code').lean() : null,
-          profile.batchId ? Batch.findById(profile.batchId).select('name code').lean() : null,
-          profile.departmentId ? Department.findById(profile.departmentId).select('name code').lean() : 
-            (s.profile?.department ? Department.findById(s.profile.department).select('name code').lean() : null)
-        ]);
-        
-        return {
-          _id: s._id,
-          firstName: s.profile?.firstName || profile.firstName || '',
-          lastName: s.profile?.lastName || profile.lastName || '',
-          email: s.email,
-          rollNumber: profile.rollNumber || s.profile?.rollNumber || '',
-          departmentId: department || s.profile?.department || null,
-          programId: program || null,
-          batchId: batch || null,
-          semester: profile.semester || s.profile?.semester || null,
-          status: s.status || 'active',
-          createdAt: s.createdAt
-        };
-      })
-    );
+    // Collect all IDs for bulk fetching to avoid N+1
+    const academicProgramIds = new Set();
+    const batchIds = new Set();
+    const subDepartmentIds = new Set();
 
-    // Apply program/batch filters if specified
-    if (programId) {
-      formattedStudents = formattedStudents.filter(s => 
-        s.programId?.toString() === programId
-      );
-    }
-    if (batchId) {
-      formattedStudents = formattedStudents.filter(s => 
-        s.batchId?.toString() === batchId
-      );
-    }
+    collegeProfiles.forEach(cp => {
+      if (cp.programId) academicProgramIds.add(cp.programId.toString());
+      if (cp.batchId) batchIds.add(cp.batchId.toString());
+      if (cp.departmentId) subDepartmentIds.add(cp.departmentId.toString());
+    });
 
-    res.success({ students: formattedStudents }, 'Students retrieved successfully');
+    students.forEach(s => {
+      if (s.profile?.department) subDepartmentIds.add(s.profile.department.toString());
+    });
+
+    // Bulk fetch all references in parallel
+    const [programs, batches, departments] = await Promise.all([
+      AcademicProgram.find({ _id: { $in: Array.from(academicProgramIds) } }).select('name code').lean(),
+      Batch.find({ _id: { $in: Array.from(batchIds) } }).select('name code').lean(),
+      Department.find({ _id: { $in: Array.from(subDepartmentIds) } }).select('name code').lean()
+    ]);
+
+    const pMap = Object.fromEntries(programs.map(p => [p._id.toString(), p]));
+    const bMap = Object.fromEntries(batches.map(b => [b._id.toString(), b]));
+    const dMap = Object.fromEntries(departments.map(d => [d._id.toString(), d]));
+
+    // Format students with combined data
+    const formattedStudents = students.map((s) => {
+      const profile = profileMap[s._id.toString()] || {};
+      
+      const program = profile.programId ? pMap[profile.programId.toString()] : null;
+      const batch = profile.batchId ? bMap[profile.batchId.toString()] : null;
+      const department = profile.departmentId ? dMap[profile.departmentId.toString()] : 
+        (s.profile?.department ? dMap[s.profile.department.toString()] : null);
+      
+      return {
+        _id: s._id,
+        firstName: s.profile?.firstName || profile.firstName || '',
+        lastName: s.profile?.lastName || profile.lastName || '',
+        email: s.email,
+        rollNumber: profile.rollNumber || s.profile?.rollNumber || '',
+        departmentId: department ? { _id: department._id, name: department.name, code: department.code } : null,
+        programId: program ? { _id: program._id, name: program.name, code: program.code } : null,
+        batchId: batch ? { _id: batch._id, name: batch.name, code: batch.code } : null,
+        semester: s.profile?.semester || profile.semester || null,
+        status: s.status,
+        createdAt: s.created_at
+      };
+    });
+
+    res.success({ 
+      students: formattedStudents,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: pageSize,
+        pages: Math.ceil(total / pageSize)
+      }
+    }, 'Students retrieved successfully');
   } catch (error) {
     console.error('List students error:', error);
     res.error(error.message, 'Failed to load students', 500);
@@ -506,13 +571,15 @@ router.post('/instructors', async (req, res) => {
       return res.error('Missing required fields', 'firstName, lastName, email are required', 400);
     }
 
+    const rawPassword = password || require('crypto').randomBytes(12).toString('base64url');
+    
     const instructor = new User({
       email,
       name: `${firstName} ${lastName}`.trim(),
       role: 'instructor',
       organization_id: orgId,
       organizationType: req.user.organization_type || 'college',
-      password_hash: password || 'demo12345',
+      password_hash: rawPassword, // Hashed by model hook
       email_verified: true,
       profile: {
         firstName,
@@ -1483,6 +1550,28 @@ router.patch('/courses/:id/approve', async (req, res) => {
     res.success({ course }, `Course ${status || 'published'} successfully`);
   } catch (error) {
     res.error(error.message, 'Failed to update course status', 500);
+  }
+});
+
+// GET /api/college/admin/users
+router.get('/users', async (req, res) => {
+  try {
+    const { organization_id } = req.user;
+    
+    const User = require('../../models/User');
+    const users = await User.find({
+      organization_id: typeof organization_id === 'object' && organization_id._id ? organization_id._id : organization_id,
+      role: { $in: ['student', 'instructor', 'org_admin', 'organization_admin'] },
+      status: 'active'
+    }).select('full_name first_name last_name email role profileImageUrl');
+
+    res.status(200).json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve users' });
   }
 });
 

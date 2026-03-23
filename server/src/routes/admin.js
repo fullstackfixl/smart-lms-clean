@@ -442,11 +442,10 @@ router.post('/users', async (req, res) => {
       return res.error('Email already registered', 'Validation failed', 400);
     }
 
-    // Create user
     const newUser = new User({
       email: email.toLowerCase(),
       name: fullName, // Required top-level field
-      password_hash: password, // Will be hashed by pre-save hook
+      password_hash: password, // Hashed by model hook
       profile: { fullName, phone },
       role,
       organization_id: organizationId,

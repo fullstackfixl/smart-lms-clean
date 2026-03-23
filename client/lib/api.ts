@@ -277,6 +277,8 @@ export const collegeApi = {
     apiRequest('/api/college/student/courses', { token }),
   getStudentCourse: (token: string, id: string) =>
     apiRequest(`/api/college/student/courses/${id}`, { token }),
+  browseCourses: (token: string, params?: string) =>
+    apiRequest(`/api/college/student/browse-courses${params ? `?${params}` : ''}`, { token }),
   enrollInCourse: (token: string, courseId: string) =>
     apiRequest(`/api/college/student/courses/${courseId}/enroll`, { method: 'POST', token }),
 
@@ -787,6 +789,8 @@ export const platformApi = {
       token,
       body: { isActive }
     }),
+  getUserDetails: (token: string, id: string) =>
+    apiRequest(`/api/platform/users/${id}`, { token }),
 
   suspendCourse: (token: string, id: string) =>
     apiRequest(`/api/platform/courses/${id}/suspend`, { method: "PATCH", token }),
@@ -1111,3 +1115,35 @@ export const adminApi = {
   getModules: (token: string) =>
     apiRequest("/api/admin/modules", { token }),
 }
+
+// Messaging APIs
+export const messagingApi = {
+  getUsers: (token: string, role: 'admin' | 'instructor' | 'student') =>
+    apiRequest(`/api/college/messages/users`, { token }),
+  
+  listConversations: (token: string) =>
+    apiRequest("/api/college/messages", { token }),
+  
+  getConversationMessages: (token: string, conversationId: string) =>
+    apiRequest(`/api/college/messages/${conversationId}`, { token }),
+    
+  getUnreadCount: (token: string) =>
+    apiRequest("/api/college/messages/unread-count", { token }),
+    
+  startConversation: (token: string, receiverId: string) =>
+    apiRequest("/api/college/messages/start", {
+      method: "POST",
+      token,
+      body: { receiverId }
+    }),
+    
+  sendMessage: (token: string, conversationId: string, text: string) =>
+    apiRequest("/api/college/messages/send", {
+      method: "POST",
+      token,
+      body: { conversationId, text }
+    }),
+
+  getUserProfile: (token: string, userId: string) =>
+    apiRequest(`/api/college/messages/profile/${userId}`, { token }),
+};

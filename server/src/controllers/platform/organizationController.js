@@ -17,6 +17,37 @@ exports.getOrganizations = async (req, res) => {
   }
 };
 
+exports.inviteOrganization = async (req, res) => {
+  try {
+    const { orgName, orgType, adminName, adminEmail } = req.body || {};
+    if (!orgName || !orgType || !adminName || !adminEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'orgName, orgType, adminName and adminEmail are required',
+        errorCode: 'ORG_INVITE_VALIDATION'
+      });
+    }
+    const payload = {
+      name: orgName,
+      email: adminEmail,
+      type: orgType,
+      plan: 'basic'
+    };
+    const organization = await organizationService.createOrganization(payload, req.user?._id);
+    return res.status(201).json({
+      success: true,
+      data: organization,
+      message: 'Institution invitation dispatched'
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_INVITE_ERROR'
+    });
+  }
+};
+
 exports.createOrganization = async (req, res) => {
   try {
     const organization = await organizationService.createOrganization(req.body, req.user._id);

@@ -36,35 +36,47 @@ class AuthService {
       normalizeRole = null
     } = options;
 
+    console.log(`🔍 [AuthService] Login attempt for ${email}`);
+    
+    console.log(`🔍 [AuthService] Finding user...`);
     const user = await User.findOne({ email: email.toLowerCase() })
       .select('+password_hash +mfa_secret')
       .populate('organization_id');
 
     if (!user) {
+      console.log(`❌ [AuthService] User not found`);
       throw new AuthenticationError('Invalid email or password');
     }
+    console.log(`✅ [AuthService] User found: ${user._id}`);
 
+    console.log(`🔍 [AuthService] Comparing password...`);
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      console.log(`❌ [AuthService] Password mismatch`);
       throw new AuthenticationError('Invalid email or password');
     }
+    console.log(`✅ [AuthService] Password matched`);
 
     if (user.status !== 'active') {
+      console.log(`❌ [AuthService] Account ${user.status}`);
       throw new AuthenticationError(`Account is ${user.status}. Please contact support.`);
     }
 
     if (!user.email_verified) {
+      console.log(`❌ [AuthService] Email not verified`);
       throw new AuthenticationError('Email not verified. Please complete setup.');
     }
 
     if (user.mfa_enabled) {
       if (!mfaCode) {
+        console.log(`❌ [AuthService] MFA required`);
         throw new AuthenticationError('MFA code required');
       }
     }
 
     if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
       if (!allowedRoles.includes(user.role)) {
+        console.log(`❌ [AuthService] Role mismatch: ${user.role}`);
         const err = new AuthenticationError('Access denied');
         err.statusCode = 403;
         throw err;
@@ -73,6 +85,7 @@ class AuthService {
 
     if (requireOrganization) {
       if (!user.organization_id) {
+        console.log(`❌ [AuthService] Org required but missing`);
         const err = new AuthenticationError('Access denied');
         err.statusCode = 403;
         throw err;
@@ -81,7 +94,7 @@ class AuthService {
 
     // Check organization status for org-bound roles
     if (user.organization_id) {
-      const org = await Organization.findById(user.organization_id);
+      const org = user.organization_id;
       if (!org || org.status !== 'active') {
         throw new AuthenticationError('Organization is suspended or inactive. Please contact your administrator.');
       }
@@ -90,6 +103,7 @@ class AuthService {
     const normalizedRole = normalizeRole || user.role;
     const orgId = user.organization_id?._id || user.organization_id || null;
 
+    console.log(`🔍 [AuthService] Generating token...`);
     const token = jwtUtils.generateToken({
       userId: user._id,
       user_id: user._id,
@@ -98,6 +112,7 @@ class AuthService {
       organization_id: orgId
     });
 
+    console.log(`✅ [AuthService] Login SUCCESS`);
     return {
       token,
       role: normalizedRole,
@@ -186,8 +201,8 @@ class AuthService {
    * Submit Organization Application
    */
   async applyOrganization(data) {
-    const { 
-      organizationName, 
+    const {
+      organizationName,
       organizationType,
       contactPersonName,
       contactEmail,
@@ -348,9 +363,9 @@ class AuthService {
       throw new ValidationError('Organization already created');
     }
 
-    // Hash password securely
-    const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
-    const passwordHash = await bcrypt.hash(password, saltRounds);
+    // The User model's pre-save hook will handle secure hashing
+    // const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
+    // const passwordHash = await bcrypt.hash(password, saltRounds);
 
     const orgType = (application.organization_type || 'school').toUpperCase();
     const contactEmail = application.contact_email.toLowerCase();
@@ -373,7 +388,7 @@ class AuthService {
     const admin = new User({
       name: name,
       email: contactEmail,
-      password_hash: passwordHash,
+      password_hash: password, // Hashed by model hook
       role: 'org_admin',
       organization_id: organization._id,
       organization_code: organization.code || organization.organization_code,
@@ -441,14 +456,10 @@ class AuthService {
       throw new ValidationError('Email already registered in this organization');
     }
 
-    // Hash password securely
-    const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-
     const user = new User({
       name,
       email: email.toLowerCase(),
-      password_hash: passwordHash,
+      password_hash: password, // Hashed by model hook
       role,
       organization_id: org._id,
       status: 'active',
@@ -558,10 +569,6 @@ class AuthService {
 
     // Check if user already exists
     let user = await User.findOne({ email: invite.email, organization_id: invite.organization_id });
-    
-    // Hash password securely
-    const saltRounds = Math.max(parseInt(process.env.BCRYPT_SALT_ROUNDS || '10', 10), 10);
-    const passwordHash = await bcrypt.hash(password, saltRounds);
 
     if (user) {
       if (user.status !== 'pending') {
@@ -569,7 +576,7 @@ class AuthService {
       }
       // Update the pending user (automated provisioning flow created this user)
       user.name = name;
-      user.password_hash = passwordHash;
+      user.password_hash = password; // Hashed by model hook
       user.status = 'active';
       user.email_verified = true;
       // Ensure organization_code is set
@@ -583,7 +590,7 @@ class AuthService {
       user = new User({
         name,
         email: invite.email,
-        password_hash: passwordHash,
+        password_hash: password, // Hashed by model hook
         role: invite.role,
         organization_id: invite.organization_id,
         organization_code: organization?.code || organization?.organization_code || invite.organization_code,
@@ -597,7 +604,7 @@ class AuthService {
     invite.used = true;
     await invite.save();
 
-    return user.toPublicJSON();
+    return { user: user.toPublicJSON() };
   }
 
   async verifyInviteToken(token) {
@@ -665,14 +672,14 @@ class AuthService {
     const user = await User.findOne({
       resetPasswordToken,
       resetPasswordExpires: { $gt: Date.now() }
-    }).select('+resetPasswordToken +resetPasswordExpires');
+    }).select('+resetPasswordToken +resetPasswordExpires +password_hash');
 
     if (!user) {
       throw new ValidationError('Invalid or expired password reset token');
     }
 
-    // Set new password
-    user.password_hash = password; // Will be hashed by pre-save hook
+    // The User model's pre-save hook will handle hashing
+    user.password_hash = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();

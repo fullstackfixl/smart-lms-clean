@@ -211,8 +211,13 @@ organizationSchema.pre('save', async function (next) {
 
 // Query middleware to exclude soft-deleted documents
 organizationSchema.pre(/^find/, function (next) {
-  if (!this.getOptions().includeDeleted) {
-    this.where({ is_deleted: { $ne: true } });
+  try {
+    const options = this.getOptions ? this.getOptions() : (this.options || {});
+    if (!options.includeDeleted) {
+      this.where({ is_deleted: { $ne: true } });
+    }
+  } catch (err) {
+    console.error('[Organization Model] find hook error:', err);
   }
   next();
 });

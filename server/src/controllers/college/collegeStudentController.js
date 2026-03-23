@@ -51,6 +51,34 @@ exports.getDashboard = async (req, res) => {
   }
 };
 
+exports.getCourses = async (req, res) => {
+  try {
+    const organizationId = req.collegeOrganizationId || normalizeOrgId(req.user);
+
+    const enrollments = await Enrollment.find({ 
+      organization_id: organizationId, 
+      student_id: req.user._id, 
+      status: { $ne: 'cancelled' } 
+    })
+      .populate('course_id', 'title description instructor_id cover_image category')
+      .lean();
+
+    const courses = enrollments.map(e => ({
+      enrollmentId: e._id,
+      course: e.course_id,
+      progress: e.progress?.completionPercentage || 0,
+      status: e.status
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: { courses }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getCourse = async (req, res) => {
   try {
     const organizationId = req.collegeOrganizationId || normalizeOrgId(req.user);

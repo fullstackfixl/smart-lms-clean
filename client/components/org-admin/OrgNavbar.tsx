@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation"
 import { useAuth } from '../../lib/auth-context'
 import { ChevronDown } from "lucide-react"
 import { cn } from "../../lib/utils"
+import { UserAvatar } from "../ui/UserAvatar"
+import { Button } from "../ui/button"
  
 export function OrgNavbar() {
-  const { user, logout } = useAuth()
+  const { user, logout, organization } = useAuth()
   const router = useRouter()
   const [profileOpen, setProfileOpen] = useState(false)
  
@@ -35,10 +37,18 @@ export function OrgNavbar() {
            <div className="relative">
               <button 
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2 group"
+                className="flex items-center gap-3 group p-1.5 hover:bg-gray-50 rounded-lg transition-all"
               >
-                 <span className="text-[13px] font-bold text-slate-700 group-hover:text-slate-900">Admin</span>
-                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600" />
+                 <UserAvatar 
+                   name={user?.name || "Admin"} 
+                   src={user?.profilePicture}
+                   size="sm"
+                 />
+                 <div className="hidden text-left sm:block">
+                    <p className="text-[13px] font-bold text-slate-700 leading-tight group-hover:text-slate-900">{user?.name || "Admin"}</p>
+                    <p className="text-[11px] text-slate-500 leading-tight capitalize">{organization?.name || "LMS Admin"}</p>
+                 </div>
+                 <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition-transform", profileOpen && "rotate-180")} />
               </button>
  
               {profileOpen && (

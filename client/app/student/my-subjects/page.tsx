@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { BookOpen, Search, Filter, Clock, Calendar, ChevronRight, FileText, PlayCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { BookOpen, Search, Filter, Clock, Calendar, ChevronRight, FileText, PlayCircle, MessageSquare } from "lucide-react"
 import { useAuth } from "../../../lib/auth-context"
-import { collegeApi } from "../../../lib/api"
+import { collegeApi, messagingApi } from "../../../lib/api"
 import { Button } from "../../../components/ui/button"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -27,6 +28,7 @@ interface Subject {
 
 export default function StudentMySubjectsPage() {
   const { user, token } = useAuth()
+  const router = useRouter()
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,6 +39,23 @@ export default function StudentMySubjectsPage() {
   const studentBatchId = user?.profile?.batch
   const studentProgramId = user?.profile?.program_id || user?.profile?.program
   const studentSemester = user?.profile?.current_semester || user?.profile?.semester || 1
+
+  const handleStartChat = async (instructorId: string) => {
+    if (!token) return
+    const toastId = toast.loading("Opening chat with instructor...")
+    try {
+      const res = await messagingApi.startConversation(token, instructorId)
+      if (res.success && res.data) {
+        const conv = res.data as any
+        toast.success("Redirecting...", { id: toastId })
+        router.push(`/student/messages?conversation=${conv._id}`)
+      } else {
+        toast.error(res.error || "Failed to start chat", { id: toastId })
+      }
+    } catch (err) {
+      toast.error("Network error", { id: toastId })
+    }
+  }
 
   useEffect(() => {
     loadSubjects()
@@ -233,6 +252,17 @@ export default function StudentMySubjectsPage() {
                           Join
                         </Button>
                       </Link>
+                      {subject.instructor && (
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          className="border-gray-200 text-blue-600 hover:bg-blue-50"
+                          onClick={() => handleStartChat((subject.instructor as any)._id || subject.instructor)}
+                          title="Message Instructor"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </motion.div>
                 ))}

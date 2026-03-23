@@ -13,14 +13,16 @@ import {
   CheckCircle,
   XCircle,
   BookOpen,
+  MessageSquare,
 } from "lucide-react"
 
 import { useAuth } from "../../../lib/auth-context"
-import { collegeApi } from "../../../lib/api"
+import { collegeApi, messagingApi } from "../../../lib/api"
 import { API_URL } from "../../../lib/config"
 import { Button } from "../../../components/ui/button"
 import { toast } from "sonner"
 import { cn } from "../../../lib/utils"
+import { UserAvatar } from "../../../components/ui/UserAvatar"
 
 interface Learner {
   _id: string
@@ -70,6 +72,11 @@ export default function LearnersPage() {
   useEffect(() => {
     if (token) {
       loadLearners()
+    }
+  }, [token, filters, searchTerm])
+
+  useEffect(() => {
+    if (token) {
       loadFilterData()
     }
   }, [token])
@@ -77,7 +84,14 @@ export default function LearnersPage() {
   async function loadLearners() {
     setLoading(true)
     try {
-      const response = await collegeApi.listStudents(token!)
+      const queryParams = new URLSearchParams()
+      if (filters.program) queryParams.append("programId", filters.program)
+      if (filters.batch) queryParams.append("batchId", filters.batch)
+      if (filters.status) queryParams.append("status", filters.status)
+      if (searchTerm) queryParams.append("search", searchTerm)
+      queryParams.append("limit", "100") // Increase limit for better UX without full pagination UI yet
+
+      const response = await collegeApi.listStudents(token!, queryParams.toString())
       console.log("[Learners] API response:", response)
       if (response.success) {
         const data = response.data as any
@@ -203,6 +217,23 @@ export default function LearnersPage() {
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     )
+  }
+
+  const handleStartChat = async (studentUserId: string) => {
+    if (!token) return
+    const toastId = toast.loading("Opening conversation...")
+    try {
+      const res = await messagingApi.startConversation(token, studentUserId)
+      if (res.success && res.data) {
+        const conv = res.data as any
+        toast.success("Redirecting...", { id: toastId })
+        router.push(`/org-admin/messages?conversation=${conv._id}`)
+      } else {
+        toast.error(res.error || "Failed to start chat", { id: toastId })
+      }
+    } catch (err) {
+      toast.error("Network error", { id: toastId })
+    }
   }
 
   if (loading) {
@@ -387,12 +418,16 @@ export default function LearnersPage() {
                   <tr key={learner._id} className="hover:bg-blue-50/30 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-medium">
-                          {learner.firstName?.charAt(0)}
-                          {learner.lastName?.charAt(0)}
-                        </div>
+                        <UserAvatar 
+                          name={`${learner.firstName} ${learner.lastName}`} 
+                          src={(learner as any).profilePicture} 
+                          size="sm" 
+                        />
                         <div>
-                          <p className="font-medium text-slate-900 text-sm">
+                          <p 
+                            className="font-medium text-slate-900 text-sm hover:text-blue-600 cursor-pointer transition-colors"
+                            onClick={() => router.push(`/org-admin/learners/${learner._id}`)}
+                          >
                             {learner.firstName} {learner.lastName}
                           </p>
                           <p className="text-xs text-slate-500">{learner.email}</p>
@@ -419,6 +454,15 @@ export default function LearnersPage() {
                           title="Assign Program & Batch"
                         >
                           <School className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
+                          onClick={() => handleStartChat(learner._id)}
+                          title="Message Student"
+                        >
+                          <MessageSquare className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"

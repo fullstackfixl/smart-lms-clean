@@ -106,4 +106,63 @@ router.post('/refresh', authMiddleware, authController.refresh);
 // Get current user
 router.get('/me', authMiddleware, authController.me);
 
+// Update current user profile (name, phone, profilePicture)
+router.put('/me', authMiddleware, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const { name, phone, bio, profilePicture } = req.body;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Validate profilePicture if provided
+    if (profilePicture !== undefined) {
+      if (profilePicture !== null && profilePicture !== '') {
+        // Must be a data URL with an image MIME type
+        const validMimes = ['data:image/png;base64,', 'data:image/jpeg;base64,', 'data:image/jpg;base64,', 'data:image/webp;base64,', 'data:image/gif;base64,'];
+        const hasValidPrefix = validMimes.some(m => profilePicture.startsWith(m));
+        if (!hasValidPrefix) {
+          return res.status(400).json({ success: false, message: 'Invalid image format. Only PNG, JPEG, WebP, GIF are allowed.' });
+        }
+        // Approx size check: base64 is ~4/3 raw bytes. 5MB raw = ~6.7MB base64 string
+        const maxBase64Length = Math.ceil(5 * 1024 * 1024 * (4 / 3));
+        if (profilePicture.length > maxBase64Length) {
+          return res.status(400).json({ success: false, message: 'Image too large. Maximum size is 5MB.' });
+        }
+        user.profilePicture = profilePicture;
+      } else {
+        user.profilePicture = null; // Allow clearing
+      }
+    }
+
+    if (name && name.trim()) user.name = name.trim();
+    if (phone !== undefined) {
+      if (!user.profile) user.profile = {};
+      user.profile.phone = phone;
+    }
+    if (bio !== undefined) {
+      if (!user.profile) user.profile = {};
+      user.profile.bio = bio;
+    }
+
+    user.updated_at = new Date();
+    await user.save();
+
+    // Return updated user without sensitive fields
+    const updatedUser = user.toObject();
+    delete updatedUser.password_hash;
+
+    return res.status(200).json({
+      success: true,
+      data: { user: updatedUser },
+      message: 'Profile updated successfully'
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update profile' });
+  }
+});
+
 module.exports = router;
