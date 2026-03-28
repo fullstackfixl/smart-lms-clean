@@ -117,7 +117,7 @@ export default function RolesPage() {
       } else {
         toast.error(data.message || 'Failed to update feature toggles')
       }
-    } catch (err) {
+    } catch {
       toast.error('Network synchronization failure')
     } finally {
       setSaving(false)

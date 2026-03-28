@@ -100,8 +100,8 @@ export default function OrganizationDetailsPage() {
   useEffect(() => {
     // Suppress play interruption errors globally to avoid cluttering console
     const originalPlay = HTMLMediaElement.prototype.play;
-    HTMLMediaElement.prototype.play = function() {
-      const promise = originalPlay.apply(this, arguments as any);
+    HTMLMediaElement.prototype.play = function(...args) {
+      const promise = originalPlay.apply(this, args);
       if (promise !== undefined) {
         promise.catch(error => {
           if (error.name !== 'AbortError') {
@@ -295,7 +295,7 @@ export default function OrganizationDetailsPage() {
                 transition={{ duration: 0.2 }}
                 className="space-y-8"
               >
-                {activeTab === 'overview' && <OverviewTab org={org} stats={stats} />}
+                {activeTab === 'overview' && <OverviewTab org={org} stats={stats} canManage={canManage} />}
                 {activeTab === 'students' && <StudentsTab students={students} isLoading={studentsLoading} />}
                 {activeTab === 'instructors' && <InstructorsTab instructors={instructors} isLoading={instructorsLoading} />}
                 {activeTab === 'courses' && <CoursesTab courses={courses} isLoading={coursesLoading} />}
@@ -304,7 +304,7 @@ export default function OrganizationDetailsPage() {
                 {activeTab === 'certificates' && <CertificatesTab data={certificates} isLoading={certsLoading} />}
                 {activeTab === 'attendance' && <AttendanceTab data={attendance} isLoading={attendanceLoading} />}
                 {activeTab === 'activity' && <ActivityTab activity={activity} isLoading={activityLoading} />}
-                {canManage && activeTab === 'settings' && <SettingsTab org={org} mutate={mutateOrg} />}
+                {canManage && activeTab === 'settings' && <SettingsTab org={org} mutate={mutateOrg} canManage={canManage} />}
                 {canManage && activeTab === 'control' && <ControlTab orgId={orgId} control={controlRes?.data} isLoading={controlLoading} onSaved={() => { mutateControl(); mutateOrg(); }} />}
               </motion.div>
             </AnimatePresence>
@@ -315,13 +315,13 @@ export default function OrganizationDetailsPage() {
   )
 }
 
-function OverviewTab({ org, stats }: { org: any, stats: any }) {
+function OverviewTab({ org, stats, canManage }: { org: any, stats: any, canManage: boolean }) {
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-        <FlatMetricCard title="Total Growth" value={stats?.totalEnrollments || 0} icon={GraduationCap} subtitle="Active enrollments" trend="+12%" />
-        <FlatMetricCard title="Uptime" value={stats?.totalLiveClasses || 0} icon={Video} subtitle="Live class reliability" trend="100%" />
-        <FlatMetricCard title="Verified" value={stats?.certificatesIssued || 0} icon={Award} subtitle="Certificates granted" trend="High" />
+        <FlatMetricCard title="Total Growth" value={stats?.totalEnrollments || 0} icon={GraduationCap} subtitle="Active enrollments" trend={{ value: 12, isPositive: true }} />
+        <FlatMetricCard title="Uptime" value={stats?.totalLiveClasses || 0} icon={Video} subtitle="Live class reliability (100%)" />
+        <FlatMetricCard title="Verified" value={stats?.certificatesIssued || 0} icon={Award} subtitle="Certificates granted (High)" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -985,7 +985,7 @@ function ActivityTab({ activity, isLoading }: { activity: any[]; isLoading: bool
   )
 }
 
-function SettingsTab({ org, mutate }: { org: any; mutate: any }) {
+function SettingsTab({ org, mutate, canManage }: { org: any; mutate: any; canManage: boolean }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const handleAction = async (action: string) => {

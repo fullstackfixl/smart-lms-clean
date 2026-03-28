@@ -13,7 +13,6 @@ import {
   Eye,
   Users,
   ChevronRight,
-  TrendingUp,
   Globe,
   MoreHorizontal
 } from 'lucide-react'
@@ -28,8 +27,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu"
-import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
+import Image from 'next/image'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 import { useAuth } from '../../../lib/auth-context'
@@ -40,10 +39,37 @@ export default function CoursesPage() {
   const canManage = user?.role === 'platform_admin' || user?.role === 'platformAdmin'
   const organizationId = searchParams.get('organizationId')
 
+  interface Course {
+    _id: string;
+    title: string;
+    thumbnail?: string;
+    status: 'published' | 'draft';
+    organization_id?: {
+      name: string;
+    };
+    enrollmentCount?: number;
+  }
+
+  interface Stats {
+    total: number;
+    published: number;
+    enrollments: number;
+  }
+
+  interface CoursesResponse {
+    success: boolean;
+    data: {
+      courses: Course[];
+      stats: Stats;
+    };
+    courses?: Course[]; // Fallback for direct array
+    stats?: Stats; // Fallback for direct stats
+  }
+
   const [view, setView] = useState<'grid' | 'table'>('grid')
   const [search, setSearch] = useState('')
   
-  const { data: response, error, isLoading, mutate } = useSWR<any>(
+  const { data: response, error, isLoading } = useSWR<CoursesResponse>(
     `/api/platform/courses?search=${search}${organizationId ? `&organization=${organizationId}` : ''}`,
     platformJsonFetcher
   )
@@ -138,11 +164,16 @@ export default function CoursesPage() {
 
       {view === 'grid' ? (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course: any) => (
+          {courses.map((course: Course) => (
             <Card key={course._id} className="border-gray-200 p-0 rounded-md overflow-hidden no-shadow group hover:border-blue-500 transition-all">
               <div className="aspect-video bg-gray-50 relative overflow-hidden">
                 {course.thumbnail ? (
-                  <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover" />
+                  <Image 
+                    src={course.thumbnail} 
+                    alt={course.title} 
+                    fill
+                    className="object-cover" 
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-200">
                     <FileText size={48} strokeWidth={1} />
@@ -185,7 +216,7 @@ export default function CoursesPage() {
         </div>
       ) : (
         <SimpleTable headers={['Course Title', 'Institution', 'Status', 'Enrollments', 'Actions']}>
-          {courses.map((course: any) => (
+          {courses.map((course: Course) => (
             <SimpleTableRow key={course._id}>
               <SimpleTableCell className="font-bold text-blue-600 hover:underline cursor-pointer">
                 {course.title}
