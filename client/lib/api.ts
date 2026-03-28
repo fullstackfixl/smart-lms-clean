@@ -831,16 +831,58 @@ export const platformApi = {
     apiRequest(`/api/platform/courses/${id}/activate`, { method: "PATCH", token }),
 
   // Organization Applications
-  listApplications: (token: string, status: string = 'pending') =>
-    apiRequest(`/api/platform/applications?status=${status}`, { token }),
+  listApplications: (token: string, params?: {
+    status?: string
+    assigned?: string
+    search?: string
+    priority?: string
+    page?: number
+    limit?: number
+  }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.status) queryParams.append('status', params.status)
+    if (params?.assigned) queryParams.append('assigned', params.assigned)
+    if (params?.search) queryParams.append('search', params.search)
+    if (params?.priority) queryParams.append('priority', params.priority)
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    return apiRequest(`/api/platform/applications${queryParams.toString() ? `?${queryParams.toString()}` : ''}`, { token })
+  },
+  getApplication: (token: string, id: string) =>
+    apiRequest(`/api/platform/applications/${id}`, { token }),
   claimApplication: (token: string, id: string) =>
     apiRequest(`/api/platform/applications/${id}/claim`, { method: "POST", token }),
   contactApplication: (token: string, id: string, data: { contact_notes?: string; follow_up_date?: string }) =>
     apiRequest(`/api/platform/applications/${id}/contact`, { method: "PATCH", token, body: data }),
+  addApplicationNote: (token: string, id: string, data: { text: string; type?: string }) =>
+    apiRequest(`/api/platform/applications/${id}/note`, { method: "PATCH", token, body: data }),
+  updateApplicationStatus: (token: string, id: string, status: string) =>
+    apiRequest(`/api/platform/applications/${id}/status`, { method: "PATCH", token, body: { status } }),
+  updateApplicationPriority: (token: string, id: string, priority: 'hot' | 'warm' | 'cold') =>
+    apiRequest(`/api/platform/applications/${id}/priority`, { method: "PATCH", token, body: { priority } }),
+  setApplicationFollowUp: (token: string, id: string, follow_up_date: string | null) =>
+    apiRequest(`/api/platform/applications/${id}/follow-up`, { method: "PATCH", token, body: { follow_up_date } }),
   approveApplication: (token: string, id: string) =>
     apiRequest(`/api/platform/applications/${id}/approve`, { method: "PATCH", token }),
   rejectApplication: (token: string, id: string, data?: { reason?: string }) =>
     apiRequest(`/api/platform/applications/${id}/reject`, { method: "PATCH", token, body: data || {} }),
+
+  // Platform Staff
+  listStaff: (token: string, params?: { search?: string; page?: number; limit?: number }) => {
+    const queryParams = new URLSearchParams()
+    if (params?.search) queryParams.append('search', params.search)
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    return apiRequest(`/api/platform/staff${queryParams.toString() ? `?${queryParams.toString()}` : ''}`, { token })
+  },
+  inviteStaff: (token: string, data: { name: string; email: string }) =>
+    apiRequest('/api/platform/staff/invite', { method: 'POST', token, body: data }),
+  deactivateStaff: (token: string, id: string) =>
+    apiRequest(`/api/platform/staff/${id}/deactivate`, { method: 'PATCH', token }),
+  verifyStaffInvite: (token: string) =>
+    apiRequest(`/api/platform/staff/accept-invite/verify?token=${encodeURIComponent(token)}`),
+  acceptStaffInvite: (data: { token: string; name: string; password: string }) =>
+    apiRequest('/api/platform/staff/accept-invite', { method: 'POST', body: data }),
 
   // New Organization Invitation Flow
   createOrgV2: async (token: string, data: {

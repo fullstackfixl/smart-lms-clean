@@ -32,9 +32,12 @@ import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
+import { useAuth } from '../../../lib/auth-context'
 
 export default function CoursesPage() {
   const searchParams = useSearchParams()
+  const { user } = useAuth()
+  const canManage = user?.role === 'platform_admin' || user?.role === 'platformAdmin'
   const organizationId = searchParams.get('organizationId')
 
   const [view, setView] = useState<'grid' | 'table'>('grid')
@@ -64,9 +67,11 @@ export default function CoursesPage() {
             {organizationId ? 'Filtering content matrix for child tenant node.' : 'Oversee cross-institutional content distribution and engagement.'}
           </p>
         </div>
-        <Button className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-md px-6 shadow-none h-11">
-          <Plus className="mr-2 h-5 w-5 stroke-[3]" /> Create Course
-        </Button>
+        {canManage && (
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-md px-6 shadow-none h-11">
+            <Plus className="mr-2 h-5 w-5 stroke-[3]" /> Create Course
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -200,24 +205,30 @@ export default function CoursesPage() {
                 {course.enrollmentCount || 0}
               </SimpleTableCell>
               <SimpleTableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
-                      <MoreHorizontal className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48 bg-white border-gray-200 shadow-none p-1">
-                    <DropdownMenuItem className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2">
-                      <Eye className="mr-2 h-4 w-4" /> Preview Content
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2">
-                       <Users className="mr-2 h-4 w-4" /> View Enrollments
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 py-2">
-                       Suppres Course
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {canManage ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
+                        <MoreHorizontal className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 bg-white border-gray-200 shadow-none p-1">
+                      <DropdownMenuItem className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2">
+                        <Eye className="mr-2 h-4 w-4" /> Preview Content
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2">
+                         <Users className="mr-2 h-4 w-4" /> View Enrollments
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 py-2">
+                         Suppres Course
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50 font-bold p-0 px-2 h-8">
+                    View
+                  </Button>
+                )}
               </SimpleTableCell>
             </SimpleTableRow>
           ))}

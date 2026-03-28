@@ -42,8 +42,11 @@ import Link from 'next/link'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 import { API_URL, getToken } from '../../../lib/config'
+import { useAuth } from '../../../lib/auth-context'
 
 export default function OrganizationsPage() {
+  const { user } = useAuth()
+  const canManage = user?.role === 'platform_admin' || user?.role === 'platformAdmin'
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -182,12 +185,14 @@ export default function OrganizationsPage() {
             Provision and oversee multi-tenant institutions across your global ecosystem.
           </p>
         </div>
-        <Button 
-          onClick={() => { resetForm(); setIsCreateModalOpen(true); }}
-          className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-md px-6 shadow-none h-11"
-        >
-          <Plus className="mr-2 h-5 w-5 stroke-[3]" /> Create Organization
-        </Button>
+        {canManage && (
+          <Button 
+            onClick={() => { resetForm(); setIsCreateModalOpen(true); }}
+            className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-md px-6 shadow-none h-11"
+          >
+            <Plus className="mr-2 h-5 w-5 stroke-[3]" /> Create Organization
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -276,48 +281,54 @@ export default function OrganizationsPage() {
                 </Badge>
               </SimpleTableCell>
               <SimpleTableCell className="text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
-                      <MoreHorizontal className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48 bg-white border-gray-200 shadow-none p-1">
-                    <DropdownMenuItem 
-                      onClick={() => {
-                        setSelectedOrg(org);
-                        setFormData({
-                          name: org.name,
-                          email: org.email,
-                          type: org.type,
-                          plan: org.plan,
-                          maxStudents: org.limits?.max_students || 1000,
-                          maxInstructors: org.limits?.max_instructors || 50
-                        });
-                        setIsEditModalOpen(true);
-                      }}
-                      className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2"
-                    >
-                      <Edit2 className="mr-2 h-4 w-4" /> Edit Parameters
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => handleAction(org._id, org.status === 'active' ? 'suspend' : 'activate')}
-                      className={cn(
-                        "cursor-pointer font-medium py-2",
-                        org.status === 'active' ? "text-orange-600 focus:bg-orange-50 focus:text-orange-700" : "text-green-600 focus:bg-green-50 focus:text-green-700"
-                      )}
-                    >
-                      {org.status === 'active' ? <Lock className="mr-2 h-4 w-4" /> : <Unlock className="mr-2 h-4 w-4" />}
-                      {org.status === 'active' ? 'Suspend Access' : 'Restore Access'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => { if(confirm('Delete org?')) handleAction(org._id, 'delete') }}
-                      className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 py-2"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Suppress Node
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {canManage ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
+                        <MoreHorizontal className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 bg-white border-gray-200 shadow-none p-1">
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setSelectedOrg(org);
+                          setFormData({
+                            name: org.name,
+                            email: org.email,
+                            type: org.type,
+                            plan: org.plan,
+                            maxStudents: org.limits?.max_students || 1000,
+                            maxInstructors: org.limits?.max_instructors || 50
+                          });
+                          setIsEditModalOpen(true);
+                        }}
+                        className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2"
+                      >
+                        <Edit2 className="mr-2 h-4 w-4" /> Edit Parameters
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => handleAction(org._id, org.status === 'active' ? 'suspend' : 'activate')}
+                        className={cn(
+                          "cursor-pointer font-medium py-2",
+                          org.status === 'active' ? "text-orange-600 focus:bg-orange-50 focus:text-orange-700" : "text-green-600 focus:bg-green-50 focus:text-green-700"
+                        )}
+                      >
+                        {org.status === 'active' ? <Lock className="mr-2 h-4 w-4" /> : <Unlock className="mr-2 h-4 w-4" />}
+                        {org.status === 'active' ? 'Suspend Access' : 'Restore Access'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => { if(confirm('Delete org?')) handleAction(org._id, 'delete') }}
+                        className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 py-2"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Suppress Node
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Button asChild variant="ghost" className="h-8 px-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600">
+                    <Link href={`/platform/organizations/${org._id}`}>View</Link>
+                  </Button>
+                )}
               </SimpleTableCell>
             </SimpleTableRow>
           ))}

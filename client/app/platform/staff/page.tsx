@@ -3,20 +3,19 @@
 import React, { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
-import { 
-  ShieldCheck, 
-  Search, 
-  Plus, 
-  MoreHorizontal, 
+import {
+  ShieldCheck,
+  Search,
+  MoreHorizontal,
   UserPlus,
   Mail,
   Shield,
   Trash2,
-  Lock,
-  Unlock,
   CheckCircle2,
-  XCircle
+  XCircle,
 } from 'lucide-react'
+import { toast } from 'sonner'
+
 import { FlatMetricCard } from '../../../components/platform/flat-metric-card'
 import { SimpleTable, SimpleTableRow, SimpleTableCell } from '../../../components/platform/simple-table'
 import { MinimalModalForm } from '../../../components/platform/minimal-modal-form'
@@ -24,18 +23,27 @@ import { Button } from '../../../components/ui/button'
 import { Badge } from '../../../components/ui/badge'
 import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../../components/ui/dropdown-menu"
-import { toast } from "sonner"
 import { cn } from '../../../lib/utils'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
+import { platformApi } from '../../../lib/api'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
-import { API_URL, getToken } from '../../../lib/config'
+import { getToken } from '../../../lib/config'
 import { useAuth } from '../../../lib/auth-context'
+
+type StaffMember = {
+  _id: string
+  name: string
+  email: string
+  role: string
+  status: 'active' | 'inactive' | 'pending' | 'suspended'
+  createdAt?: string
+}
 
 export default function StaffPage() {
   const router = useRouter()
@@ -43,14 +51,12 @@ export default function StaffPage() {
   const [search, setSearch] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'platform_staff'
-  })
+  const [formData, setFormData] = useState({ name: '', email: '' })
 
-  const { data: response, error, isLoading, mutate } = useSWR<any>(`/api/platform/staff?search=${search}`, platformJsonFetcher)
+  const { data: response, error, isLoading, mutate } = useSWR<any>(
+    `/api/platform/staff?search=${encodeURIComponent(search)}`,
+    platformJsonFetcher
+  )
 
   useEffect(() => {
     if (!user) return
@@ -62,172 +68,147 @@ export default function StaffPage() {
   if (error) {
     return <PlatformErrorState />
   }
-  
-  const staff = response?.data || []
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const staff: StaffMember[] = response?.data || []
+
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
+    const token = getToken()
+    if (!token) {
+      toast.error('Missing platform token')
+      return
+    }
+
     setIsSubmitting(true)
     try {
-      const token = getToken()
-      const res = await fetch(`${API_URL}/api/platform/staff/create`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(formData)
-      })
-      const data = await res.json()
-      if (data.success) {
-        toast.success("Staff member provisioned successfully")
-        setIsModalOpen(false)
-        setFormData({ name: '', email: '', password: '', role: 'platform_staff' })
-        mutate()
-      } else {
-        toast.error(data.message || "Failed to provision staff")
-      }
+      const res = await platformApi.inviteStaff(token, formData)
+      if (!res.success) throw new Error(res.error || 'Failed to send invitation')
+      toast.success('Invitation sent successfully')
+      setIsModalOpen(false)
+      setFormData({ name: '', email: '' })
+      mutate()
     } catch (err) {
-      toast.error("Network error")
+      toast.error(err instanceof Error ? err.message : 'Network error')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleStatusToggle = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
+  const handleDeactivate = async (id: string) => {
+    const token = getToken()
+    if (!token) {
+      toast.error('Missing platform token')
+      return
+    }
+
     try {
-      const token = getToken()
-      const res = await fetch(`${API_URL}/api/platform/staff/${id}/status`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ status: newStatus })
-      })
-      const data = await res.json()
-      if (data.success) {
-        toast.success(`Staff member ${newStatus === 'active' ? 'activated' : 'deactivated'}`)
-        mutate()
-      } else {
-        toast.error(data.message || "Action failed")
-      }
+      const res = await platformApi.deactivateStaff(token, id)
+      if (!res.success) throw new Error(res.error || 'Failed to deactivate')
+      toast.success('Staff member deactivated')
+      mutate()
     } catch (err) {
-      toast.error("Network error")
+      toast.error(err instanceof Error ? err.message : 'Network error')
     }
   }
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <section className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 border-b-2 border-blue-500 inline-block pb-1">
-            Platform Staff
-          </h1>
-          <p className="mt-2 text-slate-500">
-            Commision and manage platform-level administrators and support guardians.
+          <h1 className="text-2xl font-bold text-slate-900">Platform Staff</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            Invite platform staff by email. Each invite expires in 24 hours and activates a secure staff account after acceptance.
           </p>
         </div>
-        <Button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-md px-6 shadow-none h-11"
-        >
-          <UserPlus className="mr-2 h-5 w-5 stroke-[3]" /> Create Staff
-        </Button>
-      </div>
 
-      {/* Stats */}
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="h-11 rounded-md bg-orange-500 px-6 font-bold text-white shadow-none hover:bg-orange-600"
+        >
+          <UserPlus className="mr-2 h-5 w-5 stroke-[3]" />
+          Invite Staff
+        </Button>
+      </section>
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <FlatMetricCard
-          title="Total Guardians"
+          title="Total Staff"
           value={staff.length}
           icon={ShieldCheck}
-          subtitle="Platform level access"
+          subtitle="Platform-level access"
         />
         <FlatMetricCard
-          title="Active Staff"
-          value={staff.filter((s: any) => s.status === 'active').length}
+          title="Active"
+          value={staff.filter((s) => s.status === 'active').length}
           icon={CheckCircle2}
           className="border-l-4 border-l-green-500"
-          subtitle="Currently operational"
+          subtitle="Operational accounts"
         />
         <FlatMetricCard
-          title="Disabled"
-          value={staff.filter((s: any) => s.status !== 'active').length}
+          title="Pending / Disabled"
+          value={staff.filter((s) => s.status !== 'active').length}
           icon={XCircle}
-          className="border-l-4 border-l-red-500"
-          subtitle="Access revoked"
+          className="border-l-4 border-l-rose-500"
+          subtitle="Needs attention"
         />
       </div>
 
-      {/* Main Content */}
       <section className="space-y-4">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-500 stroke-[2]" />
+        <label className="relative block max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search staff by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-0"
+            className="h-11 w-full rounded-md border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none focus:border-orange-500"
           />
-        </div>
+        </label>
 
-        <SimpleTable headers={['Guardian Name', 'Email Address', 'Privilege Role', 'Status', 'Actions']}>
-          {staff.map((member: any) => (
+        <SimpleTable headers={['Name', 'Email', 'Role', 'Status', 'Actions']}>
+          {staff.map((member) => (
             <SimpleTableRow key={member._id}>
-              <SimpleTableCell className="font-bold text-blue-600">
-                {member.name}
-              </SimpleTableCell>
+              <SimpleTableCell className="font-semibold text-slate-900">{member.name}</SimpleTableCell>
               <SimpleTableCell>
-                <div className="flex items-center text-slate-500">
-                  <Mail className="mr-2 h-3.5 w-3.5 opacity-40" />
+                <span className="inline-flex items-center gap-2 text-slate-600">
+                  <Mail className="h-3.5 w-3.5 opacity-50" />
                   {member.email}
-                </div>
+                </span>
               </SimpleTableCell>
               <SimpleTableCell>
-                <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
                   <Shield className="h-3.5 w-3.5 text-slate-400" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-600">
-                    {member.role.replace('platform_', '')}
-                  </span>
-                </div>
+                  {member.role.replace('platform_', '')}
+                </span>
               </SimpleTableCell>
               <SimpleTableCell>
-                <Badge className={cn(
-                  "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                  member.status === 'active' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                )}>
-                  {member.status === 'active' ? 'Active' : 'Disabled'}
+                <Badge
+                  className={cn(
+                    "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                    member.status === 'active'
+                      ? "bg-green-100 text-green-700"
+                      : member.status === 'pending'
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-rose-100 text-rose-700"
+                  )}
+                >
+                  {member.status}
                 </Badge>
               </SimpleTableCell>
               <SimpleTableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-900">
                       <MoreHorizontal className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48 bg-white border-gray-200 shadow-none p-1">
-                    <DropdownMenuItem 
-                      onClick={() => handleStatusToggle(member._id, member.status)}
-                      className={cn(
-                        "cursor-pointer font-medium py-2",
-                        member.status === 'active' ? "text-orange-600 focus:bg-orange-50 focus:text-orange-700" : "text-green-600 focus:bg-green-50 focus:text-green-700"
-                      )}
+                  <DropdownMenuContent align="end" className="w-48 border-slate-200 bg-white p-1 shadow-none">
+                    <DropdownMenuItem
+                      onClick={() => handleDeactivate(member._id)}
+                      className="cursor-pointer py-2 text-red-600 focus:bg-red-50 focus:text-red-700"
                     >
-                      {member.status === 'active' ? <Lock className="mr-2 h-4 w-4" /> : <Unlock className="mr-2 h-4 w-4" />}
-                      {member.status === 'active' ? 'Revoke Access' : 'Grant Access'}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => { if(confirm('Permanently delete?')) handleStatusToggle(member._id, 'delete') }}
-                      className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700 py-2"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Purge Guardian
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Deactivate
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -236,85 +217,44 @@ export default function StaffPage() {
           ))}
           {staff.length === 0 && !isLoading && (
             <SimpleTableRow>
-              <SimpleTableCell colSpan={5} className="text-center py-12 text-slate-400">
-                No platform staff identified in core registry.
+              <SimpleTableCell colSpan={5} className="py-12 text-center text-slate-400">
+                No platform staff found.
               </SimpleTableCell>
             </SimpleTableRow>
           )}
         </SimpleTable>
       </section>
 
-      {/* Create Staff Modal */}
       <MinimalModalForm
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Commission New Guardian"
-        description="Provision platform-level administrative credentials for a new staff member."
-        onSubmit={handleCreate}
-        submitLabel="Initialize Guardian"
+        title="Invite Platform Staff"
+        description="Send a secure 24-hour invitation email to a new staff member."
+        onSubmit={handleInvite}
+        submitLabel="Send Invite"
         loading={isSubmitting}
       >
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Full Name</Label>
-            <Input 
-              required 
-              placeholder="e.g. Alex Rivera" 
-              className="h-10 border-gray-300 focus:border-blue-500"
+            <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Full Name</Label>
+            <Input
+              required
+              placeholder="e.g. Alex Rivera"
+              className="h-10 border-slate-300 focus:border-orange-500"
               value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Network Email</Label>
-            <Input 
-              required 
-              type="email" 
-              placeholder="alex@smartlms.com" 
-              className="h-10 border-gray-300 focus:border-blue-500"
+            <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Email</Label>
+            <Input
+              required
+              type="email"
+              placeholder="alex@smartlms.com"
+              className="h-10 border-slate-300 focus:border-orange-500"
               value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Access Passcode</Label>
-            <Input 
-              required 
-              type="password"
-              placeholder="••••••••" 
-              className="h-10 border-gray-300 focus:border-blue-500"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Privilege Level</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({...formData, role: 'platform_staff'})}
-                className={cn(
-                  "px-4 py-2 text-xs font-bold border rounded group transition-all",
-                  formData.role === 'platform_staff' 
-                    ? "bg-blue-600 border-blue-600 text-white" 
-                    : "bg-white border-gray-200 text-slate-500 hover:border-blue-500 hover:text-blue-600"
-                )}
-              >
-                PLATFORM STAFF
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({...formData, role: 'platform_admin'})}
-                className={cn(
-                  "px-4 py-2 text-xs font-bold border rounded group transition-all",
-                  formData.role === 'platform_admin' 
-                    ? "bg-blue-600 border-blue-600 text-white" 
-                    : "bg-white border-gray-200 text-slate-500 hover:border-blue-500 hover:text-blue-600"
-                )}
-              >
-                SUPER ADMIN
-              </button>
-            </div>
           </div>
         </div>
       </MinimalModalForm>

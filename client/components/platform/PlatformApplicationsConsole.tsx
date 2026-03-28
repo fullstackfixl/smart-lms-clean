@@ -1,33 +1,44 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { Building2, CalendarClock, CheckCircle2, Mail, Phone, Search, UserCheck, XCircle } from "lucide-react"
 import { toast } from "sonner"
 
 import { platformApi } from "../../lib/api"
 import { API_URL, getToken } from "../../lib/config"
+import { Button } from "../ui/button"
 
 type Mode = "admin" | "staff"
 
 type ApplicationRecord = {
   _id: string
   organization_name: string
+  orgName?: string
   organization_type: string
   contact_person_name: string
+  contactPerson?: string
   contact_email: string
+  email?: string
   contact_phone: string
+  phone?: string
   country: string
   state: string
   city: string
   expected_users: number
   message?: string
   status: string
+  priority?: "hot" | "warm" | "cold"
   contact_notes?: string
   follow_up_date?: string | null
+  followUpAt?: string | null
+  notes?: Array<{ text?: string; created_at?: string; author?: { name?: string } }>
+  activityLog?: Array<{ action?: string; createdAt?: string; actor?: { name?: string } }>
   created_at: string
   assigned_to?: {
     name?: string
     email?: string
+    profilePicture?: string | null
   } | null
 }
 
@@ -35,6 +46,8 @@ const statusOptions = [
   { label: "All", value: "all" },
   { label: "Pending", value: "pending" },
   { label: "Contacted", value: "contacted" },
+  { label: "Negotiation", value: "negotiation" },
+  { label: "Ready For Approval", value: "ready_for_approval" },
   { label: "Approved", value: "approved" },
   { label: "Rejected", value: "rejected" },
   { label: "Account Created", value: "account_created" },
@@ -53,6 +66,8 @@ function statusBadge(status: string) {
     case "active":
       return "bg-emerald-50 text-emerald-700 border-emerald-200"
     case "contacted":
+    case "negotiation":
+    case "ready_for_approval":
       return "bg-sky-50 text-sky-700 border-sky-200"
     case "rejected":
       return "bg-rose-50 text-rose-700 border-rose-200"
@@ -113,9 +128,10 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
         throw new Error(payload.message || "Failed to load applications")
       }
 
-      setApplications(payload.data?.applications || [])
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load applications")
+      setApplications((payload.data?.applications as ApplicationRecord[]) || [])
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to load applications"
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
@@ -124,7 +140,7 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
   useEffect(() => {
     loadApplications()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, assignment])
+  }, [status, assignment, search])
 
   async function handleApprove(id: string) {
     if (!token) return
@@ -134,8 +150,9 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
       if (!response.success) throw new Error(response.error || "Failed to approve application")
       toast.success("Application approved and account creation email sent")
       await loadApplications()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to approve application")
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to approve application"
+      toast.error(msg)
     } finally {
       setActingId(null)
     }
@@ -151,8 +168,9 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
       if (!response.success) throw new Error(response.error || "Failed to reject application")
       toast.success("Application rejected")
       await loadApplications()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reject application")
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to reject application"
+      toast.error(msg)
     } finally {
       setActingId(null)
     }
@@ -166,8 +184,9 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
       if (!response.success) throw new Error(response.error || "Failed to claim application")
       toast.success("Application assigned to you")
       await loadApplications()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to claim application")
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to claim application"
+      toast.error(msg)
     } finally {
       setActingId(null)
     }
@@ -184,8 +203,9 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
       if (!response.success) throw new Error(response.error || "Failed to update application")
       toast.success("Application marked as contacted")
       await loadApplications()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update application")
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to update application"
+      toast.error(msg)
     } finally {
       setActingId(null)
     }
@@ -297,7 +317,7 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
               <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">{application.organization_name}</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">{application.orgName || application.organization_name}</h2>
                     <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusBadge(application.status)}`}>
                       {application.status.replace("_", " ")}
                     </span>
@@ -309,15 +329,15 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
                   <div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="flex items-center gap-2">
                       <UserCheck className="h-4 w-4 text-slate-400" />
-                      <span>{application.contact_person_name}</span>
+                      <span>{application.contactPerson || application.contact_person_name}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-slate-400" />
-                      <span>{application.contact_email}</span>
+                      <span>{application.email || application.contact_email}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-slate-400" />
-                      <span>{application.contact_phone}</span>
+                      <span>{application.phone || application.contact_phone}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CalendarClock className="h-4 w-4 text-slate-400" />
@@ -342,6 +362,12 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
                       <p className="mt-3 text-sm text-slate-700">
                         Assigned to: {application.assigned_to?.name || "Unassigned"}
                       </p>
+                      <p className="mt-2 text-sm text-slate-700">
+                        Priority: {application.priority || "warm"}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-700">
+                        Follow-up: {application.followUpAt || application.follow_up_date ? new Date(application.followUpAt || application.follow_up_date || '').toLocaleDateString() : 'None'}
+                      </p>
                       {application.contact_notes ? (
                         <p className="mt-2 text-sm leading-6 text-slate-600">{application.contact_notes}</p>
                       ) : (
@@ -365,6 +391,14 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
                         className="mt-4 min-h-[110px] w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                       />
                       <div className="mt-4 flex gap-3">
+                        <Button
+                          asChild
+                          className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                        >
+                          <Link href={`/platform-staff/applications/${application._id}`}>
+                            Open detail
+                          </Link>
+                        </Button>
                         <button
                           type="button"
                           disabled={actingId === application._id || application.status === "approved" || application.status === "account_created" || application.status === "active"}

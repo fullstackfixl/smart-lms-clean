@@ -55,12 +55,15 @@ import { platformJsonFetcher } from '../../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../../components/platform/platform-error-state'
 import { platformApi } from '../../../../lib/api'
 import { getToken } from '../../../../lib/config'
+import { useAuth } from '../../../../lib/auth-context'
 
 export default function OrganizationDetailsPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const orgId = params.id as string
   const [activeTab, setActiveTab] = useState('overview')
+  const canManage = user?.role === 'platform_admin' || user?.role === 'platformAdmin'
 
   // Data Fetching
   const { data: orgRes, error: orgError, isLoading: orgLoading, mutate: mutateOrg } = useSWR<any>(`/api/platform/organizations/${orgId}`, platformJsonFetcher)
@@ -142,7 +145,7 @@ export default function OrganizationDetailsPage() {
     { id: 'activity', label: 'Activity Logs', icon: Activity },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'control', label: 'Control Plane', icon: Shield }
-  ]
+  ].filter((tab) => canManage || (tab.id !== 'settings' && tab.id !== 'control'))
 
   const handleEnterContext = async () => {
     try {
@@ -240,9 +243,11 @@ export default function OrganizationDetailsPage() {
                <Button variant="outline" className="rounded-xl px-6 h-12 border-slate-200 bg-white font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm" onClick={handleEnterContext} disabled={contextLoading}>
                  <ExternalLink className="mr-2 h-4 w-4" /> Management Console
                </Button>
-               <Button className="rounded-xl px-6 h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-lg shadow-blue-200 active:scale-95">
-                 Provision Features
-               </Button>
+               {canManage && (
+                 <Button className="rounded-xl px-6 h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-lg shadow-blue-200 active:scale-95">
+                   Provision Features
+                 </Button>
+               )}
             </div>
           </div>
         </motion.div>
@@ -299,8 +304,8 @@ export default function OrganizationDetailsPage() {
                 {activeTab === 'certificates' && <CertificatesTab data={certificates} isLoading={certsLoading} />}
                 {activeTab === 'attendance' && <AttendanceTab data={attendance} isLoading={attendanceLoading} />}
                 {activeTab === 'activity' && <ActivityTab activity={activity} isLoading={activityLoading} />}
-                {activeTab === 'settings' && <SettingsTab org={org} mutate={mutateOrg} />}
-                {activeTab === 'control' && <ControlTab orgId={orgId} control={controlRes?.data} isLoading={controlLoading} onSaved={() => { mutateControl(); mutateOrg(); }} />}
+                {canManage && activeTab === 'settings' && <SettingsTab org={org} mutate={mutateOrg} />}
+                {canManage && activeTab === 'control' && <ControlTab orgId={orgId} control={controlRes?.data} isLoading={controlLoading} onSaved={() => { mutateControl(); mutateOrg(); }} />}
               </motion.div>
             </AnimatePresence>
           </main>
@@ -1010,6 +1015,7 @@ function SettingsTab({ org, mutate }: { org: any; mutate: any }) {
 
   return (
     <div className="space-y-8">
+      {canManage && (
       <Card className="bg-white border-slate-200/60 rounded-[2rem] shadow-sm overflow-hidden p-10">
         <div className="flex items-center gap-4 mb-10 pb-6 border-b border-slate-100">
            <div className="p-3 rounded-2xl bg-orange-50 text-orange-600 shadow-sm shadow-orange-100">
@@ -1082,6 +1088,7 @@ function SettingsTab({ org, mutate }: { org: any; mutate: any }) {
           </div>
         </div>
       </Card>
+      )}
 
       <Card className="p-10 bg-white border-slate-200/60 rounded-[2rem] shadow-sm">
         <h3 className="text-lg font-black text-slate-900 mb-8 flex items-center gap-3 uppercase tracking-tight">

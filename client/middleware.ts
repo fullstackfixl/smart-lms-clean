@@ -27,6 +27,11 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // Public platform staff invite acceptance link
+  if (path === '/platform-staff/accept-invite' || path.startsWith('/platform-staff/accept-invite/')) {
+    return NextResponse.next()
+  }
+
   const protectedPrefixes = ['/platform-admin', '/org-admin', '/student', '/instructor', '/platform']
   const isProtected = protectedPrefixes.some((p) => path === p || path.startsWith(p + '/'))
   if (!isProtected) return NextResponse.next()

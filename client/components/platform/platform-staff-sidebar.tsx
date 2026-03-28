@@ -10,10 +10,7 @@ import {
   FileText,
   GraduationCap,
   Users,
-  BarChart3,
-  ClipboardList,
-  History,
-  Settings
+  BarChart3
 } from 'lucide-react'
 
 const navItems = [
@@ -23,9 +20,6 @@ const navItems = [
   { name: 'Courses', href: '/platform-staff/courses', icon: FileText },
   { name: 'Users', href: '/platform-staff/users', icon: Users },
   { name: 'Analytics', href: '/platform-staff/analytics', icon: BarChart3 },
-  { name: 'Reports', href: '/platform-staff/reports', icon: ClipboardList },
-  { name: 'Audit Logs', href: '/platform-staff/audit-logs', icon: History },
-  { name: 'Settings', href: '/platform-staff/settings', icon: Settings },
 ]
 
 export function PlatformStaffSidebar() {

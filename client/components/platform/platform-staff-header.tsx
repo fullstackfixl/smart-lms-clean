@@ -59,9 +59,9 @@ export function PlatformStaffHeader() {
             <DropdownMenuLabel className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2 py-1.5">My Account</DropdownMenuLabel>
             <DropdownMenuItem
               className="cursor-pointer rounded-md text-sm text-slate-700 focus:bg-orange-50 focus:text-orange-600"
-              onClick={() => router.push('/platform-staff/settings')}
+              onClick={() => router.push('/platform-staff/dashboard')}
             >
-              Settings
+              Dashboard
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-gray-100 mx-1 my-1" />
             <DropdownMenuItem

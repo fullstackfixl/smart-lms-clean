@@ -52,10 +52,13 @@ export default function PlatformCommunicationPage() {
 
   const overviewKey = "/api/platform/communication/overview"
   const conversationsKey = `/api/platform/conversations?search=${encodeURIComponent(search)}${escalationOnly ? "&escalated=true" : ""}&limit=50`
-  const { data: overviewRes, error: overviewError, isLoading: overviewLoading } = useSWR<any>(overviewKey, platformJsonFetcher)
-  const { data: conversationsRes, error: conversationsError, isLoading: conversationsLoading, mutate: mutateConversations } = useSWR<any>(conversationsKey, platformJsonFetcher)
+  const { data: overviewRes, error: overviewError, isLoading: overviewLoading } = useSWR(overviewKey, platformJsonFetcher)
+  const { data: conversationsRes, error: conversationsError, isLoading: conversationsLoading, mutate: mutateConversations } = useSWR(conversationsKey, platformJsonFetcher)
 
-  const conversations: Conversation[] = conversationsRes?.data?.conversations || []
+  const conversations: Conversation[] = useMemo(
+    () => (conversationsRes?.data?.conversations as Conversation[]) ?? [],
+    [conversationsRes]
+  )
   const selectedConversation = useMemo(
     () => conversations.find((conversation) => conversation._id === selectedConversationId) || conversations[0] || null,
     [conversations, selectedConversationId]
@@ -70,7 +73,7 @@ export default function PlatformCommunicationPage() {
   const messagesKey = selectedConversation
     ? `/api/platform/messages/${selectedConversation._id}?limit=100`
     : null
-  const { data: messagesRes, error: messagesError, isLoading: messagesLoading } = useSWR<any>(messagesKey, platformJsonFetcher)
+  const { data: messagesRes, error: messagesError, isLoading: messagesLoading } = useSWR(messagesKey, platformJsonFetcher)
   const messages: Message[] = messagesRes?.data?.messages || []
 
   if (overviewError || conversationsError || messagesError) {

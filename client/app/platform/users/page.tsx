@@ -32,10 +32,13 @@ import { cn } from '../../../lib/utils'
 import { platformJsonFetcher } from '../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../components/platform/platform-error-state'
 import { API_URL, getToken } from '../../../lib/config'
+import { useAuth } from '../../../lib/auth-context'
 
 export default function UsersPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { user } = useAuth()
+  const canManage = user?.role === 'platform_admin' || user?.role === 'platformAdmin'
   const organizationId = searchParams.get('organizationId')
   
   const [activeTab, setActiveTab] = useState('student')
@@ -90,9 +93,11 @@ export default function UsersPage() {
             {organizationId ? 'Aggregated identity data for child tenant.' : 'Monitor identity health and cross-institutional user growth.'}
           </p>
         </div>
-        <Button className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-md px-6 shadow-none h-11">
-          Suspend Selected
-        </Button>
+        {canManage && (
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-md px-6 shadow-none h-11">
+            Suspend Selected
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -182,37 +187,47 @@ export default function UsersPage() {
                   {new Date(user.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </SimpleTableCell>
                 <SimpleTableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48 bg-white border-gray-200 shadow-none p-1">
-                      <DropdownMenuItem 
-                        onClick={() => handleAction(user._id, user.status === 'active' ? 'suspend' : 'activate')}
-                        className={cn(
-                          "cursor-pointer font-medium py-2",
-                          user.status === 'active' ? "text-orange-600 focus:bg-orange-50 focus:text-orange-700" : "text-green-600 focus:bg-green-50 focus:text-green-700"
-                        )}
-                      >
-                        {user.status === 'active' ? <Lock className="mr-2 h-4 w-4" /> : <Unlock className="mr-2 h-4 w-4" />}
-                        {user.status === 'active' ? 'Suspend Access' : 'Restore Access'}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleAction(user._id, 'reset-password')}
-                        className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2"
-                      >
-                        <Key className="mr-2 h-4 w-4" /> Reset Password
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => router.push(`/platform/users/${user._id}`)}
-                        className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2"
-                      >
-                        <ArrowUpRight className="mr-2 h-4 w-4" /> View Full Profile
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {canManage ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-blue-600">
+                          <MoreHorizontal className="h-5 w-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 bg-white border-gray-200 shadow-none p-1">
+                        <DropdownMenuItem 
+                          onClick={() => handleAction(user._id, user.status === 'active' ? 'suspend' : 'activate')}
+                          className={cn(
+                            "cursor-pointer font-medium py-2",
+                            user.status === 'active' ? "text-orange-600 focus:bg-orange-50 focus:text-orange-700" : "text-green-600 focus:bg-green-50 focus:text-green-700"
+                          )}
+                        >
+                          {user.status === 'active' ? <Lock className="mr-2 h-4 w-4" /> : <Unlock className="mr-2 h-4 w-4" />}
+                          {user.status === 'active' ? 'Suspend Access' : 'Restore Access'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleAction(user._id, 'reset-password')}
+                          className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2"
+                        >
+                          <Key className="mr-2 h-4 w-4" /> Reset Password
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => router.push(`/platform/users/${user._id}`)}
+                          className="cursor-pointer text-slate-700 focus:bg-blue-50 focus:text-blue-600 py-2"
+                        >
+                          <ArrowUpRight className="mr-2 h-4 w-4" /> View Full Profile
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="h-8 px-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600"
+                      onClick={() => router.push(`/platform/users/${user._id}`)}
+                    >
+                      View Profile
+                    </Button>
+                  )}
                 </SimpleTableCell>
               </SimpleTableRow>
             ))}
