@@ -46,9 +46,15 @@ export function UserAvatar({ name, src, size = 'md', className = '' }: UserAvata
   const colorClass = getAvatarColor(name)
 
   if (src && !error) {
+    // Normalize the src: handle full URLs, data URIs, and raw base64 strings
+    let imageSrc = src
+    if (!src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('/') && !src.startsWith('blob:')) {
+      // Raw base64 string — prefix with data URI
+      imageSrc = `data:image/jpeg;base64,${src}`
+    }
     return (
       <img
-        src={src}
+        src={imageSrc}
         alt={name || 'User'}
         className={`${sizeClass} rounded-full object-cover flex-shrink-0 ${className}`}
         onError={() => setError(true)}

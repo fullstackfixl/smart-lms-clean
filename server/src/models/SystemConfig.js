@@ -36,9 +36,20 @@ const systemConfigSchema = new mongoose.Schema({
     },
     features: {
         liveClasses: { type: Boolean, default: true },
-        assessments: { type: Boolean, default: true },
+        assignments: { type: Boolean, default: true },
+        quizzes: { type: Boolean, default: true },
+        attendance: { type: Boolean, default: true },
         certificates: { type: Boolean, default: true },
+        discussionForums: { type: Boolean, default: true },
+        aiTutor: { type: Boolean, default: true },
+        marketplace: { type: Boolean, default: true },
+        analytics: { type: Boolean, default: true },
         gamification: { type: Boolean, default: true },
+        messaging: { type: Boolean, default: true },
+        webinars: { type: Boolean, default: false },
+        advanced_analytics: { type: Boolean, default: true },
+        ai_tools: { type: Boolean, default: true },
+        assessments: { type: Boolean, default: true },
         aiTools: { type: Boolean, default: true }
     },
     updatedBy: {

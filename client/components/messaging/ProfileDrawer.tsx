@@ -46,7 +46,7 @@ export function ProfileDrawer({ isOpen, onClose, userProfile, requesterRole }: P
         <div className="flex flex-col items-center gap-4 mb-8">
           <UserAvatar
             name={userProfile.display_name || userProfile.name}
-            src={userProfile.profilePicture}
+            src={userProfile.profilePicture || userProfile.profileImageUrl}
             size="xl"
             className="h-32 w-32 text-4xl shadow-lg ring-4 ring-slate-50"
           />

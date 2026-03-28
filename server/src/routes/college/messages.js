@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const messageController = require('../../controllers/college/messageController');
-const { authMiddleware } = require('../../middleware/auth');
+const { authMiddleware, requireRole } = require('../../middleware/auth');
 
 // Apply auth middleware to all message routes
 router.use(authMiddleware);
@@ -17,6 +17,9 @@ router.get('/users', messageController.getAllowedUsers);
 
 // Get role-based user profile for chat preview
 router.get('/profile/:userId', messageController.getUserProfile);
+
+// Create a system/context message thread entry
+router.post('/system', requireRole(['org_admin', 'instructor']), messageController.createSystemMessage);
 
 // Get all messages for a particular conversation
 router.get('/:conversationId', messageController.getConversationMessages);

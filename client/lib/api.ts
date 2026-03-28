@@ -1130,18 +1130,23 @@ export const messagingApi = {
   getUnreadCount: (token: string) =>
     apiRequest("/api/college/messages/unread-count", { token }),
     
-  startConversation: (token: string, receiverId: string) =>
-    apiRequest("/api/college/messages/start", {
+  startConversation: (token: string, receiverOrPayload: string | Record<string, any>) => {
+    const body = typeof receiverOrPayload === 'string'
+      ? { receiverId: receiverOrPayload }
+      : receiverOrPayload
+
+    return apiRequest("/api/college/messages/start", {
       method: "POST",
       token,
-      body: { receiverId }
-    }),
-    
-  sendMessage: (token: string, conversationId: string, text: string) =>
+      body
+    })
+  },
+      
+  sendMessage: (token: string, conversationId: string, text: string, extras: Record<string, any> = {}) =>
     apiRequest("/api/college/messages/send", {
       method: "POST",
       token,
-      body: { conversationId, text }
+      body: { conversationId, text, ...extras }
     }),
 
   getUserProfile: (token: string, userId: string) =>

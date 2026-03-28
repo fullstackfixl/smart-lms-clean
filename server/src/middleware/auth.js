@@ -103,7 +103,7 @@ const requireRole = (roles) => {
 // Enhanced organization access middleware
 const orgAccessMiddleware = (req, res, next) => {
   // Super admin can access everything
-  if (req.user.role === 'superAdmin') {
+  if (req.user.role === 'superAdmin' || req.user.role === 'platform_admin' || req.user.role === 'platformAdmin') {
     req.canAccessAllOrganizations = true;
     return next();
   }
@@ -196,7 +196,7 @@ const requirePermission = (permission) => {
     }
 
     // Super admin has all permissions
-    if (req.user.role === 'superAdmin') {
+    if (req.user.role === 'superAdmin' || req.user.role === 'platform_admin' || req.user.role === 'platformAdmin') {
       return next();
     }
 

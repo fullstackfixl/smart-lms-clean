@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { ROLE_PERMISSION_MATRIX } = require('../config/platformAccessCatalog');
 
 const userSchema = new mongoose.Schema({
   organization_id: {
@@ -31,6 +32,10 @@ const userSchema = new mongoose.Schema({
     type: String, // base64 encoded image string
     default: null
   },
+  permissions: [{
+    type: String,
+    trim: true
+  }],
   name: {
     type: String,
     required: true,
@@ -251,6 +256,28 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password_hash);
 };
 
+userSchema.methods.isPlatformSuperAdmin = function () {
+  return ['platform_admin', 'platformAdmin', 'superAdmin'].includes(this.role);
+};
+
+userSchema.methods.hasPermission = function (permission) {
+  if (!permission) {
+    return false;
+  }
+
+  if (this.isPlatformSuperAdmin()) {
+    return true;
+  }
+
+  const explicitPermissions = Array.isArray(this.permissions) ? this.permissions : [];
+  if (explicitPermissions.includes('*') || explicitPermissions.includes(permission)) {
+    return true;
+  }
+
+  const rolePermissions = ROLE_PERMISSION_MATRIX[this.role] || [];
+  return rolePermissions.includes(permission);
+};
+
 // Get public user data (exclude sensitive fields)
 userSchema.methods.toPublicJSON = function () {
   const userObj = {
@@ -258,6 +285,7 @@ userSchema.methods.toPublicJSON = function () {
     email: this.email,
     name: this.name,
     role: this.role,
+    permissions: this.permissions || [],
     profilePicture: this.profilePicture,
     organization_id: this.organization_id?._id || this.organization_id,
     organization_code: this.organization_code,

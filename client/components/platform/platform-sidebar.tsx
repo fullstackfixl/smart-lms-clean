@@ -16,7 +16,8 @@ import {
   Settings,
   ClipboardList,
   History,
-  ShieldCheck
+  ShieldCheck,
+  SlidersHorizontal
 } from 'lucide-react'
 
 const navItems = [
@@ -26,6 +27,7 @@ const navItems = [
   { name: 'Courses', href: '/platform/courses', icon: FileText },
   { name: 'Users & Roles', href: '/platform/users', icon: Users },
   { name: 'Staff Management', href: '/platform/staff', icon: ShieldCheck },
+  { name: 'Roles & Permissions', href: '/platform/config/roles', icon: SlidersHorizontal },
   { name: 'Analytics', href: '/platform/analytics', icon: BarChart3 },
   { name: 'Reports', href: '/platform/reports', icon: ClipboardList },
   { name: 'Audit Logs', href: '/platform/audit-logs', icon: History },
