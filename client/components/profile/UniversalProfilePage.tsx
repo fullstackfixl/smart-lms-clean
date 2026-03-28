@@ -8,7 +8,7 @@ import { toast } from "sonner"
 import { UserAvatar } from "../ui/UserAvatar"
 
 interface UniversalProfilePageProps {
-  role: "org_admin" | "instructor" | "student"
+  role: "platform_admin" | "platformAdmin" | "platform_staff" | "org_admin" | "organization_admin" | "instructor" | "student" | "parent" | "support" | "support_staff" | "public_student" | "superAdmin"
 }
 
 export function UniversalProfilePage({ role }: UniversalProfilePageProps) {
@@ -95,9 +95,18 @@ export function UniversalProfilePage({ role }: UniversalProfilePageProps) {
   }
 
   const roleLabel: Record<string, string> = {
+    platform_admin: "Platform Administrator",
+    platformAdmin: "Platform Administrator",
+    superAdmin: "Super Administrator",
+    platform_staff: "Platform Staff",
     org_admin: "Organization Admin",
+    organization_admin: "Organization Admin",
     instructor: "Instructor",
     student: "Student",
+    support_staff: "Support Staff",
+    support: "Help Desk",
+    public_student: "External Learner",
+    parent: "Parent/Guardian",
   }
 
   return (

@@ -419,9 +419,4 @@ export default function OrgAdminAttendancePage() {
     </div>
   )
 
-  function pctBadge(pct: number) {
-    if (pct >= 75) return "bg-green-100 text-green-700"
-    if (pct >= 60) return "bg-amber-100 text-amber-700"
-    return "bg-red-100 text-red-600"
-  }
 }
