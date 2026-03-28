@@ -5,6 +5,291 @@ const authService = require('../authService');
 const { Organization, User, Course, Invite, ActivityLog } = require('../../models');
 const { paginate, getSortOptions } = require('../../utils/pagination');
 
+function buildDefaultPlatformControls() {
+  return {
+    permissions: {
+      canCreateCourses: true,
+      canCreateInstructors: true,
+      canAccessMarketplace: true,
+      canViewFinancials: true,
+      canManageChat: true,
+      canManageAttendance: true,
+      canEnterOrgContext: true
+    },
+    limits: {
+      maxUsers: null,
+      maxStudents: null,
+      maxInstructors: null,
+      maxCourses: null,
+      storageMb: null
+    },
+    features: {
+      liveClasses: true,
+      chat: true,
+      aiAssistant: false,
+      marketplace: true
+    },
+    finance: {
+      canViewFinancials: true,
+      canEditFees: false,
+      canViewInstructorSalary: false,
+      revenueSharePercent: 15
+    },
+    marketplace: {
+      enabled: true,
+      approvalRequired: true,
+      revenueSharePercent: 15
+    },
+    ghostMode: {
+      readOnly: true,
+      override: true
+    },
+    updatedBy: null,
+    updatedAt: null
+  };
+}
+
+function mergeDeep(base = {}, patch = {}) {
+  const output = { ...base };
+  Object.keys(patch || {}).forEach((key) => {
+    const value = patch[key];
+    if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+      output[key] = mergeDeep(base[key] || {}, value);
+    } else if (value !== undefined) {
+      output[key] = value;
+    }
+  });
+  return output;
+}
+
+function normalizePlatformControls(existing = {}, patch = {}) {
+  const merged = mergeDeep(buildDefaultPlatformControls(), existing || {});
+  const source = patch.platformControls || patch.controls || patch || {};
+  return mergeDeep(merged, source);
+}
+
+function getObjectId(id) {
+  return new mongoose.Types.ObjectId(String(id));
+}
+
+async function buildFinancialSummary(orgId) {
+  const Fee = mongoose.model('Fee');
+  const Enrollment = mongoose.model('Enrollment');
+  const objectId = getObjectId(orgId);
+
+  const [summaryRows, recentFees, marketplaceRevenueRows] = await Promise.all([
+    Fee.aggregate([
+      { $match: { organization_id: objectId, is_active: true } },
+      {
+        $group: {
+          _id: null,
+          totalBilled: { $sum: '$amount' },
+          totalPaid: {
+            $sum: {
+              $cond: [{ $in: ['$status', ['paid', 'partially_paid']] }, '$amount', 0]
+            }
+          },
+          pendingAmount: {
+            $sum: {
+              $cond: [{ $in: ['$status', ['pending', 'overdue']] }, '$amount', 0]
+            }
+          },
+          paidFees: {
+            $sum: { $cond: [{ $eq: ['$status', 'paid'] }, 1, 0] }
+          },
+          pendingFees: {
+            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
+          },
+          overdueFees: {
+            $sum: { $cond: [{ $eq: ['$status', 'overdue'] }, 1, 0] }
+          }
+        }
+      }
+    ]),
+    Fee.find({ organization_id: orgId, is_active: true })
+      .sort({ due_date: -1 })
+      .limit(5)
+      .populate('student_id', 'name email')
+      .populate('course_id', 'title')
+      .lean(),
+    Enrollment.aggregate([
+      { $match: { organization_id: objectId, enrollmentType: 'marketplace' } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$payment.amount' },
+          totalEnrollments: { $sum: 1 }
+        }
+      }
+    ])
+  ]);
+
+  const summary = summaryRows[0] || {};
+  return {
+    feeSummary: {
+      totalBilled: summary.totalBilled || 0,
+      totalCollected: summary.totalPaid || 0,
+      pendingAmount: summary.pendingAmount || 0,
+      paidFees: summary.paidFees || 0,
+      pendingFees: summary.pendingFees || 0,
+      overdueFees: summary.overdueFees || 0
+    },
+    recentFees,
+    marketplaceRevenue: marketplaceRevenueRows[0]?.totalRevenue || 0,
+    marketplaceEnrollments: marketplaceRevenueRows[0]?.totalEnrollments || 0
+  };
+}
+
+async function buildMarketplaceSummary(orgId) {
+  const objectId = getObjectId(orgId);
+  const marketplaceCourses = await Course.find({
+    organization_id: objectId,
+    is_deleted: { $ne: true },
+    isPublishedToMarketplace: true
+  })
+    .select('title marketplacePrice marketplaceStatus rating enrollmentCount updatedAt')
+    .sort({ updatedAt: -1 })
+    .limit(6)
+    .lean();
+
+  const counts = await Course.aggregate([
+    {
+      $match: {
+        organization_id: objectId,
+        is_deleted: { $ne: true }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        totalCourses: { $sum: 1 },
+        publishedToMarketplace: {
+          $sum: { $cond: [{ $eq: ['$isPublishedToMarketplace', true] }, 1, 0] }
+        },
+        globallyPublished: {
+          $sum: { $cond: [{ $eq: ['$isGloballyPublished', true] }, 1, 0] }
+        }
+      }
+    }
+  ]);
+
+  const row = counts[0] || {};
+  return {
+    totalCourses: row.totalCourses || 0,
+    publishedToMarketplace: row.publishedToMarketplace || 0,
+    globallyPublished: row.globallyPublished || 0,
+    courses: marketplaceCourses
+  };
+}
+
+function normalizeEmbeddedDocument(value) {
+  if (!value) return null;
+  if (typeof value !== 'object') {
+    return { _id: value };
+  }
+
+  return {
+    _id: value._id || value.id || null,
+    id: value.id || value._id || null,
+    name: value.name || value.title || null,
+    code: value.code || null,
+    year: value.year ?? null,
+    semester: value.semester ?? null,
+    duration_years: value.duration_years ?? null,
+    total_semesters: value.total_semesters ?? null
+  };
+}
+
+function normalizeUserProfile(user) {
+  const profile = user.profile || {};
+  const avatar = user.profilePicture || profile.pic_url || profile.avatar || null;
+
+  return {
+    ...profile,
+    photoUrl: avatar,
+    bio: profile.bio || '',
+    phone: profile.phone || '',
+    rollNumber: profile.rollNumber || '',
+    expertise: profile.expertise || '',
+    batch: normalizeEmbeddedDocument(profile.batch),
+    program: normalizeEmbeddedDocument(profile.program_id),
+    department: normalizeEmbeddedDocument(profile.department)
+  };
+}
+
+async function buildStudentSnapshot(user, orgId) {
+  const Attendance = mongoose.model('Attendance');
+  const GradeSummary = mongoose.model('GradeSummary');
+  const Submission = mongoose.model('Submission');
+
+  const [attendance, gpa, submissionStats] = await Promise.all([
+    Attendance.getStudentAttendanceSummary(user._id, orgId).catch(() => null),
+    GradeSummary.getStudentGPA(user._id, orgId).catch(() => null),
+    Promise.all([
+      Submission.countDocuments({ organization_id: orgId, student_id: user._id, is_active: true }),
+      Submission.countDocuments({ organization_id: orgId, student_id: user._id, is_active: true, status: 'graded' })
+    ]).then(([total, graded]) => ({ total, graded })).catch(() => ({ total: 0, graded: 0 }))
+  ]);
+
+  return {
+    ...user,
+    profile: normalizeUserProfile(user),
+    academic: {
+      attendance,
+      gradeSummary: gpa,
+      submissions: submissionStats
+    }
+  };
+}
+
+async function buildInstructorSnapshot(user, orgId) {
+  const Attendance = mongoose.model('Attendance');
+  const Subject = mongoose.model('Subject');
+  const Quiz = mongoose.model('Quiz');
+  const LiveClass = mongoose.model('LiveClass');
+  const Enrollment = mongoose.model('Enrollment');
+  const courseIds = await Course.distinct('_id', { organization_id: orgId, instructor_id: user._id, is_deleted: { $ne: true } });
+
+  const [courses, subjects, liveClasses, quizzes, taughtSessions, enrollments] = await Promise.all([
+    Course.find({ organization_id: orgId, instructor_id: user._id, is_deleted: { $ne: true } })
+      .select('title status enrollmentCount isPublished isPublishedToMarketplace marketplaceStatus subject_id updatedAt')
+      .sort({ updatedAt: -1 })
+      .limit(10)
+      .lean(),
+    Subject.find({ organizationId: orgId, instructorId: user._id, isActive: true })
+      .populate('batchId', 'name code year semester')
+      .populate('programId', 'name code duration_years total_semesters')
+      .select('name code semester batchId programId contentCourseId')
+      .lean(),
+    LiveClass.countDocuments({ organization_id: orgId, instructor_id: user._id, is_active: true }),
+    Quiz.countDocuments({ organization_id: orgId, instructor_id: user._id, is_active: true }),
+    Attendance.countDocuments({ organization_id: orgId, instructor_id: user._id, is_active: true }),
+    Enrollment.aggregate([
+      {
+        $match: {
+          organization_id: getObjectId(orgId),
+          course_id: { $in: courseIds }
+        }
+      },
+      { $group: { _id: null, totalStudents: { $sum: 1 } } }
+    ]).catch(() => [])
+  ]);
+
+  return {
+    ...user,
+    profile: normalizeUserProfile(user),
+    academic: {
+      courseCount: courses.length,
+      subjects,
+      liveClasses,
+      quizzes,
+      taughtSessions,
+      totalStudents: enrollments[0]?.totalStudents || 0,
+      courses
+    }
+  };
+}
+
 exports.listOrganizations = async (params) => {
   const { search, status, plan, page, limit, sort } = params;
   
@@ -123,6 +408,7 @@ exports.getOrganizationById = async (orgId) => {
   ]);
 
   const orgObj = organization.toObject();
+  orgObj.platformControls = normalizePlatformControls(orgObj.platformControls || {});
   orgObj.stats = {
     totalInstructors,
     totalStudents,
@@ -149,13 +435,30 @@ exports.listOrganizationUsers = async (orgId, role, params) => {
   }
   
   const sortOptions = getSortOptions(sort);
-  
-  return paginate(User, query, { 
+  const populate = [
+    { path: 'profile.batch', select: 'name code year semester programId departmentId organizationId' },
+    { path: 'profile.program_id', select: 'name code duration_years total_semesters organization_id' },
+    { path: 'profile.department', select: 'name code organization_id' }
+  ];
+
+  const result = await paginate(User, query, { 
     page, 
     limit, 
     sort: sortOptions,
-    select: '-password_hash' 
+    select: '-password_hash',
+    populate
   });
+
+  const enrichers = role === 'student'
+    ? buildStudentSnapshot
+    : buildInstructorSnapshot;
+
+  const data = await Promise.all((result.data || []).map((user) => enrichers(user, orgId)));
+
+  return {
+    ...result,
+    data
+  };
 };
 
 exports.updateOrganization = async (orgId, data) => {
@@ -366,4 +669,130 @@ exports.resetAdminPassword = async (orgId) => {
     success: true,
     message: 'Password reset link sent to organization admin email'
   };
+};
+
+exports.enterOrganizationContext = async (orgId, requesterId) => {
+  const organization = await Organization.findById(orgId)
+    .populate('admin_user_id', 'name email role')
+    .populate('created_by', 'name email');
+
+  if (!organization || organization.is_deleted) {
+    throw new Error('Organization not found');
+  }
+
+  const context = {
+    organizationId: organization._id,
+    organizationCode: organization.code,
+    organizationName: organization.name,
+    organizationType: organization.type,
+    status: organization.status,
+    platformControls: normalizePlatformControls(organization.platformControls || {}),
+    dashboardUrl: `/platform/organizations/${organization._id}`,
+    userFilterUrl: `/platform/users?organizationId=${organization._id}`,
+    courseFilterUrl: `/platform/courses?organizationId=${organization._id}`
+  };
+
+  return {
+    success: true,
+    message: 'Organization context resolved',
+    context,
+    organization,
+    requestedBy: requesterId
+  };
+};
+
+exports.getOrganizationControlPanel = async (orgId) => {
+  const organization = await Organization.findById(orgId)
+    .populate('created_by', 'name email')
+    .populate('admin_user_id', 'name email role');
+
+  if (!organization || organization.is_deleted) {
+    throw new Error('Organization not found');
+  }
+
+  const [financials, marketplace] = await Promise.all([
+    buildFinancialSummary(orgId),
+    buildMarketplaceSummary(orgId)
+  ]);
+
+  const organizationObj = organization.toObject();
+  const platformControls = normalizePlatformControls(organizationObj.platformControls || {});
+  organizationObj.platformControls = platformControls;
+
+  return {
+    organization: organizationObj,
+    permissions: platformControls.permissions,
+    limits: platformControls.limits,
+    features: platformControls.features,
+    finance: {
+      ...platformControls.finance,
+      ...financials,
+      canViewFinancials: platformControls.finance.canViewFinancials
+    },
+    marketplace: {
+      ...platformControls.marketplace,
+      ...marketplace,
+      canAccessMarketplace: platformControls.permissions.canAccessMarketplace
+    },
+    ghostMode: platformControls.ghostMode
+  };
+};
+
+exports.updateOrganizationControlPanel = async (orgId, patch = {}, updatedBy = null) => {
+  const organization = await Organization.findById(orgId);
+  if (!organization || organization.is_deleted) {
+    throw new Error('Organization not found');
+  }
+
+  const nextControls = normalizePlatformControls(organization.platformControls || {}, patch);
+
+  if (patch.permissions || patch.controls || patch.platformControls) {
+    nextControls.permissions = mergeDeep(nextControls.permissions, patch.permissions || patch.controls?.permissions || patch.platformControls?.permissions || {});
+  }
+  if (patch.features || patch.controls?.features || patch.platformControls?.features) {
+    nextControls.features = mergeDeep(nextControls.features, patch.features || patch.controls?.features || patch.platformControls?.features || {});
+  }
+  if (patch.finance || patch.controls?.finance || patch.platformControls?.finance) {
+    nextControls.finance = mergeDeep(nextControls.finance, patch.finance || patch.controls?.finance || patch.platformControls?.finance || {});
+  }
+  if (patch.marketplace || patch.controls?.marketplace || patch.platformControls?.marketplace) {
+    nextControls.marketplace = mergeDeep(nextControls.marketplace, patch.marketplace || patch.controls?.marketplace || patch.platformControls?.marketplace || {});
+  }
+  if (patch.ghostMode || patch.controls?.ghostMode || patch.platformControls?.ghostMode) {
+    nextControls.ghostMode = mergeDeep(nextControls.ghostMode, patch.ghostMode || patch.controls?.ghostMode || patch.platformControls?.ghostMode || {});
+  }
+  if (patch.limits || patch.controls?.limits || patch.platformControls?.limits) {
+    nextControls.limits = mergeDeep(nextControls.limits, patch.limits || patch.controls?.limits || patch.platformControls?.limits || {});
+    organization.limits = {
+      ...organization.limits,
+      max_users: nextControls.limits.maxUsers ?? organization.limits?.max_users,
+      max_students: nextControls.limits.maxStudents ?? organization.limits?.max_students,
+      max_instructors: nextControls.limits.maxInstructors ?? organization.limits?.max_instructors,
+      max_courses: nextControls.limits.maxCourses ?? organization.limits?.max_courses,
+      storage_mb: nextControls.limits.storageMb ?? organization.limits?.storage_mb
+    };
+  }
+
+  if (Array.isArray(patch.modulesEnabled)) {
+    organization.modulesEnabled = [...new Set(patch.modulesEnabled.map((moduleName) => String(moduleName).trim()).filter(Boolean))];
+  }
+
+  if (patch.plan) {
+    organization.plan = patch.plan;
+  }
+
+  if (patch.status) {
+    organization.status = patch.status;
+  }
+
+  if (patch.settings && typeof patch.settings === 'object') {
+    organization.settings = { ...organization.settings, ...patch.settings };
+  }
+
+  nextControls.updatedBy = updatedBy || null;
+  nextControls.updatedAt = new Date();
+  organization.platformControls = nextControls;
+
+  await organization.save();
+  return exports.getOrganizationControlPanel(orgId);
 };

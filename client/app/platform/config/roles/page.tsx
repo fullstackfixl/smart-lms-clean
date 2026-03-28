@@ -166,7 +166,7 @@ export default function RolesPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Badge className="rounded-full bg-slate-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+              <Badge className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
                 {catalog.length} permission groups
               </Badge>
               <Badge className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
@@ -271,7 +271,7 @@ export default function RolesPage() {
                 <h2 className="text-lg font-black text-slate-950">{selectedPermissions?.title}</h2>
                 <p className="mt-1 text-sm text-slate-500">{selectedPermissions?.description}</p>
               </div>
-              <Badge className="rounded-full bg-slate-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+              <Badge className="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
                 {selectedPermissions?.permissions.length || 0} permissions
               </Badge>
             </div>

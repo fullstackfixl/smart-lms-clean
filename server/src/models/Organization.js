@@ -156,6 +156,10 @@ const organizationSchema = new mongoose.Schema({
         if (this.plan === 'basic') return 10;
         return 2; // free
       }
+    },
+    storage_mb: {
+      type: Number,
+      default: null
     }
   },
   // Usage tracking
@@ -168,6 +172,55 @@ const organizationSchema = new mongoose.Schema({
     require_phone_verification: { type: Boolean, default: false },
     mfa_required: { type: Boolean, default: false },
     allow_public_registration: { type: Boolean, default: true }
+  }
+  ,
+  platformControls: {
+    permissions: {
+      canCreateCourses: { type: Boolean, default: true },
+      canCreateInstructors: { type: Boolean, default: true },
+      canAccessMarketplace: { type: Boolean, default: true },
+      canViewFinancials: { type: Boolean, default: true },
+      canManageChat: { type: Boolean, default: true },
+      canManageAttendance: { type: Boolean, default: true },
+      canEnterOrgContext: { type: Boolean, default: true }
+    },
+    limits: {
+      maxUsers: { type: Number, default: null },
+      maxStudents: { type: Number, default: null },
+      maxInstructors: { type: Number, default: null },
+      maxCourses: { type: Number, default: null },
+      storageMb: { type: Number, default: null }
+    },
+    features: {
+      liveClasses: { type: Boolean, default: true },
+      chat: { type: Boolean, default: true },
+      aiAssistant: { type: Boolean, default: false },
+      marketplace: { type: Boolean, default: true }
+    },
+    finance: {
+      canViewFinancials: { type: Boolean, default: true },
+      canEditFees: { type: Boolean, default: false },
+      canViewInstructorSalary: { type: Boolean, default: false },
+      revenueSharePercent: { type: Number, default: 15 }
+    },
+    marketplace: {
+      enabled: { type: Boolean, default: true },
+      approvalRequired: { type: Boolean, default: true },
+      revenueSharePercent: { type: Number, default: 15 }
+    },
+    ghostMode: {
+      readOnly: { type: Boolean, default: true },
+      override: { type: Boolean, default: true }
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    updatedAt: {
+      type: Date,
+      default: null
+    }
   }
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

@@ -76,8 +76,20 @@ class MarketplaceController extends BaseController {
                 return res.error('Course not available for purchase', 'Not Found', 404);
             }
 
+            const userOrg = req.user?.organization_id;
+            const orgControls = userOrg?.platformControls || {};
+            const marketplaceAllowed =
+              orgControls.permissions?.canAccessMarketplace !== false &&
+              orgControls.marketplace?.enabled !== false;
+
+            if (!marketplaceAllowed) {
+                return res.error('Marketplace access is disabled for your organization', 'Access Denied', 403);
+            }
+
             // Security Check: Internal org students same organization
-            if (user.organization_id && user.organization_id.toString() === course.organization_id.toString()) {
+            const userOrgId = user.organization_id?._id || user.organization_id;
+            const courseOrgId = course.organization_id?._id || course.organization_id;
+            if (userOrgId && String(userOrgId) === String(courseOrgId)) {
                 return res.error('Internal organization students cannot purchase their own organization courses', 'Access Denied', 403);
             }
 

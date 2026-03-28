@@ -100,6 +100,10 @@ class AuthService {
       }
     }
 
+    user.lastLogin = new Date();
+    user.lastActive = new Date();
+    await user.save();
+
     const normalizedRole = normalizeRole || user.role;
     const orgId = user.organization_id?._id || user.organization_id || null;
 
@@ -173,6 +177,9 @@ class AuthService {
 
     // Generate token
     const orgType = (user.organization_id?.type || user.organization_id?.organizationType || user.organizationType || null);
+    user.lastLogin = new Date();
+    user.lastActive = new Date();
+    await user.save();
     const token = jwtUtils.generateToken({
       user_id: user._id,
       role: user.role,
@@ -726,6 +733,10 @@ class AuthService {
       }
       console.log(`👤 [AuthService] Social login for existing user: ${email}`);
     }
+
+    user.lastLogin = new Date();
+    user.lastActive = new Date();
+    await user.save();
 
     // Generate token
     const token = jwtUtils.generateToken({

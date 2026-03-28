@@ -107,7 +107,7 @@ export const authApi = {
     apiRequest("/auth/register/verify-otp", { method: "POST", body: data }),
   resendOtp: (email: string) =>
     apiRequest("/auth/register/resend-otp", { method: "POST", body: { email } }),
-  createSuperAdmin: (data: any) =>
+  createSuperAdmin: (data: { name: string; email: string; password: string; secret: string; force?: boolean }) =>
     apiRequest("/platform/create-super-admin", { method: "POST", body: data }),
   login: (data: { email: string; password: string }) =>
     apiRequest("/auth/login", { method: "POST", body: data }),
@@ -721,9 +721,27 @@ export const platformApi = {
       token
     })
   },
+  getOrgControlPanel: async (token: string, id: string) => {
+    return apiRequest(`/api/platform/organizations/${id}/control`, {
+      token
+    })
+  },
+  updateOrgControlPanel: async (token: string, id: string, data: Record<string, unknown>) => {
+    return apiRequest(`/api/platform/organizations/${id}/control`, {
+      method: "PATCH",
+      token,
+      body: data
+    })
+  },
 
   restoreOrg: async (token: string, id: string) => {
     return apiRequest(`/api/platform/organizations/${id}/restore`, {
+      method: "POST",
+      token
+    })
+  },
+  enterOrgContext: async (token: string, id: string) => {
+    return apiRequest(`/api/platform/organizations/${id}/context`, {
       method: "POST",
       token
     })
@@ -736,6 +754,8 @@ export const platformApi = {
     apiRequest("/api/platform/analytics", { token }),
   revenue: (token: string) =>
     apiRequest("/api/platform/revenue", { token }),
+  getBillingStats: (token: string) =>
+    apiRequest("/api/platform/billing", { token }),
 
   // Dashboard
   getDashboardStats: (token?: string) =>
@@ -744,6 +764,18 @@ export const platformApi = {
     apiRequest(`/api/platform/analytics/global${period ? `?period=${period}` : ""}`, { token }),
   getRevenueAnalytics: (token?: string) =>
     apiRequest("/api/platform/analytics/revenue", { token }),
+  getMetricsOverview: (token?: string) =>
+    apiRequest("/api/platform/metrics/overview", { token }),
+  getMetricsActivity: (token?: string) =>
+    apiRequest("/api/platform/metrics/activity", { token }),
+  getMetricsEngagement: (token?: string) =>
+    apiRequest("/api/platform/metrics/engagement", { token }),
+  getSecurityOverview: (token?: string) =>
+    apiRequest("/api/platform/security/overview", { token }),
+  listConversations: (token?: string, params?: string) =>
+    apiRequest(`/api/platform/conversations${params ? `?${params}` : ""}`, { token }),
+  getConversationMessages: (token: string, conversationId: string, params?: string) =>
+    apiRequest(`/api/platform/messages/${conversationId}${params ? `?${params}` : ""}`, { token }),
 
   // Platform Admins
   listAdmins: (token: string, params?: { page?: number; limit?: number; search?: string }) => {

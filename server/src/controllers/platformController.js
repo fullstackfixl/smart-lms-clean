@@ -14,12 +14,16 @@ class PlatformController {
         return res.status(400).json({ success: false, message: 'Name, email, and password are required' });
       }
 
-      // If force-resetting, require secret
-      if (force) {
-        const adminSecret = process.env.SUPER_ADMIN_SECRET || 'super-secret-admin-key-2024';
-        if (secret !== adminSecret) {
-          return res.status(403).json({ success: false, message: 'Invalid secret' });
-        }
+      const adminSecret = process.env.SUPER_ADMIN_SECRET;
+      if (!adminSecret) {
+        return res.status(500).json({
+          success: false,
+          message: 'SUPER_ADMIN_SECRET is not configured'
+        });
+      }
+
+      if (secret !== adminSecret) {
+        return res.status(403).json({ success: false, message: 'Invalid secret' });
       }
 
       // Check if a user with THIS email already exists
@@ -146,7 +150,7 @@ class PlatformController {
 
   async updateUserStatus(req, res) {
     try {
-      const { id } = req.params;
+      const id = req.params.id || req.params.userId;
       const { isActive } = req.body;
 
       const user = await User.findById(id);

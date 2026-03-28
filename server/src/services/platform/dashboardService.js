@@ -1,101 +1,109 @@
-const { Organization, User, Course, Enrollment, Fee } = require('../../models');
+const {
+  Organization,
+  Course,
+  User,
+  Enrollment,
+  PlatformAuditLog,
+  Conversation,
+  Message
+} = require('../../models');
 
 exports.getStats = async () => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const activeWindowStart = new Date(Date.now() - 15 * 60 * 1000);
+
   const [
     totalOrganizations,
     totalUsers,
     totalStudents,
     totalInstructors,
     totalCourses,
-    activeUsersToday
+    activeUsersToday,
+    activeSessions,
+    totalEnrollments,
+    recentOrganizations,
+    recentUsers,
+    recentCourses,
+    recentAuditLogs,
+    recentConversations,
+    recentMessages
   ] = await Promise.all([
     Organization.countDocuments({ is_deleted: { $ne: true } }),
     User.countDocuments({ is_deleted: { $ne: true } }),
     User.countDocuments({ role: 'student', is_deleted: { $ne: true } }),
     User.countDocuments({ role: 'instructor', is_deleted: { $ne: true } }),
     Course.countDocuments({ is_deleted: { $ne: true } }),
-    User.countDocuments({ 
-      lastLogin: { 
-        $gte: new Date(new Date().setHours(0, 0, 0, 0)) 
-      },
-      is_deleted: { $ne: true } 
+    User.countDocuments({ lastLogin: { $gte: todayStart }, is_deleted: { $ne: true } }),
+    User.countDocuments({ lastActive: { $gte: activeWindowStart }, is_deleted: { $ne: true } }),
+    Enrollment.countDocuments({}),
+    Organization.find({ is_deleted: { $ne: true } })
+      .select('name type status email subdomain created_at')
+      .sort({ created_at: -1 })
+      .limit(6)
+      .lean(),
+    User.find({ is_deleted: { $ne: true } })
+      .select('name email role status organization_id created_at lastLogin')
+      .populate('organization_id', 'name')
+      .sort({ created_at: -1 })
+      .limit(6)
+      .lean(),
+    Course.find({ is_deleted: { $ne: true } })
+      .select('title status organization_id instructor_id created_at enrollmentCount')
+      .populate('organization_id', 'name')
+      .populate('instructor_id', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(6)
+      .lean(),
+    PlatformAuditLog.find({})
+      .populate('actorId', 'name email role')
+      .sort({ timestamp: -1 })
+      .limit(8)
+      .lean(),
+    Conversation.find({})
+      .populate('participants', 'name email role profilePicture')
+      .sort({ lastMessageAt: -1 })
+      .limit(6)
+      .lean(),
+    Message.find({})
+      .populate('senderId', 'name email role profilePicture')
+      .sort({ createdAt: -1 })
+      .limit(8)
+      .lean()
+  ]);
+
+  const totalRevenueData = await Enrollment.aggregate([
+    { $match: { 'payment.paymentStatus': 'completed' } },
+    { $group: { _id: null, total: { $sum: '$payment.amount' } } }
+  ]);
+
+  const enrollmentFlux = await Promise.all(
+    Array.from({ length: 7 }).map(async (_, index) => {
+      const day = new Date();
+      day.setDate(day.getDate() - (6 - index));
+      day.setHours(0, 0, 0, 0);
+      const nextDay = new Date(day);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      const value = await Enrollment.countDocuments({
+        enrolledAt: { $gte: day, $lt: nextDay }
+      });
+
+      return {
+        name: day.toLocaleDateString(undefined, { weekday: 'short' }),
+        value
+      };
     })
-  ]);
+  );
 
-  // Organization type breakdown (real data)
-  const orgTypeBreakdown = await Organization.aggregate([
-    { $match: { is_deleted: { $ne: true } } },
-    { $group: { _id: { $toLower: '$type' }, count: { $sum: 1 } } },
-    { $sort: { count: -1 } }
-  ]);
-
-  // Per-organization stats (real instructor & student counts)
-  const orgsWithStats = await Organization.find({ is_deleted: { $ne: true }, status: 'active' })
-    .select('name type status email subdomain createdAt')
-    .sort({ createdAt: -1 })
-    .limit(20)
-    .lean();
-
-  // Batch-fetch user counts per org
-  const orgIds = orgsWithStats.map(o => o._id);
-  const [instructorCounts, studentCounts, courseCounts] = await Promise.all([
-    User.aggregate([
-      { $match: { organization_id: { $in: orgIds }, role: 'instructor', is_deleted: { $ne: true } } },
-      { $group: { _id: '$organization_id', count: { $sum: 1 } } }
-    ]),
-    User.aggregate([
-      { $match: { organization_id: { $in: orgIds }, role: 'student', is_deleted: { $ne: true } } },
-      { $group: { _id: '$organization_id', count: { $sum: 1 } } }
-    ]),
-    Course.aggregate([
-      { $match: { organization_id: { $in: orgIds }, is_deleted: { $ne: true } } },
-      { $group: { _id: '$organization_id', count: { $sum: 1 } } }
-    ])
-  ]);
-
-  const countMap = (arr) => {
-    const m = {};
-    arr.forEach(r => { m[String(r._id)] = r.count; });
-    return m;
+  const recentActivity = {
+    organizations: recentOrganizations,
+    users: recentUsers,
+    courses: recentCourses,
+    auditLogs: recentAuditLogs,
+    conversations: recentConversations,
+    messages: recentMessages
   };
-
-  const iMap = countMap(instructorCounts);
-  const sMap = countMap(studentCounts);
-  const cMap = countMap(courseCounts);
-
-  const organizationSummaries = orgsWithStats.map(o => ({
-    _id: o._id,
-    name: o.name,
-    type: o.type,
-    status: o.status,
-    createdAt: o.createdAt,
-    stats: {
-      totalInstructors: iMap[String(o._id)] || 0,
-      totalStudents: sMap[String(o._id)] || 0,
-      totalCourses: cMap[String(o._id)] || 0
-    }
-  }));
-
-  // Recent enrollments (real)
-  const recentEnrollments = await Enrollment.find({ is_deleted: { $ne: true } })
-    .populate('student_id', 'name email profile.fullName')
-    .populate('course_id', 'title')
-    .populate('organization_id', 'name type')
-    .sort({ createdAt: -1 })
-    .limit(10)
-    .lean();
-
-  // Revenue summary (real)
-  let totalRevenue = 0;
-  try {
-    const revData = await Fee.aggregate([
-      { $match: { status: 'paid' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
-    ]);
-    totalRevenue = revData[0]?.total || 0;
-  } catch (e) {
-    // Fee model may not exist yet, that's fine
-  }
 
   return {
     totalOrganizations,
@@ -103,10 +111,11 @@ exports.getStats = async () => {
     totalStudents,
     totalInstructors,
     totalCourses,
+    totalEnrollments,
     activeUsersToday,
-    totalRevenue,
-    orgTypeBreakdown: orgTypeBreakdown.map(r => ({ type: r._id || 'unknown', count: r.count })),
-    organizationSummaries,
-    recentEnrollments
+    activeSessions,
+    totalRevenue: totalRevenueData[0]?.total || 0,
+    enrollmentFlux,
+    recentActivity
   };
 };

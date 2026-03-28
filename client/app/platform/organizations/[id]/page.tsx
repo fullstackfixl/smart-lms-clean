@@ -34,7 +34,10 @@ import {
   CheckCircle2,
   XCircle,
   TrendingUp,
-  UserCheck
+  UserCheck,
+  IdCard,
+  Layers3,
+  BadgeCheck
 } from 'lucide-react'
 
 import { FlatMetricCard } from '../../../../components/platform/flat-metric-card'
@@ -50,6 +53,8 @@ import { toast } from 'sonner'
 import { cn } from '../../../../lib/utils'
 import { platformJsonFetcher } from '../../../../lib/platform-fetcher'
 import { PlatformErrorState } from '../../../../components/platform/platform-error-state'
+import { platformApi } from '../../../../lib/api'
+import { getToken } from '../../../../lib/config'
 
 export default function OrganizationDetailsPage() {
   const params = useParams()
@@ -68,6 +73,7 @@ export default function OrganizationDetailsPage() {
   const { data: quizzesRes, isLoading: quizzesLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/quizzes`, platformJsonFetcher)
   const { data: certsRes, isLoading: certsLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/certificates`, platformJsonFetcher)
   const { data: attendanceRes, isLoading: attendanceLoading } = useSWR<any>(`/api/platform/organizations/${orgId}/attendance`, platformJsonFetcher)
+  const { data: controlRes, isLoading: controlLoading, mutate: mutateControl } = useSWR<any>(`/api/platform/organizations/${orgId}/control`, platformJsonFetcher)
 
   const org = orgRes?.data
   const stats = statsRes?.data
@@ -79,6 +85,14 @@ export default function OrganizationDetailsPage() {
   const quizzes = quizzesRes?.data || []
   const certificates = certsRes?.data || []
   const attendance = attendanceRes?.data || []
+  const [contextLoading, setContextLoading] = useState(false)
+  const orgLogo = org?.logo_url || org?.branding?.logo || org?.branding?.logo_url || null
+  const orgInitials = (org?.name || 'ORG')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part: string) => part[0]?.toUpperCase() || '')
+    .join('') || 'ORG'
 
   useEffect(() => {
     // Suppress play interruption errors globally to avoid cluttering console
@@ -126,8 +140,32 @@ export default function OrganizationDetailsPage() {
     { id: 'quizzes', label: 'Quizzes', icon: BookOpen },
     { id: 'certificates', label: 'Certificates', icon: Award },
     { id: 'activity', label: 'Activity Logs', icon: Activity },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'control', label: 'Control Plane', icon: Shield }
   ]
+
+  const handleEnterContext = async () => {
+    try {
+      setContextLoading(true)
+      const token = getToken()
+      if (!token) {
+        toast.error('Authentication token not found')
+        return
+      }
+
+      const response = await platformApi.enterOrgContext(token, orgId)
+      if (response.success && response.data) {
+        const context = (response.data as any).context
+        const url = context?.userFilterUrl || `/platform/users?organizationId=${orgId}`
+        router.push(url)
+        toast.success('Organization context loaded')
+      } else {
+        toast.error(response.error || 'Failed to enter organization context')
+      }
+    } finally {
+      setContextLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-4 lg:p-8">
@@ -161,11 +199,21 @@ export default function OrganizationDetailsPage() {
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/50 rounded-full blur-3xl -mr-32 -mt-32" />
             
             <div className="flex items-center gap-6 relative z-10">
-              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-0.5 shadow-lg shadow-blue-200">
-                <div className="h-full w-full rounded-[14px] bg-white flex items-center justify-center text-blue-600">
-                  <Building2 className="h-10 w-10 stroke-[1.5]" />
+                <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-0.5 shadow-lg shadow-blue-200">
+                  <div className="h-full w-full rounded-[14px] bg-white flex items-center justify-center text-blue-600 overflow-hidden">
+                    {orgLogo ? (
+                      <img
+                        src={orgLogo}
+                        alt={`${org.name} logo`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-gradient-to-br from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white font-black text-xl tracking-tight">
+                        {orgInitials}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
               <div>
                 <div className="flex items-center gap-3 mb-1">
                   <h1 className="text-3xl font-black text-slate-900 tracking-tight">
@@ -189,7 +237,7 @@ export default function OrganizationDetailsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 relative z-10">
-               <Button variant="outline" className="rounded-xl px-6 h-12 border-slate-200 bg-white font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
+               <Button variant="outline" className="rounded-xl px-6 h-12 border-slate-200 bg-white font-bold hover:bg-slate-50 transition-all active:scale-95 shadow-sm" onClick={handleEnterContext} disabled={contextLoading}>
                  <ExternalLink className="mr-2 h-4 w-4" /> Management Console
                </Button>
                <Button className="rounded-xl px-6 h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold transition-all shadow-lg shadow-blue-200 active:scale-95">
@@ -252,6 +300,7 @@ export default function OrganizationDetailsPage() {
                 {activeTab === 'attendance' && <AttendanceTab data={attendance} isLoading={attendanceLoading} />}
                 {activeTab === 'activity' && <ActivityTab activity={activity} isLoading={activityLoading} />}
                 {activeTab === 'settings' && <SettingsTab org={org} mutate={mutateOrg} />}
+                {activeTab === 'control' && <ControlTab orgId={orgId} control={controlRes?.data} isLoading={controlLoading} onSaved={() => { mutateControl(); mutateOrg(); }} />}
               </motion.div>
             </AnimatePresence>
           </main>
@@ -306,7 +355,7 @@ function OverviewTab({ org, stats }: { org: any, stats: any }) {
         </Card>
 
         <div className="space-y-6">
-           <Card className="p-8 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-[2rem] border-none shadow-xl shadow-slate-200">
+           <Card className="p-8 bg-gradient-to-br from-blue-50 to-white text-slate-900 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100">
              <div className="flex items-center justify-between mb-10">
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Service Level Agreement</h4>
                 <div className="px-2 py-1 rounded-md bg-white/10 text-[10px] font-bold">PREMIUM</div>
@@ -465,46 +514,105 @@ function StudentsTab({ students, isLoading }: { students: any[]; isLoading: bool
             <div className="h-10 w-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600">
               <GraduationCap className="h-5 w-5" />
             </div>
-            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Student Roster</h3>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Student Roster</h3>
+              <p className="text-xs text-slate-500 font-medium">Profile, attendance, marks, batch, and program visibility</p>
+            </div>
          </div>
          <Badge className="bg-slate-100/80 text-slate-700 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-none">
            {students.length} Enlisted
          </Badge>
       </div>
-      <div className="overflow-x-auto">
-        <SimpleTable headers={['Identity', 'Authentication', 'State']}>
-          {isLoading ? (
-            <SimpleTableRow>
-              <SimpleTableCell colSpan={3} className="py-20 text-center">
-                <RefreshCw className="h-6 w-6 text-blue-500 animate-spin mx-auto mb-2" />
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hydrating data nodes...</div>
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ) : students.length ? (
-            students.map((s: any) => (
-              <SimpleTableRow key={s._id || s.id} className="hover:bg-slate-50/60 transition-colors">
-                <SimpleTableCell className="py-5 font-bold text-slate-900 group">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-black shadow-inner">
-                      {(s.name || 'U').charAt(0)}
-                    </div>
-                    {s.name || 'Anonymous Identifier'}
+      <div className="p-6 lg:p-8">
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-[1.75rem] border border-slate-100 bg-slate-50/50 p-6 animate-pulse">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-2xl bg-slate-200" />
+                  <div className="space-y-3 flex-1">
+                    <div className="h-5 w-40 rounded bg-slate-200" />
+                    <div className="h-4 w-56 rounded bg-slate-200" />
+                    <div className="h-4 w-28 rounded bg-slate-200" />
                   </div>
-                </SimpleTableCell>
-                <SimpleTableCell className="py-5 text-slate-500 font-medium">{s.email || 'N/A'}</SimpleTableCell>
-                <SimpleTableCell className="py-5">
-                  <Badge className={cn('rounded-lg px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] shadow-none border', s.isActive === false ? 'bg-red-50 text-red-600 border-red-100' : 'bg-green-50 text-green-700 border-green-100')}>
-                    {s.isActive === false ? 'LOCKED' : 'ACTIVE'}
-                  </Badge>
-                </SimpleTableCell>
-              </SimpleTableRow>
-            ))
-          ) : (
-            <SimpleTableRow>
-              <SimpleTableCell colSpan={4} className="py-20 text-center text-slate-400 font-bold uppercase text-xs tracking-widest">No node data discovered</SimpleTableCell>
-            </SimpleTableRow>
-          )}
-        </SimpleTable>
+                </div>
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="h-16 rounded-2xl bg-slate-200" />
+                  <div className="h-16 rounded-2xl bg-slate-200" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : students.length ? (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {students.map((student: any) => {
+              const profile = student.profile || {}
+              const attendance = student.academic?.attendance || null
+              const grades = student.academic?.gradeSummary || null
+              const submissions = student.academic?.submissions || null
+              const programName = profile.program?.name || profile.program?.code || 'No program'
+              const batchName = profile.batch?.name || profile.batch?.code || 'No batch'
+              const departmentName = profile.department?.name || 'No department'
+              const avatar = profile.photoUrl || profile.pic_url || student.profilePicture || null
+              const initials = (student.name || 'S').slice(0, 1).toUpperCase()
+
+              return (
+                <div key={student._id || student.id} className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm hover:shadow-xl hover:border-blue-100 transition-all">
+                  <div className="flex items-start gap-4">
+                    <UserAvatar name={student.name} src={avatar} initials={initials} tone="student" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-lg font-black text-slate-950 truncate">{student.name || 'Anonymous Student'}</h4>
+                        <Badge className={cn('rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] border shadow-none', student.status === 'suspended' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-green-50 text-green-700 border-green-100')}>
+                          {student.status || (student.isActive === false ? 'inactive' : 'active')}
+                        </Badge>
+                      </div>
+                      <div className="mt-1 text-sm font-medium text-slate-500 break-all">{student.email || 'No email available'}</div>
+                      <div className="mt-2 text-sm text-slate-600 leading-6">{profile.bio || 'No bio provided.'}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    <MiniMetric label="Student ID" value={profile.rollNumber || student.student_code || student._id} icon={IdCard} />
+                    <MiniMetric label="Program" value={programName} icon={Layers3} />
+                    <MiniMetric label="Batch" value={batchName} icon={BookOpen} />
+                    <MiniMetric label="Department" value={departmentName} icon={BadgeCheck} />
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <StatTile
+                      label="Attendance"
+                      value={`${attendance?.attendance_percentage ?? 0}%`}
+                      detail={`${attendance?.present || 0} present / ${attendance?.total_sessions || 0} sessions`}
+                      tone="blue"
+                    />
+                    <StatTile
+                      label="GPA"
+                      value={`${grades?.gpa ?? 0}`}
+                      detail={`${grades?.total_courses || 0} graded courses`}
+                      tone="indigo"
+                    />
+                    <StatTile
+                      label="Submissions"
+                      value={`${submissions?.graded || 0}/${submissions?.total || 0}`}
+                      detail="graded / total"
+                      tone="emerald"
+                    />
+                  </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <DetailChip label="Phone" value={profile.phone || student.profile?.phone || 'Not available'} />
+                    <DetailChip label="Bio" value={profile.bio || 'No bio recorded'} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="py-20 text-center text-slate-400 font-black text-[10px] uppercase tracking-[0.25em]">
+            No student profile data available
+          </div>
+        )}
       </div>
     </Card>
   )
@@ -518,39 +626,122 @@ function InstructorsTab({ instructors, isLoading }: { instructors: any[]; isLoad
             <div className="h-10 w-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
               <Users className="h-5 w-5" />
             </div>
-            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Academic Staff</h3>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Academic Staff</h3>
+              <p className="text-xs text-slate-500 font-medium">Subject ownership, course creation, and instructor operations</p>
+            </div>
          </div>
       </div>
-      <SimpleTable headers={['Core Member', 'Secure Email', 'Engagement']}>
+      <div className="p-6 lg:p-8">
         {isLoading ? (
-          <SimpleTableRow>
-            <SimpleTableCell colSpan={3} className="py-20 text-center">
-               <RefreshCw className="h-5 w-5 animate-spin mx-auto text-blue-500" />
-            </SimpleTableCell>
-          </SimpleTableRow>
+          <div className="grid gap-4 md:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-[1.75rem] border border-slate-100 bg-slate-50/50 p-6 animate-pulse">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-2xl bg-slate-200" />
+                  <div className="space-y-3 flex-1">
+                    <div className="h-5 w-40 rounded bg-slate-200" />
+                    <div className="h-4 w-56 rounded bg-slate-200" />
+                    <div className="h-4 w-28 rounded bg-slate-200" />
+                  </div>
+                </div>
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="h-16 rounded-2xl bg-slate-200" />
+                  <div className="h-16 rounded-2xl bg-slate-200" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : instructors.length ? (
-          instructors.map((i: any) => (
-            <SimpleTableRow key={i._id || i.id} className="hover:bg-purple-50/20 transition-colors">
-              <SimpleTableCell className="py-5 font-bold text-slate-900 flex items-center gap-3">
-                 <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 text-[10px] font-black">
-                   {(i.name || 'I').charAt(0)}
-                 </div>
-                 {i.name}
-              </SimpleTableCell>
-              <SimpleTableCell className="py-5 text-slate-500 text-sm font-medium">{i.email}</SimpleTableCell>
-              <SimpleTableCell className="py-5">
-                <Badge className={cn('rounded-lg px-2.5 py-1 text-[9px] font-black uppercase border shadow-none', i.isActive === false ? 'bg-red-50 text-red-600 border-red-100' : 'bg-blue-50 text-blue-700 border-blue-100')}>
-                  {i.isActive === false ? 'SUSPENDED' : 'OPERATIONAL'}
-                </Badge>
-              </SimpleTableCell>
-            </SimpleTableRow>
-          ))
+          <div className="grid gap-4 xl:grid-cols-2">
+            {instructors.map((instructor: any) => {
+              const profile = instructor.profile || {}
+              const avatar = profile.photoUrl || profile.pic_url || instructor.profilePicture || null
+              const initials = (instructor.name || 'I').slice(0, 1).toUpperCase()
+              const subjects = instructor.academic?.subjects || []
+              const courses = instructor.academic?.courses || []
+
+              return (
+                <div key={instructor._id || instructor.id} className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm hover:shadow-xl hover:border-purple-100 transition-all">
+                  <div className="flex items-start gap-4">
+                    <UserAvatar name={instructor.name} src={avatar} initials={initials} tone="instructor" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-lg font-black text-slate-950 truncate">{instructor.name || 'Anonymous Instructor'}</h4>
+                        <Badge className={cn('rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] border shadow-none', instructor.status === 'suspended' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-blue-50 text-blue-700 border-blue-100')}>
+                          {instructor.status || (instructor.isActive === false ? 'inactive' : 'active')}
+                        </Badge>
+                      </div>
+                      <div className="mt-1 text-sm font-medium text-slate-500 break-all">{instructor.email || 'No email available'}</div>
+                      <div className="mt-2 text-sm text-slate-600 leading-6">{profile.bio || profile.expertise || 'No staff bio provided.'}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    <MiniMetric label="Instructor ID" value={profile.rollNumber || instructor.employeeCode || instructor._id} icon={IdCard} />
+                    <MiniMetric label="Department" value={profile.department?.name || profile.department?.code || 'No department'} icon={BadgeCheck} />
+                    <MiniMetric label="Subjects" value={String(subjects.length)} icon={BookOpen} />
+                    <MiniMetric label="Courses" value={String(courses.length)} icon={Layers3} />
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <StatTile
+                      label="Sessions"
+                      value={`${instructor.academic?.taughtSessions || 0}`}
+                      detail="attendance sessions taught"
+                      tone="purple"
+                    />
+                    <StatTile
+                      label="Live Classes"
+                      value={`${instructor.academic?.liveClasses || 0}`}
+                      detail="active class rooms"
+                      tone="blue"
+                    />
+                    <StatTile
+                      label="Students"
+                      value={`${instructor.academic?.totalStudents || 0}`}
+                      detail="connected learners"
+                      tone="emerald"
+                    />
+                  </div>
+
+                  <div className="mt-5 space-y-3">
+                    <DetailChip label="Profile" value={profile.bio || 'No bio recorded'} />
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Subjects taught</div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {subjects.length ? subjects.slice(0, 4).map((subject: any) => (
+                          <Badge key={subject._id || subject.id} className="rounded-full bg-white text-slate-700 border border-slate-200 shadow-none">
+                            {subject.name || subject.code || 'Subject'}
+                          </Badge>
+                        )) : (
+                          <span className="text-sm font-medium text-slate-400">No subject assignments</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Courses created</div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {courses.length ? courses.slice(0, 4).map((course: any) => (
+                          <Badge key={course._id || course.id} className="rounded-full bg-white text-slate-700 border border-slate-200 shadow-none">
+                            {course.title || course.name || 'Course'}
+                          </Badge>
+                        )) : (
+                          <span className="text-sm font-medium text-slate-400">No courses created</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         ) : (
-          <SimpleTableRow>
-            <SimpleTableCell colSpan={3} className="py-20 text-center text-slate-400 font-black text-[10px] tracking-[0.2em] uppercase">Staff pool empty</SimpleTableCell>
-          </SimpleTableRow>
+          <div className="py-20 text-center text-slate-400 font-black text-[10px] tracking-[0.25em] uppercase">
+            Staff pool empty
+          </div>
         )}
-      </SimpleTable>
+      </div>
     </Card>
   )
 }
@@ -729,7 +920,7 @@ function ActivityTab({ activity, isLoading }: { activity: any[]; isLoading: bool
     <Card className="bg-white border-slate-200/60 rounded-3xl shadow-sm overflow-hidden">
       <div className="p-8 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-lg">
+            <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700 shadow-lg shadow-blue-100">
               <Activity className="h-5 w-5" />
             </div>
             <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Live Intelligence Stream</h3>
@@ -917,6 +1108,334 @@ function SettingsTab({ org, mutate }: { org: any; mutate: any }) {
   )
 }
 
+function createControlDraft(control: any) {
+  return {
+    permissions: {
+      canCreateCourses: control?.permissions?.canCreateCourses ?? true,
+      canCreateInstructors: control?.permissions?.canCreateInstructors ?? true,
+      canAccessMarketplace: control?.permissions?.canAccessMarketplace ?? true,
+      canViewFinancials: control?.permissions?.canViewFinancials ?? true,
+      canManageChat: control?.permissions?.canManageChat ?? true,
+      canManageAttendance: control?.permissions?.canManageAttendance ?? true,
+      canEnterOrgContext: control?.permissions?.canEnterOrgContext ?? true
+    },
+    limits: {
+      maxUsers: control?.limits?.maxUsers ?? null,
+      maxStudents: control?.limits?.maxStudents ?? null,
+      maxInstructors: control?.limits?.maxInstructors ?? null,
+      maxCourses: control?.limits?.maxCourses ?? null,
+      storageMb: control?.limits?.storageMb ?? null
+    },
+    features: {
+      liveClasses: control?.features?.liveClasses ?? true,
+      chat: control?.features?.chat ?? true,
+      aiAssistant: control?.features?.aiAssistant ?? false,
+      marketplace: control?.features?.marketplace ?? true
+    },
+    finance: {
+      canViewFinancials: control?.finance?.canViewFinancials ?? true,
+      canEditFees: control?.finance?.canEditFees ?? false,
+      canViewInstructorSalary: control?.finance?.canViewInstructorSalary ?? false,
+      revenueSharePercent: control?.finance?.revenueSharePercent ?? 15
+    },
+    marketplace: {
+      enabled: control?.marketplace?.enabled ?? true,
+      approvalRequired: control?.marketplace?.approvalRequired ?? true,
+      revenueSharePercent: control?.marketplace?.revenueSharePercent ?? 15
+    },
+    ghostMode: {
+      readOnly: control?.ghostMode?.readOnly ?? true,
+      override: control?.ghostMode?.override ?? true
+    }
+  }
+}
+
+function ControlTab({ orgId, control, isLoading, onSaved }: { orgId: string; control: any; isLoading: boolean; onSaved: () => void }) {
+  const [saving, setSaving] = useState(false)
+  const [draft, setDraft] = useState(() => createControlDraft(control))
+
+  useEffect(() => {
+    setDraft(createControlDraft(control))
+  }, [control])
+
+  const updateToggle = (section: keyof typeof draft, key: string, value: boolean) => {
+    setDraft((current: any) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        [key]: value
+      }
+    }))
+  }
+
+  const updateNumber = (section: keyof typeof draft, key: string, value: string) => {
+    setDraft((current: any) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        [key]: value === '' ? null : Number(value)
+      }
+    }))
+  }
+
+  const handleSave = async () => {
+    const token = getToken()
+    if (!token) {
+      toast.error('Authentication token not found')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const payload = {
+        permissions: draft.permissions,
+        limits: draft.limits,
+        features: draft.features,
+        finance: draft.finance,
+        marketplace: draft.marketplace,
+        ghostMode: draft.ghostMode
+      }
+      const response = await platformApi.updateOrgControlPanel(token, orgId, payload)
+      if (response.success) {
+        toast.success('Organization control updated')
+        onSaved()
+      } else {
+        toast.error(response.error || response.message || 'Failed to update organization control')
+      }
+    } catch (error) {
+      toast.error('Network error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const booleanRows = [
+    { section: 'permissions', key: 'canCreateCourses', label: 'Can create courses' },
+    { section: 'permissions', key: 'canCreateInstructors', label: 'Can create instructors' },
+    { section: 'permissions', key: 'canAccessMarketplace', label: 'Can access marketplace' },
+    { section: 'permissions', key: 'canViewFinancials', label: 'Can view financials' },
+    { section: 'permissions', key: 'canManageChat', label: 'Can manage chat' },
+    { section: 'permissions', key: 'canManageAttendance', label: 'Can manage attendance' },
+    { section: 'permissions', key: 'canEnterOrgContext', label: 'Can enter org context' }
+  ] as const
+
+  const featureRows = [
+    { section: 'features', key: 'liveClasses', label: 'Live classes' },
+    { section: 'features', key: 'chat', label: 'Chat' },
+    { section: 'features', key: 'aiAssistant', label: 'AI assistant' },
+    { section: 'features', key: 'marketplace', label: 'Marketplace' }
+  ] as const
+
+  const financeRows = [
+    { section: 'finance', key: 'canViewFinancials', label: 'Org financial visibility' },
+    { section: 'finance', key: 'canEditFees', label: 'Edit fee records' },
+    { section: 'finance', key: 'canViewInstructorSalary', label: 'View instructor salary' }
+  ] as const
+
+  const limitRows = [
+    { key: 'maxUsers', label: 'Max users' },
+    { key: 'maxStudents', label: 'Max students' },
+    { key: 'maxInstructors', label: 'Max instructors' },
+    { key: 'maxCourses', label: 'Max courses' },
+    { key: 'storageMb', label: 'Storage (MB)' }
+  ] as const
+
+  if (isLoading) {
+    return (
+      <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
+        <Skeleton className="h-8 w-48 bg-slate-100" />
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-64 bg-slate-100" />
+          <Skeleton className="h-64 bg-slate-100" />
+        </div>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="rounded-[2rem] border-slate-200 bg-white p-8 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-xl font-black tracking-tight text-slate-950">Tenant Control Panel</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Persistent permission envelope for this organization. Changes here directly govern what the tenant can do.
+            </p>
+          </div>
+          <Button onClick={handleSave} disabled={saving} className="h-11 rounded-xl bg-blue-600 px-5 font-bold text-white hover:bg-blue-700">
+            {saving ? 'Saving...' : 'Save Controls'}
+          </Button>
+        </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-4">
+          <FlatMetricCard title="Courses Allowed" value={draft.permissions.canCreateCourses ? 'Yes' : 'No'} icon={BookOpen} subtitle="Write access" />
+          <FlatMetricCard title="Marketplace" value={draft.permissions.canAccessMarketplace ? 'Enabled' : 'Disabled'} icon={Globe} subtitle="Cross-tenant commerce" />
+          <FlatMetricCard title="Financials" value={draft.permissions.canViewFinancials ? 'Visible' : 'Hidden'} icon={Activity} subtitle="Fee and revenue visibility" />
+          <FlatMetricCard title="Ghost Mode" value={draft.ghostMode.readOnly ? 'Read only' : 'Override'} icon={Shield} subtitle="Platform view mode" />
+        </div>
+      </Card>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card className="rounded-[2rem] border-slate-200 bg-white p-8 shadow-sm">
+          <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Permission Layer</h4>
+          <div className="mt-6 space-y-4">
+            {booleanRows.map((row) => (
+              <label key={row.key} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                <span className="text-sm font-bold text-slate-800">{row.label}</span>
+                <input
+                  type="checkbox"
+                  checked={(draft as any)[row.section][row.key]}
+                  onChange={(e) => updateToggle(row.section as any, row.key, e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                />
+              </label>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="rounded-[2rem] border-slate-200 bg-white p-8 shadow-sm">
+          <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Feature and Finance</h4>
+          <div className="mt-6 space-y-5">
+            <div className="space-y-3">
+              <div className="text-xs font-black uppercase tracking-widest text-slate-400">Features</div>
+              {featureRows.map((row) => (
+                <label key={row.key} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                  <span className="text-sm font-bold text-slate-800">{row.label}</span>
+                  <input
+                    type="checkbox"
+                    checked={(draft as any)[row.section][row.key]}
+                    onChange={(e) => updateToggle(row.section as any, row.key, e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="space-y-3">
+              <div className="text-xs font-black uppercase tracking-widest text-slate-400">Finance</div>
+              {financeRows.map((row) => (
+                <label key={row.key} className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                  <span className="text-sm font-bold text-slate-800">{row.label}</span>
+                  <input
+                    type="checkbox"
+                    checked={(draft as any)[row.section][row.key]}
+                    onChange={(e) => updateToggle(row.section as any, row.key, e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                  />
+                </label>
+              ))}
+              <label className="grid gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                <span className="text-sm font-bold text-slate-800">Revenue share percent</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={draft.finance.revenueSharePercent}
+                  onChange={(e) => updateNumber('finance', 'revenueSharePercent', e.target.value)}
+                  className="h-10 rounded-xl border-slate-200 bg-white"
+                />
+              </label>
+              <label className="grid gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+                <span className="text-sm font-bold text-slate-800">Marketplace revenue share percent</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={draft.marketplace.revenueSharePercent}
+                  onChange={(e) => updateNumber('marketplace', 'revenueSharePercent', e.target.value)}
+                  className="h-10 rounded-xl border-slate-200 bg-white"
+                />
+              </label>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="rounded-[2rem] border-slate-200 bg-white p-8 shadow-sm">
+        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Tenant Limits</h4>
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {limitRows.map((row) => (
+            <label key={row.key} className="grid gap-2 rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+              <span className="text-sm font-bold text-slate-800">{row.label}</span>
+                <Input
+                  type="number"
+                  min={0}
+                  value={(draft.limits as any)[row.key] ?? ''}
+                  onChange={(e) => updateNumber('limits', row.key, e.target.value)}
+                  className="h-10 rounded-xl border-slate-200 bg-white"
+                  placeholder="Unlimited"
+                />
+            </label>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="rounded-[2rem] border-slate-200 bg-white p-8 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Marketplace Governance</h4>
+            <p className="mt-1 text-sm text-slate-500">Controls the commercial layer for course publication and cross-org adoption.</p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+            {control?.marketplace?.enabled ? 'Enabled' : 'Disabled'}
+          </div>
+        </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <label className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+            <span className="text-sm font-bold text-slate-800">Marketplace enabled</span>
+            <input
+              type="checkbox"
+              checked={draft.marketplace.enabled}
+              onChange={(e) => updateToggle('marketplace', 'enabled', e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-blue-600"
+            />
+          </label>
+          <label className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+            <span className="text-sm font-bold text-slate-800">Approval required</span>
+            <input
+              type="checkbox"
+              checked={draft.marketplace.approvalRequired}
+              onChange={(e) => updateToggle('marketplace', 'approvalRequired', e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-blue-600"
+            />
+          </label>
+          <label className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+            <span className="text-sm font-bold text-slate-800">AI assistant</span>
+            <input
+              type="checkbox"
+              checked={draft.features.aiAssistant}
+              onChange={(e) => updateToggle('features', 'aiAssistant', e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-blue-600"
+            />
+          </label>
+        </div>
+      </Card>
+
+      <Card className="rounded-[2rem] border-slate-200 bg-white p-8 shadow-sm">
+        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Ghost Mode</h4>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <label className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+            <span className="text-sm font-bold text-slate-800">Read-only observation</span>
+            <input
+              type="checkbox"
+              checked={draft.ghostMode.readOnly}
+              onChange={(e) => updateToggle('ghostMode', 'readOnly', e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-blue-600"
+            />
+          </label>
+          <label className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3">
+            <span className="text-sm font-bold text-slate-800">Override access</span>
+            <input
+              type="checkbox"
+              checked={draft.ghostMode.override}
+              onChange={(e) => updateToggle('ghostMode', 'override', e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-blue-600"
+            />
+          </label>
+        </div>
+      </Card>
+    </div>
+  )
+}
+
 function ProfileItem({ label, value, icon: Icon, link }: { label: string; value: string; icon: any; link?: string }) {
   const content = link ? (
     <a href={link} target="_blank" rel="noreferrer" className="text-blue-600 font-black hover:underline group-hover:text-blue-700 transition-colors">
@@ -935,6 +1454,71 @@ function ProfileItem({ label, value, icon: Icon, link }: { label: string; value:
         <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5">{label}</div>
         <div className="mt-0">{content}</div>
       </div>
+    </div>
+  )
+}
+
+function UserAvatar({ name, src, initials, tone }: { name?: string; src?: string | null; initials: string; tone: 'student' | 'instructor' }) {
+  const ringClass = tone === 'student'
+    ? 'from-blue-500 to-cyan-500 shadow-blue-100'
+    : 'from-purple-500 to-pink-500 shadow-purple-100'
+
+  return (
+    <div className={`h-16 w-16 rounded-2xl p-0.5 bg-gradient-to-br ${ringClass} shadow-lg flex-shrink-0`}>
+      <div className="h-full w-full rounded-[14px] bg-white overflow-hidden flex items-center justify-center">
+        {src ? (
+          <img
+            src={src}
+            alt={name ? `${name} avatar` : 'User avatar'}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className={cn(
+            "h-full w-full flex items-center justify-center text-xl font-black uppercase",
+            tone === 'student' ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
+          )}>
+            {initials}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MiniMetric({ label, value, icon: Icon }: { label: string; value: string; icon: any }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+        <Icon className="h-3.5 w-3.5 text-slate-500" />
+        {label}
+      </div>
+      <div className="mt-2 text-sm font-black text-slate-950 break-words">{value || 'N/A'}</div>
+    </div>
+  )
+}
+
+function StatTile({ label, value, detail, tone }: { label: string; value: string; detail: string; tone: 'blue' | 'indigo' | 'emerald' | 'purple' }) {
+  const styles = {
+    blue: 'from-blue-50 to-cyan-50 border-blue-100 text-blue-700',
+    indigo: 'from-indigo-50 to-violet-50 border-indigo-100 text-indigo-700',
+    emerald: 'from-emerald-50 to-teal-50 border-emerald-100 text-emerald-700',
+    purple: 'from-purple-50 to-fuchsia-50 border-purple-100 text-purple-700'
+  }
+
+  return (
+    <div className={cn("rounded-2xl border bg-gradient-to-br p-4", styles[tone])}>
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70">{label}</div>
+      <div className="mt-2 text-2xl font-black text-slate-950">{value}</div>
+      <div className="mt-1 text-[11px] font-medium text-slate-500">{detail}</div>
+    </div>
+  )
+}
+
+function DetailChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</div>
+      <div className="mt-2 text-sm font-medium text-slate-700 leading-6">{value}</div>
     </div>
   )
 }

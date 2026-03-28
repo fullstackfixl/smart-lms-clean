@@ -31,3 +31,35 @@ exports.getGrowth = async (req, res) => {
     });
   }
 };
+
+exports.getActivity = async (req, res) => {
+  try {
+    const activity = await analyticsService.getActivity();
+    res.status(200).json({
+      success: true,
+      data: activity
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ANALYTICS_ACTIVITY_ERROR'
+    });
+  }
+};
+
+exports.getEngagement = async (req, res) => {
+  try {
+    const engagement = await analyticsService.getEngagement();
+    res.status(200).json({
+      success: true,
+      data: engagement
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ANALYTICS_ENGAGEMENT_ERROR'
+    });
+  }
+};

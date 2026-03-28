@@ -64,6 +64,9 @@ const authMiddleware = async (req, res, next) => {
     console.log('✅ [Auth] Authenticated:', user.email, 'Role:', user.role);
     req.user = user;
 
+    // Keep a lightweight heartbeat for platform monitoring and security dashboards.
+    User.updateOne({ _id: user._id }, { $set: { lastActive: new Date() } }).catch(() => {});
+
     // Attach modulesEnabled for moduleGuard middleware
     if (user.organization_id && user.organization_id.modulesEnabled) {
       req.user.modulesEnabled = user.organization_id.modulesEnabled;

@@ -36,6 +36,7 @@ router.get('/analytics/revenue', platformAnalyticsController.getDashboardStats.b
 // --- Organizations ---
 router.get('/organizations', platformOrganizationController.listOrganizations.bind(platformOrganizationController));
 router.get('/organizations/stats', platformOrganizationController.getOrganizationStats.bind(platformOrganizationController));
+router.get('/organizations/:id/stats', platformOrganizationController.getOrganizationStats.bind(platformOrganizationController));
 router.get('/organizations/:id', platformOrganizationController.getOrganizationDetails.bind(platformOrganizationController));
 router.post('/organizations/create', platformOrganizationController.createOrganizationWithInvite.bind(platformOrganizationController));
 

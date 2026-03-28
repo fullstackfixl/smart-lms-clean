@@ -4,7 +4,6 @@ import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '../../lib/utils'
-import { useAuth } from '../../lib/auth-context'
 import { 
   LayoutDashboard, 
   Building2, 
@@ -16,21 +15,23 @@ import {
   Settings,
   ClipboardList,
   History,
-  ShieldCheck,
-  SlidersHorizontal
+  SlidersHorizontal,
+  MessagesSquare,
+  Shield
 } from 'lucide-react'
 
 const navItems = [
   { name: 'Dashboard', href: '/platform/dashboard', icon: LayoutDashboard },
   { name: 'Organizations', href: '/platform/organizations', icon: Building2 },
   { name: 'Applications', href: '/platform/applications', icon: GraduationCap },
-  { name: 'Courses', href: '/platform/courses', icon: FileText },
+  { name: 'Academics', href: '/platform/courses', icon: FileText },
   { name: 'Users & Roles', href: '/platform/users', icon: Users },
-  { name: 'Staff Management', href: '/platform/staff', icon: ShieldCheck },
+  { name: 'Communication', href: '/platform/communication', icon: MessagesSquare },
   { name: 'Roles & Permissions', href: '/platform/config/roles', icon: SlidersHorizontal },
   { name: 'Analytics', href: '/platform/analytics', icon: BarChart3 },
   { name: 'Reports', href: '/platform/reports', icon: ClipboardList },
   { name: 'Audit Logs', href: '/platform/audit-logs', icon: History },
+  { name: 'Security', href: '/platform/security', icon: Shield },
   { name: 'Billing', href: '/platform/billing', icon: CreditCard },
   { name: 'Settings', href: '/platform/settings', icon: Settings },
 ]

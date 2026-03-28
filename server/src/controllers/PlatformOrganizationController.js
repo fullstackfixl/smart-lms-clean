@@ -227,6 +227,22 @@ class PlatformOrganizationController extends BaseController {
     }
   }
 
+  async getOrganizationStats(req, res) {
+    try {
+      const orgId = req.params.id || req.params.orgId;
+      const userCount = await User.countDocuments({ organization_id: orgId });
+      const courseCount = await Course.countDocuments({ organization_id: orgId });
+
+      return res.success({
+        totalUsers: userCount,
+        totalCourses: courseCount
+      }, 'Organization stats retrieved successfully');
+    } catch (error) {
+      console.error('Get organization stats error:', error);
+      return res.error(error.message, 'Failed to retrieve organization stats', 500);
+    }
+  }
+
   async updateOrganization(req, res) {
     try {
       const organization = await Organization.findByIdAndUpdate(

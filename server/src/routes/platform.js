@@ -32,6 +32,7 @@ router.get('/analytics/revenue', platformAnalyticsController.getDashboardStats.b
 // --- Organizations (read-only for staff) ---
 router.get('/organizations', platformOrganizationController.listOrganizations.bind(platformOrganizationController));
 router.get('/organizations/stats', platformOrganizationController.getOrganizationStats.bind(platformOrganizationController));
+router.get('/organizations/:id/stats', platformOrganizationController.getOrganizationStats.bind(platformOrganizationController));
 router.get('/organizations/:id', platformOrganizationController.getOrganizationDetails.bind(platformOrganizationController));
 
 // --- Organization Applications (staff can view, claim, contact; admin can approve/reject) ---

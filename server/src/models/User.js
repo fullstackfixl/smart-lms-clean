@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { ROLE_PERMISSION_MATRIX } = require('../config/platformAccessCatalog');
+const bcryptRegex = /^\$2[aby]\$/;
 
 const userSchema = new mongoose.Schema({
   organization_id: {
@@ -125,6 +126,14 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  lastLogin: {
+    type: Date,
+    default: null
+  },
+  lastActive: {
+    type: Date,
+    default: null
   },
   is_deleted: {
     type: Boolean,
@@ -293,6 +302,8 @@ userSchema.methods.toPublicJSON = function () {
     preferences: this.preferences,
     email_verified: this.email_verified,
     phone_verified: this.phone_verified,
+    lastLogin: this.lastLogin,
+    lastActive: this.lastActive,
     created_at: this.created_at,
     updated_at: this.updated_at
   };

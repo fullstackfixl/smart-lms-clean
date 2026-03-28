@@ -7,7 +7,7 @@ export default function PlatformPage() {
   const router = useRouter()
 
   useEffect(() => {
-    router.replace("/platform-admin/dashboard")
+    router.replace("/platform/dashboard")
   }, [router])
 
   return null

@@ -50,8 +50,8 @@ export default function UsersPage() {
     return <PlatformErrorState />
   }
 
-  const users = response?.data?.users || []
-  const stats = response?.data?.stats || { total: 0, active: 0, suspended: 0 }
+  const users = response?.data?.users || response?.users || []
+  const stats = response?.data?.stats || response?.stats || { total: 0, active: 0, suspended: 0 }
 
   const handleAction = async (id: string, action: string) => {
     try {

@@ -12,7 +12,7 @@ export default function PlatformLayout({
 }) {
   return (
     <ProtectedRoute allowedRoles={["platform_admin"]} redirectTo="/platform-admin/login">
-      <div className="min-h-screen bg-slate-50 font-sans text-slate-700 antialiased">
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.10),_transparent_30%),linear-gradient(180deg,_#f8fbff_0%,_#ffffff_100%)] font-sans text-slate-700 antialiased">
         {/* Sidebar - Fixed Left */}
         <PlatformSidebar />
 
@@ -20,7 +20,7 @@ export default function PlatformLayout({
         <div className="pl-[220px]">
           <PlatformHeader />
           
-          <main className="mx-auto max-w-7xl p-6 lg:p-8">
+          <main className="mx-auto max-w-7xl p-6 pb-16 lg:p-8">
             {children}
           </main>
         </div>

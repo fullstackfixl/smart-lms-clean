@@ -13,7 +13,7 @@ export function getDashboardRoute(role: string): string {
     case 'organization_admin':
       return '/org-admin/dashboard'
     case 'platform_admin':
-      return '/platform-admin/dashboard'
+      return '/platform/dashboard'
     case 'platform_staff':
       return '/platform-staff/dashboard'
     case 'parent':

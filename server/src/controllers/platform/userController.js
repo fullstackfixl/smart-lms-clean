@@ -87,7 +87,16 @@ exports.activateUser = async (req, res) => {
 
 exports.resetUserPassword = async (req, res) => {
   try {
-    const result = await userService.resetUserPassword(req.params.userId, req.body.password);
+    const newPassword = req.body.password || req.body.newPassword;
+    if (!newPassword || typeof newPassword !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required',
+        errorCode: 'USER_PASSWORD_RESET_ERROR'
+      });
+    }
+
+    const result = await userService.resetUserPassword(req.params.userId, newPassword);
     res.status(200).json({
       success: true,
       ...result

@@ -43,7 +43,7 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 transition-all duration-300"
+          className="relative text-slate-400 hover:text-blue-700 hover:bg-blue-50 transition-all duration-300"
         >
           <Bell className="h-5 w-5" />
           <AnimatePresence>
@@ -85,7 +85,7 @@ export function NotificationBell() {
 
       <PopoverContent
         align="end"
-        className="w-96 p-0 bg-slate-900/95 backdrop-blur-md border-slate-800/50 shadow-2xl shadow-black/50"
+        className="w-96 p-0 bg-white backdrop-blur-md border-slate-200 shadow-2xl shadow-slate-200/80"
       >
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -93,11 +93,11 @@ export function NotificationBell() {
           transition={{ duration: 0.2 }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-800/50 p-4">
+          <div className="flex items-center justify-between border-b border-slate-100 p-4">
             <div>
-              <h3 className="font-bold text-slate-100">Notifications</h3>
+              <h3 className="font-bold text-slate-900">Notifications</h3>
               {unreadCount > 0 && (
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   {unreadCount} unread
                 </p>
               )}
@@ -107,7 +107,7 @@ export function NotificationBell() {
                 variant="ghost"
                 size="sm"
                 onClick={markAllAsRead}
-                className="text-xs text-orange-500 hover:text-orange-400 hover:bg-orange-500/10"
+                className="text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50"
               >
                 <CheckCheck className="h-3.5 w-3.5 mr-1" />
                 Mark all read
@@ -120,16 +120,16 @@ export function NotificationBell() {
             {loading ? (
               <div className="p-4 space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-20 rounded-lg bg-slate-800/50 animate-pulse" />
+                  <div key={i} className="h-20 rounded-lg bg-slate-100 animate-pulse" />
                 ))}
               </div>
             ) : latestNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 px-4">
                 <div className="relative mb-4">
-                  <div className="absolute inset-0 bg-orange-500/20 blur-2xl rounded-full" />
-                  <Bell className="relative h-12 w-12 text-slate-600" />
+                  <div className="absolute inset-0 bg-orange-100 blur-2xl rounded-full" />
+                  <Bell className="relative h-12 w-12 text-slate-500" />
                 </div>
-                <p className="text-sm font-medium text-slate-300">All caught up!</p>
+                <p className="text-sm font-medium text-slate-900">All caught up!</p>
                 <p className="text-xs text-slate-500 mt-1">No new notifications</p>
               </div>
             ) : (
@@ -148,7 +148,7 @@ export function NotificationBell() {
                         'w-full text-left p-3 rounded-lg transition-all duration-300 group',
                         isUnread
                           ? 'bg-orange-500/5 hover:bg-orange-500/10 border border-orange-500/20'
-                          : 'hover:bg-slate-800/50'
+                          : 'hover:bg-slate-50'
                       )}
                     >
                       <div className="flex items-start gap-3">
@@ -156,7 +156,7 @@ export function NotificationBell() {
                           'flex h-10 w-10 items-center justify-center rounded-lg transition-all',
                           isUnread
                             ? 'bg-orange-500/10 border border-orange-500/20'
-                            : 'bg-slate-800/50 border border-slate-700/50'
+                            : 'bg-slate-50 border border-slate-200'
                         )}>
                           {getNotificationIcon(notification.type)}
                         </div>
@@ -165,7 +165,7 @@ export function NotificationBell() {
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <h4 className={cn(
                               'text-sm font-semibold line-clamp-1',
-                              isUnread ? 'text-slate-100' : 'text-slate-300'
+                              isUnread ? 'text-slate-900' : 'text-slate-700'
                             )}>
                               {notification.title}
                             </h4>
@@ -200,10 +200,10 @@ export function NotificationBell() {
 
           {/* Footer */}
           {latestNotifications.length > 0 && (
-            <div className="border-t border-slate-800/50 p-3">
+            <div className="border-t border-slate-100 p-3">
               <Button
                 variant="ghost"
-                className="w-full text-sm text-slate-400 hover:text-slate-100 hover:bg-slate-800/50"
+                className="w-full text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               >
                 View all notifications
               </Button>

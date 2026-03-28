@@ -330,3 +330,71 @@ exports.resetAdminPassword = async (req, res) => {
     });
   }
 };
+
+exports.getOrganizationControlPanel = async (req, res) => {
+  try {
+    const controlPanel = await organizationService.getOrganizationControlPanel(req.params.orgId);
+    res.status(200).json({
+      success: true,
+      data: controlPanel
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_CONTROL_PANEL_ERROR'
+    });
+  }
+};
+
+exports.updateOrganizationControlPanel = async (req, res) => {
+  try {
+    const controlPanel = await organizationService.updateOrganizationControlPanel(
+      req.params.orgId,
+      req.body,
+      req.user?._id
+    );
+
+    await auditLogService.logAction({
+      actorId: req.user._id,
+      actorRole: req.user.role,
+      action: 'organization_control_updated',
+      entityType: 'Organization',
+      entityId: req.params.orgId,
+      ipAddress: req.ip,
+      details: {
+        permissions: req.body.permissions || req.body.controls?.permissions || null,
+        features: req.body.features || req.body.controls?.features || null,
+        finance: req.body.finance || req.body.controls?.finance || null,
+        marketplace: req.body.marketplace || req.body.controls?.marketplace || null
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: controlPanel
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_CONTROL_UPDATE_ERROR'
+    });
+  }
+};
+
+exports.enterOrganizationContext = async (req, res) => {
+  try {
+    const result = await organizationService.enterOrganizationContext(req.params.orgId, req.user?._id);
+    res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      message: error.message,
+      errorCode: 'ORG_CONTEXT_ERROR'
+    });
+  }
+};

@@ -82,13 +82,12 @@ exports.activateUser = async (userId) => {
 };
 
 exports.resetUserPassword = async (userId, newPassword) => {
-  const bcrypt = require('bcryptjs');
   const user = await User.findById(userId).select('+password_hash');
   if (!user || user.is_deleted) {
     throw new Error('User not found');
   }
   
-  user.password_hash = newPassword;
+  user.password_hash = String(newPassword).trim();
   await user.save();
   return { success: true, message: 'Password reset successfully' };
 };

@@ -420,7 +420,7 @@ export function PlatformApplicationsConsole({ mode }: { mode: Mode }) {
                           type="button"
                           disabled={actingId === application._id}
                           onClick={() => handleContact(application._id)}
-                          className="flex-1 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="flex-1 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           Mark contacted
                         </button>

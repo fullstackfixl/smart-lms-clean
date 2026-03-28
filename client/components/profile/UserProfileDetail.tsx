@@ -26,6 +26,7 @@ import { UserAvatar } from '../ui/UserAvatar'
 import { cn } from '../../lib/utils'
 import { messagingApi, platformApi, collegeApi } from '../../lib/api'
 import { useAuth } from '../../lib/auth-context'
+import { getToken } from '../../lib/config'
 import { toast } from 'sonner'
 
 interface UserProfileDetailProps {
@@ -51,8 +52,8 @@ export function UserProfileDetail({ userId, source }: UserProfileDetailProps) {
     try {
       let res;
       if (source === 'platform') {
-        const tokenStr = localStorage.getItem('token') // Standard token for platform
-        res = await platformApi.getUserDetails(tokenStr || '', userId)
+        const tokenStr = token || getToken() || ''
+        res = await platformApi.getUserDetails(tokenStr, userId)
       } else {
         // Use messaging profile API for college context (Org Admin & Instructor)
         res = await messagingApi.getUserProfile(token!, userId)
@@ -75,13 +76,13 @@ export function UserProfileDetail({ userId, source }: UserProfileDetailProps) {
     if (!token || !profileData) return
     setActionLoading(true)
     try {
-      const newStatus = profileData.status === 'active' ? 'suspend' : 'activate'
-      let res;
       if (source === 'platform') {
-          // Add platform suspend/activate if needed
+        await platformApi.updateUserStatus(token, profileData._id, profileData.status !== 'active')
+        toast.success(`User ${profileData.status === 'active' ? 'suspended' : 'activated'} successfully`)
+        await fetchProfile()
+      } else {
+        toast.error("Status override is only available in platform context")
       }
-      // Refresh after action
-      fetchProfile()
     } catch (err) {
       toast.error("Action failed")
     } finally {

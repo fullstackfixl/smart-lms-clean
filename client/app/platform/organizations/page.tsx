@@ -145,17 +145,22 @@ export default function OrganizationsPage() {
   const handleAction = async (id: string, action: string) => {
     try {
       const token = getToken()
-      const res = await fetch(`${API_URL}/api/platform/organizations/${id}/${action}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      const res = await fetch(
+        action === 'delete'
+          ? `${API_URL}/api/platform/organizations/${id}`
+          : `${API_URL}/api/platform/organizations/${id}/${action}`,
+        {
+          method: action === 'delete' ? 'DELETE' : 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          }
         }
-      })
+      )
       const data = await res.json()
       if (data.success) {
-        toast.success(`Organization ${action}ed successfully`)
+        toast.success(action === 'delete' ? 'Organization deleted successfully' : `Organization ${action}ed successfully`)
         mutate()
       } else {
         toast.error(data.message || `Failed to ${action} organization`)

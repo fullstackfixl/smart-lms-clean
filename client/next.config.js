@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
 const nextConfig = {
   reactStrictMode: true,
   compress: true,
@@ -31,6 +32,7 @@ const nextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
   },
+  outputFileTracingRoot: path.resolve(__dirname, '..'),
 
   // Security headers
   async headers() {

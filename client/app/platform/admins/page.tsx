@@ -300,7 +300,7 @@ function AddAdminModal({ isOpen, onClose, onAdminAdded }: { isOpen: boolean; onC
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-none max-w-md w-full overflow-hidden border border-slate-200">
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-900">Add Administrator</h3>
