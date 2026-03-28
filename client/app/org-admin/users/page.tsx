@@ -377,85 +377,112 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Invite Modal Redesign */}
       <AnimatePresence>
         {showInvite && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowInvite(false)}
+              className="absolute inset-0 bg-slate-950/40 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white border border-slate-200 rounded-2xl p-8 w-full max-w-md shadow-2xl shadow-slate-900/10"
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              className="relative w-full max-w-lg bg-white border border-slate-200/60 rounded-[32px] shadow-2xl shadow-blue-900/10 overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-8">
-                <div>
-                  <h3 className="text-[20px] font-black text-slate-900 tracking-tight">Invite to Organization</h3>
-                  <p className="text-[13px] text-slate-500 font-medium mt-1">Send a secure link to join your team.</p>
-                </div>
-                <button onClick={() => setShowInvite(false)} className="text-slate-400 hover:text-slate-900">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+              {/* Animated Background Decor */}
+              <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-blue-500/5 blur-[100px] rounded-full pointer-events-none" />
+              <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-purple-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-              <form onSubmit={handleSendInvite} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Select Access Level</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(["instructor", "student"] as const).map((role) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => setInviteRole(role)}
-                        className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-[13px] font-bold transition-all ${
-                          inviteRole === role
-                            ? "border-blue-600 bg-blue-50 text-blue-600 ring-2 ring-blue-600/10"
-                            : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
-                        }`}
-                      >
-                        {role === "instructor" ? <GraduationCap className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                        {role.charAt(0).toUpperCase() + role.slice(1)}
-                      </button>
-                    ))}
+              <div className="p-10">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                    <Users className="w-7 h-7" />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="email@example.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[14px] text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:bg-white focus:border-blue-600/30 transition-all"
-                  />
-                </div>
-
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3">
-                   <Mail className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                   <p className="text-[12px] text-blue-700 font-medium leading-relaxed">
-                     The user will be automatically added to your organization once they accept the invite and verify their identity.
-                   </p>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowInvite(false)}
-                    className="flex-1 h-12 rounded-xl bg-slate-100 text-slate-600 text-[13px] font-bold hover:bg-slate-200 transition-colors"
+                  <button 
+                    onClick={() => setShowInvite(false)} 
+                    className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-900 transition-all active:scale-90"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={inviting}
-                    className="flex-1 h-12 rounded-xl bg-blue-600 text-white text-[13px] font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    Send Invite
+                    <X className="w-5 h-5 font-bold" />
                   </button>
                 </div>
-              </form>
+
+                <div className="space-y-1 mb-10">
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Expand Your Institution</h3>
+                  <p className="text-sm text-slate-500 font-medium">Invite trusted educators and learners to join your organization.</p>
+                </div>
+
+                <form onSubmit={handleSendInvite} className="space-y-8">
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Assign Security Role</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      {(["instructor", "student"] as const).map((role) => (
+                        <button
+                          key={role}
+                          type="button"
+                          onClick={() => setInviteRole(role)}
+                          className={`relative group flex flex-col items-center justify-center gap-3 p-6 rounded-[24px] border-2 transition-all duration-300 ${
+                            inviteRole === role
+                              ? "border-blue-600 bg-blue-50/30 ring-4 ring-blue-600/5"
+                              : "border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white"
+                          }`}
+                        >
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                            inviteRole === role ? "bg-blue-600 text-white" : "bg-white text-slate-400 shadow-sm"
+                          }`}>
+                            {role === "instructor" ? <GraduationCap className="w-6 h-6" /> : <UserCheck className="w-6 h-6" />}
+                          </div>
+                          <div className="text-center">
+                            <p className={`text-[13px] font-black uppercase tracking-wider ${inviteRole === role ? "text-blue-700" : "text-slate-500"}`}>
+                              {role}
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                              {role === "instructor" ? "Academic Authority" : "Learning Participant"}
+                            </p>
+                          </div>
+                          {inviteRole === role && (
+                            <motion.div layoutId="role-selected" className="absolute top-2 right-2">
+                               <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                            </motion.div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Email Destination</label>
+                    <div className="relative group">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. academic@lms-edu.com"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        className="w-full h-14 pl-12 pr-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[15px] font-medium text-slate-900 placeholder-slate-400 outline-none focus:ring-0 focus:border-blue-600/30 focus:bg-white transition-all shadow-inner group-hover:bg-slate-100/50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={inviting}
+                      className="group relative w-full h-14 rounded-2xl bg-slate-900 text-white text-[14px] font-black hover:bg-blue-600 transition-all shadow-xl shadow-slate-900/10 hover:shadow-blue-600/20 disabled:opacity-50 flex items-center justify-center gap-3 overflow-hidden active:scale-[0.98]"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <span className="relative z-10 flex items-center gap-3">
+                        {inviting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                        {inviting ? "Processing..." : "Dispatch Invitation"}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}

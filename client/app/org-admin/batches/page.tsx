@@ -382,100 +382,87 @@ export default function BatchesPage() {
                                 </button>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Batch Name</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="e.g. Evening Batch 2024"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        className="w-full h-10 px-4 bg-white border border-gray-200 rounded-md text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Batch Code</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        placeholder="e.g. B-01"
-                                        value={formData.code}
-                                        onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                                        className="w-full h-10 px-4 bg-white border border-gray-200 rounded-md text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20"
-                                    />
-                                </div>
-                                
-                                {isCollege && (
-                                    <>
-                                        <div className="grid grid-cols-2 gap-4">
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                <div className="space-y-4">
+                                    {/* Simplified Form: Only Program, Department, Semester */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Program / Degree</label>
+                                        <select
+                                            required
+                                            value={formData.programId}
+                                            onChange={(e) => {
+                                                const progId = e.target.value
+                                                const prog = programs.find(p => p._id === progId)
+                                                setFormData({ 
+                                                    ...formData, 
+                                                    programId: progId,
+                                                    departmentId: prog?.departmentId?._id || prog?.departmentId || formData.departmentId
+                                                })
+                                            }}
+                                            className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        >
+                                            <option value="">Select Program</option>
+                                            {programs.map(p => (
+                                                <option key={p._id} value={p._id}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Department</label>
+                                        <select
+                                            required
+                                            value={formData.departmentId}
+                                            onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+                                            className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        >
+                                            <option value="">Select Department</option>
+                                            {departments.map(d => (
+                                                <option key={d._id} value={d._id}>{d.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Current Semester</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            min="1"
+                                            max="20"
+                                            placeholder="e.g. 1"
+                                            value={formData.semester}
+                                            onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
+                                            className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        />
+                                    </div>
+
+                                    {/* Hidden/Automated Fields but visible if editing */}
+                                    {editingBatch && (
+                                        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-600 mb-1">Program</label>
-                                                <select
-                                                    required
-                                                    value={formData.programId}
-                                                    onChange={(e) => setFormData({ ...formData, programId: e.target.value })}
-                                                    className="w-full h-10 px-4 bg-white border border-gray-200 rounded-md text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20"
-                                                >
-                                                    <option value="">Select Program</option>
-                                                    {programs.map(p => (
-                                                        <option key={p._id} value={p._id}>{p.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-600 mb-1">Department</label>
-                                                <select
-                                                    required
-                                                    value={formData.departmentId}
-                                                    onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-                                                    className="w-full h-10 px-4 bg-white border border-gray-200 rounded-md text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20"
-                                                >
-                                                    <option value="">Select Department</option>
-                                                    {departments.map(d => (
-                                                        <option key={d._id} value={d._id}>{d.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-slate-600 mb-1">Year</label>
+                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">Batch Name</label>
                                                 <input
-                                                    type="number"
-                                                    required
-                                                    min="1"
-                                                    max="10"
-                                                    value={formData.year}
-                                                    onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
-                                                    className="w-full h-10 px-4 bg-white border border-gray-200 rounded-md text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                    type="text"
+                                                    value={formData.name}
+                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-600 mb-1">Semester</label>
+                                                <label className="block text-[10px] font-bold text-slate-400 mb-1">Batch Code</label>
                                                 <input
-                                                    type="number"
-                                                    required
-                                                    min="1"
-                                                    max="20"
-                                                    value={formData.semester}
-                                                    onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
-                                                    className="w-full h-10 px-4 bg-white border border-gray-200 rounded-md text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20"
+                                                    type="text"
+                                                    value={formData.code}
+                                                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                                                    className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                                                 />
                                             </div>
                                         </div>
-                                    </>
-                                )}
-                                
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Description</label>
-                                    <textarea
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        className="w-full min-h-[100px] p-3 bg-white border border-gray-200 rounded-md text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
-                                    />
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-3">
+
+                                <div className="flex items-center gap-3 py-2">
                                     <input
                                         type="checkbox"
                                         id="isActive"
@@ -483,17 +470,17 @@ export default function BatchesPage() {
                                         onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                                         className="w-5 h-5 rounded border-gray-300 bg-white text-blue-600 focus:ring-blue-500/20"
                                     />
-                                    <label htmlFor="isActive" className="text-sm font-medium text-slate-700">
-                                        Active Batch
+                                    <label htmlFor="isActive" className="text-sm font-medium text-slate-700 underline underline-offset-4 decoration-blue-500/30">
+                                        Mark as active session
                                     </label>
                                 </div>
 
                                 <div className="pt-4 flex gap-3">
-                                    <Button type="button" variant="outline" className="flex-1 border-gray-200" onClick={() => setIsModalOpen(false)}>
+                                    <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl border-gray-200" onClick={() => setIsModalOpen(false)}>
                                         Cancel
                                     </Button>
-                                    <Button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white">
-                                        {editingBatch ? "Save Changes" : "Create Batch"}
+                                    <Button type="submit" className="flex-[1.5] h-12 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg shadow-orange-500/20 transition-all">
+                                        {editingBatch ? "Update Batch" : "Create Learning Batch"}
                                     </Button>
                                 </div>
                             </form>

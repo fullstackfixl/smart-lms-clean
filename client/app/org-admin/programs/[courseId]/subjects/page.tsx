@@ -73,6 +73,7 @@ export default function SubjectManagementPage() {
     const [instructors, setInstructors] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [showCreateModal, setShowCreateModal] = useState(false)
+    const [showBatchModal, setShowBatchModal] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const [showAssignModal, setShowAssignModal] = useState(false)
@@ -89,6 +90,30 @@ export default function SubjectManagementPage() {
         program_id: courseId,
         department_id: "" // Will be set from program
     })
+
+    const [batchFormData, setBatchFormData] = useState({
+        name: "",
+        code: "",
+        semester: 1,
+        programId: courseId,
+        departmentId: ""
+    })
+
+    // Auto-generate batch name/code
+    useEffect(() => {
+        if (showBatchModal && program && batchFormData.semester) {
+            const progName = program.name || program.code || "Batch"
+            const progCode = program.code || progName.substring(0, 3).toUpperCase()
+            const generatedName = `${progName} - Semester ${batchFormData.semester}`
+            const generatedCode = `${progCode}-S${batchFormData.semester}-${new Date().getFullYear()}`
+            setBatchFormData(prev => ({
+                ...prev,
+                name: generatedName,
+                code: generatedCode,
+                departmentId: formData.department_id // Use department from program load
+            }))
+        }
+    }, [showBatchModal, batchFormData.semester, program, formData.department_id])
 
     useEffect(() => {
         if (courseId && token) {
@@ -132,6 +157,30 @@ export default function SubjectManagementPage() {
             toast.error("Failed to load subject data")
         } finally {
             setLoading(false)
+        }
+    }
+
+    async function handleCreateBatch(e: React.FormEvent) {
+        e.preventDefault()
+        setIsSubmitting(true)
+        try {
+            if (!token) throw new Error('No authentication token')
+            
+            const response = await collegeApi.createBatch(token, {
+                ...batchFormData,
+                year: new Date().getFullYear(), // Default year
+                organizationId: organization?._id
+            })
+            
+            if (response.success) {
+                toast.success("Batch created successfully")
+                setShowBatchModal(false)
+                loadInitialData() // Refresh batch list
+            }
+        } catch (error: any) {
+            toast.error(error.message || "Failed to create batch")
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
@@ -247,14 +296,100 @@ export default function SubjectManagementPage() {
                         {program?.name} ({program?.code}) • {totalSemesters} Semesters
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="ml-auto flex items-center gap-2 px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all"
-                >
-                    <Plus className="w-5 h-5" />
-                    Add Subject
-                </button>
+                <div className="ml-auto flex items-center gap-3">
+                    <button
+                        onClick={() => setShowBatchModal(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded-xl font-bold transition-all"
+                    >
+                        <Users className="w-5 h-5 text-indigo-400" />
+                        Add Batch
+                    </button>
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Add Subject
+                    </button>
+                </div>
             </div>
+
+            {/* ... rest of existing subjects grid ... */}
+
+            {/* Create Batch Modal */}
+            <AnimatePresence>
+                {showBatchModal && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowBatchModal(false)}
+                            className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden"
+                        >
+                            <div className="p-8 border-b border-slate-800">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-2xl font-bold text-white">Add New Batch</h2>
+                                    <button onClick={() => setShowBatchModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
+                                <p className="text-sm text-slate-400 mt-2">Create a new academic session for this program</p>
+                            </div>
+
+                            <form onSubmit={handleCreateBatch} className="p-8 space-y-6">
+                                <div className="space-y-4">
+                                    <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700/50">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Target Program</p>
+                                        <p className="text-sm text-slate-200 font-medium">{program?.name}</p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase ml-1">Current Semester</label>
+                                        <input
+                                            type="number"
+                                            required
+                                            min="1"
+                                            max={totalSemesters}
+                                            value={batchFormData.semester}
+                                            onChange={(e) => setBatchFormData({ ...batchFormData, semester: parseInt(e.target.value) })}
+                                            className="w-full h-12 px-4 bg-slate-800 border border-slate-700 rounded-xl text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-inner"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase ml-1">Generated Name</p>
+                                            <p className="text-xs text-slate-400 px-1 italic">{batchFormData.name}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase ml-1">Generated Code</p>
+                                            <p className="text-xs text-slate-400 px-1 font-mono">{batchFormData.code}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmitting}
+                                        className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-500/20 transition-all flex items-center justify-center gap-2 transform active:scale-[0.98]"
+                                    >
+                                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                                        Create Academic Batch
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Subjects Grid by Semester */}
             {Array.from({ length: totalSemesters }).map((_, i) => {

@@ -7,7 +7,7 @@ class BatchController extends BaseController {
     }
 
     async create(req, res) {
-        req.body.organization_id = req.user.organization_id;
+        req.body.organizationId = req.user.organization_id?._id || req.user.organization_id;
         try {
             const batch = new Batch(req.body);
             await batch.save();
@@ -19,7 +19,8 @@ class BatchController extends BaseController {
 
     async getAll(req, res) {
         try {
-            const batches = await Batch.find({ organization_id: req.user.organization_id }).sort({ name: 1 });
+            const orgId = req.user.organization_id?._id || req.user.organization_id;
+            const batches = await Batch.find({ organizationId: orgId }).sort({ name: 1 });
             return res.success(batches);
         } catch (error) {
             return res.error(error.message);
@@ -28,9 +29,10 @@ class BatchController extends BaseController {
 
     async getById(req, res) {
         try {
+            const orgId = req.user.organization_id?._id || req.user.organization_id;
             const batch = await Batch.findOne({
                 _id: req.params.id,
-                organization_id: req.user.organization_id
+                organizationId: orgId
             });
             if (!batch) return res.error('Batch not found', 'Not Found', 404);
             return res.success(batch);
@@ -41,8 +43,9 @@ class BatchController extends BaseController {
 
     async update(req, res) {
         try {
+            const orgId = req.user.organization_id?._id || req.user.organization_id;
             const batch = await Batch.findOneAndUpdate(
-                { _id: req.params.id, organization_id: req.user.organization_id },
+                { _id: req.params.id, organizationId: orgId },
                 req.body,
                 { new: true, runValidators: true }
             );
@@ -55,9 +58,10 @@ class BatchController extends BaseController {
 
     async delete(req, res) {
         try {
+            const orgId = req.user.organization_id?._id || req.user.organization_id;
             const batch = await Batch.findOneAndDelete({
                 _id: req.params.id,
-                organization_id: req.user.organization_id
+                organizationId: orgId
             });
             if (!batch) return res.error('Batch not found', 'Not Found', 404);
             return res.success(null, 'Batch deleted successfully');

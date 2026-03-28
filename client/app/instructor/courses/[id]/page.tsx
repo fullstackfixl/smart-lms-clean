@@ -4,7 +4,7 @@ import React, { useState, useEffect, use, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   BookOpen, Plus, Edit, Trash2, Video, FileText, CheckCircle,
-  ArrowLeft, Sparkles, GripVertical, RefreshCw, Upload, X, Loader2, File, Play
+  ArrowLeft, Sparkles, GripVertical, RefreshCw, Upload, X, Loader2, File, Play, FileQuestion
 } from "lucide-react"
 import { Button } from '../../../../components/ui/button'
 import { Input } from '../../../../components/ui/input'
@@ -12,6 +12,7 @@ import { Label } from '../../../../components/ui/label'
 import { Textarea } from '../../../../components/ui/textarea'
 import { Progress } from '../../../../components/ui/progress'
 import { cn } from "../../../../lib/utils"
+import { QuizEditor } from "../../../../components/instructor/QuizEditor"
 import {
   Dialog,
   DialogContent,
@@ -98,6 +99,12 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const [aiDifficulty, setAIDifficulty] = useState("medium")
 
   const [uploading, setUploading] = useState(false)
+  
+  // Quiz Editor State
+  const [showQuizEditor, setShowQuizEditor] = useState(false)
+  const [quizEditorData, setQuizEditorData] = useState<any>(null)
+  const [isAIQuiz, setIsAIQuiz] = useState(false)
+  const [selectedQuizModuleId, setSelectedQuizModuleId] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadedFileUrl, setUploadedFileUrl] = useState("")
   const uploadedUrlRef = useRef("")
@@ -350,29 +357,84 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   }
 
   async function handleGenerateAIQuiz() {
-    if (!token || !courseId || !aiModuleId) {
-      toast.error("Please select a module")
+    if (!aiModuleId || !aiDifficulty) {
+      toast.error("Please fill in all AI options")
       return
     }
+
     setAIGenerating(true)
     try {
       const selectedModule = modules.find(m => m._id === aiModuleId)
-      const res = await instructorApi.generateAIQuiz(token, {
+      const res = await instructorApi.generateAIQuiz(token!, {
         course_id: courseId,
         topic: selectedModule?.title || "General",
         num_questions: 10,
         difficulty: aiDifficulty
       })
-      if (res.success) {
-        toast.success("AI Quiz generated successfully")
+      
+      if (res.success && res.data) {
+        toast.success("AI Quiz generated successfully!")
+        setQuizEditorData(res.data)
+        setIsAIQuiz(true)
+        setSelectedQuizModuleId(aiModuleId)
+        setShowQuizEditor(true)
         setShowAIDialog(false)
-        loadCourseData()
+      } else {
+        toast.error(res.error || "Failed to generate AI quiz")
       }
-    } catch (error) {
-      toast.error("Failed to generate AI quiz")
+    } catch (err) {
+      console.error("AI Gen Error:", err)
+      toast.error("AI Generation failed")
     } finally {
       setAIGenerating(false)
     }
+  }
+
+  const handleSaveQuiz = async (quizData: any) => {
+    const toastId = toast.loading("Saving quiz and linking to course...")
+    try {
+      // 1. Create the quiz entity
+      const res = await instructorApi.createQuiz(token!, courseId, {
+        ...quizData,
+        course_id: courseId,
+        is_active: true
+      })
+
+      if (res.success && res.data) {
+        const quizId = (res.data as any)._id
+        
+        // 2. Add as a lesson to the module
+        const lRes = await (instructorApi.createLesson as any)(token!, selectedQuizModuleId!, {
+          title: quizData.title,
+          description: quizData.description,
+          type: "quiz",
+          content: quizId,
+          order: modules.find(m => m._id === selectedQuizModuleId)?.lessons.length || 0,
+          isPreview: false
+        })
+
+        if (lRes.success) {
+          toast.success("Quiz created and linked successfully", { id: toastId })
+          setShowQuizEditor(false)
+          loadCourseData()
+        } else {
+          toast.error("Quiz saved but failed to link to module", { id: toastId })
+        }
+      } else {
+        toast.error(res.error || "Failed to save quiz", { id: toastId })
+      }
+    } catch (err) {
+      console.error("Error saving quiz:", err)
+      toast.error("Failed to save quiz", { id: toastId })
+    }
+  }
+
+  const openManualQuizEditor = () => {
+    setQuizEditorData(null)
+    setIsAIQuiz(false)
+    setSelectedQuizModuleId(selectedModuleId)
+    setShowQuizEditor(true)
+    setIsLessonDialogOpen(false)
   }
 
   function openModuleDialog(module?: Module) {
@@ -793,13 +855,40 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
             {/* Quiz */}
             {lessonData.type === 'quiz' && (
-              <div>
-                <Label>Quiz URL or ID</Label>
-                <Input
-                  value={lessonData.content}
-                  onChange={(e) => setLessonData({ ...lessonData, content: e.target.value })}
-                  placeholder="Enter quiz URL or ID..."
-                />
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                <div className="flex flex-col items-center gap-4 py-6 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
+                  <FileQuestion className="w-12 h-12 text-slate-300" />
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-slate-700">Quiz Creator</p>
+                    <p className="text-xs text-slate-500 max-w-[200px] mt-1">Create a new interactive quiz for this module</p>
+                  </div>
+                  <Button 
+                    type="button"
+                    onClick={openManualQuizEditor}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create New Quiz
+                  </Button>
+                </div>
+                
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-slate-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white px-2 text-slate-400 font-medium">Or Use Existing</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Quiz ID or URL</Label>
+                  <Input
+                    value={lessonData.content}
+                    onChange={(e) => setLessonData({ ...lessonData, content: e.target.value })}
+                    placeholder="Enter quiz URL or ID..."
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -876,6 +965,16 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Full-Screen Quiz Editor */}
+      {showQuizEditor && (
+        <QuizEditor 
+          initialData={quizEditorData}
+          isAI={isAIQuiz}
+          onSave={handleSaveQuiz}
+          onCancel={() => setShowQuizEditor(false)}
+        />
+      )}
     </div>
   )
 }

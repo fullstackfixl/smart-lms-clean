@@ -7,7 +7,7 @@ import {
   BookOpen, Video, FileQuestion, ChevronRight,
   Clock, TrendingUp, Award, GraduationCap, Calendar,
   CheckCircle, Users, Target, RefreshCw, PlayCircle,
-  CalendarDays, ClipboardList, FileText, Bell
+  CalendarDays, ClipboardList, FileText, Bell, Loader2
 } from "lucide-react"
 import { useAuth } from '../../../lib/auth-context'
 import { API_URL } from '../../../lib/config'
@@ -72,13 +72,7 @@ export default function StudentDashboard() {
   const getProgressPercentage = (p: any): number => {
     if (typeof p === 'number') return p
     if (!p || typeof p !== 'object') return 0
-    const v =
-      p.completionPercentage ??
-      p.completion_percentage ??
-      p.completion_percentage ??
-      p.completion ??
-      p.percentage
-    return typeof v === 'number' ? v : 0
+    return p.completionPercentage ?? p.completion_percentage ?? p.percentage ?? 0
   }
 
   const fetchDashboardData = useCallback(async () => {
@@ -108,20 +102,14 @@ export default function StudentDashboard() {
             pendingQuizzes: payload?.pendingQuizzes || 0
           })
         }
-        
         if (subjectsRes.status === 'fulfilled' && subjectsRes.value.success) {
-          const payload: any = subjectsRes.value.data
-          setSubjects(payload?.subjects || [])
+          setSubjects((subjectsRes.value.data as any)?.subjects || [])
         }
-        
         if (eventsRes.status === 'fulfilled' && eventsRes.value.success) {
-          const payload: any = eventsRes.value.data
-          setUpcomingEvents(payload?.events || [])
+          setUpcomingEvents((eventsRes.value.data as any)?.events || [])
         }
-        
         if (certsRes.status === 'fulfilled' && certsRes.value.success) {
-          const payload: any = certsRes.value.data
-          setCertificates(payload?.certificates || [])
+          setCertificates((certsRes.value.data as any)?.certificates || [])
         }
       } else {
         const [myCourses, live, subjectsData] = await Promise.allSettled([
@@ -140,7 +128,7 @@ export default function StudentDashboard() {
       }
     } catch (error) {
       console.error('Dashboard error:', error)
-      toast.error("Failed to load dashboard data")
+      toast.error("An error occurred while synchronizing your dashboard.")
     } finally {
       setLoading(false)
     }
@@ -154,253 +142,201 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
-        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-gray-100 rounded-md animate-pulse" />
-          ))}
-        </div>
+      <div className="min-h-[80vh] flex flex-col items-center justify-center gap-6">
+        <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+        <p className="text-[12px] font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">Initializing Personal Learning Environment...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {greeting}, {user?.name?.split(' ')[0] || 'Student'}! 👋
+    <div className="max-w-[1400px] mx-auto space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* Header & Greeting */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2 border-b border-slate-100">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+             <div className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-black uppercase tracking-widest">Active Session</div>
+             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </div>
+          <h1 className="text-[32px] md:text-[42px] font-black text-slate-900 tracking-tighter leading-none">
+            {greeting}, <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">{user?.name?.split(' ')[0] || 'Student'}</span>!
           </h1>
-          <p className="text-slate-500 mt-1">Here is your learning progress today.</p>
+          <p className="text-[15px] text-slate-500 font-medium">Your academic overview for {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={fetchDashboardData} className="border-gray-200">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
+        
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={fetchDashboardData}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-[13px] font-bold hover:bg-white hover:shadow-sm transition-all active:scale-95"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Sync Data
+          </button>
+          <button className="relative p-2.5 rounded-xl bg-slate-900 text-white hover:bg-blue-600 transition-all shadow-lg shadow-slate-900/10">
+            <Bell className="w-5 h-5" />
+            <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full" />
+          </button>
         </div>
       </div>
 
-      {/* Student Profile Info - Shows assigned batch/program/semester */}
-      {isCollege && (
-        <div className="bg-white border border-gray-200 rounded-md p-4">
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-600">Batch:</span>
-              <span className="text-slate-900">
-                {user?.profile?.batchId?.name || user?.profile?.batch || 'Not assigned'}
-              </span>
+      {/* Primary Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { title: isCollege ? "My Subjects" : "Joined Courses", value: isCollege ? (subjects.length || data?.totalSubjects || 0) : (data?.enrolledCourses?.length || 0), icon: BookOpen, gradient: "from-blue-600 to-blue-400" },
+          { title: "Engagement Rate", value: `${data?.attendanceRate || 0}%`, icon: TrendingUp, gradient: "from-emerald-600 to-teal-400" },
+          { title: "Live Sessions", value: data?.upcomingClasses?.length || 0, icon: Video, gradient: "from-orange-600 to-amber-400" },
+          { title: "Certifications", value: certificates.length, icon: Award, gradient: "from-indigo-600 to-purple-400" }
+        ].map((m, i) => (
+          <motion.div 
+            key={i}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="group relative bg-white border border-slate-200 p-6 rounded-[24px] hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 overflow-hidden"
+          >
+            <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${m.gradient} opacity-5 blur-2xl group-hover:opacity-10 transition-opacity`} />
+            <div className="flex items-center justify-between mb-4">
+              <div className={`w-12 h-12 rounded-xl bg-gradient-to-tr ${m.gradient} flex items-center justify-center text-white shadow-lg`}>
+                <m.icon className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors" />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-600">Program:</span>
-              <span className="text-slate-900">
-                {user?.profile?.programId?.name || user?.profile?.program || (typeof user?.profile?.program_id === 'object' ? user?.profile?.program_id?.name : user?.profile?.program_id) || 'Not assigned'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-600">Semester:</span>
-              <span className="text-slate-900">
-                {user?.profile?.current_semester || user?.profile?.semester || '-'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-slate-600">Roll Number:</span>
-              <span className="text-slate-900">
-                {user?.profile?.rollNumber || '-'}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick Stats - Instructor Style */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-        <MetricCard 
-          title={isCollege ? "My Subjects" : "Enrolled Courses"} 
-          value={isCollege ? (subjects.length || data?.totalSubjects || 0) : (data?.enrolledCourses?.length || 0)} 
-          icon={BookOpen} 
-          color="blue" 
-        />
-        <MetricCard 
-          title="Attendance Rate" 
-          value={`${data?.attendanceRate || 0}%`} 
-          icon={CheckCircle} 
-          color="green" 
-        />
-        <MetricCard 
-          title="Upcoming Classes" 
-          value={data?.upcomingClasses?.length || 0} 
-          icon={Video} 
-          color="orange" 
-        />
-        <MetricCard 
-          title="Certificates" 
-          value={certificates.length} 
-          icon={Award} 
-          color="teal" 
-        />
+            <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest">{m.title}</p>
+            <h3 className="text-[28px] font-black text-slate-900 mt-1">{m.value}</h3>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Main Content Grid - Instructor Style */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Continue Learning - Table Style */}
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-md">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900">My Courses</h3>
-              <p className="text-sm text-slate-500">Continue where you left off</p>
-            </div>
-            <Button 
-              variant="ghost" 
-              className="text-blue-600 hover:text-blue-700 text-sm"
-              onClick={() => router.push('/student/courses')}
-            >
-              View All <ChevronRight className="ml-1 h-4 w-4 stroke-[1.5]" />
-            </Button>
+      {/* Main Experience Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Learning Track - Left Column */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+              <Target className="w-6 h-6 text-blue-600" />
+              Active Learning Track
+            </h3>
+            <Link href="/student/courses" className="text-[13px] font-bold text-blue-600 hover:underline">Explore More &rarr;</Link>
           </div>
-          
-          {(!data?.enrolledCourses || data.enrolledCourses.length === 0) ? (
-            <div className="text-center py-12">
-              <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500">No courses enrolled yet.</p>
-              <Link href="/student/available-courses">
-                <Button className="mt-4 bg-orange-500 hover:bg-orange-600">
-                  Browse Courses
+
+          <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm">
+            {(!data?.enrolledCourses || data.enrolledCourses.length === 0) ? (
+              <div className="py-24 px-10 text-center space-y-6">
+                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
+                    <BookOpen className="w-12 h-12 text-slate-300" />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-xl font-black text-slate-900">Your Shelf is Empty</h4>
+                  <p className="text-[14px] text-slate-500 max-w-sm mx-auto font-medium">Enroll in subjects to start building your academic profile and tracking and progress.</p>
+                </div>
+                <Button onClick={() => router.push('/student/available-courses')} className="rounded-xl h-12 px-8 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20 font-bold">
+                  Browse Catalog
                 </Button>
-              </Link>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr className="border-b border-gray-200">
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Course</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Progress</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {data.enrolledCourses.slice(0, 5).map((course: any, index: number) => (
-                  (() => {
-                    const pct = getProgressPercentage(course.progress)
-                    return (
-                  <tr key={index} className="hover:bg-blue-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-md flex items-center justify-center text-white font-bold text-sm">
-                          {String.fromCharCode(65 + index)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-900">{course.title || course.course?.title || 'Untitled Course'}</p>
-                          <p className="text-xs text-slate-500">{course.code || ''}</p>
-                        </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {data.enrolledCourses.slice(0, 4).map((course: any, idx: number) => {
+                  const pct = getProgressPercentage(course.progress)
+                  return (
+                    <motion.div 
+                      key={idx}
+                      whileHover={{ backgroundColor: "rgba(248, 250, 252, 0.5)" }}
+                      className="p-6 md:p-8 flex items-center gap-6"
+                    >
+                      <div className="hidden md:flex w-16 h-16 rounded-[20px] bg-slate-900 text-white items-center justify-center font-black text-xl shadow-xl shadow-slate-900/10">
+                        {(course.title || "C").charAt(0)}
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-[100px]">
-                          <div
-                            className="h-full bg-gradient-to-r from-orange-500 to-red-500"
-                            style={{ width: `${pct}%` }}
+                      <div className="flex-1 min-w-0 space-y-3">
+                        <div className="flex items-center justify-between gap-4">
+                           <div className="min-w-0">
+                             <h4 className="text-[17px] font-black text-slate-900 truncate leading-tight">{course.title || course.course?.title || 'Course Path Loading...'}</h4>
+                             <p className="text-[12px] text-slate-400 font-bold tracking-wider uppercase mt-1">{course.code || course.course?.code || 'ACAD-LVL-1'}</p>
+                           </div>
+                           <p className="text-[13px] font-black text-blue-600 whitespace-nowrap">{pct}% Done</p>
+                        </div>
+                        <div className="relative w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 1, delay: 0.5 }}
+                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full shadow-[0_0_12px_rgba(37,99,235,0.3)]" 
                           />
                         </div>
-                        <span className="text-sm text-slate-600">{pct}%</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Button 
-                        size="sm" 
-                        className="bg-orange-500 hover:bg-orange-600"
-                        onClick={() => router.push(`/student/course/${course._id || course.course?._id}`)}
+                      <button 
+                         onClick={() => router.push(`/student/course/${course._id || course.course?._id}`)}
+                         className="p-4 rounded-2xl bg-slate-50 text-slate-900 hover:bg-blue-600 hover:text-white transition-all active:scale-90"
                       >
-                        <PlayCircle className="w-4 h-4 mr-1" />
-                        Continue
-                      </Button>
-                    </td>
-                  </tr>
-                    )
-                  })()
-                ))}
-              </tbody>
-            </table>
-          )}
+                         <PlayCircle className="w-6 h-6" />
+                      </button>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Right Sidebar */}
-        <div className="space-y-6">
-          {/* Upcoming Classes */}
-          <div className="bg-white border border-gray-200 rounded-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">Upcoming Classes</h3>
-                <p className="text-sm text-slate-500">Your schedule today</p>
-              </div>
-              <Button 
-                variant="ghost" 
-                className="text-blue-600 hover:text-blue-700 text-sm"
-                onClick={() => router.push('/student/timetable')}
-              >
-                View All
-              </Button>
-            </div>
-            <div className="p-4">
+        {/* Sidebar - Right Column */}
+        <div className="lg:col-span-4 space-y-8">
+          
+          {/* Real-time Schedule */}
+          <section className="space-y-4">
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">Timeline</h3>
+            <div className="bg-slate-900 text-white rounded-[32px] p-6 shadow-xl shadow-slate-900/20 overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full" />
               {(!data?.upcomingClasses || data.upcomingClasses.length === 0) ? (
-                <p className="text-slate-400 text-center py-4">No upcoming classes</p>
+                <div className="py-10 text-center opacity-60">
+                   <Calendar className="w-10 h-10 mx-auto mb-3 text-slate-400" />
+                   <p className="text-[13px] font-bold text-slate-400">No events scheduled for the next 24 hours.</p>
+                </div>
               ) : (
-                <div className="space-y-3">
-                  {data.upcomingClasses.slice(0, 3).map((cls: any, index: number) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600">
-                        <Clock className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-slate-900">{cls.title || cls.subject?.name}</p>
-                        <p className="text-xs text-slate-500">
-                          {cls.scheduled_date ? new Date(cls.scheduled_date).toLocaleDateString() : 'Today'} • {cls.start_time || cls.time}
-                        </p>
-                      </div>
+                <div className="space-y-4">
+                  {data.upcomingClasses.slice(0, 3).map((cls: any, i: number) => (
+                    <div key={i} className="flex gap-4 group">
+                       <div className="flex flex-col items-center">
+                          <div className="w-3 h-3 rounded-full bg-blue-500 group-hover:scale-125 transition-transform" />
+                          {i < 2 && <div className="w-0.5 flex-1 bg-slate-800 my-1" />}
+                       </div>
+                       <div className="pb-4">
+                          <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest leading-none mb-1.5">{cls.start_time || cls.time || 'Live Now'}</p>
+                          <h5 className="text-[15px] font-bold text-slate-100 mb-1">{cls.title || cls.subject?.name}</h5>
+                          <p className="text-[12px] text-slate-400 font-medium">{cls.scheduled_date ? new Date(cls.scheduled_date).toLocaleDateString() : 'Virtual Classroom'}</p>
+                       </div>
                     </div>
                   ))}
                 </div>
               )}
+              <Button onClick={() => router.push('/student/timetable')} className="w-full mt-4 bg-white/10 hover:bg-white/20 border-white/5 backdrop-blur-md rounded-2xl h-11 text-[13px] font-bold">
+                View Full Calendar
+              </Button>
             </div>
-          </div>
+          </section>
 
-          {/* Quick Links */}
-          <div className="bg-white border border-gray-200 rounded-md p-4">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Access</h3>
-            <div className="space-y-2">
-              <Link href="/student/grades" className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="w-5 h-5 text-slate-600" />
-                  <span className="font-medium text-slate-700">My Grades</span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-400" />
-              </Link>
-              <Link href="/student/attendance" className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-3">
-                  <CalendarDays className="w-5 h-5 text-slate-600" />
-                  <span className="font-medium text-slate-700">Attendance</span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-400" />
-              </Link>
-              <Link href="/student/quizzes" className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-3">
-                  <ClipboardList className="w-5 h-5 text-slate-600" />
-                  <span className="font-medium text-slate-700">Quizzes</span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-400" />
-              </Link>
-              <Link href="/student/certificates" className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Award className="w-5 h-5 text-slate-600" />
-                  <span className="font-medium text-slate-700">Certificates</span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-400" />
-              </Link>
-            </div>
-          </div>
+          {/* Quick Hub */}
+          <section className="space-y-4">
+             <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Academic Resources</h3>
+             <div className="grid grid-cols-2 gap-3">
+               {[
+                 { label: "My Grades", icon: TrendingUp, path: "/student/grades" },
+                 { label: "Attendance", icon: Users, path: "/student/attendance" },
+                 { label: "Quizzes", icon: ClipboardList, path: "/student/quizzes" },
+                 { label: "Credentials", icon: Award, path: "/student/certificates" }
+               ].map((link, i) => (
+                 <Link key={i} href={link.path}>
+                   <div className="relative group p-4 bg-white border border-slate-200 rounded-2xl hover:border-blue-600 transition-all hover:-translate-y-1">
+                     <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                        <link.icon className="w-5 h-5" />
+                     </div>
+                     <p className="text-[13px] font-black text-slate-900 mt-3">{link.label}</p>
+                     <ChevronRight className="absolute top-4 right-4 w-4 h-4 text-slate-300 group-hover:text-blue-600 transition-colors" />
+                   </div>
+                 </Link>
+               ))}
+             </div>
+          </section>
+
         </div>
       </div>
     </div>
