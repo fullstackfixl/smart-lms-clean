@@ -1,7 +1,10 @@
 const express = require('express');
 const analyticsController = require('../../controllers/platform/analyticsController');
 const dashboardController = require('../../controllers/platform/dashboardController');
+const { requirePlatformStaff } = require('../../middleware/auth');
 const router = express.Router();
+
+router.use(requirePlatformStaff);
 
 router.get('/', analyticsController.getOverview);
 router.get('/overview', analyticsController.getOverview);

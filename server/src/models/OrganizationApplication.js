@@ -1,11 +1,64 @@
 const mongoose = require('mongoose');
 
+const applicationNoteSchema = new mongoose.Schema({
+    text: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: [2000, 'Note cannot exceed 2000 characters']
+    },
+    type: {
+        type: String,
+        enum: ['note', 'call', 'email', 'follow_up', 'status_change'],
+        default: 'note'
+    },
+    created_by: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    created_by_role: {
+        type: String,
+        default: null
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: true });
+
+const applicationActivitySchema = new mongoose.Schema({
+    action: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    details: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null
+    },
+    created_by: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    created_by_role: {
+        type: String,
+        default: null
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    }
+}, { _id: true });
+
 const organizationApplicationSchema = new mongoose.Schema({
     // Required fields from /apply form
     organization_name: {
         type: String,
         required: [true, 'Organization name is required'],
         trim: true,
+        alias: 'orgName',
         minlength: [2, 'Name must be at least 2 characters'],
         maxlength: [100, 'Name cannot exceed 100 characters']
     },
@@ -17,19 +70,22 @@ const organizationApplicationSchema = new mongoose.Schema({
     contact_person_name: {
         type: String,
         required: [true, 'Contact person name is required'],
-        trim: true
+        trim: true,
+        alias: 'contactPerson'
     },
     contact_email: {
         type: String,
         required: [true, 'Contact email is required'],
         trim: true,
         lowercase: true,
+        alias: 'email',
         match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email address']
     },
     contact_phone: {
         type: String,
         required: [true, 'Contact phone is required'],
-        trim: true
+        trim: true,
+        alias: 'phone'
     },
     country: {
         type: String,
@@ -82,18 +138,27 @@ const organizationApplicationSchema = new mongoose.Schema({
         type: String,
         trim: true
     }],
-    // Status lifecycle: pending -> contacted -> approved -> account_created -> active
-    // OR: pending -> contacted -> rejected
+    // Status lifecycle: pending -> contacted -> negotiation -> ready_for_approval -> approved/rejected
     status: {
         type: String,
-        enum: ['pending', 'contacted', 'approved', 'account_created', 'active', 'rejected'],
+        enum: ['pending', 'contacted', 'negotiation', 'ready_for_approval', 'approved', 'rejected', 'account_created', 'active'],
         default: 'pending'
     },
     // Staff assignment
     assigned_to: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+        default: null,
+        alias: 'assignedTo'
+    },
+    assigned_at: {
+        type: Date,
         default: null
+    },
+    priority: {
+        type: String,
+        enum: ['hot', 'warm', 'cold'],
+        default: 'warm'
     },
     // Staff follow-up fields
     contact_notes: {
@@ -103,7 +168,16 @@ const organizationApplicationSchema = new mongoose.Schema({
     },
     follow_up_date: {
         type: Date,
-        default: null
+        default: null,
+        alias: 'followUpAt'
+    },
+    notes: {
+        type: [applicationNoteSchema],
+        default: []
+    },
+    activityLog: {
+        type: [applicationActivitySchema],
+        default: []
     },
     // Admin approval fields
     approved_by: {
@@ -136,5 +210,7 @@ const organizationApplicationSchema = new mongoose.Schema({
 organizationApplicationSchema.index({ contact_email: 1 });
 organizationApplicationSchema.index({ status: 1 });
 organizationApplicationSchema.index({ assigned_to: 1 });
+organizationApplicationSchema.index({ priority: 1 });
+organizationApplicationSchema.index({ follow_up_date: 1 });
 
 module.exports = mongoose.model('OrganizationApplication', organizationApplicationSchema);

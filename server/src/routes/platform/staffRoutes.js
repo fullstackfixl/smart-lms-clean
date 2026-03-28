@@ -9,8 +9,11 @@ router.use(requirePlatformAdmin);
 
 router.get('/', staffController.getStaffList);
 router.post('/', createStaffValidator, staffController.createStaff);
+router.post('/invite', staffController.inviteStaff);
+router.get('/logs', staffController.getActivityLogs);
 router.put('/:staffId', updateStaffValidator, staffController.updateStaff);
 router.patch('/:staffId/disable', staffController.disableStaff);
 router.patch('/:staffId/enable', staffController.enableStaff);
+router.patch('/:staffId/deactivate', staffController.deactivateStaff);
 
 module.exports = router;

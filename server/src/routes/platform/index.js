@@ -1,5 +1,10 @@
 const express = require('express');
-const { authMiddleware, requirePlatformAdmin } = require('../../middleware/auth');
+const {
+  authMiddleware,
+  requirePlatformAdmin,
+  requirePlatformStaff
+} = require('../../middleware/auth');
+const { activityLogger } = require('../../middleware/activityLogger');
 
 const dashboardRoutes = require('./dashboardRoutes');
 const organizationRoutes = require('./organizationRoutes');
@@ -19,16 +24,15 @@ const communicationController = require('../../controllers/platform/communicatio
 const billingController = require('../../controllers/platformAdmin/billingController');
 const PlatformController = require('../../controllers/platformController');
 const platformAdminsController = require('../../controllers/PlatformAdminsController');
-const platformStaffController = require('../../controllers/PlatformStaffController');
+const staffActionController = require('../../controllers/platform/staffController');
 
 const router = express.Router();
 
-/**
- * Platform API Hub
- * Enforces authentication and platform admin verification
- */
 router.post('/create-super-admin', PlatformController.createSuperAdmin);
-router.use(authMiddleware, requirePlatformAdmin);
+router.post('/staff/accept-invite', staffActionController.acceptInvite);
+router.get('/staff/accept-invite/verify', staffActionController.verifyInvite);
+
+router.use(authMiddleware, activityLogger);
 
 router.use('/dashboard', dashboardRoutes);
 router.use('/organizations', organizationRoutes);
@@ -45,18 +49,14 @@ router.use('/access-model', accessModelRoutes);
 router.use('/metrics', metricsRoutes);
 router.use('/security', securityRoutes);
 
-router.get('/admins', platformAdminsController.getAll.bind(platformAdminsController));
-router.post('/admins', platformAdminsController.create.bind(platformAdminsController));
-router.patch('/admins/:id/status', platformAdminsController.updateStatus.bind(platformAdminsController));
+router.get('/admins', requirePlatformAdmin, platformAdminsController.getAll.bind(platformAdminsController));
+router.post('/admins', requirePlatformAdmin, platformAdminsController.create.bind(platformAdminsController));
+router.patch('/admins/:id/status', requirePlatformAdmin, platformAdminsController.updateStatus.bind(platformAdminsController));
 
-router.get('/staff', platformStaffController.listStaff.bind(platformStaffController));
-router.post('/staff/create', platformStaffController.createStaff.bind(platformStaffController));
-router.patch('/staff/:id/status', platformStaffController.updateStaffStatus.bind(platformStaffController));
-router.get('/staff/logs', platformStaffController.getActivityLogs.bind(platformStaffController));
+router.get('/conversations', requirePlatformStaff, communicationController.getConversations);
+router.get('/messages/:conversationId', requirePlatformStaff, communicationController.getMessages);
+router.get('/communication/overview', requirePlatformStaff, communicationController.getOverview);
 
-router.get('/conversations', communicationController.getConversations);
-router.get('/messages/:conversationId', communicationController.getMessages);
-router.get('/communication/overview', communicationController.getOverview);
-router.get('/revenue', billingController.getBillingStats.bind(billingController));
+router.get('/revenue', requirePlatformAdmin, billingController.getBillingStats.bind(billingController));
 
 module.exports = router;
