@@ -97,59 +97,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function initializeAuth() {
-      // Try URL parameter first (for social login callbacks), then sessionStorage/localStorage
-      const urlParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "")
+      if (typeof window === "undefined") return
+
+      // Step 1: Synchronous Restoration (The "Fast" part)
+      const urlParams = new URLSearchParams(window.location.search)
       const urlToken = urlParams.get("token")
 
-      const savedToken = urlToken || (typeof window !== "undefined"
-        ? (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))
-        : null)
+      const savedToken = urlToken || window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token")
+      const savedUser = window.localStorage.getItem("instatute_user")
+      const savedOrg = window.localStorage.getItem("instatute_org")
 
-      console.log("🔐 [AuthContext] Checking saved token:", !!savedToken, urlToken ? "(from URL)" : "")
+      console.log("🔐 [AuthContext] Initializing session - Saved Token:", !!savedToken)
 
-      if (!savedToken) {
-        setLoading(false)
-        return
-      }
-
-      setToken(savedToken)
-
-      // If token was in URL, save it to storage and clean up URL
-      if (urlToken && typeof window !== "undefined") {
-        window.sessionStorage.setItem("instatute_token", urlToken)
-        window.localStorage.setItem("instatute_token", urlToken)
-        const newUrl = window.location.pathname + window.location.search.replace(/[?&]token=[^&]+/, "").replace(/^&/, "?")
-        window.history.replaceState({}, "", newUrl)
-      }
-
-      console.log("🔐 [AuthContext] Fetching user data with token...")
-
-      try {
-        const res = await authApi.getMe(savedToken)
-        if (res.success && res.data) {
-          const userData = (res.data as any).user || res.data
-          const orgData = (res.data as any).organization || null
-          setUser(userData as User)
-          if (orgData) setOrganization(orgData)
-          console.log("✅ [AuthContext] User authenticated:", userData.email, "Role:", userData.role)
-        } else {
-          const errorMsg = res.error || ""
-          const isAuthError = errorMsg.toLowerCase().includes("auth") ||
-            errorMsg.toLowerCase().includes("token") ||
-            errorMsg.toLowerCase().includes("unauthorized") ||
-            errorMsg.toLowerCase().includes("not found")
-
-          if (isAuthError) {
-            console.error("❌ [AuthContext] Auth failed, clearing session")
-            window.sessionStorage.removeItem("instatute_token")
-            window.localStorage.removeItem("instatute_token")
-            setToken(null)
-            setUser(null)
+      if (savedToken) {
+        setToken(savedToken)
+        
+        // Attempt immediate restoration of user/org objects
+        if (savedUser) {
+          try {
+            const parsedUser = JSON.parse(savedUser)
+            setUser(parsedUser)
+            console.log("🚀 [AuthContext] Synchronous user restore success:", parsedUser.email)
+            
+            if (savedOrg) {
+              const parsedOrg = JSON.parse(savedOrg)
+              setOrganization(parsedOrg)
+            }
+            
+            // If we successfully restored user/org, we can hide the loading spinner immediately
+            // The getMe call below will still verify and refresh data in the background
+            setLoading(false)
+          } catch (e) {
+            console.error("⚠️ [AuthContext] Failed to parse saved session objects", e)
           }
         }
-      } catch (error) {
-        console.error("❌ [AuthContext] Initialization error:", error)
-      } finally {
+
+        // If token was in URL, save it and clean up URL
+        if (urlToken) {
+          window.sessionStorage.setItem("instatute_token", urlToken)
+          window.localStorage.setItem("instatute_token", urlToken)
+          const newUrl = window.location.pathname + window.location.search.replace(/[?&]token=[^&]+/, "").replace(/^&/, "?")
+          window.history.replaceState({}, "", newUrl)
+        }
+
+        console.log("🔐 [AuthContext] Verifying session with backend...")
+
+        try {
+          const res = await authApi.getMe(savedToken)
+          if (res.success && res.data) {
+            const userData = (res.data as any).user || res.data
+            const orgData = (res.data as any).organization || null
+            setUser(userData as User)
+            if (orgData) setOrganization(orgData)
+            
+            // Persist the fresh data
+            window.localStorage.setItem("instatute_user", JSON.stringify(userData))
+            if (orgData) window.localStorage.setItem("instatute_org", JSON.stringify(orgData))
+            
+            console.log("✅ [AuthContext] Session verified and refreshed")
+          } else {
+            console.log("❌ [AuthContext] Session invalid or expired")
+            const errorMsg = res.error || ""
+            const isAuthError = errorMsg.toLowerCase().includes("auth") ||
+              errorMsg.toLowerCase().includes("token") ||
+              errorMsg.toLowerCase().includes("unauthorized") ||
+              errorMsg.toLowerCase().includes("not found")
+
+            if (isAuthError) {
+              logout()
+            }
+          }
+        } catch (error) {
+          console.error("❌ [AuthContext] Verify request failed:", error)
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        console.log("⚠️ [AuthContext] No session found")
         setLoading(false)
       }
     }
@@ -166,33 +190,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       : loginTarget === 'organization_admin'
         ? await authApi.orgAdminLogin({ email, password })
         : await authApi.login({ email, password })
-    console.log("🔐 [AuthContext] Login response:", res)
 
     if (res.success && res.data) {
       const { token: newToken, user: userData, organization: orgData } = res.data as { token: string; user: User; organization: Organization | null }
-      console.log("🔐 [AuthContext] Token received:", newToken?.substring(0, 20) + "...")
-      console.log("🔐 [AuthContext] User data:", userData)
-      console.log("🔐 [AuthContext] Organization data:", orgData)
-
+      
       setToken(newToken)
       setUser(userData)
       if (orgData) setOrganization(orgData)
 
-      // Save to both sessionStorage and localStorage
       if (typeof window !== "undefined") {
         window.sessionStorage.setItem("instatute_token", newToken)
         window.localStorage.setItem("instatute_token", newToken)
+        window.localStorage.setItem("instatute_user", JSON.stringify(userData))
+        if (orgData) window.localStorage.setItem("instatute_org", JSON.stringify(orgData))
+        
         document.cookie = `instatute_token=${newToken}; path=/; samesite=lax`
-        console.log("✅ [AuthContext] Token saved to storage")
-
-        // Verify it was saved
-        const savedSession = window.sessionStorage.getItem("instatute_token")
-        const savedLocal = window.localStorage.getItem("instatute_token")
-        console.log("🔐 [AuthContext] Verification - SessionStorage:", !!savedSession)
-        console.log("🔐 [AuthContext] Verification - LocalStorage:", !!savedLocal)
+        console.log("✅ [AuthContext] Session persisted to local storage")
       }
 
-      // Use backend redirect URL if available, otherwise calculate it
       let redirectUrl = (res.data as any).redirectUrl || getDashboardRoute(userData.role)
 
       if (typeof window !== "undefined") {
@@ -200,21 +215,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (storedRedirect && storedRedirect.startsWith("/course/")) {
           redirectUrl = storedRedirect
           window.localStorage.removeItem("postLoginRedirect")
-          console.log("🎯 [AuthContext] Using stored redirect:", redirectUrl)
         }
       }
 
-      console.log("🔐 [AuthContext] Redirect URL:", redirectUrl)
-
       return { success: true, redirectUrl, role: userData.role }
     }
-    console.error("❌ [AuthContext] Login failed:", res.error)
     return { success: false, error: res.error || "Login failed" }
   }, [])
 
   const loginWithGoogle = useCallback(async () => {
     try {
-      const { signInWithPopup, GoogleAuthProvider } = await import("firebase/auth")
+      const { signInWithPopup } = await import("firebase/auth")
       const { auth, googleProvider } = await import("./firebase")
 
       const result = await signInWithPopup(auth, googleProvider)
@@ -237,6 +248,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (typeof window !== "undefined") {
           window.sessionStorage.setItem("instatute_token", newToken)
           window.localStorage.setItem("instatute_token", newToken)
+          window.localStorage.setItem("instatute_user", JSON.stringify(userData))
+          if (orgData) window.localStorage.setItem("instatute_org", JSON.stringify(orgData))
         }
 
         let redirectUrl = data.data.redirectUrl || getDashboardRoute(userData.role)
@@ -246,7 +259,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (storedRedirect && storedRedirect.startsWith("/course/")) {
             redirectUrl = storedRedirect
             window.localStorage.removeItem("postLoginRedirect")
-            console.log("🎯 [AuthContext] Using stored redirect:", redirectUrl)
           }
         }
 
@@ -290,14 +302,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { token: newToken, user: userData, organization_code } = responseData
       setToken(newToken)
       setUser(userData)
-      // Save to both sessionStorage and localStorage
-      window.sessionStorage.setItem("instatute_token", newToken)
-      window.localStorage.setItem("instatute_token", newToken)
-      console.log("✅ [AuthContext] OTP verified, token saved")
-
-      // Get role-based dashboard URL
+      
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("instatute_token", newToken)
+        window.localStorage.setItem("instatute_token", newToken)
+        window.localStorage.setItem("instatute_user", JSON.stringify(userData))
+      }
+      
       const redirectUrl = getDashboardRoute(userData.role)
-
       return { success: true, data: { organization_code }, redirectUrl }
     }
     return { success: false, error: res.error || "Verification failed" }
@@ -319,9 +331,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     setToken(null)
     setOrganization(null)
-    window.sessionStorage.removeItem("instatute_token")
-    window.localStorage.removeItem("instatute_token")
-    document.cookie = 'instatute_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("instatute_token")
+      window.localStorage.removeItem("instatute_token")
+      window.localStorage.removeItem("instatute_user")
+      window.localStorage.removeItem("instatute_org")
+      document.cookie = 'instatute_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    }
     console.log("🔐 [AuthContext] Logout complete")
   }, [token])
 
