@@ -96,17 +96,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [token])
 
   useEffect(() => {
-    // Try URL parameter first (for social login callbacks), then sessionStorage/localStorage
-    const urlParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "")
-    const urlToken = urlParams.get("token")
+    async function initializeAuth() {
+      // Try URL parameter first (for social login callbacks), then sessionStorage/localStorage
+      const urlParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "")
+      const urlToken = urlParams.get("token")
 
-    const savedToken = urlToken || (typeof window !== "undefined"
-      ? (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))
-      : null)
+      const savedToken = urlToken || (typeof window !== "undefined"
+        ? (window.sessionStorage.getItem("instatute_token") || window.localStorage.getItem("instatute_token"))
+        : null)
 
-    console.log("🔐 [AuthContext] Checking saved token:", !!savedToken, urlToken ? "(from URL)" : "")
+      console.log("🔐 [AuthContext] Checking saved token:", !!savedToken, urlToken ? "(from URL)" : "")
 
-    if (savedToken) {
+      if (!savedToken) {
+        setLoading(false)
+        return
+      }
+
       setToken(savedToken)
 
       // If token was in URL, save it to storage and clean up URL
@@ -119,15 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log("🔐 [AuthContext] Fetching user data with token...")
 
-      authApi.getMe(savedToken).then((res) => {
+      try {
+        const res = await authApi.getMe(savedToken)
         if (res.success && res.data) {
-          // Handle both nested and flat response formats
           const userData = (res.data as any).user || res.data
           const orgData = (res.data as any).organization || null
           setUser(userData as User)
           if (orgData) setOrganization(orgData)
           console.log("✅ [AuthContext] User authenticated:", userData.email, "Role:", userData.role)
-          setLoading(false)
         } else {
           const errorMsg = res.error || ""
           const isAuthError = errorMsg.toLowerCase().includes("auth") ||
@@ -136,26 +140,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             errorMsg.toLowerCase().includes("not found")
 
           if (isAuthError) {
-            console.error("❌ [AuthContext] Auth failed, clearing session:", errorMsg)
+            console.error("❌ [AuthContext] Auth failed, clearing session")
             window.sessionStorage.removeItem("instatute_token")
             window.localStorage.removeItem("instatute_token")
             setToken(null)
             setUser(null)
-          } else {
-            console.warn("⚠️ [AuthContext] Network/Server error (non-auth), preserving session:", errorMsg)
           }
-          setLoading(false)
         }
-      }).catch((error) => {
-        console.error("❌ [AuthContext] Fatal error fetching user:", error)
-        // Keep existing token if it's a network error
+      } catch (error) {
+        console.error("❌ [AuthContext] Initialization error:", error)
+      } finally {
         setLoading(false)
-      })
-
-    } else {
-      console.log("⚠️ [AuthContext] No saved token found")
-      setLoading(false)
+      }
     }
+
+    initializeAuth()
   }, [])
 
   const login = useCallback(async (email: string, password: string, loginTarget: 'platform_admin' | 'platform_staff' | 'organization_admin' | 'student_instructor' = 'student_instructor') => {
